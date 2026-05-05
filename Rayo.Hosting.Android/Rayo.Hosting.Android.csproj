@@ -12,6 +12,10 @@
     <Nullable>enable</Nullable>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <SupportedOSPlatformVersion>21</SupportedOSPlatformVersion>
+    <IsPackable>true</IsPackable>
+    <PackageId>Rayo.Hosting.Android</PackageId>
+    <Title>Rayo.Hosting.Android</Title>
+    <Description>Android hosting integration for Rayo using the SkiaSharp renderer.</Description>
   </PropertyGroup>
 
 </Project>

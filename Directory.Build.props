@@ -1,0 +1,22 @@
+<Project>
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+    <Version Condition="'$(Version)' == ''">0.1.0-dev</Version>
+    <Authors Condition="'$(Authors)' == ''">RayoUI</Authors>
+    <Company Condition="'$(Company)' == ''">RayoUI</Company>
+    <RepositoryUrl Condition="'$(RepositoryUrl)' == ''">https://github.com/RayoUI/Rayo</RepositoryUrl>
+    <RepositoryType Condition="'$(RepositoryType)' == ''">git</RepositoryType>
+    <PackageLicenseExpression Condition="'$(PackageLicenseExpression)' == ''">MIT</PackageLicenseExpression>
+    <PackageReadmeFile Condition="'$(PackageReadmeFile)' == ''">README.md</PackageReadmeFile>
+    <PackageProjectUrl Condition="'$(PackageProjectUrl)' == ''">https://github.com/RayoUI/Rayo</PackageProjectUrl>
+    <PackageTags Condition="'$(PackageTags)' == ''">ui;dotnet;desktop;silknet;opengl</PackageTags>
+    <PublishRepositoryUrl Condition="'$(PublishRepositoryUrl)' == ''">true</PublishRepositoryUrl>
+    <IncludeSymbols Condition="'$(IncludeSymbols)' == ''">true</IncludeSymbols>
+    <SymbolPackageFormat Condition="'$(SymbolPackageFormat)' == ''">snupkg</SymbolPackageFormat>
+    <ContinuousIntegrationBuild Condition="'$(ContinuousIntegrationBuild)' == ''">true</ContinuousIntegrationBuild>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(IsPackable)' == 'true' and Exists('$(MSBuildThisFileDirectory)README.md')">
+    <None Include="$(MSBuildThisFileDirectory)README.md" Pack="true" PackagePath="" Link="README.md" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,58 @@
+name: ci
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build-and-pack:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Install Android workload
+        run: dotnet workload install android
+
+      - name: Restore NuGet projects
+        shell: pwsh
+        run: |
+          Get-Content eng/nuget-pack-projects.txt | ForEach-Object {
+            if (-not [string]::IsNullOrWhiteSpace($_)) {
+              dotnet restore $_ --configfile NuGet.Config --nologo
+            }
+          }
+
+      - name: Build NuGet projects
+        shell: pwsh
+        run: |
+          Get-Content eng/nuget-pack-projects.txt | ForEach-Object {
+            if (-not [string]::IsNullOrWhiteSpace($_)) {
+              dotnet build $_ -c Release --no-restore --nologo
+            }
+          }
+
+      - name: Pack NuGet projects
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path artifacts | Out-Null
+          Get-Content eng/nuget-pack-projects.txt | ForEach-Object {
+            if (-not [string]::IsNullOrWhiteSpace($_)) {
+              dotnet pack $_ -c Release --no-build --no-restore -o artifacts -p:PackageVersion=0.0.0-ci --nologo
+            }
+          }
+
+      - name: Upload package artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: nuget-packages
+          path: artifacts/*

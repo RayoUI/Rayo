@@ -11,6 +11,10 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <IsPackable>true</IsPackable>
+    <PackageId>Rayo.Hosting.Desktop</PackageId>
+    <Title>Rayo.Hosting.Desktop</Title>
+    <Description>Desktop hosting integration for Rayo using the SkiaSharp renderer.</Description>
   </PropertyGroup>
 
 </Project>

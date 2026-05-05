@@ -8,6 +8,10 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
     <CompilerGeneratedFilesOutputPath>Generated</CompilerGeneratedFilesOutputPath>
+    <IsPackable>true</IsPackable>
+    <PackageId>Rayo</PackageId>
+    <Title>Rayo</Title>
+    <Description>Declarative retained-mode UI library for .NET built on Silk.NET.</Description>
   </PropertyGroup>
 
   <ItemGroup>

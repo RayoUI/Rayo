@@ -4,6 +4,10 @@
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <IsPackable>true</IsPackable>
+    <PackageId>Rayo.Rendering</PackageId>
+    <Title>Rayo.Rendering</Title>
+    <Description>Rendering contracts, brushes, geometry, and shared drawing primitives for Rayo.</Description>
   </PropertyGroup>
 
 </Project>

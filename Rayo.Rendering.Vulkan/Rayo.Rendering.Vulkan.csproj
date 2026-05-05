@@ -5,6 +5,10 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <IsPackable>true</IsPackable>
+    <PackageId>Rayo.Rendering.Vulkan</PackageId>
+    <Title>Rayo.Rendering.Vulkan</Title>
+    <Description>Vulkan rendering backend for Rayo.</Description>
   </PropertyGroup>
 
   <ItemGroup>

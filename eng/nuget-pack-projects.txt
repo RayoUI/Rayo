@@ -1,0 +1,9 @@
+Rayo.Hosting.Abstractions/Rayo.Hosting.Abstractions.csproj
+Rayo.Rendering/Rayo.Rendering.csproj
+Rayo.Rendering.OpenGL/Rayo.Rendering.OpenGL.csproj
+Rayo.Rendering.SkiaSharp/Rayo.Rendering.SkiaSharp.csproj
+Rayo.Rendering.Vulkan/Rayo.Rendering.Vulkan.csproj
+Rayo.DevTool.Shared/Rayo.DevTool.Shared.csproj
+Rayo/Rayo.csproj
+Rayo.Hosting.Desktop/Rayo.Hosting.Desktop.csproj
+Rayo.Hosting.Android/Rayo.Hosting.Android.csproj

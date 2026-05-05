@@ -14,6 +14,14 @@ dotnet build Rayo/Rayo.csproj
 
 The solution file references missing projects, so build the `.csproj` directly.
 
+## NuGet release automation
+
+- NuGet packaging is opt-in. Only projects with `<IsPackable>true</IsPackable>` are intended for publication.
+- The current publish set is tracked in `eng/nuget-pack-projects.txt` and released together from the same version tag.
+- GitHub Actions uses `.github/workflows/ci.yml` for package validation and `.github/workflows/publish-nuget.yml` for tag-based publishing.
+- NuGet publishing is designed for nuget.org Trusted Publishing with GitHub Actions OIDC plus the `NUGET_USER` repository secret.
+- The current release set includes the hosting packages, so workflow changes must continue to support `Rayo.Hosting.Android` and `Rayo.Hosting.Desktop`.
+
 ## Architecture
 
 Rayo is a declarative, retained-mode UI library on Silk.NET/OpenGL for .NET 10.

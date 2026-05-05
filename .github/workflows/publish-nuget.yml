@@ -1,0 +1,80 @@
+name: publish-nuget
+
+on:
+  push:
+    tags:
+      - v*
+
+jobs:
+  publish:
+    runs-on: windows-latest
+    permissions:
+      contents: read
+      id-token: write
+    environment: release
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Install Android workload
+        run: dotnet workload install android
+
+      - name: Resolve package version
+        shell: pwsh
+        run: |
+          $version = $env:GITHUB_REF_NAME
+          if ([string]::IsNullOrWhiteSpace($version) -or -not $version.StartsWith("v")) {
+            Write-Error "Expected a tag in the form vX.Y.Z."
+          fi
+          "PACKAGE_VERSION=$($version.Substring(1))" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Restore NuGet projects
+        shell: pwsh
+        run: |
+          Get-Content eng/nuget-pack-projects.txt | ForEach-Object {
+            if (-not [string]::IsNullOrWhiteSpace($_)) {
+              dotnet restore $_ --configfile NuGet.Config --nologo
+            }
+          }
+
+      - name: Build NuGet projects
+        shell: pwsh
+        run: |
+          Get-Content eng/nuget-pack-projects.txt | ForEach-Object {
+            if (-not [string]::IsNullOrWhiteSpace($_)) {
+              dotnet build $_ -c Release --no-restore -p:PackageVersion=${env:PACKAGE_VERSION} --nologo
+            }
+          }
+
+      - name: Pack NuGet projects
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path artifacts | Out-Null
+          Get-Content eng/nuget-pack-projects.txt | ForEach-Object {
+            if (-not [string]::IsNullOrWhiteSpace($_)) {
+              dotnet pack $_ -c Release --no-build --no-restore -o artifacts -p:PackageVersion=${env:PACKAGE_VERSION} --nologo
+            }
+          }
+
+      - name: NuGet login
+        id: login
+        uses: NuGet/login@v1
+        with:
+          user: ${{ secrets.NUGET_USER }}
+
+      - name: Publish packages
+        shell: pwsh
+        run: |
+          $packages = Get-ChildItem -Path artifacts -Filter *.nupkg
+          if ($packages.Count -eq 0) {
+            Write-Error "No packages were generated."
+          fi
+          foreach ($package in $packages) {
+            dotnet nuget push $package.FullName --api-key "${{ steps.login.outputs.NUGET_API_KEY }}" --source https://api.nuget.org/v3/index.json --skip-duplicate
+          }
