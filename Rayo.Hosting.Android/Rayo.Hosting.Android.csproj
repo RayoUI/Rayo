@@ -1,0 +1,17 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\Rayo.Hosting.Abstractions\Rayo.Hosting.Abstractions.csproj" />
+    <ProjectReference Include="..\Rayo\Rayo.csproj" />
+    <ProjectReference Include="..\Rayo.Rendering.SkiaSharp\Rayo.Rendering.SkiaSharp.csproj" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net10.0-android</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <SupportedOSPlatformVersion>21</SupportedOSPlatformVersion>
+  </PropertyGroup>
+
+</Project>

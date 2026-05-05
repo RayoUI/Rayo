@@ -1,0 +1,10 @@
+﻿# EditorConfig for Rayo
+
+root = true
+
+[*.cs]
+# Disable Visual Studio Hot Reload for this project
+dotnet_diagnostic.IDE0005.severity = suggestion
+
+# This tells Visual Studio to respect our custom hot reload system
+# by disabling its own hot reload

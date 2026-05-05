@@ -1,0 +1,33 @@
+﻿using WebGPUApp;
+using Rayo.Hosting.Desktop;
+
+namespace WebGPUApp;
+
+public class Program
+{
+    public static void Main(string[] args)
+    {
+        var host = new DesktopPlatformHost();
+
+        host.Run(
+            configureApp: context =>
+            {
+                // The UI is rendered by the default SkiaSharp backend.
+                // WebGPUScene3D owns its own wgpu device for 3D rendering
+                // and composites into the UI via CreateTextureFromPixels.
+                context.SetUI<WebGPUViewApp>();
+            },
+            configureWindow: config =>
+            {
+                config.Title     = "WebGPU + Rayo";
+                config.Width     = 900;
+                config.Height    = 720;
+                config.CanResize = true;
+                config.VSync     = true;
+
+                if (host.GetNativeWindowConfiguration(config) is { } nativeConfig)
+                    nativeConfig.StartupLocation = Rayo.Core.Platform.WindowStartupLocation.CenterScreen;
+            }
+        );
+    }
+}

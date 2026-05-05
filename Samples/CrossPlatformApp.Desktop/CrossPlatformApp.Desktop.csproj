@@ -1,0 +1,28 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>preview</LangVersion>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+
+    <!-- Desktop-specific settings -->
+    <AssemblyName>CrossPlatformApp.Desktop</AssemblyName>
+  </PropertyGroup>
+
+  <!-- Desktop platforms: Windows, Linux, macOS -->
+  <PropertyGroup Condition="'$(RuntimeIdentifier)' == 'win-x64' Or '$(RuntimeIdentifier)' == 'win-x86' Or '$(RuntimeIdentifier)' == 'win-arm64'">
+    <!-- Windows-specific settings -->
+    <UseWindowsForms>false</UseWindowsForms>
+    <UseWPF>false</UseWPF>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Reference the shared library -->
+    <ProjectReference Include="..\CrossPlatformApp\CrossPlatformApp.csproj" />
+    <ProjectReference Include="..\..\Rayo.Hosting.Desktop\Rayo.Hosting.Desktop.csproj" />
+  </ItemGroup>
+
+</Project>

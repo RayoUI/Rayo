@@ -1,0 +1,18 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>preview</LangVersion>
+
+    <!-- This is a shared library - no executable output -->
+    <OutputType>Library</OutputType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Rayo\Rayo.csproj" />
+    <ProjectReference Include="..\..\Rayo.Hosting.Abstractions\Rayo.Hosting.Abstractions.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,41 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0-android</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>preview</LangVersion>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <NoWarn>$(NoWarn);XA0141</NoWarn>
+
+    <!-- Android-specific settings -->
+    <ApplicationId>com.pikoui.crossplatformapp</ApplicationId>
+    <ApplicationVersion>1</ApplicationVersion>
+    <ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>
+    <ApplicationTitle>CrossPlatform Demo</ApplicationTitle>
+
+    <!-- Android SDK versions -->
+    <SupportedOSPlatformVersion>21</SupportedOSPlatformVersion>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)' == 'Debug'">
+    <!-- Required for hot reload: disable AOT and use interpreter so IL deltas can be applied -->
+    <RunAOTCompilation>false</RunAOTCompilation>
+    <UseInterpreter>true</UseInterpreter>
+    <AndroidEnableProfiledAOT>false</AndroidEnableProfiledAOT>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Reference the shared library -->
+    <ProjectReference Include="..\CrossPlatformApp\CrossPlatformApp.csproj" />
+    <ProjectReference Include="..\..\Rayo.Hosting.Android\Rayo.Hosting.Android.csproj" />
+  </ItemGroup>
+
+
+  <!-- Android-specific resources -->
+  <ItemGroup>
+    <AndroidResource Include="Resources\**" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,58 @@
+<Solution>
+  <Folder Name="/DevTool/">
+    <Project Path="Rayo.DevTool.Shared/Rayo.DevTool.Shared.csproj" />
+    <Project Path="Rayo.DevTool/Rayo.DevTool.csproj" />
+  </Folder>
+  <Folder Name="/Hosting/">
+    <Project Path="Rayo.Hosting.Abstractions/Rayo.Hosting.Abstractions.csproj" />
+    <Project Path="Rayo.Hosting.Android/Rayo.Hosting.Android.csproj" />
+    <Project Path="Rayo.Hosting.Desktop/Rayo.Hosting.Desktop.csproj" />
+  </Folder>
+  <Folder Name="/Rendering/">
+    <Project Path="Rayo.Rendering.OpenGL/Rayo.Rendering.OpenGL.csproj" />
+    <Project Path="Rayo.Rendering.SkiaSharp/Rayo.Rendering.SkiaSharp.csproj" />
+    <Project Path="Rayo.Rendering.Vulkan/Rayo.Rendering.Vulkan.csproj" />
+    <Project Path="Rayo.Rendering/Rayo.Rendering.csproj" />
+  </Folder>
+  <Folder Name="/Samples/">
+    <Project Path="Samples/Arkanoid/Arkanoid.csproj" />
+    <Project Path="Samples/BasicApp/BasicApp.csproj" />
+    <Project Path="Samples/FluentExamples/FluentExamples.csproj" />
+    <Project Path="Samples/Kanban/Kanban.csproj" />
+    <Project Path="Samples/ModularApp/ModularApp.csproj" />
+    <Project Path="Samples/Notepad/Notepad.csproj" />
+    <Project Path="Samples/PaintApp/PaintApp.csproj" />
+    <Project Path="Samples/PokemonMVVM/PokemonMVVM.csproj" />
+    <Project Path="Samples/StyleDemo/StyleDemo.csproj" />
+    <Project Path="Samples/TabControlApp/TabControlApp.csproj" />
+    <Project Path="Samples/TestApp/TestApp.csproj" />
+    <Project Path="Samples/TestExamples/TestExamples.csproj" />
+    <Project Path="Samples/ToDoList/ToDoList.csproj" />
+    <Project Path="Samples/VisualScripting/VisualScripting.csproj" />
+  </Folder>
+  <Folder Name="/Samples/CrossPlatformApp/">
+    <Project Path="Samples/CrossPlatformApp.Android/CrossPlatformApp.Android.csproj">
+      <Deploy />
+    </Project>
+    <Project Path="Samples/CrossPlatformApp.Desktop/CrossPlatformApp.Desktop.csproj" />
+    <Project Path="Samples/CrossPlatformApp/CrossPlatformApp.csproj" />
+  </Folder>
+  <Folder Name="/Samples/Gallery/">
+    <Project Path="Samples/Gallery/Gallery.Android/Gallery.Android.csproj">
+      <Deploy />
+    </Project>
+    <Project Path="Samples/Gallery/Gallery.Desktop/Gallery.Desktop.csproj" />
+    <Project Path="Samples/Gallery/Gallery/Gallery.csproj" />
+  </Folder>
+  <Folder Name="/Samples/Graphics/">
+    <Project Path="Samples/DirectXApp/DirectXApp.csproj" />
+    <Project Path="Samples/MonoGameView/MonoGameApp.csproj" />
+    <Project Path="Samples/OpenGLView/OpenGLApp.csproj" />
+    <Project Path="Samples/SdlView/SdlApp.csproj" />
+    <Project Path="Samples/VeldridApp/VeldridApp.csproj" />
+    <Project Path="Samples/VulkanView/VulkanApp.csproj" />
+    <Project Path="Samples/WebGPUApp/WebGPUApp.csproj" />
+  </Folder>
+  <Project Path="Rayo.Reactivity/Rayo.FluentApiGenerator.csproj" />
+  <Project Path="Rayo/Rayo.csproj" />
+</Solution>
