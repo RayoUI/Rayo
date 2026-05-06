@@ -147,7 +147,7 @@ Component-local styles are declared by overriding `UserControl.BuildStyles()`.
 
 ## Fluent API generation
 
-All classes inheriting from `VisualElement` automatically receive generated fluent property extension methods for their public properties unless excluded with `[NoReactive]`.
+All classes inheriting from `VisualElement` automatically receive generated fluent property extension methods for their public properties unless excluded with `[NotFluent]`.
 
 Generated methods keep the property name itself. For example:
 

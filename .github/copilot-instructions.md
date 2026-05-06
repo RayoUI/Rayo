@@ -157,7 +157,7 @@ new MyWidget()
     .Height(40);
 ```
 
-`[NoReactive]` disables fluent generation:
+`[NotFluent]` disables fluent generation:
 - on a class: no generated fluent setters for that class,
 - on a property: skip only that property.
 

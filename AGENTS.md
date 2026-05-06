@@ -113,11 +113,11 @@ new Button()
 
 **CRTP pattern**: `public class MyWidget : View<MyWidget>` - fluent chain always returns the derived type.
 
-**`[NoReactive]`** skips generation for a class or property:
+**`[NotFluent]`** skips generation for a class or property:
 - On a **class**: no fluent setters generated for any properties of that class
 - On a **property**: only that specific property is skipped
 
-Use cases for `[NoReactive]`:
+Use cases for `[NotFluent]`:
 - Properties with complex setters that shouldn't be exposed as fluent APIs
 - Internal state properties that shouldn't be part of the public fluent interface
 - Classes that inherit from `VisualElement` but should not have reactive generation
@@ -168,14 +168,14 @@ new MyWidget()
     .Height(100);
 ```
 
-To skip reactive generation for a specific property:
+To skip fluent generation for a specific property:
 
 ```csharp
 public class MyWidget : View<MyWidget>
 {
     public string Title { get; set; }  // ✓ Generates .Title() method
 
-    [NoReactive]
+    [NotFluent]
     public string InternalState { get; set; }  // ✗ No .InternalState() method generated
 }
 ```

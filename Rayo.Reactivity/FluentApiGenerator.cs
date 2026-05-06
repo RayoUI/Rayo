@@ -93,10 +93,10 @@ namespace Rayo.Reactivity
                 return null;
 
             // Check for [NotFluent] attribute - skip this class entirely if present
-            var hasNoReactive = classSymbol.GetAttributes()
+            var hasNotFluent = classSymbol.GetAttributes()
                 .Any(a => a.AttributeClass?.Name.Contains("NotFluent") == true);
 
-            if (hasNoReactive)
+            if (hasNotFluent)
                 return null;
 
             // Check if class inherits from VisualElement (direct or via VisualElement<T>)
@@ -224,10 +224,10 @@ namespace Rayo.Reactivity
                 foreach (var prop in properties)
                 {
                     // Check for [NotFluent] - skip this property if present
-                    var hasNoReactive = prop.GetAttributes()
+                    var hasNotFluent = prop.GetAttributes()
                         .Any(a => a.AttributeClass?.Name.Contains("NotFluent") == true);
 
-                    if (hasNoReactive)
+                    if (hasNotFluent)
                         continue;
 
                     // Include all properties that don't have [NotFluent]

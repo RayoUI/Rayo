@@ -152,7 +152,7 @@ For properties not covered by generated methods, or for custom logic, use `Set()
 new Style<Button>().Set(b => b.IsEnabled = false)
 ```
 
-Use `[NoReactive]` on a class or property when you intentionally want to exclude it from fluent API and generated setter generation.
+Use `[NotFluent]` on a class or property when you intentionally want to exclude it from fluent API and generated setter generation.
 
 ---
 
