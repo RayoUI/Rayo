@@ -31,7 +31,7 @@ jobs:
           $version = $env:GITHUB_REF_NAME
           if ([string]::IsNullOrWhiteSpace($version) -or -not $version.StartsWith("v")) {
             Write-Error "Expected a tag in the form vX.Y.Z."
-          fi
+          }
           "PACKAGE_VERSION=$($version.Substring(1))" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
       - name: Restore NuGet projects
@@ -74,7 +74,7 @@ jobs:
           $packages = Get-ChildItem -Path artifacts -Filter *.nupkg
           if ($packages.Count -eq 0) {
             Write-Error "No packages were generated."
-          fi
+          }
           foreach ($package in $packages) {
             dotnet nuget push $package.FullName --api-key "${{ steps.login.outputs.NUGET_API_KEY }}" --source https://api.nuget.org/v3/index.json --skip-duplicate
           }
