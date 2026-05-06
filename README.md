@@ -1,12 +1,28 @@
 # Rayo
 
-Rayo is a declarative, retained-mode UI library for .NET 10 built on Silk.NET.
+Rayo is a declarative, retained-mode UI library for .NET 10.
 
-## NuGet packages
+It is designed for building desktop and cross-platform UI with a code-first model, a retained visual tree, a styling system, and multiple rendering backends.
 
-The repository is prepared to publish these packages together:
+## Highlights
+
+- Declarative UI composition in C#
+- Retained-mode rendering pipeline
+- Signal-first reactive model
+- Fluent API generated from `VisualElement` properties
+- Styling system with selectors, triggers, and transitions
+- Multiple rendering backends:
+  - `Rayo.Rendering.OpenGL`
+  - `Rayo.Rendering.SkiaSharp`
+  - `Rayo.Rendering.Vulkan`
+- Hosting packages for desktop and Android
+
+## Package ecosystem
+
+The repository currently publishes these NuGet packages together:
 
 - `Rayo`
+- `Rayo.FluentApiGenerator`
 - `Rayo.Hosting.Abstractions`
 - `Rayo.Hosting.Android`
 - `Rayo.Hosting.Desktop`
@@ -14,54 +30,73 @@ The repository is prepared to publish these packages together:
 - `Rayo.Rendering.OpenGL`
 - `Rayo.Rendering.SkiaSharp`
 - `Rayo.Rendering.Vulkan`
-- `Rayo.DevTool.Shared`
 
-These packages have project-to-project dependencies between them, so releases should publish the full set from the same version tag.
+All packages in the release set are versioned together from the same Git tag.
 
-## Local packaging
+## Quick example
 
-To build the main library locally:
+```csharp
+using Rayo.Controls;
+using Rayo.Layout;
+
+var page =
+    new VStack()
+        .Spacing(12)
+        .Padding(24)
+        .Children(
+            new Label()
+                .Text("Hello from Rayo")
+                .FontSize(24),
+            new Button()
+                .Text("Click Me")
+                .Height(40)
+        );
+```
+
+## Repository structure
+
+- [Rayo](/C:/DEV/PROJECTS/RayoUI/Rayo/Rayo): core UI library
+- [Rayo.Rendering](/C:/DEV/PROJECTS/RayoUI/Rayo/Rayo.Rendering): rendering contracts and primitives
+- [Rayo.Rendering.OpenGL](/C:/DEV/PROJECTS/RayoUI/Rayo/Rayo.Rendering.OpenGL): OpenGL backend
+- [Rayo.Rendering.SkiaSharp](/C:/DEV/PROJECTS/RayoUI/Rayo/Rayo.Rendering.SkiaSharp): SkiaSharp backend
+- [Rayo.Rendering.Vulkan](/C:/DEV/PROJECTS/RayoUI/Rayo/Rayo.Rendering.Vulkan): Vulkan backend
+- [Rayo.Hosting.Desktop](/C:/DEV/PROJECTS/RayoUI/Rayo/Rayo.Hosting.Desktop): desktop hosting
+- [Rayo.Hosting.Android](/C:/DEV/PROJECTS/RayoUI/Rayo/Rayo.Hosting.Android): Android hosting
+- [Samples](/C:/DEV/PROJECTS/RayoUI/Rayo/Samples): sample applications
+- [Help](/C:/DEV/PROJECTS/RayoUI/Rayo/Help): technical documentation
+- [Doc/NUGETS_GENERATION.md](/C:/DEV/PROJECTS/RayoUI/Rayo/Doc/NUGETS_GENERATION.md): NuGet release guide
+
+## Building locally
+
+Restore and build the main library with the repository NuGet configuration:
 
 ```bash
 dotnet restore Rayo/Rayo.csproj --configfile NuGet.Config
 dotnet build Rayo/Rayo.csproj --no-restore
 ```
 
-To create local NuGet packages with a specific version:
+The solution file references missing projects in this environment, so direct project builds are the supported path.
 
-```bash
-dotnet restore Rayo/Rayo.csproj --configfile NuGet.Config
-dotnet pack Rayo.Rendering/Rayo.Rendering.csproj -c Release --no-restore -p:PackageVersion=0.1.0
-dotnet pack Rayo.Rendering.OpenGL/Rayo.Rendering.OpenGL.csproj -c Release --no-restore -p:PackageVersion=0.1.0
-dotnet pack Rayo.Rendering.SkiaSharp/Rayo.Rendering.SkiaSharp.csproj -c Release --no-restore -p:PackageVersion=0.1.0
-dotnet pack Rayo.Rendering.Vulkan/Rayo.Rendering.Vulkan.csproj -c Release --no-restore -p:PackageVersion=0.1.0
-dotnet pack Rayo.Hosting.Abstractions/Rayo.Hosting.Abstractions.csproj -c Release --no-restore -p:PackageVersion=0.1.0
-dotnet pack Rayo.DevTool.Shared/Rayo.DevTool.Shared.csproj -c Release --no-restore -p:PackageVersion=0.1.0
-dotnet pack Rayo/Rayo.csproj -c Release --no-restore -p:PackageVersion=0.1.0
-dotnet pack Rayo.Hosting.Desktop/Rayo.Hosting.Desktop.csproj -c Release --no-restore -p:PackageVersion=0.1.0
-dotnet pack Rayo.Hosting.Android/Rayo.Hosting.Android.csproj -c Release --no-restore -p:PackageVersion=0.1.0
-```
+## Documentation
 
-## Automated publishing
+- [Help/ARCHITECTURE.md](/C:/DEV/PROJECTS/RayoUI/Rayo/Help/ARCHITECTURE.md)
+- [Help/STYLE_ENGINE.md](/C:/DEV/PROJECTS/RayoUI/Rayo/Help/STYLE_ENGINE.md)
+- [Help/FLUENT_EXTENSIONS.md](/C:/DEV/PROJECTS/RayoUI/Rayo/Help/FLUENT_EXTENSIONS.md)
+- [Help/SOURCE_GENERATOR_NAMESPACE_MACROS.md](/C:/DEV/PROJECTS/RayoUI/Rayo/Help/SOURCE_GENERATOR_NAMESPACE_MACROS.md)
 
-This repository includes two GitHub Actions workflows:
+## Samples
 
-- `ci.yml`: validates build and package generation on pushes and pull requests.
-- `publish-nuget.yml`: publishes the NuGet packages when a tag like `v0.1.0` is pushed.
+The repository includes sample applications such as:
 
-The publish workflow is designed for NuGet Trusted Publishing with GitHub Actions OIDC.
-The workflows also install the Android workload because `Rayo.Hosting.Android` is part of the release set.
+- `Gallery`
+- `FluentExamples`
+- `StyleDemo`
+- `OpenGLView`
+- `VulkanView`
+- `CrossPlatformApp`
 
-### Required GitHub and NuGet setup
+## License
 
-1. Create a `release` environment in GitHub if you want protected approvals before publishing.
-2. In nuget.org, configure Trusted Publishing for this repository and the `publish-nuget.yml` workflow file.
-3. Add the repository secret `NUGET_USER` with your nuget.org username or organization profile name.
-4. Push a tag in the form `vX.Y.Z` to publish that version.
+Rayo is distributed under the MIT License.
 
-Example:
-
-```bash
-git tag v0.1.0
-git push origin v0.1.0
-```
+See [LICENSE](/C:/DEV/PROJECTS/RayoUI/Rayo/LICENSE) for the full text.

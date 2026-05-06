@@ -7,6 +7,10 @@
     <IsRoslynComponent>true</IsRoslynComponent>
     <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
     <NoWarn>$(NoWarn);RS2008</NoWarn>
+    <IsPackable>true</IsPackable>
+    <PackageId>Rayo.FluentApiGenerator</PackageId>
+    <Title>Rayo.FluentApiGenerator</Title>
+    <Description>Roslyn source generator that produces the fluent API for Rayo visual elements.</Description>
   </PropertyGroup>
 
   <ItemGroup>

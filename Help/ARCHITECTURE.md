@@ -1,155 +1,184 @@
-﻿# Rayo - Arquitectura Agnóstica de Backend Gráfico
+# Rayo Architecture
 
-## Visión General
+## Overview
 
-Rayo ha sido refactorizado para ser completamente independiente del backend gráfico, permitiendo intercambiar entre OpenGL, Vulkan, DirectX, Metal, u otros backends sin cambiar el código UI.
+Rayo is a declarative, retained-mode UI library for .NET 10.
 
-## Estructura de Proyectos
+The library is organized around a retained visual tree, a three-phase layout pipeline, a signal-first reactivity model, a style engine, and multiple rendering and hosting packages.
 
-```
-Rayo/                          # Core UI (agnóstico de gráficos)
-├── Components/                    # Componentes UI (Button, TextBox, etc.)
-├── Layout/                        # Sistemas de layout (VStack, HStack, Grid)
-└── Core/                          # Lógica core (UITree, UIApplication, etc.)
+## Project layout
 
-Rayo.Rendering/                # Abstracciones de renderizado
-├── IGraphicsContext.cs           # Contexto gráfico abstracto
-├── IRenderer.cs                  # Interface de renderizado
-├── ITexture.cs                   # Abstracción de textura
-├── IShaderProgram.cs             # Abstracción de shader
-└── IBuffer.cs                    # Abstracción de buffer
+The repository is split into a core library plus rendering, hosting, generator, and sample projects.
 
-Rayo.Rendering.OpenGL/        # Implementación OpenGL
-├── OpenGLGraphicsContext.cs
-├── OpenGLRenderer.cs
-├── OpenGLTexture.cs
-├── OpenGLShaderProgram.cs
-└── OpenGLBuffer.cs
+### Core library
 
-Rayo.Rendering.Vulkan/        # Implementación Vulkan
-├── VulkanGraphicsContext.cs
-├── VulkanRenderer.cs
-└── ...
+- `Rayo`: visual tree, controls, layout, input, styling, reactivity hooks, assets, and application lifecycle
 
-Rayo.Example/                  # Aplicación de ejemplo
-```
+### Rendering contracts and backends
 
-## Conceptos Clave
+- `Rayo.Rendering`: shared rendering contracts and primitives
+- `Rayo.Rendering.OpenGL`: OpenGL backend
+- `Rayo.Rendering.SkiaSharp`: SkiaSharp backend
+- `Rayo.Rendering.Vulkan`: Vulkan backend
 
-### 1. Abstracción de Contexto Gráfico
+### Hosting packages
 
-`IGraphicsContext` es la interface principal que abstrae el contexto gráfico:
+- `Rayo.Hosting.Abstractions`: hosting contracts
+- `Rayo.Hosting.Desktop`: desktop hosting
+- `Rayo.Hosting.Android`: Android hosting
+
+### Source generator
+
+- `Rayo.FluentApiGenerator`: Roslyn component that generates fluent property extension methods
+
+### Samples
+
+- `Samples/*`: example applications and playgrounds
+
+## Core runtime model
+
+### Visual tree
+
+The visual tree is built from `VisualElement` descendants.
+
+Important base types:
+
+- `VisualElement` / `VisualElement<T>`: common base for all visuals
+- `View<T>`: leaf controls
+- `ContentView<T>`: single-child container
+- `CompositeView<T>`: multi-child container
+- `UserControl`: reusable component with `Build()` and `BuildStyles()`
+
+### Layout pipeline
+
+Rayo uses a retained three-phase pipeline:
+
+1. `Measure`
+2. `Arrange`
+3. `Render`
+
+Use:
+
+- `MarkNeedsLayout()` when size, position, or child structure may change
+- `MarkNeedsPaint()` for visual-only invalidation
+
+### Application lifecycle
+
+`UIApplication` owns the application runtime, including:
+
+- the root window
+- render loop
+- global styles
+- active theme
+- dependency injection
+- event processing
+
+`UITree` owns the current root element and coordinates layout and rendering.
+
+## Rendering architecture
+
+Rendering is abstracted through `Rayo.Rendering`.
+
+Important contracts include:
+
+- `IRenderer`
+- `IGraphicsContext`
+- `ITexture`
+- `IFont`
+
+Rendering behavior must stay aligned across:
+
+- `Rayo.Rendering.OpenGL`
+- `Rayo.Rendering.SkiaSharp`
+- `Rayo.Rendering.Vulkan`
+
+Render transforms are part of the renderer contract:
+
+- `IRenderer.PushTransform(Matrix3x2)`
+- `IRenderer.PopTransform()`
+
+## Input architecture
+
+Input is handled through hit testing and event dispatch in `EventManager`.
+
+Primary interfaces:
+
+- `IPointerHandler`: modern bubbling pointer model
+- `IInputHandler`: legacy capture-oriented model
+- `IDraggable` / `IDropTarget`: drag-and-drop contracts
+
+`HitTestEngine` respects `ZIndex` and only treats elements as interactive when they implement `IPointerHandler` or `IInputHandler`.
+
+Disabled state is inherited through ancestors. A disabled branch must not receive focus, pointer input, keyboard input, or drag/input-handler dispatch.
+
+## Reactivity model
+
+Rayo uses a signals-first model:
+
+- `Signal<T>` for mutable state
+- `Computed<T>` for derived state
+- `Effect` for imperative reactions
+- `SignalList<T>` for collection state
+
+Inside `Build()`, prefer hooks-based ownership:
+
+- `Hooks.UseSignal(...)`
+- `Hooks.UseComputed(...)`
+- `Hooks.UseEffect(...)`
+
+If a signal change causes structural UI mutations such as `AddChild`, `RemoveChild`, `ClearChildren`, or rebuild work, defer it through `UIUpdateQueue.EnqueueUIUpdate(...)`.
+
+## Styling model
+
+The style engine is CSS-inspired and works on `Style<T>` rules applied to element subtrees.
+
+Supported concepts include:
+
+- type, id, and class selectors
+- structural selectors such as `ChildOf`, `DescendantOf`, and `NthChild`
+- conditional blocks with `When(...)`
+- transitions
+- design tokens
+- themes
+- style scoping through `StyleScope`
+
+Global styles are provided through `UIApplication.UseGlobalStyles(...)`.
+Component-local styles are declared by overriding `UserControl.BuildStyles()`.
+
+## Fluent API generation
+
+All classes inheriting from `VisualElement` automatically receive generated fluent property extension methods for their public properties unless excluded with `[NoReactive]`.
+
+Generated methods keep the property name itself. For example:
 
 ```csharp
-public interface IGraphicsContext : IDisposable
-{
-    IRenderer CreateRenderer();
-    ITexture CreateTexture(int width, int height, byte[] data, TextureFormat format);
-    IShaderProgram CreateShaderProgram(string vertexShader, string fragmentShader);
-    // ... más métodos
-}
+new Button()
+    .Text("Save")
+    .Height(36)
+    .BorderRadius(8);
 ```
 
-### 2. Interface de Renderizado
+The generator can also place extension classes in a custom namespace through the `SourceGeneratorNamespace` MSBuild property. See [SOURCE_GENERATOR_NAMESPACE_MACROS.md](/C:/DEV/PROJECTS/RayoUI/Rayo/Help/SOURCE_GENERATOR_NAMESPACE_MACROS.md).
 
-`IRenderer` proporciona métodos de alto nivel para renderizar UI:
+## Platform support
 
-```csharp
-public interface IRenderer : IDisposable
-{
-    void Initialize(int width, int height);
-    void BeginFrame();
-    void EndFrame();
+The repository currently contains public rendering and hosting packages for:
 
-    // Primitivas
-    void DrawRect(float x, float y, float width, float height, Color color);
-    void DrawCircle(float cx, float cy, float radius, Color color);
+- Desktop
+- Android
+- OpenGL
+- SkiaSharp
+- Vulkan
 
-    // Texto
-    void DrawText(string text, float x, float y, Color color, float fontSize);
+Platform-specific behavior is also represented in `PlatformOptions` and `PlatformType`.
 
-    // Texturas
-    void DrawTexture(ITexture texture, float x, float y, float width, float height);
-}
-```
+## Current documentation map
 
-### 3. UIApplication Agnóstico
+For more detail, see:
 
-`UIApplication` ya no depende directamente de OpenGL:
-
-```csharp
-public class UIApplication
-{
-    private IGraphicsContext? _graphicsContext;
-    private IRenderer? _renderer;
-
-    public void Initialize(IGraphicsContext context)
-    {
-        _graphicsContext = context;
-        _renderer = context.CreateRenderer();
-        _renderer.Initialize(Width, Height);
-    }
-}
-```
-
-## Uso - Selección de Backend
-
-### OpenGL
-
-```csharp
-using Silk.NET.OpenGL;
-using Rayo.Core;
-using Rayo.Rendering.OpenGL;
-
-var gl = window.CreateOpenGL();
-var graphicsContext = new OpenGLGraphicsContext(gl);
-var app = new UIApplication("My App", 800, 600);
-app.Initialize(graphicsContext);
-```
-
-### Vulkan
-
-```csharp
-using Silk.NET.Vulkan;
-using Rayo.Core;
-using Rayo.Rendering.Vulkan;
-
-var vk = Vk.GetApi();
-var graphicsContext = new VulkanGraphicsContext(vk, instance, device);
-var app = new UIApplication("My App", 800, 600);
-app.Initialize(graphicsContext);
-```
-
-## Beneficios
-
-1. **Portabilidad**: Cambiar de backend gráfico es trivial
-2. **Testing**: Puedes crear un backend "Mock" para tests
-3. **Performance**: Elegir el backend más apropiado para cada plataforma
-4. **Futuro-proof**: Fácil agregar nuevos backends (WebGPU, Metal, etc.)
-
-## Migración del Código Existente
-
-El código UI existente (componentes, layouts) NO necesita cambios. Solo los siguientes archivos necesitan refactorización:
-
-1. **UIRenderer.cs** → **OpenGLRenderer.cs** (mover a Rayo.Rendering.OpenGL)
-2. **FontAtlas.cs** → Abstraer con **IFont** interface
-3. **TextureManager.cs** → Usar **ITexture** interface
-4. **UIApplication.cs** → Usar **IGraphicsContext** en lugar de GL directo
-
-## Estado Actual
-
-✅ Estructura de proyectos creada
-✅ Interfaces de abstracción definidas
-✅ OpenGLGraphicsContext implementado
-✅ OpenGLTexture implementado
-🔄 OpenGLRenderer (en progreso - usar código existente como base)
-⏳ VulkanGraphicsContext (pendiente)
-⏳ Refactorización de UIApplication (pendiente)
-
-## Próximos Pasos
-
-1. Completar OpenGLRenderer usando el código existente de UIRenderer como base
-2. Refactorizar UIApplication para aceptar IGraphicsContext
-3. Implementar backend Vulkan básico
-4. Actualizar ejemplo para demostrar cambio de backend
-5. Documentar proceso de migración completo
+- [STYLE_ENGINE.md](/C:/DEV/PROJECTS/RayoUI/Rayo/Help/STYLE_ENGINE.md)
+- [FLUENT_EXTENSIONS.md](/C:/DEV/PROJECTS/RayoUI/Rayo/Help/FLUENT_EXTENSIONS.md)
+- [COMPUTED_LIFECYCLE.md](/C:/DEV/PROJECTS/RayoUI/Rayo/Help/COMPUTED_LIFECYCLE.md)
+- [SIGNALS_BEST_PRACTICES.md](/C:/DEV/PROJECTS/RayoUI/Rayo/Help/SIGNALS_BEST_PRACTICES.md)
+- [SIGNAL_LIST_REACTIVITY.md](/C:/DEV/PROJECTS/RayoUI/Rayo/Help/SIGNAL_LIST_REACTIVITY.md)
+- [NUGETS_GENERATION.md](/C:/DEV/PROJECTS/RayoUI/Rayo/Help/NUGETS_GENERATION.md)
