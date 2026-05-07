@@ -397,21 +397,7 @@ public class BadgeContainer : CompositeView<BadgeContainer>
         get => _content;
         set => this.SetProperty(ref _content, value, () =>
         {
-            if (_content != null) this.RemoveChild(_content);
-            _content = value;
-            if (_content != null)
-            {
-                if (_badge != null)
-                {
-                    this.RemoveChild(_badge);
-                    this.AddChild(_content);
-                    this.AddChild(_badge);
-                }
-                else
-                {
-                    this.AddChild(_content);
-                }
-            }
+            RebuildChildren();
         });
     }
     #endregion
@@ -423,24 +409,7 @@ public class BadgeContainer : CompositeView<BadgeContainer>
         get => _badge;
         set => this.SetProperty(ref _badge, value, () =>
         {
-            if (_badge != null)
-            {
-                this.RemoveChild(_badge);
-            }
-
-            if (_badge != null)
-            {
-                if (Content != null)
-                {
-                    this.RemoveChild(_badge);
-                    this.AddChild(Content);
-                    this.AddChild(_badge);
-                }
-                else
-                {
-                    this.AddChild(_badge);
-                }
-            }
+            RebuildChildren();
         });
     }
     #endregion
@@ -507,6 +476,21 @@ public class BadgeContainer : CompositeView<BadgeContainer>
     {
         Content = content;
         Badge = badge;
+    }
+
+    private void RebuildChildren()
+    {
+        ClearChildren();
+
+        if (_content != null)
+        {
+            AddChild(_content);
+        }
+
+        if (_badge != null)
+        {
+            AddChild(_badge);
+        }
     }
 
     public override void Measure(float availableWidth, float availableHeight)
