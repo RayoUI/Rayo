@@ -1,15 +1,16 @@
-﻿using Rayo.Hosting.Abstractions;
+using System.Runtime.InteropServices;
 using Rayo.Core;
 using Rayo.Core.Platform;
 using Rayo.DevTools;
+using Rayo.Hosting.Abstractions;
+using Rayo.Rendering.OpenGL;
 using Rayo.Rendering.SkiaSharp;
-using System.Runtime.InteropServices;
 
 namespace Rayo.Hosting.Desktop;
 
 /// <summary>
 /// Desktop platform host implementation for Windows, Linux, and macOS.
-/// Uses Silk.NET for cross-platform windowing and OpenGL rendering.
+/// Uses Silk.NET for cross-platform windowing and GPU-first rendering.
 /// </summary>
 public class DesktopPlatformHost : PlatformHostBase
 {
@@ -26,34 +27,36 @@ public class DesktopPlatformHost : PlatformHostBase
         Action<IPlatformApplicationContext> configureApp,
         Action<IPlatformWindowConfiguration>? configureWindow = null)
     {
-        // Create default window configuration
+        // Create default window configuration.
         var windowConfig = CreateDefaultConfiguration();
         var platformConfig = new DesktopWindowConfiguration(windowConfig);
 
-        // Apply platform-specific defaults
+        // Apply platform-specific defaults.
         ApplyPlatformDefaults(platformConfig);
 
-        // Allow user customization
+        // Allow user customization.
         configureWindow?.Invoke(platformConfig);
 
         OnBeforeRun();
 
-        // Create the application (without initializing the window yet)
+        // Create the application (without initializing the window yet).
         using var app = new UIApplication(windowConfig);
         var appContext = new DesktopApplicationContext(app);
 
-        // Set SkiaSharp as the default renderer.
-        // User code inside configureApp() may override by calling SetGraphicsContext() again.
-        app.SetGraphicsContext(new SkiaSharpGraphicsContext());
+        // Default to SkiaSharp on desktop because it is currently the most
+        // stable backend for production usage. OpenGL remains available as an
+        // opt-in experimental backend through RAYO_DESKTOP_RENDERER=opengl.
+        // User code can still replace the backend inside configureApp().
+        app.SetGraphicsContext(CreateDefaultGraphicsContext());
 
-        // Configure the application BEFORE initializing the window
-        // This ensures SetUI, ConfigureAssets, etc. are applied before window creation
+        // Configure the application BEFORE initializing the window.
         configureApp(appContext);
 
-        // Now initialize the window with all configuration applied
+        // Now initialize the window with all configuration applied.
         app.Initialize();
 
-        // Wire the SkiaSharp→OpenGL presenter once the GL context is ready.
+        // Wire the SkiaSharp presenter only when the application uses the
+        // SkiaSharp backend. OpenGL rendering presents directly through the window.
         app.OnGLInitialized += () =>
         {
             if (app.GraphicsContext is SkiaSharpGraphicsContext skiaCtx && skiaCtx.Renderer is { } renderer)
@@ -64,7 +67,7 @@ public class DesktopPlatformHost : PlatformHostBase
             }
         };
 
-        // Enable DevTools if requested (must be after renderer is created in OnLoad)
+        // Enable DevTools if requested (must be after renderer is created in OnLoad).
         if (appContext.EnableDevTools)
         {
             app.OnGLInitialized += () =>
@@ -76,7 +79,7 @@ public class DesktopPlatformHost : PlatformHostBase
             };
         }
 
-        // Run the application
+        // Run the application.
         app.Run();
 
         OnAfterRun();
@@ -89,7 +92,6 @@ public class DesktopPlatformHost : PlatformHostBase
 
         var nativeConfig = desktopConfig.NativeConfiguration;
 
-        // Apply OS-specific defaults
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
         {
             nativeConfig.Windows.ShowInTaskbar = true;
@@ -107,6 +109,23 @@ public class DesktopPlatformHost : PlatformHostBase
         }
     }
 
+    private static Rayo.Rendering.IGraphicsContext CreateDefaultGraphicsContext()
+    {
+        var requested = Environment.GetEnvironmentVariable("RAYO_DESKTOP_RENDERER");
+        if (string.Equals(requested, "opengl", StringComparison.OrdinalIgnoreCase))
+        {
+            return new OpenGLGraphicsContext();
+        }
+
+        if (string.Equals(requested, "skia", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(requested, "skiasharp", StringComparison.OrdinalIgnoreCase))
+        {
+            return new SkiaSharpGraphicsContext();
+        }
+
+        return new SkiaSharpGraphicsContext();
+    }
+
     /// <summary>
     /// Creates the default desktop window configuration.
     /// </summary>
@@ -117,7 +136,7 @@ public class DesktopPlatformHost : PlatformHostBase
             Title = "Rayo Application",
             Width = 800,
             Height = 600,
-            StartupLocation = WindowStartupLocation.Manual, // Don't center by default
+            StartupLocation = WindowStartupLocation.Manual,
             CanResize = true,
             VSync = true,
             Samples = 4

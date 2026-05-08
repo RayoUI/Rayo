@@ -570,6 +570,7 @@ public class UIApplication : IDisposable
         if (_graphicsContext.RequiresNativeWindow == false)
         {
             _gl = _window!.CreateOpenGL();
+            _graphicsContext.OnGraphicsDeviceCreated(_gl);
         }
 
         // Create renderer from graphics context

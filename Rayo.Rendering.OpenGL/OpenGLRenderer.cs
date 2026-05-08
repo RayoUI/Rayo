@@ -1,6 +1,7 @@
 ﻿using Silk.NET.OpenGL;
 using System.Numerics;
 using System.Runtime.InteropServices;
+using System.Security.Cryptography;
 
 namespace Rayo.Rendering.OpenGL;
 
@@ -34,6 +35,7 @@ public unsafe class OpenGLRenderer : IRenderer
     private Matrix4x4 _projection;
     private OpenGLFontAtlas? _defaultFont;
     private OpenGLTextureManager? _textureManager;
+    private readonly Dictionary<string, OpenGLFontAtlas> _fontCache = new();
 
     // Stack for scissor testing (clipping)
     private Stack<(int x, int y, int width, int height)> _scissorStack = new();
@@ -864,7 +866,19 @@ void main()
 
     public IFont LoadFont(byte[] fontData, float fontSize)
     {
-        return new OpenGLFontAtlas(_gl, fontData, fontSize);
+        string cacheKey = CreateFontCacheKey(fontData, fontSize);
+        if (_fontCache.TryGetValue(cacheKey, out var cachedFont))
+            return cachedFont;
+
+        var fontAtlas = new OpenGLFontAtlas(_gl, fontData, fontSize);
+        _fontCache[cacheKey] = fontAtlas;
+        return fontAtlas;
+    }
+
+    private static string CreateFontCacheKey(byte[] fontData, float fontSize)
+    {
+        var hash = SHA256.HashData(fontData);
+        return $"{fontSize:0.###}:{Convert.ToHexString(hash)}";
     }
 
     public void DrawRoundedRectOutline(float x, float y, float width, float height, float radius, float thickness, Brushes.Brush brush)
@@ -997,7 +1011,7 @@ void main()
     /// adjust the starting pen position for proper left-edge alignment.
     /// Handles surrogate pairs and emoji fallback.
     /// </summary>
-    private bool TryGetTextBounds(string text, float scale, out float minX)
+    private bool TryGetTextBounds(string text, OpenGLFontAtlas primaryAtlas, float fontSize, out float minX)
     {
         minX = float.MaxValue;
         float maxX = float.MinValue;
@@ -1008,23 +1022,44 @@ void main()
             int codePoint = char.ConvertToUtf32(text, i);
             i += char.IsSurrogatePair(text, i) ? 2 : 1;
 
-            if (TryResolveGlyph(codePoint, out var atlas, out var charInfo))
+            if (TryResolveGlyphForRun(codePoint, primaryAtlas, out var atlas, out var charInfo))
             {
-                float x0 = penX + charInfo.OffsetX * scale;
-                float x1 = x0 + charInfo.Width * scale;
+                float glyphScale = fontSize / atlas.Size;
+                float x0 = penX + charInfo.OffsetX * glyphScale;
+                float x1 = x0 + charInfo.Width * glyphScale;
                 minX = Math.Min(minX, x0);
                 maxX = Math.Max(maxX, x1);
-                penX += charInfo.AdvanceX * scale;
+                penX += charInfo.AdvanceX * glyphScale;
             }
             else if (codePoint == 0x0020) // space
             {
                 if (minX == float.MaxValue) minX = penX;
-                penX += (_defaultFont?.Size ?? 24) * 0.25f * scale;
+                penX += fontSize * 0.25f;
                 maxX = Math.Max(maxX, penX);
             }
         }
 
         return minX != float.MaxValue && maxX != float.MinValue;
+    }
+
+    private bool TryResolveGlyphForRun(int codePoint, OpenGLFontAtlas primaryAtlas,
+        out OpenGLFontAtlas atlas, out OpenGLFontAtlas.CharInfo info)
+    {
+        if (primaryAtlas.TryGetGlyph(codePoint, out info))
+        {
+            atlas = primaryAtlas;
+            return true;
+        }
+
+        if (_emojiFallbackFont != null && _emojiFallbackFont.TryGetGlyph(codePoint, out info))
+        {
+            atlas = _emojiFallbackFont;
+            return true;
+        }
+
+        atlas = primaryAtlas;
+        info = default;
+        return false;
     }
 
     /// <summary>
@@ -1033,7 +1068,7 @@ void main()
     /// ascent metrics. The result places the glyph on the shared baseline <paramref name="baselineY"/>.
     /// </summary>
     private static float GlyphTopY(float baselineY, OpenGLFontAtlas.CharInfo info,
-        float scale, OpenGLFontAtlas atlas, float atlasScale)
+        float atlasScale)
     {
         // info.OffsetY == -y0 from stbtt_GetCodepointBitmapBox, which is the distance
         // from the baseline UP to the glyph top. Multiply by this atlas's own scale.
@@ -1072,17 +1107,26 @@ void main()
         return topY + fontSize * 0.75f;
     }
 
+    private static float BaselineY(float topY, OpenGLFontAtlas fontAtlas, float fontSize)
+    {
+        if (fontAtlas.Size > 0)
+        {
+            float scale = fontSize / fontAtlas.Size;
+            return topY + fontAtlas.Ascent * scale;
+        }
+
+        return topY + fontSize * 0.75f;
+    }
+
     public void DrawText(string text, float x, float y, Color color, float fontSize = 24)
     {
         if (_defaultFont == null || string.IsNullOrEmpty(text))
             return;
 
-        float scale = fontSize / _defaultFont.Size;
-
         float penX = x;
-        if (TryGetTextBounds(text, scale, out var minX))
+        if (TryGetTextBounds(text, _defaultFont, fontSize, out var minX))
             penX = x - minX;
-        float penY = BaselineY(y, fontSize);
+        float penY = BaselineY(y, _defaultFont, fontSize);
 
         var colorVec = new Vector4(color.R, color.G, color.B, color.A);
 
@@ -1099,7 +1143,7 @@ void main()
 
             if (!TryResolveGlyph(codePoint, out var atlas, out var charInfo))
             {
-                if (codePoint == 0x0020) penX += (_defaultFont.Size * 0.25f * scale);
+                if (codePoint == 0x0020) penX += fontSize * 0.25f;
                 continue;
             }
 
@@ -1108,7 +1152,7 @@ void main()
                 // Use this glyph's own atlas scale so cross-font baseline alignment is correct.
                 float as_ = fontSize / atlas.Size;
                 float gx0 = penX + charInfo.OffsetX * as_;
-                float gy0 = GlyphTopY(penY, charInfo, scale, atlas, as_);
+                float gy0 = GlyphTopY(penY, charInfo, as_);
                 float gx1 = gx0 + charInfo.Width  * as_;
                 float gy1 = gy0 + charInfo.Height * as_;
 
@@ -1121,7 +1165,7 @@ void main()
                     colorVec);
             }
 
-            penX += charInfo.AdvanceX * scale;
+            penX += charInfo.AdvanceX * (fontSize / atlas.Size);
         }
 
         // Render primary atlas glyphs into the shared batch.
@@ -1143,12 +1187,10 @@ void main()
 
         Flush();
 
-        float scale = fontSize / fontAtlas.Size;
-
         float penX = x;
-        if (TryGetTextBounds(text, scale, out var minX))
+        if (TryGetTextBounds(text, fontAtlas, fontSize, out var minX))
             penX = x - minX;
-        float penY = BaselineY(y, fontSize);
+        float penY = BaselineY(y, fontAtlas, fontSize);
 
         var primaryVerts  = new List<TextVertex>();
         var primaryIdx    = new List<ushort>();
@@ -1175,7 +1217,7 @@ void main()
 
             if (!found)
             {
-                if (codePoint == 0x0020) penX += fontAtlas.Size * 0.25f * scale;
+                if (codePoint == 0x0020) penX += fontSize * 0.25f;
                 continue;
             }
 
@@ -1184,7 +1226,7 @@ void main()
                 var   glyphAtlas = isEmoji ? _emojiFallbackFont! : fontAtlas;
                 float as_        = fontSize / glyphAtlas.Size;
                 float gx0 = penX + charInfo.OffsetX * as_;
-                float gy0 = GlyphTopY(penY, charInfo, scale, glyphAtlas, as_);
+                float gy0 = GlyphTopY(penY, charInfo, as_);
                 float gx1 = gx0 + charInfo.Width  * as_;
                 float gy1 = gy0 + charInfo.Height * as_;
 
@@ -1196,7 +1238,7 @@ void main()
                     colorVec);
             }
 
-            penX += charInfo.AdvanceX * scale;
+            penX += charInfo.AdvanceX * (fontSize / (isEmoji ? _emojiFallbackFont!.Size : fontAtlas.Size));
         }
 
         if (primaryVerts.Count > 0)
@@ -1216,11 +1258,10 @@ void main()
     {
         if (_defaultFont == null || string.IsNullOrEmpty(text)) return;
 
-        float scale = fontSize / _defaultFont.Size;
         float penX  = x;
-        if (TryGetTextBounds(text, scale, out var minX))
+        if (TryGetTextBounds(text, _defaultFont, fontSize, out var minX))
             penX = x - minX;
-        float penY = BaselineY(y, fontSize);
+        float penY = BaselineY(y, _defaultFont, fontSize);
 
         const float italicSkew = 0.25f;
         var colorVec = new Vector4(color.PrimaryColor.R, color.PrimaryColor.G, color.PrimaryColor.B, color.PrimaryColor.A);
@@ -1241,7 +1282,7 @@ void main()
 
                 if (!TryResolveGlyph(codePoint, out var atlas, out var charInfo))
                 {
-                    if (codePoint == 0x0020) px += _defaultFont.Size * 0.25f * scale;
+                    if (codePoint == 0x0020) px += fontSize * 0.25f;
                     continue;
                 }
 
@@ -1250,7 +1291,7 @@ void main()
                     bool  isEmoji = atlas == _emojiFallbackFont;
                     float as_     = fontSize / atlas.Size;
                     float gx0 = px  + charInfo.OffsetX * as_;
-                    float gy0 = GlyphTopY(penY, charInfo, scale, atlas, as_);
+                    float gy0 = GlyphTopY(penY, charInfo, as_);
                     float gx1 = gx0 + charInfo.Width  * as_;
                     float gy1 = gy0 + charInfo.Height * as_;
 
@@ -1282,7 +1323,7 @@ void main()
                     }
                 }
 
-                px += charInfo.AdvanceX * scale;
+                px += charInfo.AdvanceX * (fontSize / atlas.Size);
             }
         }
 
@@ -1361,9 +1402,8 @@ void main()
     /// </summary>
     private Vector2 MeasureWithFallback(string text, OpenGLFontAtlas primaryAtlas, float fontSize)
     {
-        float scale      = fontSize / primaryAtlas.Size;
         float penX       = 0;
-        float maxHeight  = primaryAtlas.LineHeight * scale;
+        float maxHeight  = primaryAtlas.LineHeight * (fontSize / primaryAtlas.Size);
         float minX       = float.MaxValue;
         float maxX       = float.MinValue;
 
@@ -1375,38 +1415,46 @@ void main()
             int codePoint = char.ConvertToUtf32(text, i);
             i += char.IsSurrogatePair(text, i) ? 2 : 1;
 
-            OpenGLFontAtlas.CharInfo info;
-            bool found = primaryAtlas.TryGetGlyph(codePoint, out info) ||
-                         (_emojiFallbackFont != null && _emojiFallbackFont.TryGetGlyph(codePoint, out info));
+            bool found = TryResolveGlyphForRun(codePoint, primaryAtlas, out var glyphAtlas, out var info);
 
             if (found)
             {
+                float glyphScale = fontSize / glyphAtlas.Size;
+
                 if (lastInfo.HasValue)
                 {
                     penX  += lastAdvance;
                 }
 
                 lastInfo    = info;
-                lastAdvance = info.AdvanceX * scale;
+                lastAdvance = info.AdvanceX * glyphScale;
 
-                float x0 = penX + info.OffsetX * scale;
-                float x1 = x0  + info.Width   * scale;
+                float x0 = penX + info.OffsetX * glyphScale;
+                float x1 = x0  + info.Width   * glyphScale;
                 minX = Math.Min(minX, x0);
                 maxX = Math.Max(maxX, x1);
 
-                float glyphH = info.Height * scale;
+                float glyphH = info.Height * glyphScale;
                 maxHeight = Math.Max(maxHeight, glyphH);
             }
             else if (codePoint == 0x0020)
             {
-                penX += primaryAtlas.Size * 0.25f * scale;
+                penX += fontSize * 0.25f;
             }
         }
 
         // Use visual width for the last glyph (not advance).
         if (lastInfo.HasValue)
         {
-            float visualW = (lastInfo.Value.OffsetX + lastInfo.Value.Width) * scale;
+            float lastGlyphScale = lastAdvance == 0f ? (fontSize / primaryAtlas.Size) : 1f;
+            if (lastInfo.Value.Width > 0)
+            {
+                // Rebuild the actual visual width from the glyph metrics instead of its advance,
+                // so icon fonts and fallback glyphs don't get clipped on the right edge.
+                lastGlyphScale = lastInfo.Value.AdvanceX > 0f ? lastAdvance / lastInfo.Value.AdvanceX : (fontSize / primaryAtlas.Size);
+            }
+
+            float visualW = (lastInfo.Value.OffsetX + lastInfo.Value.Width) * lastGlyphScale;
             maxX = Math.Max(maxX, penX + visualW);
         }
 
@@ -1763,13 +1811,13 @@ void main()
             ApplyCurrentTransform(transformedVertices);
    fixed (Vertex* vertPtr = transformedVertices)
     {
- _gl.BufferSubData(BufferTargetARB.ArrayBuffer, 0, (nuint)(_vertices.Count * sizeof(Vertex)), vertPtr);
+ _gl.BufferData(BufferTargetARB.ArrayBuffer, (nuint)(_vertices.Count * sizeof(Vertex)), vertPtr, BufferUsageARB.DynamicDraw);
             }
 
   _gl.BindBuffer(BufferTargetARB.ElementArrayBuffer, _ebo);
         fixed (ushort* idxPtr = _indices.ToArray())
          {
- _gl.BufferSubData(BufferTargetARB.ElementArrayBuffer, 0, (nuint)(_indices.Count * sizeof(ushort)), idxPtr);
+ _gl.BufferData(BufferTargetARB.ElementArrayBuffer, (nuint)(_indices.Count * sizeof(ushort)), idxPtr, BufferUsageARB.DynamicDraw);
   }
 
   _gl.DrawElements(PrimitiveType.Triangles, (uint)_indices.Count, DrawElementsType.UnsignedShort, null);
@@ -1803,13 +1851,13 @@ void main()
             ApplyCurrentTransform(transformedTextVertices);
             fixed (TextVertex* vertPtr = transformedTextVertices)
         {
-   _gl.BufferSubData(BufferTargetARB.ArrayBuffer, 0, (nuint)(_textVertices.Count * sizeof(TextVertex)), vertPtr);
+   _gl.BufferData(BufferTargetARB.ArrayBuffer, (nuint)(_textVertices.Count * sizeof(TextVertex)), vertPtr, BufferUsageARB.DynamicDraw);
      }
 
 _gl.BindBuffer(BufferTargetARB.ElementArrayBuffer, _textEbo);
      fixed (ushort* idxPtr = _textIndices.ToArray())
             {
-        _gl.BufferSubData(BufferTargetARB.ElementArrayBuffer, 0, (nuint)(_textIndices.Count * sizeof(ushort)), idxPtr);
+        _gl.BufferData(BufferTargetARB.ElementArrayBuffer, (nuint)(_textIndices.Count * sizeof(ushort)), idxPtr, BufferUsageARB.DynamicDraw);
             }
 
             _gl.DrawElements(PrimitiveType.Triangles, (uint)_textIndices.Count, DrawElementsType.UnsignedShort, null);
@@ -1912,7 +1960,12 @@ TextureTarget.Texture2D, textureId, 0);
 
     public void Dispose()
     {
+        foreach (var font in _fontCache.Values)
+            font.Dispose();
+        _fontCache.Clear();
+
         _defaultFont?.Dispose();
+        _emojiFallbackFont?.Dispose();
         _textureManager?.Dispose();
         _gl.DeleteVertexArray(_vao);
         _gl.DeleteBuffer(_vbo);

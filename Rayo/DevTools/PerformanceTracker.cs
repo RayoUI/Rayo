@@ -33,6 +33,26 @@ public static class PerformanceTracker
     }
 
     // -----------------------------------------------------------------------
+    // Aggregated summary
+    // -----------------------------------------------------------------------
+    public readonly record struct PerformanceSummary(
+        int FrameCount,
+        float AvgFps,
+        float MinFps,
+        float MaxFps,
+        float AvgFrameTimeMs,
+        float P95FrameTimeMs,
+        float AvgMeasureTimeMs,
+        float AvgArrangeTimeMs,
+        float AvgRenderTimeMs,
+        float AvgEventTimeMs,
+        float AvgElementsMeasured,
+        float AvgElementsArranged,
+        float AvgElementsRendered,
+        float AvgLayoutDirty,
+        float AvgPaintDirty);
+
+    // -----------------------------------------------------------------------
     // Dirty log entry
     // -----------------------------------------------------------------------
     public struct DirtyEntry
@@ -181,6 +201,81 @@ public static class PerformanceTracker
     public static void ClearDirtyLog()
     {
         lock (_lock) { _dirtyLogCount = 0; _dirtyLogHead = 0; }
+    }
+
+    public static void ClearFrameHistory()
+    {
+        lock (_lock)
+        {
+            Array.Clear(_frames, 0, _frames.Length);
+            _frameHead = 0;
+            _frameNumber = 0;
+            _curMeasured = _curArranged = _curRendered = 0;
+            _curLayoutDirty = _curPaintDirty = 0;
+        }
+    }
+
+    /// <summary>
+    /// Returns an aggregate summary for the most recent non-empty frames.
+    /// </summary>
+    public static PerformanceSummary GetSummary(int maxFrames = 60)
+    {
+        var history = GetFrameHistory()
+            .Where(f => f.FrameTimeMs > 0 || f.FpsSnapshot > 0)
+            .TakeLast(Math.Max(1, maxFrames))
+            .ToArray();
+
+        if (history.Length == 0)
+        {
+            return new PerformanceSummary(
+                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+        }
+
+        var orderedFrameTimes = history
+            .Select(f => f.FrameTimeMs)
+            .OrderBy(v => v)
+            .ToArray();
+
+        int p95Index = Math.Clamp((int)Math.Ceiling(orderedFrameTimes.Length * 0.95) - 1, 0, orderedFrameTimes.Length - 1);
+
+        return new PerformanceSummary(
+            FrameCount: history.Length,
+            AvgFps: history.Average(f => f.FpsSnapshot),
+            MinFps: history.Min(f => f.FpsSnapshot),
+            MaxFps: history.Max(f => f.FpsSnapshot),
+            AvgFrameTimeMs: history.Average(f => f.FrameTimeMs),
+            P95FrameTimeMs: orderedFrameTimes[p95Index],
+            AvgMeasureTimeMs: history.Average(f => f.MeasureTimeMs),
+            AvgArrangeTimeMs: history.Average(f => f.ArrangeTimeMs),
+            AvgRenderTimeMs: history.Average(f => f.RenderTimeMs),
+            AvgEventTimeMs: history.Average(f => f.EventTimeMs),
+            AvgElementsMeasured: (float)history.Average(f => f.ElementsMeasured),
+            AvgElementsArranged: (float)history.Average(f => f.ElementsArranged),
+            AvgElementsRendered: (float)history.Average(f => f.ElementsRendered),
+            AvgLayoutDirty: (float)history.Average(f => f.LayoutDirtyCount),
+            AvgPaintDirty: (float)history.Average(f => f.PaintDirtyCount));
+    }
+
+    public static string FormatSummary(string label, int maxFrames = 60)
+    {
+        var summary = GetSummary(maxFrames);
+        return $"""
+            Performance Summary: {label}
+            Frames: {summary.FrameCount}
+            Avg FPS: {summary.AvgFps:F2}
+            Min/Max FPS: {summary.MinFps:F2} / {summary.MaxFps:F2}
+            Avg Frame Time: {summary.AvgFrameTimeMs:F2} ms
+            P95 Frame Time: {summary.P95FrameTimeMs:F2} ms
+            Avg Measure: {summary.AvgMeasureTimeMs:F2} ms
+            Avg Arrange: {summary.AvgArrangeTimeMs:F2} ms
+            Avg Render: {summary.AvgRenderTimeMs:F2} ms
+            Avg Event: {summary.AvgEventTimeMs:F2} ms
+            Avg Elements Measured: {summary.AvgElementsMeasured:F2}
+            Avg Elements Arranged: {summary.AvgElementsArranged:F2}
+            Avg Elements Rendered: {summary.AvgElementsRendered:F2}
+            Avg Layout Dirty: {summary.AvgLayoutDirty:F2}
+            Avg Paint Dirty: {summary.AvgPaintDirty:F2}
+            """;
     }
 
     public static FrameSnapshot LatestFrame

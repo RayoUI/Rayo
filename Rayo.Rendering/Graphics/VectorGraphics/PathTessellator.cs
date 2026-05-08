@@ -196,8 +196,13 @@ public class PathTessellator
         if (points.Count < 3)
             return new List<Vector2>();
 
+        points = NormalizePolygon(points);
+        if (points.Count < 3)
+            return new List<Vector2>();
+
         var triangles = new List<Vector2>();
         var indices = new List<int>();
+        bool isClockwise = SignedArea(points) < 0;
 
         for (int i = 0; i < points.Count; i++)
             indices.Add(i);
@@ -212,7 +217,7 @@ public class PathTessellator
                 int curr = indices[i];
                 int next = indices[(i + 1) % indices.Count];
 
-                if (IsEar(points, indices, prev, curr, next))
+                if (IsEar(points, indices, prev, curr, next, isClockwise))
                 {
                     triangles.Add(points[prev]);
                     triangles.Add(points[curr]);
@@ -238,14 +243,14 @@ public class PathTessellator
         return triangles;
     }
 
-    private static bool IsEar(List<Vector2> points, List<int> indices, int prev, int curr, int next)
+    private static bool IsEar(List<Vector2> points, List<int> indices, int prev, int curr, int next, bool isClockwise)
     {
         var p0 = points[prev];
         var p1 = points[curr];
         var p2 = points[next];
 
         float cross = CrossProduct(p0, p1, p2);
-        if (cross < 0)
+        if ((!isClockwise && cross <= 0) || (isClockwise && cross >= 0))
             return false;
 
         for (int i = 0; i < indices.Count; i++)
@@ -276,6 +281,38 @@ public class PathTessellator
         bool hasPos = (d1 > 0) || (d2 > 0) || (d3 > 0);
 
         return !(hasNeg && hasPos);
+    }
+
+    private static List<Vector2> NormalizePolygon(List<Vector2> points)
+    {
+        var normalized = new List<Vector2>(points.Count);
+
+        foreach (var point in points)
+        {
+            if (normalized.Count > 0 && Vector2.Distance(normalized[^1], point) < 0.001f)
+                continue;
+
+            normalized.Add(point);
+        }
+
+        if (normalized.Count > 1 && Vector2.Distance(normalized[0], normalized[^1]) < 0.001f)
+            normalized.RemoveAt(normalized.Count - 1);
+
+        return normalized;
+    }
+
+    private static float SignedArea(List<Vector2> points)
+    {
+        float area = 0;
+
+        for (int i = 0; i < points.Count; i++)
+        {
+            var current = points[i];
+            var next = points[(i + 1) % points.Count];
+            area += current.X * next.Y - next.X * current.Y;
+        }
+
+        return area * 0.5f;
     }
 
     private static List<Vector2> GenerateStroke(List<Vector2> points, float thickness)

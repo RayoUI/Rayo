@@ -21,6 +21,13 @@ public interface IGraphicsContext : IDisposable
     void OnWindowCreated(object window) { }
 
     /// <summary>
+    /// Called after a backend-specific graphics device/context has been created by the host.
+    /// GL-based backends can use this to capture the active <c>GL</c> instance without
+    /// forcing the core UI layer to depend on a specific rendering backend assembly.
+    /// </summary>
+    void OnGraphicsDeviceCreated(object device) { }
+
+    /// <summary>
     /// Creates a renderer for this graphics context.
     /// </summary>
     IRenderer CreateRenderer();
