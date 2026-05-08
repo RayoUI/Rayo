@@ -1,6 +1,9 @@
 ﻿using Rayo.Rendering;
 using RenderColor = Rayo.Rendering.Color;
 
+using System.Numerics;
+using System.Runtime.CompilerServices;
+
 namespace Rayo.Core;
 
 public class UITree
@@ -18,6 +21,7 @@ public class UITree
     private bool _renderRequestQueued;
     private float _lastWidth;
     private float _lastHeight;
+    private readonly DirtyRegionTracker _dirtyRegions = new();
 
     // Modern scheduling system with batching
     private readonly FrameScheduler _scheduler = new();
@@ -48,12 +52,17 @@ public class UITree
 
     // Overlay support for Android/iOS (components like Drawer, Dialog, etc.)
     private readonly List<VisualElement> _overlays = new();
+    private LayerCache? _layerCache;
+    private IRenderer? _layerCacheRenderer;
+    private DateTime _lastLayerCacheCleanupUtc = DateTime.UtcNow;
 
     /// <summary>
     /// Gets the list of overlay elements (read-only).
     /// Overlays are rendered on top of the main UI tree.
     /// </summary>
     public IReadOnlyList<VisualElement> Overlays => _overlays;
+    public DirtyRegionTracker DirtyRegions => _dirtyRegions;
+    public PartialRenderPolicy PartialRenderMode { get; set; } = PartialRenderPolicy.Disabled;
 
     public bool NeedsRender => _needsRender || _scheduler.HasScheduledWork;
 
@@ -68,6 +77,7 @@ public class UITree
 
     public void SetRoot(VisualElement root)
     {
+        MarkAllCachedLayersDirty();
         Root = root;
         Root.NotifyMounted();
         MarkNeedsLayout();
@@ -105,7 +115,8 @@ public class UITree
         if (!_overlays.Contains(overlay))
         {
             _overlays.Add(overlay);
-            MarkNeedsLayout();
+            MarkOverlayLayerDirty(overlay);
+            MarkElementNeedsLayout(overlay);
             OverlaysChanged?.Invoke();
         }
     }
@@ -117,6 +128,8 @@ public class UITree
     {
         if (_overlays.Remove(overlay))
         {
+            _layerCache?.RemoveLayer(GetOverlayLayerId(overlay));
+            _dirtyRegions.MarkElementDirty(overlay, DirtyReason.LayoutChanged);
             MarkNeedsRender();
             OverlaysChanged?.Invoke();
         }
@@ -125,6 +138,43 @@ public class UITree
     public void MarkNeedsLayout()
     {
         _needsLayout = true;
+        _dirtyRegions.MarkFullScreenDirty();
+        MarkAllCachedLayersDirty();
+        MarkNeedsRender();
+    }
+
+    public void MarkElementNeedsLayout(VisualElement element)
+    {
+        _needsLayout = true;
+        _scheduler.ScheduleLayout(element);
+        _dirtyRegions.MarkElementDirty(element, DirtyReason.LayoutChanged);
+        var owningOverlay = FindOwningOverlay(element);
+        if (owningOverlay != null)
+        {
+            MarkOverlayLayerDirty(owningOverlay);
+        }
+        else
+        {
+            MarkRootLayerDirty();
+        }
+
+        MarkNeedsRender();
+    }
+
+    public void MarkElementNeedsPaint(VisualElement element)
+    {
+        _scheduler.SchedulePaint(element);
+        _dirtyRegions.MarkElementDirty(element, DirtyReason.ContentChanged);
+        var owningOverlay = FindOwningOverlay(element);
+        if (owningOverlay != null)
+        {
+            MarkOverlayLayerDirty(owningOverlay);
+        }
+        else
+        {
+            MarkRootLayerDirty();
+        }
+
         MarkNeedsRender();
     }
 
@@ -165,30 +215,33 @@ public class UITree
         {
             _lastWidth = width;
             _lastHeight = height;
+            _dirtyRegions.MarkFullScreenDirty();
+            MarkAllCachedLayersDirty();
             MarkNeedsLayout();
         }
 
+        bool rootNeedsLayout = _needsLayout || Root.NeedsLayout || HasScheduledRootLayoutWork();
+        var overlaysNeedingLayout = CaptureOverlaysNeedingLayout();
+
         // Use the new granular dirty flags system
-        if (_needsLayout || Root.NeedsLayout)
+        if (rootNeedsLayout || overlaysNeedingLayout.Count > 0)
         {
-            Rayo.DevTools.PerformanceTracker.RecordMeasured();
-            Root.Measure(width, height);
-            Rayo.DevTools.PerformanceTracker.RecordArranged();
-            Root.Arrange(0, 0, width, height);
-            ClearDirtyFlags(Root);
-
-            // Layout overlays (they get full window size)
-            foreach (var overlay in _overlays)
+            if (rootNeedsLayout)
             {
-                overlay.Measure(width, height);
+                _dirtyRegions.MarkFullScreenDirty();
+                Rayo.DevTools.PerformanceTracker.RecordMeasured();
+                Root.Measure(width, height);
+                Rayo.DevTools.PerformanceTracker.RecordArranged();
+                Root.Arrange(0, 0, width, height);
+                ClearDirtyFlags(Root);
 
-                float x = overlay.X;
-                float y = overlay.Y;
-                float w = overlay.HorizontalAlignment == HorizontalAlignment.Stretch ? width : overlay.DesiredWidth;
-                float h = overlay.VerticalAlignment == VerticalAlignment.Stretch ? height : overlay.DesiredHeight;
+                // If the root moved, refresh every overlay too because they share the viewport.
+                overlaysNeedingLayout = _overlays;
+            }
 
-                overlay.Arrange(x, y, w, h);
-                ClearDirtyFlags(overlay);
+            foreach (var overlay in overlaysNeedingLayout)
+            {
+                LayoutOverlay(overlay, width, height);
             }
 
             _needsLayout = false;
@@ -198,9 +251,17 @@ public class UITree
 
             MarkNeedsRender();
         }
-		else if (Root.NeedsPaint)
+		else if (Root.NeedsPaint || _scheduler.NeedsPaint)
         {
-            ClearDirtyFlags(Root);
+            var dirtyElements = CaptureTrackedDirtyElements(includeLayout: false, includePaint: true);
+            if (dirtyElements.Count > 0)
+            {
+                ClearDirtyFlagsForTrackedElements(dirtyElements);
+            }
+            else
+            {
+                ClearDirtyFlags(Root);
+            }
 			// Ensure paint-only frames release scheduled work so idle mode can resume
 			_scheduler.FrameComplete();
             MarkNeedsRender();
@@ -211,6 +272,7 @@ public class UITree
     {
         _needsRender = false;
         _renderRequestQueued = false;
+        _dirtyRegions.Clear();
     }
 
     private void ClearDirtyFlags(VisualElement element)
@@ -224,15 +286,133 @@ public class UITree
         }
     }
 
-    public void Render(IRenderer renderer)
+    private void LayoutOverlay(VisualElement overlay, float width, float height)
+    {
+        overlay.Measure(width, height);
+
+        float x = overlay.X;
+        float y = overlay.Y;
+        float w = overlay.HorizontalAlignment == HorizontalAlignment.Stretch ? width : overlay.DesiredWidth;
+        float h = overlay.VerticalAlignment == VerticalAlignment.Stretch ? height : overlay.DesiredHeight;
+
+        overlay.Arrange(x, y, w, h);
+        ClearDirtyFlags(overlay);
+    }
+
+    private void ClearDirtyFlagsForTrackedElements(IReadOnlyList<VisualElement> dirtyElements)
+    {
+        var cleared = new HashSet<VisualElement>();
+
+        foreach (var element in dirtyElements)
+        {
+            ClearDirtySubtree(element, cleared);
+
+            var current = element.Parent;
+            while (current != null)
+            {
+                if (cleared.Add(current))
+                {
+                    current.NeedsLayout = false;
+                    current.NeedsPaint = false;
+                }
+
+                current = current.Parent;
+            }
+        }
+    }
+
+    private void ClearDirtySubtree(VisualElement element, HashSet<VisualElement> cleared)
+    {
+        if (!cleared.Add(element))
+            return;
+
+        element.NeedsLayout = false;
+        element.NeedsPaint = false;
+
+        foreach (var child in element.GetChildren())
+        {
+            if (child.NeedsLayout || child.NeedsPaint)
+                ClearDirtySubtree(child, cleared);
+        }
+    }
+
+    private List<VisualElement> CaptureTrackedDirtyElements(bool includeLayout, bool includePaint)
+    {
+        var tracked = new HashSet<VisualElement>();
+
+        if (includeLayout)
+        {
+            foreach (var element in _scheduler.DirtyLayoutElements)
+                tracked.Add(element);
+        }
+
+        if (includePaint)
+        {
+            foreach (var element in _scheduler.DirtyPaintElements)
+                tracked.Add(element);
+        }
+
+        if (tracked.Count == 0)
+        {
+            if (Root != null && (Root.NeedsLayout || Root.NeedsPaint))
+                tracked.Add(Root);
+
+            foreach (var overlay in _overlays)
+            {
+                if (overlay.NeedsLayout || overlay.NeedsPaint)
+                    tracked.Add(overlay);
+            }
+        }
+
+        return tracked.ToList();
+    }
+
+    private bool HasScheduledRootLayoutWork()
+    {
+        foreach (var element in _scheduler.DirtyLayoutElements)
+        {
+            if (FindOwningOverlay(element) == null)
+                return true;
+        }
+
+        return false;
+    }
+
+    private IReadOnlyList<VisualElement> CaptureOverlaysNeedingLayout()
+    {
+        if (_overlays.Count == 0)
+            return Array.Empty<VisualElement>();
+
+        var overlays = new HashSet<VisualElement>();
+
+        foreach (var element in _scheduler.DirtyLayoutElements)
+        {
+            var owningOverlay = FindOwningOverlay(element);
+            if (owningOverlay != null)
+                overlays.Add(owningOverlay);
+        }
+
+        foreach (var overlay in _overlays)
+        {
+            if (overlay.NeedsLayout)
+                overlays.Add(overlay);
+        }
+
+        return overlays.Count == 0 ? Array.Empty<VisualElement>() : overlays.ToList();
+    }
+
+    public void Render(IRenderer renderer, bool fullSurfaceCleared = true)
     {
         if (Root == null) return;
-        RenderElement(Root, renderer);
+        EnsureLayerCache(renderer);
+        CleanupLayerCacheIfNeeded();
+        var renderState = CaptureRenderState(fullSurfaceCleared);
+        RenderRoot(renderer, renderState);
 
         // Render overlays on top of the main UI (for Drawer, Dialog, Menu, etc.)
         foreach (var overlay in _overlays)
         {
-            RenderElement(overlay, renderer);
+            RenderOverlay(overlay, renderer, renderState);
         }
 
         // Render drag & drop ghost at the end (on top of everything)
@@ -243,9 +423,13 @@ public class UITree
         Rayo.DevTools.OverdrawVisualizer.Render(renderer, Root);
     }
 
-    private void RenderElement(VisualElement element, IRenderer renderer)
+    private void RenderElement(VisualElement element, IRenderer renderer, RenderState renderState)
     {
         if (!element.IsVisible) return;
+
+        bool subtreeIntersectsDirty = renderState.RequiresFullRender || SubtreeIntersectsDirty(element, renderState);
+        if (renderState.AllowPartialTraversal && !subtreeIntersectsDirty)
+            return;
 
         Rayo.DevTools.PerformanceTracker.RecordRendered();
 
@@ -300,7 +484,7 @@ public class UITree
                 // Use GetChildrenByZIndex() so ZIndex controls rendering order (like MAUI)
                 foreach (var child in element.GetChildrenByZIndex().ToArray())
                 {
-                    RenderElement(child, renderer);
+                    RenderElement(child, renderer, renderState);
                 }
 
                 if (useRoundedClip)
@@ -328,9 +512,212 @@ public class UITree
         }
     }
 
+    private void RenderRoot(IRenderer renderer, RenderState renderState)
+    {
+        if (Root == null)
+            return;
+
+        if (_layerCache == null)
+        {
+            RenderElement(Root, renderer, renderState);
+            return;
+        }
+
+        float width = Math.Max(0, Root.ComputedWidth);
+        float height = Math.Max(0, Root.ComputedHeight);
+        if (width <= 0 || height <= 0)
+            return;
+
+        var layer = _layerCache.GetOrCreateLayer(GetRootLayerId(), width, height);
+        layer.MarkUsed();
+
+        if (Root.NeedsLayout || Root.NeedsPaint || renderState.RequiresFullRender || layer.IsDirty)
+        {
+            renderer.BeginRenderToTexture(layer.Texture!);
+            renderer.Clear(RenderColor.Transparent);
+
+            try
+            {
+                RenderElement(
+                    Root,
+                    renderer,
+                    renderState with { RequiresFullRender = true, AllowPartialTraversal = false });
+            }
+            finally
+            {
+                renderer.EndRenderToTexture();
+            }
+
+            layer.IsDirty = false;
+        }
+
+        renderer.DrawTexture(layer.Texture!, Root.ComputedX, Root.ComputedY, width, height);
+    }
+
+    private void RenderOverlay(VisualElement overlay, IRenderer renderer, RenderState renderState)
+    {
+        if (!overlay.IsVisible)
+            return;
+
+        if (_layerCache == null)
+        {
+            RenderElement(overlay, renderer, renderState);
+            return;
+        }
+
+        float width = Math.Max(0, overlay.ComputedWidth);
+        float height = Math.Max(0, overlay.ComputedHeight);
+        if (width <= 0 || height <= 0)
+            return;
+
+        string layerId = GetOverlayLayerId(overlay);
+        var layer = _layerCache.GetOrCreateLayer(layerId, width, height);
+        layer.MarkUsed();
+
+        if (overlay.NeedsLayout || overlay.NeedsPaint || layer.IsDirty)
+        {
+            renderer.BeginRenderToTexture(layer.Texture!);
+            renderer.Clear(RenderColor.Transparent);
+            renderer.PushTransform(Matrix3x2.CreateTranslation(-overlay.ComputedX, -overlay.ComputedY));
+
+            try
+            {
+                RenderElement(
+                    overlay,
+                    renderer,
+                    renderState with { RequiresFullRender = true, AllowPartialTraversal = false });
+            }
+            finally
+            {
+                renderer.PopTransform();
+                renderer.EndRenderToTexture();
+            }
+
+            layer.IsDirty = false;
+        }
+
+        renderer.DrawTexture(layer.Texture!, overlay.ComputedX, overlay.ComputedY, width, height);
+    }
+
     private static bool HasRoundedClip(Rayo.CornerRadius radius)
     {
         return radius.TopLeft > 0 || radius.TopRight > 0 || radius.BottomRight > 0 || radius.BottomLeft > 0;
+    }
+
+    private void EnsureLayerCache(IRenderer renderer)
+    {
+        if (ReferenceEquals(_layerCacheRenderer, renderer) && _layerCache != null)
+            return;
+
+        _layerCache?.Dispose();
+        _layerCache = new LayerCache(renderer);
+        _layerCacheRenderer = renderer;
+        _lastLayerCacheCleanupUtc = DateTime.UtcNow;
+    }
+
+    private static string GetOverlayLayerId(VisualElement overlay)
+    {
+        return $"overlay:{RuntimeHelpers.GetHashCode(overlay)}";
+    }
+
+    private static string GetRootLayerId()
+    {
+        return "root";
+    }
+
+    private void MarkAllCachedLayersDirty()
+    {
+        _layerCache?.MarkAllDirty();
+    }
+
+    private void MarkRootLayerDirty()
+    {
+        _layerCache?.MarkLayerDirty(GetRootLayerId());
+    }
+
+    private void CleanupLayerCacheIfNeeded()
+    {
+        if (_layerCache == null)
+            return;
+
+        var now = DateTime.UtcNow;
+        if (now - _lastLayerCacheCleanupUtc < TimeSpan.FromMinutes(1))
+            return;
+
+        _layerCache.Cleanup(TimeSpan.FromMinutes(2));
+        _lastLayerCacheCleanupUtc = now;
+    }
+
+    private void MarkOverlayLayerDirty(VisualElement overlay)
+    {
+        if (_layerCache == null)
+            return;
+
+        _layerCache.MarkLayerDirty(GetOverlayLayerId(overlay));
+    }
+
+    private VisualElement? FindOwningOverlay(VisualElement element)
+    {
+        var current = element;
+        while (current != null)
+        {
+            if (_overlays.Contains(current))
+                return current;
+
+            current = current.Parent;
+        }
+
+        return null;
+    }
+
+    private RenderState CaptureRenderState(bool fullSurfaceCleared)
+    {
+        bool requiresFullRender = _dirtyRegions.IsFullScreenDirty();
+        bool allowPartialTraversal =
+            PartialRenderMode == PartialRenderPolicy.ExperimentalTraversal &&
+            !fullSurfaceCleared &&
+            !requiresFullRender;
+
+        return new RenderState(requiresFullRender, _dirtyRegions.GetDirtyRegions(), allowPartialTraversal);
+    }
+
+    private static bool SubtreeIntersectsDirty(VisualElement element, RenderState renderState)
+    {
+        if (renderState.RequiresFullRender || IntersectsAnyRegion(element, renderState.DirtyRegions))
+            return true;
+
+        foreach (var child in element.GetChildren())
+        {
+            if (SubtreeIntersectsDirty(child, renderState))
+                return true;
+        }
+
+        return false;
+    }
+
+    private static bool IntersectsAnyRegion(VisualElement element, IReadOnlyList<DirtyRegion> dirtyRegions)
+    {
+        if (dirtyRegions.Count == 0 || element.ComputedWidth <= 0 || element.ComputedHeight <= 0)
+            return false;
+
+        float elemX = element.ComputedX;
+        float elemY = element.ComputedY;
+        float elemW = element.ComputedWidth;
+        float elemH = element.ComputedHeight;
+
+        foreach (var region in dirtyRegions)
+        {
+            if (RectanglesIntersect(elemX, elemY, elemW, elemH, region.X, region.Y, region.Width, region.Height))
+                return true;
+        }
+
+        return false;
+    }
+
+    private static bool RectanglesIntersect(float x1, float y1, float w1, float h1,
+        float x2, float y2, float w2, float h2)
+    {
+        return !(x1 + w1 < x2 || x1 > x2 + w2 || y1 + h1 < y2 || y1 > y2 + h2);
     }
 
     private static (float x, float y, float width, float height, Rayo.CornerRadius radius) GetClipBounds(VisualElement element)
@@ -376,6 +763,14 @@ public class UITree
 
         return (x, y, width, height, radius);
     }
+
+    private sealed record RenderState(bool RequiresFullRender, IReadOnlyList<DirtyRegion> DirtyRegions, bool AllowPartialTraversal);
+}
+
+public enum PartialRenderPolicy
+{
+    Disabled,
+    ExperimentalTraversal
 }
 
 

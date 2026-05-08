@@ -628,7 +628,7 @@ public abstract class VisualElement : BindableObject, IDisposable, IInputTranspa
         }
 
         // Always notify UITree to trigger layout AND render (works on Desktop and Android)
-        (UIApplication.Current?.Tree ?? UITree.Current)?.MarkNeedsLayout();
+        (UIApplication.Current?.Tree ?? UITree.Current)?.MarkElementNeedsLayout(this);
     }
 
     public void MarkNeedsPaint()
@@ -647,7 +647,7 @@ public abstract class VisualElement : BindableObject, IDisposable, IInputTranspa
         }
 
         // Always notify UITree to trigger a render (works on Desktop and Android)
-        (UIApplication.Current?.Tree ?? UITree.Current)?.MarkNeedsRender();
+        (UIApplication.Current?.Tree ?? UITree.Current)?.MarkElementNeedsPaint(this);
     }
     #endregion
 

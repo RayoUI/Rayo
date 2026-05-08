@@ -61,6 +61,18 @@ public class LayerCache : IDisposable
     }
 
     /// <summary>
+    /// Elimina una capa concreta del cache y libera su textura.
+    /// </summary>
+    public void RemoveLayer(string layerId)
+    {
+        if (_layers.TryGetValue(layerId, out var layer))
+        {
+            layer.Dispose();
+            _layers.Remove(layerId);
+        }
+    }
+
+    /// <summary>
     /// Marca todas las capas como sucias.
     /// </summary>
     public void MarkAllDirty()

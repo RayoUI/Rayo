@@ -842,7 +842,7 @@ public class UIApplication : IDisposable
 
             // Render main tree (includes overlays via UITree)
             _renderPhaseStart = System.Diagnostics.Stopwatch.GetTimestamp();
-            _tree.Render(_renderer);
+            _tree.Render(_renderer, fullSurfaceCleared: true);
             _phaseRenderMs = ElapsedMsSince(ref _renderPhaseStart);
 
             // Commit performance data for this frame.

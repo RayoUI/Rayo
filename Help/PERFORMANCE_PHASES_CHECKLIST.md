@@ -23,12 +23,13 @@ Estado del plan de rendimiento del core de `RayoUI`.
 
 ## Fase 2 - Invalidacion parcial real
 
-- [ ] Integrar `DirtyRegionTracker` en `UITree`
-- [ ] Hacer que `MarkNeedsPaint()` reporte bounds sucios
-- [ ] Hacer que `MarkNeedsLayout()` reporte bounds y ramas afectadas
+- [x] Integrar `DirtyRegionTracker` en `UITree`
+- [x] Hacer que `MarkNeedsPaint()` reporte bounds sucios
+- [x] Hacer que `MarkNeedsLayout()` reporte bounds y ramas afectadas
 - [ ] Evitar render recursivo completo cuando una rama no intersecta regiones sucias
-- [ ] Reducir limpieza global de dirty flags
-- [ ] Conectar `FrameScheduler` al pipeline real
+- [x] Reducir limpieza global de dirty flags
+- [~] Conectar `FrameScheduler` al pipeline real
+- [~] Introducir una primera capa retenida para overlays/dialogs y root
 
 ## Fase 3 - Virtualizacion
 
@@ -60,3 +61,7 @@ Estado del plan de rendimiento del core de `RayoUI`.
 - `OpenGL` queda disponible como backend experimental opt-in mediante `RAYO_DESKTOP_RENDERER=opengl`.
 - La primera entrega de la Fase 1 se centra en quitar del camino por defecto el upload completo de la surface CPU de `SkiaSharp` a una textura OpenGL por frame.
 - El cambio debe ser compatible con usuarios que sigan llamando manualmente a `SetGraphicsContext(new SkiaSharpGraphicsContext())`.
+- La primera entrega de la Fase 2 ya conecta invalidacion por elemento con `UITree`, `DirtyRegionTracker` y `FrameScheduler`.
+- El render parcial todavia no esta activado porque `UIApplication.OnRender()` sigue limpiando toda la superficie con `Clear(...)` antes de dibujar el frame completo.
+- `UITree` ya expone una politica explicita de render parcial experimental, pero `UIApplication` la mantiene desactivada al informar que el frame actual arranca con clear completo.
+- `UITree` ya reutiliza texturas para el `root` y para cada overlay/dialog mediante `LayerCache`, invalida esas capas en relayout global, separa la invalidacion del `root` respecto a cambios internos de overlays y evita relayout completo del `root` cuando el trabajo pendiente pertenece solo a overlays, dejando una primera base retained-mode antes de activar render parcial real por regiones.

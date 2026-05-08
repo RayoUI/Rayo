@@ -1055,7 +1055,7 @@ public class SkiaSharpRenderer : IRenderer, INativeGradientRenderer
 
         _roundedClipStack.Push(1);
         _canvas.Save();
-        _canvas.ClipPath(path);
+        _canvas.ClipPath(path, antialias: true);
     }
 
     public void PopRoundedClip()

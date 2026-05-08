@@ -676,23 +676,39 @@ public class ColorPicker : UserControl, Rayo.Core.Interfaces.IGlobalPointerHandl
             BorderColor = new Color(255, 255, 255, 30);
 
             Background = CreateSpectrumBrush();
+        }
 
-            // These overlay frames must be input-transparent so the hit-test reaches
-            // GradientSwatchFrame itself (which implements IInputHandler for drag capture).
-            // Without this, the overlay is the hit-tested element on mouse-down and
-            // _draggedElement is never set, causing lost move events when dragging fast
-            // or outside the gradient bounds on desktop.
-            this.Content(new Frame()
-                .HorizontalAlignment(HorizontalAlignment.Stretch)
-                .VerticalAlignment(VerticalAlignment.Stretch)
-                .Background(LinearGradientBrush.Vertical(new Color(255, 255, 255, 200), new Color(255, 255, 255, 0)))
-                .SetInputTransparent(true));
+        public override void Render(IRenderer renderer)
+        {
+            float radius = BorderRadius.TopLeft;
 
-            this.Content(new Frame()
-                .HorizontalAlignment(HorizontalAlignment.Stretch)
-                .VerticalAlignment(VerticalAlignment.Stretch)
-                .Background(LinearGradientBrush.Vertical(new Color(0, 0, 0, 0), new Color(0, 0, 0, 160)))
-                .SetInputTransparent(true));
+            renderer.DrawRoundedRect(ComputedX, ComputedY, ComputedWidth, ComputedHeight, radius, Background);
+            renderer.DrawRoundedRect(
+                ComputedX,
+                ComputedY,
+                ComputedWidth,
+                ComputedHeight,
+                radius,
+                LinearGradientBrush.Vertical(new Color(255, 255, 255, 200), new Color(255, 255, 255, 0)));
+            renderer.DrawRoundedRect(
+                ComputedX,
+                ComputedY,
+                ComputedWidth,
+                ComputedHeight,
+                radius,
+                LinearGradientBrush.Vertical(new Color(0, 0, 0, 0), new Color(0, 0, 0, 160)));
+
+            if (BorderWidth > 0 && BorderColor.PrimaryColor.A > 0)
+            {
+                renderer.DrawRoundedRectOutline(
+                    ComputedX,
+                    ComputedY,
+                    ComputedWidth,
+                    ComputedHeight,
+                    radius,
+                    BorderWidth,
+                    BorderColor);
+            }
         }
 
         public void OnPointerPressed(PointerEventArgs e)
