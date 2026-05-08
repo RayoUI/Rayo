@@ -1,4 +1,5 @@
 Rayo.Hosting.Abstractions/Rayo.Hosting.Abstractions.csproj
+Rayo.DevTool.Shared/Rayo.DevTool.Shared.csproj
 Rayo.Reactivity/Rayo.FluentApiGenerator.csproj
 Rayo.Rendering/Rayo.Rendering.csproj
 Rayo.Rendering.OpenGL/Rayo.Rendering.OpenGL.csproj
