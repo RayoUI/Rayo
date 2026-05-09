@@ -62,6 +62,7 @@ public class SideBar : Rayo.Core.CompositeView<SideBar>
     #endregion
 
     #region CollapsedWidth
+    [LayoutProperty]
     public float CollapsedWidth
     {
         get => field;
@@ -70,6 +71,7 @@ public class SideBar : Rayo.Core.CompositeView<SideBar>
     #endregion
 
     #region ItemHeight
+    [LayoutProperty]
     public float ItemHeight
     {
         get => field;
@@ -78,6 +80,7 @@ public class SideBar : Rayo.Core.CompositeView<SideBar>
     #endregion
 
     #region ItemSpacing
+    [LayoutProperty]
     public float ItemSpacing
     {
         get => field;
@@ -203,6 +206,7 @@ public class SideBar : Rayo.Core.CompositeView<SideBar>
     #endregion
 
     #region ItemPadding
+    [LayoutProperty]
     public Thickness ItemPadding
     {
         get => field;
@@ -211,6 +215,7 @@ public class SideBar : Rayo.Core.CompositeView<SideBar>
     #endregion
 
     #region IconSize
+    [LayoutProperty]
     public float IconSize
     {
         get => field;
@@ -219,6 +224,7 @@ public class SideBar : Rayo.Core.CompositeView<SideBar>
     #endregion
 
     #region FontSize
+    [LayoutProperty]
     public float FontSize
     {
         get => field;

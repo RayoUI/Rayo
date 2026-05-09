@@ -151,6 +151,7 @@ public class TabControl : CompositeView<TabControl>
     #endregion
 
     #region TabHeight
+    [LayoutProperty]
     public float TabHeight
     {
         get => field;
@@ -159,6 +160,7 @@ public class TabControl : CompositeView<TabControl>
     #endregion
 
     #region TabWidth
+    [LayoutProperty]
     public float TabWidth
     {
         get => field;
@@ -167,6 +169,7 @@ public class TabControl : CompositeView<TabControl>
     #endregion
 
     #region ScrollButtonWidth
+    [LayoutProperty]
     public float ScrollButtonWidth
     {
         get => field;
@@ -175,6 +178,7 @@ public class TabControl : CompositeView<TabControl>
     #endregion
 
     #region Position
+    [LayoutProperty]
     public new TabPosition Position
     {
         get => field;
@@ -183,6 +187,7 @@ public class TabControl : CompositeView<TabControl>
     #endregion
 
     #region VerticalTabHeight
+    [LayoutProperty]
     public float VerticalTabHeight
     {
         get => field;
@@ -191,6 +196,7 @@ public class TabControl : CompositeView<TabControl>
     #endregion
 
     #region VerticalTabWidth
+    [LayoutProperty]
     public float VerticalTabWidth
     {
         get => field;
@@ -207,6 +213,7 @@ public class TabControl : CompositeView<TabControl>
     #endregion
 
     #region ShowTabCloseButtons
+    [LayoutProperty]
     public bool ShowTabCloseButtons
     {
         get => field;

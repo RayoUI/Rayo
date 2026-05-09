@@ -6,6 +6,7 @@ using Rayo.DevTools;
 using Rayo.Hosting.Desktop;
 using Rayo.Layout;
 using Rayo.Rendering;
+using Rayo.Styling;
 
 var scenario = args.Length > 0 ? args[0].Trim().ToLowerInvariant() : "scroll";
 int warmupFrames = ParseIntArg(args, 1, 60);
@@ -60,8 +61,18 @@ host.Run(
                 context.SetUI<BenchmarkEditorPage>();
                 break;
 
+            case "editor-wrap":
+            case "text-wrap":
+                context.SetUI<BenchmarkWrappedEditorPage>();
+                break;
+
+            case "styles":
+            case "style":
+                context.SetUI<BenchmarkStylesPage>();
+                break;
+
             default:
-                throw new ArgumentException($"Unknown scenario '{scenario}'. Use 'scroll' or 'editor'.");
+                throw new ArgumentException($"Unknown scenario '{scenario}'. Use 'scroll', 'editor', 'editor-wrap' or 'styles'.");
         }
     },
     configureWindow: config =>
@@ -69,12 +80,14 @@ host.Run(
         config.Title = $"Rayo Performance Runner - {scenario}";
         config.Width = scenario switch
         {
-            "editor" or "text" => 900,
+            "editor" or "text" or "editor-wrap" or "text-wrap" => 900,
+            "styles" or "style" => 1180,
             _ => 1000
         };
         config.Height = scenario switch
         {
-            "editor" or "text" => 760,
+            "editor" or "text" or "editor-wrap" or "text-wrap" => 760,
+            "styles" or "style" => 820,
             _ => 700
         };
         config.CanResize = false;
@@ -124,6 +137,23 @@ static void DriveScenario(string scenario, UIApplication app, int frameCounter)
                 editor.SetVerticalScrollOffset(phase);
                 break;
             }
+
+        case "editor-wrap":
+        case "text-wrap":
+            {
+                var editor = BenchmarkWrappedEditorPage.ActiveEditor;
+                if (editor == null)
+                    return;
+
+                float phase = frameCounter * 10f;
+                editor.SetVerticalScrollOffset(phase);
+                break;
+            }
+
+        case "styles":
+        case "style":
+            BenchmarkStylesPage.DriveFrame(frameCounter);
+            break;
     }
 }
 
@@ -237,5 +267,220 @@ internal sealed class BenchmarkEditorPage : UserControl
         }
 
         return lines.ToString();
+    }
+}
+
+internal sealed class BenchmarkWrappedEditorPage : UserControl
+{
+    internal static Editor? ActiveEditor { get; private set; }
+
+    public override VisualElement Build()
+    {
+        var editor = new Editor()
+            .HorizontalAlignment(HorizontalAlignment.Stretch)
+            .VerticalAlignment(VerticalAlignment.Stretch)
+            .Height(620)
+            .FontSize(14)
+            .Background(new Color(16, 18, 24))
+            .TextColor(new Color(235, 239, 255))
+            .BorderColor(new Color(50, 58, 74))
+            .WordWrap(true)
+            .Text(BuildWrappedEditorText());
+
+        ActiveEditor = editor;
+
+        return new Frame()
+            .Background(new Color(18, 20, 28))
+            .Padding(new Thickness(18))
+            .HorizontalAlignment(HorizontalAlignment.Stretch)
+            .VerticalAlignment(VerticalAlignment.Stretch)
+            .Content(
+                new VStack()
+                    .Spacing(12)
+                    .Children(
+                        new Label("Wrapped editor benchmark")
+                            .FontSize(18)
+                            .Foreground(Color.White),
+                        new Label("Long paragraphs with word wrap enabled and continuous vertical scrolling to stress wrapped line building and text rasterization.")
+                            .Foreground(new Color(160, 170, 190)),
+                        editor
+                    )
+            );
+    }
+
+    private static string BuildWrappedEditorText()
+    {
+        var text = new System.Text.StringBuilder(capacity: 96 * 1024);
+        for (int i = 1; i <= 420; i++)
+        {
+            text.Append("Paragraph ")
+                .Append(i.ToString("D3"))
+                .Append(": RayoUI wrapped editor benchmark with deliberately long sentences that should flow across multiple visual lines, mixing punctuation, 1234567890, symbols []{}()<>, and repeated phrases to exercise line breaking, cached measurements, and continuous scrolling under word wrap. ");
+            text.Append("This paragraph continues with a second sentence so the renderer cannot rely on only short fragments and has to keep drawing longer wrapped runs in the viewport. ");
+            text.Append("Tabs\tare\tincluded\toccasionally to ensure the processed display text path stays exercised.")
+                .Append('\n');
+        }
+
+        return text.ToString();
+    }
+}
+
+internal sealed class BenchmarkStylesPage : UserControl
+{
+    private static readonly List<Frame> s_cards = [];
+    private static readonly List<Label> s_metaLabels = [];
+    private static readonly List<Button> s_buttons = [];
+    private const int AnimatedBatchSize = 12;
+
+    protected override StyleSheet? BuildStyles() =>
+    [
+        new Style<Frame>(".bench-card")
+            .Background(new Color(28, 32, 44))
+            .BorderColor(new Color(46, 54, 72))
+            .BorderWidth(1f)
+            .BorderRadius(12f),
+
+        new Style<Frame>(".bench-card.active")
+            .Background(new Color(42, 54, 78))
+            .BorderColor(new Color(104, 154, 255))
+            .BorderWidth(2f),
+
+        new Style<Frame>(".bench-card.accent")
+            .Background(new Color(46, 36, 62)),
+
+        new Style<Label>(".bench-title")
+            .Foreground(Color.White)
+            .FontSize(15f),
+
+        new Style<Label>(".bench-meta")
+            .Foreground(new Color(164, 174, 196))
+            .FontSize(12f),
+
+        new Style<Label>(".bench-meta.muted")
+            .Foreground(new Color(124, 132, 152)),
+
+        new Style<Button>(".bench-btn")
+            .Height(30f)
+            .BorderRadius(8f)
+            .Background(new Color(64, 74, 94))
+            .HoverBackground(new Color(74, 84, 108))
+            .PressedBackground(new Color(52, 62, 80))
+            .TextColor(Color.White),
+
+        new Style<Button>(".bench-btn.accent")
+            .Background(new Color(76, 112, 208))
+            .HoverBackground(new Color(88, 124, 224))
+            .PressedBackground(new Color(62, 96, 182))
+    ];
+
+    public override VisualElement Build()
+    {
+        s_cards.Clear();
+        s_metaLabels.Clear();
+        s_buttons.Clear();
+
+        var grid = new Grid()
+            .Columns(
+                GridLength.Star,
+                GridLength.Star,
+                GridLength.Star,
+                GridLength.Star)
+            .ColumnSpacing(14)
+            .RowSpacing(14)
+            .Padding(new Thickness(16));
+
+        for (int i = 0; i < 160; i++)
+        {
+            var title = new Label($"Style card {i + 1}")
+                .Classes("bench-title");
+
+            var meta = new Label($"Class toggles, hover-like state and button skin benchmark row {i + 1}.")
+                .Classes("bench-meta");
+
+            var button = new Button()
+                .Text(i % 3 == 0 ? "Primary action" : "Inspect")
+                .Classes("bench-btn");
+
+            var card = new Frame()
+                .Classes("bench-card")
+                .Padding(new Thickness(12))
+                .HorizontalAlignment(HorizontalAlignment.Stretch)
+                .VerticalAlignment(VerticalAlignment.Stretch)
+                .Content(
+                    new VStack()
+                        .Spacing(10)
+                        .Children(title, meta, button)
+                );
+
+            s_cards.Add(card);
+            s_metaLabels.Add(meta);
+            s_buttons.Add(button);
+
+            grid.AddChild(card, i / 4, i % 4);
+        }
+
+        return new Frame()
+            .Background(new Color(18, 20, 28))
+            .Padding(new Thickness(18))
+            .HorizontalAlignment(HorizontalAlignment.Stretch)
+            .VerticalAlignment(VerticalAlignment.Stretch)
+            .Content(
+                new VStack()
+                    .Spacing(12)
+                    .Children(
+                        new Label("Styles benchmark")
+                            .FontSize(18)
+                            .Foreground(Color.White),
+                        new Label("Large grid with continuous class changes across cards, labels and buttons to stress incremental style re-application.")
+                            .Foreground(new Color(160, 170, 190)),
+                        new ScrollView()
+                            .HorizontalAlignment(HorizontalAlignment.Stretch)
+                            .VerticalAlignment(VerticalAlignment.Stretch)
+                            .Content(grid)
+                    )
+            );
+    }
+
+    internal static void DriveFrame(int frameCounter)
+    {
+        if (s_cards.Count == 0)
+            return;
+
+        int count = s_cards.Count;
+        int currentStart = (frameCounter * AnimatedBatchSize) % count;
+        int previousStart = (((frameCounter - 1 + count) % count) * AnimatedBatchSize) % count;
+
+        ApplyBatch(previousStart, isActive: false, accent: false);
+        ApplyBatch(currentStart, isActive: true, accent: (frameCounter & 1) == 0);
+    }
+
+    private static void ApplyBatch(int startIndex, bool isActive, bool accent)
+    {
+        for (int offset = 0; offset < AnimatedBatchSize; offset++)
+        {
+            int index = (startIndex + offset) % s_cards.Count;
+            var card = s_cards[index];
+            var meta = s_metaLabels[index];
+            var button = s_buttons[index];
+
+            if (isActive)
+            {
+                card.AddClass("active");
+                if (accent && (index & 1) == 0)
+                    card.AddClass("accent");
+                else
+                    card.RemoveClass("accent");
+
+                button.AddClass("accent");
+                meta.AddClass("muted");
+            }
+            else
+            {
+                card.RemoveClass("active");
+                card.RemoveClass("accent");
+                button.RemoveClass("accent");
+                meta.RemoveClass("muted");
+            }
+        }
     }
 }

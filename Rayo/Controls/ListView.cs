@@ -163,6 +163,7 @@ public class ListView<T> : Rayo.Core.CompositeView<ListView<T>>, IInputHandler, 
     #endregion
 
     #region ItemHeight
+    [LayoutProperty]
     public float ItemHeight
     {
         get => field;
@@ -171,6 +172,7 @@ public class ListView<T> : Rayo.Core.CompositeView<ListView<T>>, IInputHandler, 
     #endregion
 
     #region ItemSpacing
+    [LayoutProperty]
     public float ItemSpacing
     {
         get => field;

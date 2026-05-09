@@ -49,11 +49,11 @@ Estado del plan de rendimiento del core de `RayoUI`.
 
 ## Fase 5 - Style engine incremental
 
-- [ ] Cachear indice compilado de reglas
-- [ ] Evitar reconstruccion completa en cada `Apply()`
-- [ ] Hacer `StyleApplier.Attach` idempotente
-- [ ] Reaplicar solo reglas afectadas por cambio de estado/clase/tema
-- [ ] Revisar clasificacion layout vs paint de propiedades
+- [x] Cachear indice compilado de reglas
+- [x] Evitar reconstruccion completa en cada `Apply()`
+- [x] Hacer `StyleApplier.Attach` idempotente
+- [x] Reaplicar solo reglas afectadas por cambio de estado/clase/tema
+- [x] Revisar clasificacion layout vs paint de propiedades
 
 ## Notas de implementacion
 
@@ -72,4 +72,11 @@ Estado del plan de rendimiento del core de `RayoUI`.
 - `SkiaSharpRenderer` ya reutiliza `SKPath` para `VectorPath` convertidos y clips redondeados frecuentes, con caches acotadas y limpieza en `Dispose()` para reducir reconstruccion de geometria por frame.
 - El renderer de `SkiaSharp` tambien reutiliza un `SKPaint` dedicado para gradientes y cachea conversiones `Color[] -> SKColor[]`, reduciendo churn temporal en shaders lineales, radiales y conicos.
 - `TextBox` multiline ya reutiliza una cache interna de lineas procesadas para render, cursor, movimiento vertical y hit testing, evitando `Split('\n')` y parte de los `Substring(...)` repetidos en scroll de texto.
+- `Editor` con `WordWrap` ya reutiliza `DisplayText` por linea envuelta y limita mejor los recorridos a lineas visibles, reduciendo trabajo de render, cursor y hit testing en contenido largo con wrap.
+- `StyleEngine` ya cachea hojas compiladas por `StyleSheet`, separa reglas globales de reglas tipadas y evita recomponer el indice completo en cada `Apply()`.
+- `StyleApplier.Attach(...)` ya es idempotente por elemento: mantiene una sola suscripcion `PropertyChanged` y actualiza su snapshot de reglas en vez de seguir acumulando handlers.
+- `UserControl` ya cachea el resultado de `BuildStyles()`, refresca de forma centralizada las suscripciones condicionales de estilos y, ante cambios de clase en el subarbol, reaplica reglas solo sobre el elemento afectado en vez de rehacer toda la pipeline del componente.
+- La revision de `layout` vs `paint` ya corrigio varios casos claros en metadata de estilos: `Stepper.ButtonWidth`, `Stepper.Orientation`, `TabControl.TabHeight`, `TabControl.TabWidth`, `TabControl.ScrollButtonWidth`, `TabControl.Position`, `TabControl.VerticalTabHeight` y `TabControl.VerticalTabWidth` ahora invalidan layout en lugar de solo paint.
+- La misma revision tambien cubre `ListView.ItemHeight`, `ListView.ItemSpacing`, `SideBar.CollapsedWidth`, `SideBar.ItemHeight`, `SideBar.ItemSpacing`, `SideBar.ItemPadding`, `SideBar.IconSize`, `SideBar.FontSize` y `TabControl.ShowTabCloseButtons`; una pasada automatizada sobre setters con `RebuildLayout`, `RebuildItems`, `RebuildHeaders`, `UpdateWidth` y `BuildComponents()` ya no saca mas casos estructurales obvios sin `LayoutProperty`.
+- `PerformanceRunner` ya incluye un escenario `styles` que alterna clases sobre un arbol grande de tarjetas, labels y botones para medir especificamente la ruta incremental del style engine.
 - La Fase 3 queda implementada con paneles virtualizados internos para `ListView`, `DataGrid` y `TreeView`, recycling de contenedores visibles y soporte basico para mantener la seleccion dentro del viewport; el siguiente paso recomendado es medir escenarios largos y ajustar detalles de viewport, horizontal scroll y estabilidad visual.

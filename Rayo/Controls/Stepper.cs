@@ -138,6 +138,7 @@ public class Stepper : Rayo.Core.CompositeView<Stepper>
     #endregion
 
     #region ButtonWidth
+    [LayoutProperty]
     public float ButtonWidth
     {
         get => field;
@@ -146,6 +147,7 @@ public class Stepper : Rayo.Core.CompositeView<Stepper>
     #endregion
 
     #region Orientation
+    [LayoutProperty]
     public Orientation Orientation
     {
         get => field;

@@ -45,6 +45,12 @@ public abstract class StyleRule
     public virtual bool HasStateTriggers => false;
 
     /// <summary>
+    /// Returns <c>true</c> if this rule depends on the element's CSS-like class list and
+    /// therefore needs re-evaluation when <see cref="VisualElement.Classes"/> changes.
+    /// </summary>
+    public virtual bool HasClassConditions => false;
+
+    /// <summary>
     /// Returns <c>true</c> if this rule has at least one <see cref="Breakpoint"/>-based
     /// conditional setter that requires re-evaluation when the window/screen size changes.
     /// </summary>

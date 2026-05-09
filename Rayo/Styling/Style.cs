@@ -180,6 +180,8 @@ public sealed class Style<T> : StyleRule where T : VisualElement
     /// <inheritdoc/>
     public override bool HasStateTriggers        => _triggerBlocks      is { Count: > 0 };
     /// <inheritdoc/>
+    public override bool HasClassConditions      => _classFilters != null || _notClassFilter != null;
+    /// <inheritdoc/>
     public override bool HasBreakpointConditions => _breakpointBlocks   is { Count: > 0 };
     /// <inheritdoc/>
     public override bool HasCustomBreakpoints    => _customBreakpointBlocks is { Count: > 0 };

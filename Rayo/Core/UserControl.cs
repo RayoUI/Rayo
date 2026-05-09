@@ -15,6 +15,7 @@ public abstract class UserControl : ContentView<UserControl>, IUIBuilder, IReact
     private bool _isBuilt = false;
     private bool _hasInitialized = false;
     private bool _dependenciesInjected = false;
+    private StyleSheet? _componentStyles;
 
     /// <summary>
     /// Builds the UI tree for this component.
@@ -93,6 +94,7 @@ public abstract class UserControl : ContentView<UserControl>, IUIBuilder, IReact
     {
         ClearContent();
         _isBuilt = false;
+        _componentStyles = null;
         MarkNeedsLayout();
     }
 
@@ -127,7 +129,7 @@ public abstract class UserControl : ContentView<UserControl>, IUIBuilder, IReact
             if (globalStyles != null)
                 StyleEngine.Apply(globalStyles, content, StyleScope);
 
-            var componentStyles = BuildStyles();
+            var componentStyles = GetComponentStyles();
             if (componentStyles != null)
                 StyleEngine.Apply(componentStyles, content, StyleScope);
 
@@ -135,41 +137,7 @@ public abstract class UserControl : ContentView<UserControl>, IUIBuilder, IReact
             UIApplication.GlobalStylesChanged -= OnGlobalStylesChanged;
             UIApplication.GlobalStylesChanged += OnGlobalStylesChanged;
 
-            // Subscribe to breakpoint changes so responsive styles re-apply when
-            // the window/screen size crosses a named breakpoint threshold.
-            BreakpointHelper.BreakpointChanged -= OnBreakpointChanged;
-            BreakpointHelper.BreakpointChanged += OnBreakpointChanged;
-
-            // Subscribe to every window-size change when any style uses custom
-            // min/max-width conditions — these need per-pixel re-evaluation.
-            if (HasCustomBreakpointStyles(globalStyles, componentStyles))
-            {
-                BreakpointHelper.WindowResized -= OnWindowResized;
-                BreakpointHelper.WindowResized += OnWindowResized;
-            }
-
-            // Subscribe to color-scheme changes when any style has color-scheme conditionals.
-            if (HasColorSchemeStyles(globalStyles, componentStyles))
-            {
-                ColorSchemeHelper.ColorSchemeChanged -= OnColorSchemeChanged;
-                ColorSchemeHelper.ColorSchemeChanged += OnColorSchemeChanged;
-            }
-
-            // Subscribe to orientation changes when any style has orientation conditionals.
-            if (HasOrientationStyles(globalStyles, componentStyles))
-            {
-                OrientationHelper.OrientationChanged -= OnOrientationChanged;
-                OrientationHelper.OrientationChanged += OnOrientationChanged;
-            }
-
-            // Subscribe to theme changes — token values in any style rule may depend on the theme.
-            UIApplication.ThemeChanged -= OnThemeChanged;
-            UIApplication.ThemeChanged += OnThemeChanged;
-
-            // Subscribe to class changes in the content subtree so that adding or removing
-            // a class on any descendant triggers a full style re-application.
-            VisualElement.ClassesChanged -= OnClassesChanged;
-            VisualElement.ClassesChanged += OnClassesChanged;
+            RefreshStyleSubscriptions(globalStyles, componentStyles);
         }
     }
 
@@ -200,19 +168,17 @@ public abstract class UserControl : ContentView<UserControl>, IUIBuilder, IReact
     internal void ReapplyStyles()
     {
         if (Content == null) return;
-        var globalStyles = UIApplication.Current?.GlobalStyles;
-        if (globalStyles != null)
-            StyleEngine.Apply(globalStyles, Content, StyleScope);
-        var componentStyles = BuildStyles();
-        if (componentStyles != null)
-            StyleEngine.Apply(componentStyles, Content, StyleScope);
+        ApplyStylePipeline();
         MarkNeedsPaint();
     }
 
     private void OnGlobalStylesChanged(StyleSheet newStyles)
     {
-        if (Content != null)
-            StyleEngine.Apply(newStyles, Content, StyleScope);
+        if (Content == null) return;
+
+        StyleEngine.Apply(newStyles, Content, StyleScope);
+        RefreshStyleSubscriptions(newStyles, _componentStyles);
+        MarkNeedsPaint();
     }
 
     private void OnBreakpointChanged(Breakpoint _)
@@ -221,14 +187,7 @@ public abstract class UserControl : ContentView<UserControl>, IUIBuilder, IReact
 
         // Re-apply the full style pipeline so breakpoint-conditional setters
         // are evaluated against the new window size. Same path as EnsureBuilt().
-        var globalStyles = UIApplication.Current?.GlobalStyles;
-        if (globalStyles != null)
-            StyleEngine.Apply(globalStyles, Content, StyleScope);
-
-        var componentStyles = BuildStyles();
-        if (componentStyles != null)
-            StyleEngine.Apply(componentStyles, Content, StyleScope);
-
+        ApplyStylePipeline();
         MarkNeedsPaint();
     }
 
@@ -238,14 +197,7 @@ public abstract class UserControl : ContentView<UserControl>, IUIBuilder, IReact
 
         // Re-apply styles so custom min/max-width conditions are evaluated
         // against the new window width.
-        var globalStyles = UIApplication.Current?.GlobalStyles;
-        if (globalStyles != null)
-            StyleEngine.Apply(globalStyles, Content, StyleScope);
-
-        var componentStyles = BuildStyles();
-        if (componentStyles != null)
-            StyleEngine.Apply(componentStyles, Content, StyleScope);
-
+        ApplyStylePipeline();
         MarkNeedsPaint();
     }
 
@@ -253,14 +205,7 @@ public abstract class UserControl : ContentView<UserControl>, IUIBuilder, IReact
     {
         if (Content == null) return;
 
-        var globalStyles = UIApplication.Current?.GlobalStyles;
-        if (globalStyles != null)
-            StyleEngine.Apply(globalStyles, Content, StyleScope);
-
-        var componentStyles = BuildStyles();
-        if (componentStyles != null)
-            StyleEngine.Apply(componentStyles, Content, StyleScope);
-
+        ApplyStylePipeline();
         MarkNeedsPaint();
     }
 
@@ -268,14 +213,7 @@ public abstract class UserControl : ContentView<UserControl>, IUIBuilder, IReact
     {
         if (Content == null) return;
 
-        var globalStyles = UIApplication.Current?.GlobalStyles;
-        if (globalStyles != null)
-            StyleEngine.Apply(globalStyles, Content, StyleScope);
-
-        var componentStyles = BuildStyles();
-        if (componentStyles != null)
-            StyleEngine.Apply(componentStyles, Content, StyleScope);
-
+        ApplyStylePipeline();
         MarkNeedsPaint();
     }
 
@@ -283,15 +221,23 @@ public abstract class UserControl : ContentView<UserControl>, IUIBuilder, IReact
     {
         if (Content == null) return;
 
+        ApplyStylePipeline();
+        MarkNeedsPaint();
+    }
+
+    private void ApplyStylePipeline()
+    {
+        if (Content == null) return;
+
         var globalStyles = UIApplication.Current?.GlobalStyles;
         if (globalStyles != null)
             StyleEngine.Apply(globalStyles, Content, StyleScope);
 
-        var componentStyles = BuildStyles();
+        var componentStyles = GetComponentStyles();
         if (componentStyles != null)
             StyleEngine.Apply(componentStyles, Content, StyleScope);
 
-        MarkNeedsPaint();
+        RefreshStyleSubscriptions(globalStyles, componentStyles);
     }
 
     private void OnClassesChanged(VisualElement element)
@@ -304,11 +250,70 @@ public abstract class UserControl : ContentView<UserControl>, IUIBuilder, IReact
         {
             if (current == Content)
             {
-                ReapplyStyles();
+                ApplyStylesToElement(element);
                 return;
             }
             current = current.Parent;
         }
+    }
+
+    private void ApplyStylesToElement(VisualElement element)
+    {
+        var globalStyles = UIApplication.Current?.GlobalStyles;
+        if (globalStyles != null)
+            StyleEngine.ApplyToElement(globalStyles, element);
+
+        var componentStyles = GetComponentStyles();
+        if (componentStyles != null)
+            StyleEngine.ApplyToElement(componentStyles, element);
+
+        element.MarkNeedsPaint();
+    }
+
+    private StyleSheet? GetComponentStyles()
+    {
+        _componentStyles ??= BuildStyles();
+        return _componentStyles;
+    }
+
+    private void RefreshStyleSubscriptions(StyleSheet? globalStyles, StyleSheet? componentStyles)
+    {
+        BreakpointHelper.BreakpointChanged -= OnBreakpointChanged;
+        if (HasBreakpointStyles(globalStyles, componentStyles))
+            BreakpointHelper.BreakpointChanged += OnBreakpointChanged;
+
+        BreakpointHelper.WindowResized -= OnWindowResized;
+        if (HasCustomBreakpointStyles(globalStyles, componentStyles))
+            BreakpointHelper.WindowResized += OnWindowResized;
+
+        ColorSchemeHelper.ColorSchemeChanged -= OnColorSchemeChanged;
+        if (HasColorSchemeStyles(globalStyles, componentStyles))
+            ColorSchemeHelper.ColorSchemeChanged += OnColorSchemeChanged;
+
+        OrientationHelper.OrientationChanged -= OnOrientationChanged;
+        if (HasOrientationStyles(globalStyles, componentStyles))
+            OrientationHelper.OrientationChanged += OnOrientationChanged;
+
+        UIApplication.ThemeChanged -= OnThemeChanged;
+        if (HasThemeAwareStyles(globalStyles, componentStyles))
+            UIApplication.ThemeChanged += OnThemeChanged;
+
+        VisualElement.ClassesChanged -= OnClassesChanged;
+        if (HasClassStyles(globalStyles, componentStyles))
+            VisualElement.ClassesChanged += OnClassesChanged;
+    }
+
+    private static bool HasBreakpointStyles(StyleSheet? global, StyleSheet? component)
+    {
+        if (global != null)
+            foreach (var rule in global)
+                if (rule.HasBreakpointConditions) return true;
+
+        if (component != null)
+            foreach (var rule in component)
+                if (rule.HasBreakpointConditions) return true;
+
+        return false;
     }
 
     private static bool HasCustomBreakpointStyles(StyleSheet? global, StyleSheet? component)
@@ -349,6 +354,22 @@ public abstract class UserControl : ContentView<UserControl>, IUIBuilder, IReact
 
         return false;
     }
+
+    private static bool HasClassStyles(StyleSheet? global, StyleSheet? component)
+    {
+        if (global != null)
+            foreach (var rule in global)
+                if (rule.HasClassConditions) return true;
+
+        if (component != null)
+            foreach (var rule in component)
+                if (rule.HasClassConditions) return true;
+
+        return false;
+    }
+
+    private static bool HasThemeAwareStyles(StyleSheet? global, StyleSheet? component)
+        => (global != null && global.Count > 0) || (component != null && component.Count > 0);
 
     protected override void OnUnmounted()
     {

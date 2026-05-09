@@ -1,4 +1,5 @@
-﻿using Rayo.Core;
+using System.Runtime.CompilerServices;
+using Rayo.Core;
 
 namespace Rayo.Styling;
 
@@ -21,6 +22,8 @@ namespace Rayo.Styling;
 /// </summary>
 public static class StyleEngine
 {
+    private static readonly ConditionalWeakTable<StyleSheet, CompiledStyleSheet> s_compiledSheets = new();
+
     /// <summary>
     /// Applies all matching rules from <paramref name="sheet"/> to every element in the
     /// subtree rooted at <paramref name="root"/>.
@@ -30,8 +33,21 @@ public static class StyleEngine
     {
         if (sheet.Count == 0) return;
 
-        var index = BuildTypeIndex(sheet);
-        Walk(root, index, scope, isRoot: true);
+        var compiled = GetCompiledSheet(sheet);
+        Walk(root, compiled, scope, isRoot: true);
+    }
+
+    /// <summary>
+    /// Applies only the rules that affect a single <paramref name="element"/>.
+    /// Useful for class/state-triggered refreshes where the style system does not need
+    /// to walk the entire subtree again.
+    /// </summary>
+    public static void ApplyToElement(StyleSheet sheet, VisualElement element)
+    {
+        if (sheet.Count == 0) return;
+
+        var compiled = GetCompiledSheet(sheet);
+        ApplyElementRules(element, compiled);
     }
 
     /// <summary>
@@ -42,27 +58,35 @@ public static class StyleEngine
     public static IReadOnlyList<MatchedRule> GetComputedStyle(
         VisualElement element, StyleSheet sheet)
     {
-        return SortRules(sheet)
+        return GetCompiledSheet(sheet).SortedRules
             .Select(r => new MatchedRule(r, r.Matches(element)))
             .ToList();
     }
 
-    // ------------------------------------------------------------------
+    private static CompiledStyleSheet GetCompiledSheet(StyleSheet sheet)
+        => s_compiledSheets.GetValue(sheet, BuildCompiledSheet);
 
-    private static Dictionary<Type, List<StyleRule>> BuildTypeIndex(StyleSheet sheet)
+    private static CompiledStyleSheet BuildCompiledSheet(StyleSheet sheet)
     {
+        var sortedRules = SortRules(sheet);
         var index = new Dictionary<Type, List<StyleRule>>();
-        foreach (var rule in SortRules(sheet))
+        var globalRules = new List<StyleRule>();
+
+        foreach (var rule in sortedRules)
         {
             var key = rule.TargetType;
             if (key == null)
+            {
+                globalRules.Add(rule);
                 continue;
+            }
 
             if (!index.TryGetValue(key, out var bucket))
                 index[key] = bucket = new List<StyleRule>();
             bucket.Add(rule);
         }
-        return index;
+
+        return new CompiledStyleSheet(sortedRules, globalRules, index);
     }
 
     private static List<StyleRule> SortRules(StyleSheet sheet) =>
@@ -71,47 +95,56 @@ public static class StyleEngine
             .ThenBy(r => r.Specificity)
             .ToList();
 
-    private static IEnumerable<StyleRule> GetRulesFor(
-        VisualElement element, Dictionary<Type, List<StyleRule>> index)
+    private static List<StyleRule> GetRulesFor(
+        VisualElement element, CompiledStyleSheet compiled)
     {
         var elementType = element.GetType();
-        foreach (var rule in index.Values.SelectMany(v => v).Where(r => r.TargetType == null))
-            yield return rule;
+        var candidates = new List<StyleRule>(compiled.GlobalRules.Count + 8);
+        candidates.AddRange(compiled.GlobalRules);
 
-        foreach (var (key, rules) in index)
+        foreach (var (key, rules) in compiled.TypeIndex)
             if (key.IsAssignableFrom(elementType))
-                foreach (var rule in rules)
-                    yield return rule;
+                candidates.AddRange(rules);
+
+        return candidates;
     }
 
     private static void Walk(
         VisualElement element,
-        Dictionary<Type, List<StyleRule>> index,
+        CompiledStyleSheet compiled,
         StyleScope scope,
         bool isRoot)
+    {
+        ApplyElementRules(element, compiled);
+
+        foreach (var child in element.GetChildren())
+        {
+            if (scope == StyleScope.Local && !isRoot && child is UserControl)
+                continue;
+            Walk(child, compiled, scope, isRoot: false);
+        }
+    }
+
+    private static void ApplyElementRules(VisualElement element, CompiledStyleSheet compiled)
     {
         // Capture baseline on first pass; restore it before every subsequent pass so that
         // previously-applied style properties revert to their inline values before new
         // matching rules run (mirrors CSS cascade behaviour when classes change).
         element.PrepareForStyleApplication();
 
-        var candidates = GetRulesFor(element, index)
-            .OrderBy(r => r.IsImportant ? 1 : 0)
-            .ThenBy(r => r.Specificity);
+        var candidates = GetRulesFor(element, compiled);
 
         foreach (var rule in candidates)
             if (rule.Matches(element))
                 rule.Apply(element);
 
-        StyleApplier.Attach(element, index.Values.SelectMany(v => v).ToList());
-
-        foreach (var child in element.GetChildren())
-        {
-            if (scope == StyleScope.Local && !isRoot && child is UserControl)
-                continue;
-            Walk(child, index, scope, isRoot: false);
-        }
+        StyleApplier.Attach(element, candidates);
     }
+
+    private sealed record CompiledStyleSheet(
+        IReadOnlyList<StyleRule> SortedRules,
+        IReadOnlyList<StyleRule> GlobalRules,
+        IReadOnlyDictionary<Type, List<StyleRule>> TypeIndex);
 }
 
 /// <summary>
@@ -120,6 +153,6 @@ public static class StyleEngine
 /// </summary>
 public readonly record struct MatchedRule(StyleRule Rule, bool IsApplied)
 {
-    public int  Specificity => Rule.Specificity;
+    public int Specificity => Rule.Specificity;
     public bool IsImportant => Rule.IsImportant;
 }
