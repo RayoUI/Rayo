@@ -87,8 +87,8 @@ public class Editor : TextBox<Editor>, IScrollable
     } = false;
     #endregion
 
-    // Wrapped line cache: each entry is (startIndex, length) into the Text string
-    private List<(int start, int length)> _wrappedLines = new();
+    // Wrapped line cache: each entry stores the source slice and the processed text used for drawing.
+    private readonly List<WrappedLineInfo> _wrappedLines = new();
     private bool _wrappedLinesDirty = true;
     private string _lastWrappedText = string.Empty;
     private float _lastWrappedWidth = -1;
@@ -133,7 +133,7 @@ public class Editor : TextBox<Editor>, IScrollable
 
         if (string.IsNullOrEmpty(Text))
         {
-            _wrappedLines.Add((0, 0));
+            _wrappedLines.Add(new WrappedLineInfo(0, 0, string.Empty));
             return;
         }
 
@@ -153,7 +153,7 @@ public class Editor : TextBox<Editor>, IScrollable
     {
         if (length == 0)
         {
-            _wrappedLines.Add((start, 0));
+            _wrappedLines.Add(new WrappedLineInfo(start, 0, string.Empty));
             return;
         }
 
@@ -168,7 +168,7 @@ public class Editor : TextBox<Editor>, IScrollable
             if (fitCount >= remaining)
             {
                 // Everything fits
-                _wrappedLines.Add((pos, remaining));
+                AddWrappedLine(pos, remaining);
                 break;
             }
 
@@ -194,10 +194,18 @@ public class Editor : TextBox<Editor>, IScrollable
                 breakAt = lastSpace;
             }
 
-            _wrappedLines.Add((pos, breakAt));
+            AddWrappedLine(pos, breakAt);
             pos += breakAt;
             remaining -= breakAt;
         }
+    }
+
+    private void AddWrappedLine(int start, int length)
+    {
+        string displayText = length > 0
+            ? Text.Substring(start, length).Replace("\t", "    ")
+            : string.Empty;
+        _wrappedLines.Add(new WrappedLineInfo(start, length, displayText));
     }
 
     private int FindFitCount(int start, int length, float availableWidth)
@@ -209,7 +217,7 @@ public class Editor : TextBox<Editor>, IScrollable
         while (lo < hi)
         {
             int mid = (lo + hi + 1) / 2;
-            float w = MeasureTextWidth(Text.Substring(start, mid));
+            float w = MeasureTextWidth(Text.Substring(start, mid).Replace("\t", "    "));
             if (w <= availableWidth)
             {
                 lo = mid;
@@ -222,6 +230,8 @@ public class Editor : TextBox<Editor>, IScrollable
 
         return lo;
     }
+
+    private readonly record struct WrappedLineInfo(int Start, int Length, string DisplayText);
 
     // =========================================================================
     // SCROLLBAR PROPERTIES
@@ -528,13 +538,14 @@ public class Editor : TextBox<Editor>, IScrollable
             EnsureWrappedLines();
             for (int i = 0; i < _wrappedLines.Count; i++)
             {
-                var (start, length) = _wrappedLines[i];
+                int start = _wrappedLines[i].Start;
+                int length = _wrappedLines[i].Length;
                 if (_cursorPosition >= start && _cursorPosition <= start + length)
                 {
                     // If cursor is exactly at the start+length and there's a next line starting there,
                     // prefer the next line (cursor is at the beginning of the next wrapped line)
                     if (_cursorPosition == start + length && i + 1 < _wrappedLines.Count &&
-                        _wrappedLines[i + 1].start == _cursorPosition)
+                        _wrappedLines[i + 1].Start == _cursorPosition)
                     {
                         continue;
                     }
@@ -631,10 +642,16 @@ public class Editor : TextBox<Editor>, IScrollable
             {
                 int selStart = Math.Min(_selectionStart, _selectionEnd);
                 int selEnd = Math.Max(_selectionStart, _selectionEnd);
+                int firstVisibleLine = Math.Max(0, (int)MathF.Floor(_scrollOffsetY / lineHeight));
+                int lastVisibleLine = Math.Min(
+                    _wrappedLines.Count - 1,
+                    (int)MathF.Ceiling((_scrollOffsetY + contentHeight) / lineHeight));
 
-                for (int i = 0; i < _wrappedLines.Count; i++)
+                for (int i = firstVisibleLine; i <= lastVisibleLine; i++)
                 {
-                    var (start, length) = _wrappedLines[i];
+                    var lineInfo = _wrappedLines[i];
+                    int start = lineInfo.Start;
+                    int length = lineInfo.Length;
                     int lineEnd = start + length;
 
                     // Skip if selection doesn't intersect this line
@@ -654,11 +671,19 @@ public class Editor : TextBox<Editor>, IScrollable
                     if (lineSelEnd <= lineSelStart) continue;
 
                     // Measure text before selection in this line
-                    string textBefore = Text.Substring(start, lineSelStart - start);
+                    int selectionStartOffset = lineSelStart - start;
+                    int selectionLength = lineSelEnd - lineSelStart;
+                    string textBefore = selectionStartOffset > 0
+                        ? lineInfo.DisplayText.Substring(0, Math.Min(selectionStartOffset, lineInfo.DisplayText.Length))
+                        : string.Empty;
                     var sizeBefore = renderer.MeasureText(textBefore, FontSize);
 
                     // Measure selected text in this line
-                    string selectedText = Text.Substring(lineSelStart, lineSelEnd - lineSelStart);
+                    string selectedText = selectionLength > 0 && selectionStartOffset < lineInfo.DisplayText.Length
+                        ? lineInfo.DisplayText.Substring(
+                            Math.Min(selectionStartOffset, lineInfo.DisplayText.Length),
+                            Math.Min(selectionLength, lineInfo.DisplayText.Length - Math.Min(selectionStartOffset, lineInfo.DisplayText.Length)))
+                        : string.Empty;
                     var selSize = renderer.MeasureText(selectedText, FontSize);
 
                     renderer.DrawRect(
@@ -684,9 +709,15 @@ public class Editor : TextBox<Editor>, IScrollable
             }
             else
             {
-                for (int i = 0; i < _wrappedLines.Count; i++)
+                int firstVisibleLine = Math.Max(0, (int)MathF.Floor(_scrollOffsetY / lineHeight));
+                int lastVisibleLine = Math.Min(
+                    _wrappedLines.Count - 1,
+                    (int)MathF.Ceiling((_scrollOffsetY + contentHeight) / lineHeight));
+
+                for (int i = firstVisibleLine; i <= lastVisibleLine; i++)
                 {
-                    var (start, length) = _wrappedLines[i];
+                    var lineInfo = _wrappedLines[i];
+                    int length = lineInfo.Length;
                     float lineY = contentY + (i * lineHeight) - _scrollOffsetY;
 
                     // Cull invisible lines
@@ -695,8 +726,7 @@ public class Editor : TextBox<Editor>, IScrollable
 
                     if (length > 0)
                     {
-                        string lineText = Text.Substring(start, length).Replace("\t", "    ");
-                        renderer.DrawText(lineText, contentX, lineY, textColor, FontSize);
+                        renderer.DrawText(lineInfo.DisplayText, contentX, lineY, textColor, FontSize);
                     }
                 }
             }
@@ -705,10 +735,13 @@ public class Editor : TextBox<Editor>, IScrollable
             if (IsFocused && IsCursorBlinkVisible())
             {
                 int cursorLine = GetCursorLineIndex();
-                var (cStart, cLength) = _wrappedLines[cursorLine];
+                var cursorLineInfo = _wrappedLines[cursorLine];
+                int cStart = cursorLineInfo.Start;
                 int cursorOffsetInLine = _cursorPosition - cStart;
 
-                string textBeforeCursor = Text.Substring(cStart, cursorOffsetInLine);
+                string textBeforeCursor = cursorOffsetInLine > 0
+                    ? cursorLineInfo.DisplayText.Substring(0, Math.Min(cursorOffsetInLine, cursorLineInfo.DisplayText.Length))
+                    : string.Empty;
                 var cursorSize = renderer.MeasureText(textBeforeCursor, FontSize);
 
                 float cursorX = contentX + cursorSize.X;
@@ -770,12 +803,16 @@ public class Editor : TextBox<Editor>, IScrollable
         }
 
         // Get cursor offset within current line
-        var (curStart, curLength) = _wrappedLines[currentLine];
+        var currentLineInfo = _wrappedLines[currentLine];
+        int curStart = currentLineInfo.Start;
+        int curLength = currentLineInfo.Length;
         int charOffset = _cursorPosition - curStart;
 
         // Move to previous line at same character offset
         int prevLine = currentLine - 1;
-        var (prevStart, prevLength) = _wrappedLines[prevLine];
+        var previousLineInfo = _wrappedLines[prevLine];
+        int prevStart = previousLineInfo.Start;
+        int prevLength = previousLineInfo.Length;
         int newOffset = Math.Min(charOffset, prevLength);
         int newPos = prevStart + newOffset;
 
@@ -828,12 +865,16 @@ public class Editor : TextBox<Editor>, IScrollable
         }
 
         // Get cursor offset within current line
-        var (curStart, curLength) = _wrappedLines[currentLine];
+        var currentLineInfo = _wrappedLines[currentLine];
+        int curStart = currentLineInfo.Start;
+        int curLength = currentLineInfo.Length;
         int charOffset = _cursorPosition - curStart;
 
         // Move to next line at same character offset
         int nextLine = currentLine + 1;
-        var (nextStart, nextLength) = _wrappedLines[nextLine];
+        var nextLineInfo = _wrappedLines[nextLine];
+        int nextStart = nextLineInfo.Start;
+        int nextLength = nextLineInfo.Length;
         int newOffset = Math.Min(charOffset, nextLength);
         int newPos = nextStart + newOffset;
 
@@ -875,8 +916,10 @@ public class Editor : TextBox<Editor>, IScrollable
         int clickedLine = Math.Max(0, (int)(localY / lineHeight));
         clickedLine = Math.Min(clickedLine, _wrappedLines.Count - 1);
 
-        var (start, length) = _wrappedLines[clickedLine];
-        string lineText = length > 0 ? Text.Substring(start, length) : string.Empty;
+        var lineInfo = _wrappedLines[clickedLine];
+        int start = lineInfo.Start;
+        int length = lineInfo.Length;
+        string lineText = lineInfo.DisplayText;
 
         float localX = mouseX - contentX;
 

@@ -59,6 +59,7 @@ public abstract class TextBox<T> : Rayo.Core.View<T>, IInputHandler, IFocusable,
             }
 
             field = newValue;
+            InvalidateMultilineCache();
 
             if (_suppressCursorAutoMove)
             {
@@ -185,7 +186,7 @@ public abstract class TextBox<T> : Rayo.Core.View<T>, IInputHandler, IFocusable,
     public bool IsPassword
     {
         get => field;
-        set => this.SetProperty(ref field, value);
+        set => this.SetProperty(ref field, value, InvalidateMultilineCache);
     } = false;
     #endregion
 
@@ -258,6 +259,10 @@ public abstract class TextBox<T> : Rayo.Core.View<T>, IInputHandler, IFocusable,
     private DateTime _lastCursorActivityTime = DateTime.UtcNow;
     protected bool _cursorVisible = true;
     private const double CursorBlinkIntervalMs = 530;  // Standard Windows caret blink rate
+    private readonly List<TextLineInfo> _multilineLines = new();
+    private bool _multilineLinesDirty = true;
+    private string _lastMultilineText = string.Empty;
+    private bool _lastMultilinePasswordMode;
 
     // =========================================================================
     // EVENTS
@@ -289,6 +294,78 @@ public abstract class TextBox<T> : Rayo.Core.View<T>, IInputHandler, IFocusable,
     {
         _lastCursorActivityTime = DateTime.UtcNow;
         _cursorVisible = true;
+    }
+
+    private void InvalidateMultilineCache()
+    {
+        _multilineLinesDirty = true;
+        _lastMultilineText = string.Empty;
+    }
+
+    private void EnsureMultilineCache()
+    {
+        if (!_multilineLinesDirty &&
+            ReferenceEquals(_lastMultilineText, Text) &&
+            _lastMultilinePasswordMode == IsPassword)
+        {
+            return;
+        }
+
+        _multilineLines.Clear();
+
+        var text = Text;
+        int lineStart = 0;
+        int lineIndex = 0;
+
+        for (int i = 0; i <= text.Length; i++)
+        {
+            if (i != text.Length && text[i] != '\n')
+                continue;
+
+            int lineLength = i - lineStart;
+            string displayLine;
+
+            if (lineLength <= 0)
+            {
+                displayLine = string.Empty;
+            }
+            else if (IsPassword)
+            {
+                displayLine = new string('*', lineLength);
+            }
+            else
+            {
+                displayLine = text.Substring(lineStart, lineLength).Replace("\t", "    ");
+            }
+
+            _multilineLines.Add(new TextLineInfo(lineStart, lineLength, displayLine, lineIndex));
+            lineStart = i + 1;
+            lineIndex++;
+        }
+
+        if (_multilineLines.Count == 0)
+        {
+            _multilineLines.Add(new TextLineInfo(0, 0, string.Empty, 0));
+        }
+
+        _multilineLinesDirty = false;
+        _lastMultilineText = text;
+        _lastMultilinePasswordMode = IsPassword;
+    }
+
+    private TextLineInfo GetLineInfoForCursorPosition(int cursorPosition)
+    {
+        EnsureMultilineCache();
+
+        int safeCursorPos = Math.Clamp(cursorPosition, 0, Text.Length);
+        for (int i = 0; i < _multilineLines.Count; i++)
+        {
+            var line = _multilineLines[i];
+            if (safeCursorPos >= line.Start && safeCursorPos <= line.Start + line.Length)
+                return line;
+        }
+
+        return _multilineLines[_multilineLines.Count - 1];
     }
 
     /// <summary>
@@ -511,28 +588,10 @@ public abstract class TextBox<T> : Rayo.Core.View<T>, IInputHandler, IFocusable,
     {
         if (!IsMultiline) return;
 
-        // Encontrar la línea actual y la posición del cursor en esa línea
-        int currentLineIndex = 0;
-        int charIndexInLine = 0;
-        int lineStartPos = 0;
-        
-        // Dividir texto en líneas
-        string[] lines = Text.Split('\n');
-        
-        // Encontrar la línea actual y la posición del cursor
-        int accumulatedPos = 0;
-        for (int i = 0; i < lines.Length; i++)
-        {
-            int lineLength = lines[i].Length;
-            if (_cursorPosition >= accumulatedPos && _cursorPosition <= accumulatedPos + lineLength)
-            {
-                currentLineIndex = i;
-                charIndexInLine = _cursorPosition - accumulatedPos;
-                lineStartPos = accumulatedPos;
-                break;
-            }
-            accumulatedPos += lineLength + 1; // +1 por el '\n'
-        }
+        EnsureMultilineCache();
+        var currentLine = GetLineInfoForCursorPosition(_cursorPosition);
+        int currentLineIndex = currentLine.LineIndex;
+        int charIndexInLine = _cursorPosition - currentLine.Start;
 
         // Si estamos en la primera línea, no podemos subir más
         if (currentLineIndex == 0)
@@ -542,19 +601,11 @@ public abstract class TextBox<T> : Rayo.Core.View<T>, IInputHandler, IFocusable,
         }
 
         // Calcular nueva posición en la línea anterior
-        int previousLineIndex = currentLineIndex - 1;
-        string previousLine = lines[previousLineIndex];
+        var previousLine = _multilineLines[currentLineIndex - 1];
         
         // Mover al mismo índice de carácter o al final de la línea anterior (lo que sea menor)
         int newCharIndex = Math.Min(charIndexInLine, previousLine.Length);
-        
-        // Calcular nueva posición absoluta
-        int newCursorPos = 0;
-        for (int i = 0; i < previousLineIndex; i++)
-        {
-            newCursorPos += lines[i].Length + 1; // +1 por el '\n'
-        }
-        newCursorPos += newCharIndex;
+        int newCursorPos = previousLine.Start + newCharIndex;
 
         // Manejar selección si Shift está presionado
         if (shiftPressed)
@@ -584,50 +635,24 @@ public abstract class TextBox<T> : Rayo.Core.View<T>, IInputHandler, IFocusable,
     {
         if (!IsMultiline) return;
 
-        // Encontrar la línea actual y la posición del cursor en esa línea
-        int currentLineIndex = 0;
-        int charIndexInLine = 0;
-        int lineStartPos = 0;
-        
-        // Dividir texto en líneas
-        string[] lines = Text.Split('\n');
-        
-        // Encontrar la línea actual y la posición del cursor
-        int accumulatedPos = 0;
-        for (int i = 0; i < lines.Length; i++)
-        {
-            int lineLength = lines[i].Length;
-            if (_cursorPosition >= accumulatedPos && _cursorPosition <= accumulatedPos + lineLength)
-            {
-                currentLineIndex = i;
-                charIndexInLine = _cursorPosition - accumulatedPos;
-                lineStartPos = accumulatedPos;
-                break;
-            }
-            accumulatedPos += lineLength + 1; // +1 por el '\n'
-        }
+        EnsureMultilineCache();
+        var currentLine = GetLineInfoForCursorPosition(_cursorPosition);
+        int currentLineIndex = currentLine.LineIndex;
+        int charIndexInLine = _cursorPosition - currentLine.Start;
 
         // Si estamos en la última línea, no podemos bajar más
-        if (currentLineIndex >= lines.Length - 1)
+        if (currentLineIndex >= _multilineLines.Count - 1)
         {
             MoveCursorToEnd(shiftPressed);
             return;
         }
 
         // Calcular nueva posición en la línea siguiente
-        int nextLineIndex = currentLineIndex + 1;
-        string nextLine = lines[nextLineIndex];
+        var nextLine = _multilineLines[currentLineIndex + 1];
         
         // Mover al mismo índice de carácter o al final de la línea siguiente (lo que sea menor)
         int newCharIndex = Math.Min(charIndexInLine, nextLine.Length);
-        
-        // Calcular nueva posición absoluta
-        int newCursorPos = 0;
-        for (int i = 0; i < nextLineIndex; i++)
-        {
-            newCursorPos += lines[i].Length + 1; // +1 por el '\n'
-        }
-        newCursorPos += newCharIndex;
+        int newCursorPos = nextLine.Start + newCharIndex;
 
         // Manejar selección si Shift está presionado
         if (shiftPressed)
@@ -1026,26 +1051,17 @@ public abstract class TextBox<T> : Rayo.Core.View<T>, IInputHandler, IFocusable,
                 if (IsMultiline)
                 {
                     // Multiline selection rendering
+                    EnsureMultilineCache();
                     float lineHeight = FontSize * 1.2f;
-
-                    // Build a list of line start positions
-                    var lineStarts = new List<int> { 0 };
-                    for (int i = 0; i < Text.Length; i++)
-                    {
-                        if (Text[i] == '\n')
-                        {
-                            lineStarts.Add(i + 1);
-                        }
-                    }
 
                     // Find which lines contain the selection
                     int startLineIndex = 0;
                     int endLineIndex = 0;
 
-                    for (int i = 0; i < lineStarts.Count; i++)
+                    for (int i = 0; i < _multilineLines.Count; i++)
                     {
-                        int lineStart = lineStarts[i];
-                        int lineEnd = (i + 1 < lineStarts.Count) ? lineStarts[i + 1] - 1 : Text.Length;
+                        int lineStart = _multilineLines[i].Start;
+                        int lineEnd = lineStart + _multilineLines[i].Length;
 
                         if (selStart >= lineStart && selStart <= lineEnd)
                             startLineIndex = i;
@@ -1055,10 +1071,11 @@ public abstract class TextBox<T> : Rayo.Core.View<T>, IInputHandler, IFocusable,
                     }
 
                     // Draw selection rectangle for each line
-                    for (int lineIdx = startLineIndex; lineIdx <= endLineIndex && lineIdx < lineStarts.Count; lineIdx++)
+                    for (int lineIdx = startLineIndex; lineIdx <= endLineIndex && lineIdx < _multilineLines.Count; lineIdx++)
                     {
-                        int lineStart = lineStarts[lineIdx];
-                        int lineEnd = (lineIdx + 1 < lineStarts.Count) ? lineStarts[lineIdx + 1] - 1 : Text.Length;
+                        var lineInfo = _multilineLines[lineIdx];
+                        int lineStart = lineInfo.Start;
+                        int lineEnd = lineStart + lineInfo.Length;
 
                         // Determine selection start and end within this line
                         int selStartInLine = (lineIdx == startLineIndex) ? selStart : lineStart;
@@ -1072,11 +1089,19 @@ public abstract class TextBox<T> : Rayo.Core.View<T>, IInputHandler, IFocusable,
                         if (selEndInLine <= selStartInLine) continue;
 
                         // Measure text before selection start in this line
-                        string textBeforeSelInLine = Text.Substring(lineStart, selStartInLine - lineStart);
+                        int selectionStartOffset = selStartInLine - lineStart;
+                        int selectionLength = selEndInLine - selStartInLine;
+                        string textBeforeSelInLine = selectionStartOffset > 0
+                            ? lineInfo.DisplayText.Substring(0, Math.Min(selectionStartOffset, lineInfo.DisplayText.Length))
+                            : string.Empty;
                         var sizeBeforeSel = renderer.MeasureText(textBeforeSelInLine, FontSize);
 
                         // Measure selected text in this line
-                        string selectedTextInLine = Text.Substring(selStartInLine, selEndInLine - selStartInLine);
+                        string selectedTextInLine = selectionLength > 0 && selectionStartOffset < lineInfo.DisplayText.Length
+                            ? lineInfo.DisplayText.Substring(
+                                Math.Min(selectionStartOffset, lineInfo.DisplayText.Length),
+                                Math.Min(selectionLength, lineInfo.DisplayText.Length - Math.Min(selectionStartOffset, lineInfo.DisplayText.Length)))
+                            : string.Empty;
                         var selSize = renderer.MeasureText(selectedTextInLine, FontSize);
 
                         float selX = contentX + sizeBeforeSel.X - _scrollOffsetX;
@@ -1121,23 +1146,16 @@ public abstract class TextBox<T> : Rayo.Core.View<T>, IInputHandler, IFocusable,
 
             if (!string.IsNullOrEmpty(displayText))
             {
-                if (IsPassword && !string.IsNullOrEmpty(Text))
-                {
-                    displayText = new string('*', Text.Length);
-                }
-
                 if (IsMultiline)
                 {
-                    // Multiline rendering - supports \n and \t escape characters
-                    string[] lines = displayText.Split('\n');
+                    EnsureMultilineCache();
                     float lineHeight = FontSize * 1.2f; // Simple line height calculation
+                    int firstVisibleLine = Math.Max(0, (int)MathF.Floor(_scrollOffsetY / lineHeight));
+                    int lastVisibleLine = Math.Min(_multilineLines.Count - 1, (int)MathF.Ceiling((_scrollOffsetY + contentHeight) / lineHeight));
 
-                    for (int i = 0; i < lines.Length; i++)
+                    for (int i = firstVisibleLine; i <= lastVisibleLine; i++)
                     {
-                        string line = lines[i];
-
-                        // Replace tabs with 4 spaces for rendering
-                        string processedLine = line.Replace("\t", "    ");
+                        string processedLine = _multilineLines[i].DisplayText;
 
                         // Skip lines outside visible area (simple culling)
                         float lineY = contentY + (i * lineHeight) - _scrollOffsetY;
@@ -1176,40 +1194,12 @@ public abstract class TextBox<T> : Rayo.Core.View<T>, IInputHandler, IFocusable,
 
                 if (IsMultiline)
                 {
-                    // Multiline cursor calculation
-                    int lineIndex = 0;
-                    int lastLineEnd = 0;
-
-                    // Find which line the cursor is on
-                    for (int i = 0; i < Text.Length; i++)
-                    {
-                        if (i == _cursorPosition) break;
-                        if (Text[i] == '\n')
-                        {
-                            lineIndex++;
-                            lastLineEnd = i + 1;
-                        }
-                    }
-
-                    string currentLineText = "";
-                    int cursorIndexInLine = _cursorPosition - lastLineEnd;
-
-                    // Extract text of the current line up to cursor
-                    int nextNewline = Text.IndexOf('\n', lastLineEnd);
-                    if (nextNewline == -1) nextNewline = Text.Length;
-
-                    int lineEnd = Math.Min(nextNewline, Text.Length);
-                    if (lastLineEnd <= lineEnd)
-                    {
-                        // Get text of the line
-                        string fullLine = Text.Substring(lastLineEnd, lineEnd - lastLineEnd);
-                        // Get text up to cursor
-                        if (cursorIndexInLine <= fullLine.Length)
-                            currentLineText = fullLine.Substring(0, cursorIndexInLine);
-                        else
-                            currentLineText = fullLine; // Should not happen if logic is correct
-                    }
-
+                    var currentLine = GetLineInfoForCursorPosition(_cursorPosition);
+                    int lineIndex = currentLine.LineIndex;
+                    int cursorIndexInLine = Math.Clamp(_cursorPosition - currentLine.Start, 0, currentLine.DisplayText.Length);
+                    string currentLineText = cursorIndexInLine > 0
+                        ? currentLine.DisplayText.Substring(0, cursorIndexInLine)
+                        : string.Empty;
                     float lineHeight = FontSize * 1.2f;
                     var textSize = renderer.MeasureText(currentLineText, FontSize);
 
@@ -1594,22 +1584,11 @@ public abstract class TextBox<T> : Rayo.Core.View<T>, IInputHandler, IFocusable,
 
             // Determinar qué línea se clickeó
             int clickedLine = Math.Max(0, (int)(localY / lineHeight));
-
-            // Dividir texto en líneas
-            string[] lines = Text.Split('\n');
-
-            // Clamp a la última línea
-            clickedLine = Math.Min(clickedLine, lines.Length - 1);
-
-            // Encontrar la posición del inicio de la línea clickeada en el texto completo
-            int lineStartPos = 0;
-            for (int i = 0; i < clickedLine; i++)
-            {
-                lineStartPos += lines[i].Length + 1; // +1 por el \n
-            }
-
-            // Obtener el texto de la línea clickeada
-            string lineText = lines[clickedLine];
+            EnsureMultilineCache();
+            clickedLine = Math.Min(clickedLine, _multilineLines.Count - 1);
+            var lineInfo = _multilineLines[clickedLine];
+            int lineStartPos = lineInfo.Start;
+            string lineText = lineInfo.DisplayText;
 
             // Calcular posición X local dentro de la línea
             float localX = mouseX - contentX + _scrollOffsetX;
@@ -1624,7 +1603,7 @@ public abstract class TextBox<T> : Rayo.Core.View<T>, IInputHandler, IFocusable,
             float lineWidth = MeasureTextWidth(lineText);
             if (localX >= lineWidth)
             {
-                return lineStartPos + lineText.Length;
+                return lineStartPos + lineInfo.Length;
             }
 
             // Buscar posición dentro de la línea
@@ -1646,7 +1625,7 @@ public abstract class TextBox<T> : Rayo.Core.View<T>, IInputHandler, IFocusable,
                 }
             }
 
-            return lineStartPos + lineText.Length;
+            return lineStartPos + lineInfo.Length;
         }
         else
         {
@@ -1728,14 +1707,9 @@ public abstract class TextBox<T> : Rayo.Core.View<T>, IInputHandler, IFocusable,
         string textBeforeCursor;
         if (IsMultiline)
         {
-            // For multiline, measure only the text on the current line up to the cursor
-            // so the width reflects the cursor's X position within its line.
-            int lineStart = 0;
-            for (int i = 0; i < safeCursorPos; i++)
-            {
-                if (Text[i] == '\n') lineStart = i + 1;
-            }
-            textBeforeCursor = Text.Substring(lineStart, safeCursorPos - lineStart);
+            var lineInfo = GetLineInfoForCursorPosition(safeCursorPos);
+            int cursorIndexInLine = Math.Clamp(safeCursorPos - lineInfo.Start, 0, lineInfo.DisplayText.Length);
+            textBeforeCursor = lineInfo.DisplayText.Substring(0, cursorIndexInLine);
         }
         else
         {
@@ -1758,4 +1732,6 @@ public abstract class TextBox<T> : Rayo.Core.View<T>, IInputHandler, IFocusable,
             _scrollOffsetX = Math.Max(0, textSize.X - 10);
         }
     }
+
+    private readonly record struct TextLineInfo(int Start, int Length, string DisplayText, int LineIndex);
 }

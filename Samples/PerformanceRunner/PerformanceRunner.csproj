@@ -9,8 +9,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\Rayo.Hosting.Desktop\Rayo.Hosting.Desktop.csproj" />
-    <ProjectReference Include="..\Gallery\Gallery\Gallery.csproj" />
-    <ProjectReference Include="..\ToDoList\ToDoList.csproj" />
   </ItemGroup>
 
 </Project>
