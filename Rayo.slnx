@@ -22,6 +22,7 @@
     <Project Path="Samples/ModularApp/ModularApp.csproj" />
     <Project Path="Samples/Notepad/Notepad.csproj" />
     <Project Path="Samples/PaintApp/PaintApp.csproj" />
+    <Project Path="Samples/PerformanceRunner/PerformanceRunner.csproj" />
     <Project Path="Samples/PokemonMVVM/PokemonMVVM.csproj" />
     <Project Path="Samples/StyleDemo/StyleDemo.csproj" />
     <Project Path="Samples/TabControlApp/TabControlApp.csproj" />
