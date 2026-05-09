@@ -175,11 +175,11 @@ Prefer generated property overloads that accept `IReadableSignal<T>` over manual
 
 When a signal change mutates UI tree structure (`ClearChildren`, `AddChild`, `RemoveChild`, `Rebuild`), defer the change through `UIUpdateQueue.EnqueueUIUpdate(...)`.
 
-Outside `Build()` hooks, prefer lifecycle-owned reactive methods on `IReactiveOwner` such as `UseComputed(...)`, `UseEffect(...)`, and `UseSubscription(...)` over manual `RegisterDisposable(...)` boilerplate.
+Outside `Build()` hooks, prefer lifecycle-owned reactive methods on `IReactiveOwner` such as `UseSignal(...)`, `UseSignalList(...)`, `UseComputed(...)`, `UseEffect(...)`, and `UseSubscription(...)` over manual `RegisterDisposable(...)` boilerplate.
 
 Reference docs that currently exist in the repo:
 - `Help/SIGNALS_GUIDE.md`
-- `Help/SIGNALS_BEST_PRACTICES.md`
+
 
 ### Dependency injection
 

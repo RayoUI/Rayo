@@ -6,89 +6,107 @@ Rayo uses a signals-first reactive model for UI state and derived values.
 
 Core types:
 
-- `Signal<T>`: mutable state.
-- `Computed<T>`: derived read-only state.
-- `Effect`: imperative reactions to signal changes.
-- `SignalList<T>`: reactive collection state.
+- `Signal<T>` for mutable state
+- `Computed<T>` for derived read-only state
+- `Effect` for imperative reactions
+- `SignalList<T>` for collection state
 
-Use signals for local component state, computed values for projections, effects for side effects, and `SignalList<T>` when the state is a collection.
+Use signals for state, computed values for derivations, effects for side effects, and `SignalList<T>` when the state is a mutable collection.
 
-## When to use each type
+## The two ownership models
 
-### Use `Signal<T>` when
+Rayo supports two valid ownership models.
+
+### 1. Hooks inside `Build()`
+
+Use hooks when the state is local to a `Build()` execution and should survive rebuilds.
+
+- `Hooks.UseSignal(...)`
+- `Hooks.UseComputed(...)`
+- `Hooks.UseEffect(...)`
+
+This is the preferred pattern for local view state created inside `Build()`.
+
+### 2. `IReactiveOwner` outside `Build()`
+
+Use `IReactiveOwner` methods when the state belongs to the owner itself and is created in a constructor, `OnInit`, `OnInitialized`, or any method outside hooks.
+
+Available methods:
+
+- `Use(...)`
+- `UseSignal(...)`
+- `UseSignalList(...)`
+- `UseComputed(...)`
+- `UseEffect(...)`
+- `UseSubscription(...)`
+
+`VisualElement` and `ViewModelBase` implement `IReactiveOwner`.
+
+## Best-practice rule
+
+- Inside `Build()`: prefer hooks.
+- Outside `Build()`: prefer `IReactiveOwner` methods.
+- Avoid creating `new Signal<T>(...)`, `new Computed<T>(...)`, or `new SignalList<T>(...)` directly inside `Build()` unless you intentionally want transient state.
+
+## When to use each reactive type
+
+### `Signal<T>`
+
+Use when:
 
 - the value changes over time,
-- the value is owned by a component or view model,
-- other UI or logic needs to react to updates.
+- the value is owned by a control or view model,
+- other UI or logic needs to react to it.
 
-Examples:
+Typical examples:
 
-- current search text,
-- selected tab index,
+- search query,
+- selected tab,
 - loading flag,
-- current zoom level.
+- current zoom,
+- dialog visibility.
 
-### Use `Computed<T>` when
+### `Computed<T>`
 
-- the value can be derived from one or more signals,
-- you want to avoid duplicating state,
-- the derived value should stay consistent automatically.
+Use when:
 
-Examples:
+- the value can be derived from other signals,
+- you want to avoid duplicated state,
+- the value should stay consistent automatically.
 
-- `CanSave` from title validity and loading state,
-- filtered items from query and source list,
-- formatted labels derived from raw values.
+Typical examples:
 
-### Use `Effect` when
+- `CanSave`,
+- filtered item lists,
+- dynamic titles,
+- visibility flags.
 
-- you need to run imperative code when signals change,
-- you are logging, persisting, sending analytics, or triggering non-UI work,
-- you need to bridge reactive state to an API that is not signal-aware.
+### `Effect`
 
-Examples:
+Use when:
 
-- write to console or logger,
-- save user preferences,
-- trigger a service call,
-- enqueue UI structure updates.
+- you need imperative code to run when signals change,
+- you are logging, persisting, or calling external services,
+- you need to trigger non-UI work from reactive state.
 
-### Use `SignalList<T>` when
+### `SignalList<T>`
 
-- the state is a list that changes incrementally,
-- you want collection updates to notify subscribers,
-- computed values depend on the list contents or count.
+Use when:
 
-Examples:
-
-- task lists,
-- notifications,
-- search results,
-- selected files.
+- the state is a list,
+- the list changes incrementally,
+- UI or computed values depend on count or contents.
 
 ## `Signal<T>` basics
 
-Create a signal with an initial value:
+### Plain construction
 
 ```csharp
 private readonly Signal<string> _query = new(string.Empty);
 private readonly Signal<bool> _isBusy = new(false);
-private readonly Signal<int> _page = new(1);
 ```
 
-Read and write through `.Value`:
-
-```csharp
-_query.Value = "rayo";
-_isBusy.Value = true;
-
-string currentQuery = _query.Value;
-bool busy = _isBusy.Value;
-```
-
-Changes only notify subscribers when the new value is different from the current value according to `EqualityComparer<T>.Default`.
-
-When the signal belongs to a `VisualElement` or `ViewModelBase`, you can create it as a lifecycle-owned resource:
+### Lifecycle-owned construction
 
 ```csharp
 private readonly Signal<string> _query;
@@ -101,63 +119,37 @@ public SearchView()
 }
 ```
 
-## Subscribing to a signal
-
-You can subscribe with a typed callback:
+Read and write through `.Value`:
 
 ```csharp
-IDisposable subscription = _query.Subscribe(value =>
-{
-    Console.WriteLine($"Query changed to: {value}");
-});
+_query.Value = "rayo";
+_isBusy.Value = true;
+
+string currentQuery = _query.Value;
+bool busy = _isBusy.Value;
 ```
 
-Or with a parameterless callback:
-
-```csharp
-IDisposable subscription = _query.Subscribe(() =>
-{
-    Console.WriteLine("Query changed");
-});
-```
-
-Dispose subscriptions when the owner goes away unless the subscription is registered in a component-managed lifetime.
-
-When you are inside a `VisualElement` or `ViewModelBase`, prefer lifecycle-owned methods instead of manual registration.
-
-## Mapping a signal
-
-Use `Map(...)` to create a computed projection:
-
-```csharp
-private readonly Signal<string> _name = new("rayo");
-private readonly Computed<string> _upperName;
-
-public MyView()
-{
-    _upperName = this.UseComputed(() => _name.Value.ToUpperInvariant());
-}
-```
-
-The same projection is available through the `IReadableSignal<T>` extension method.
+Signals notify subscribers only when the value actually changes according to `EqualityComparer<T>.Default`.
 
 ## `Computed<T>` basics
 
 `Computed<T>` automatically tracks the signals it reads while evaluating its function.
 
 ```csharp
-private readonly Signal<string> _title = new(string.Empty);
-private readonly Signal<bool> _isSaving = new(false);
+private readonly Signal<string> _title;
+private readonly Signal<bool> _isSaving;
 private readonly Computed<bool> _canSave;
 
-public EditorView()
+public EditorViewModel()
 {
-    _canSave = this.UseComputed(() =>
+    _title = UseSignal(string.Empty);
+    _isSaving = UseSignal(false);
+    _canSave = UseComputed(() =>
         !string.IsNullOrWhiteSpace(_title.Value) && !_isSaving.Value);
 }
 ```
 
-Use `.Value` to read the current derived result:
+Read the current value through `.Value`:
 
 ```csharp
 if (_canSave.Value)
@@ -166,118 +158,51 @@ if (_canSave.Value)
 }
 ```
 
-## Dependency tracking in computed values
-
-Dependencies are discovered automatically from signal reads inside the compute function.
-
-```csharp
-private readonly Signal<int> _count = new(0);
-private readonly Signal<int> _step = new(2);
-
-private readonly Computed<int> _nextValue;
-
-public CounterView()
-{
-    _nextValue = this.UseComputed(() => _count.Value + _step.Value);
-}
-```
-
-When `_count` or `_step` changes, `_nextValue` becomes dirty, recomputes, and notifies its subscribers.
-
-## Subscribing to a computed value
-
-```csharp
-this.UseSubscription(_canSave, value =>
-{
-    Console.WriteLine($"Can save: {value}");
-}));
-```
-
-`Computed<T>` is disposable. Dispose it when it is not owned by hooks or component lifetime management.
-
 ## `Effect` basics
 
-`Effect` runs immediately and then re-runs whenever any signal read during execution changes.
+`Effect` runs immediately and re-runs whenever any signal read during execution changes.
 
 ```csharp
-private readonly Signal<string> _query = new(string.Empty);
+private readonly Signal<string> _query;
 
-public SearchView()
+public SearchViewModel()
 {
-    this.UseEffect(() =>
+    _query = UseSignal(string.Empty);
+
+    UseEffect(() =>
     {
-        Console.WriteLine($"Current query: {_query.Value}");
-    }));
+        Logger.Write($"Current query: {_query.Value}");
+    });
 }
 ```
 
-This is appropriate for side effects, not for representing state.
-
-## Good effect usage
-
-### Logging
-
-```csharp
-this.UseEffect(() =>
-{
-    Logger.Write($"Counter value: {_counter.Value}");
-}));
-```
-
-### Persisting preferences
-
-```csharp
-this.UseEffect(() =>
-{
-    Preferences.Set("theme", _theme.Value);
-}));
-```
-
-### Bridging state to an async workflow trigger
-
-```csharp
-this.UseEffect(() =>
-{
-    if (_reloadRequested.Value)
-    {
-        _ = ReloadAsync();
-    }
-}));
-```
-
-If the effect changes UI tree structure, defer that structural work through `UIUpdateQueue`.
+Use effects for side effects, not as state containers.
 
 ## `SignalList<T>` basics
 
-Create a reactive list:
+### Plain construction
 
 ```csharp
 private readonly SignalList<string> _items = new();
 ```
 
-Or create it as a lifecycle-owned resource:
+### Lifecycle-owned construction
 
 ```csharp
 private readonly SignalList<string> _items;
 
-public ItemsView()
+public ItemsViewModel()
 {
     _items = UseSignalList<string>();
 }
 ```
 
-Or seed it from existing data:
-
-```csharp
-private readonly SignalList<string> _items = new(["One", "Two", "Three"]);
-```
-
-Lifecycle-owned seeded variant:
+Seeded variant:
 
 ```csharp
 private readonly SignalList<string> _items;
 
-public ItemsView()
+public ItemsViewModel()
 {
     _items = UseSignalList(["One", "Two", "Three"]);
 }
@@ -292,32 +217,51 @@ _items.Remove("Two");
 _items.Clear();
 ```
 
-Read reactive collection state through:
+Reactive reads include:
 
-- `_items.Value` for the full read-only list,
-- `_items.Count` for the item count,
-- enumeration or indexed access.
+- `_items.Value`
+- `_items.Count`
+- indexed access
+- enumeration
 
-These reads participate in dependency tracking.
+List mutations such as `Add`, `Remove`, `Clear`, and index assignment notify reactive dependents and change subscribers.
 
-## Subscribing to `SignalList<T>`
+## Subscriptions
 
-### Subscribe to the full collection
+### Manual subscription
 
 ```csharp
-this.UseSubscription(_items, values =>
+IDisposable subscription = _query.Subscribe(value =>
 {
-    Console.WriteLine($"Item count: {values.Count}");
-}));
+    Console.WriteLine($"Query changed to: {value}");
+});
 ```
 
-### Subscribe to individual list changes
+### Lifecycle-owned subscription
 
 ```csharp
-this.UseSubscription(_items, change =>
+UseSubscription(_query, value =>
 {
-    Console.WriteLine($"Type: {change.Type}, Index: {change.Index}");
-}));
+    Logger.Write($"Query changed: {value}");
+});
+```
+
+For `SignalList<T>` you can subscribe to full-list updates:
+
+```csharp
+UseSubscription(_items, values =>
+{
+    Logger.Write($"Count: {values.Count}");
+});
+```
+
+Or to change events:
+
+```csharp
+UseSubscription(_items, change =>
+{
+    Logger.Write($"Type: {change.Type}, Index: {change.Index}");
+});
 ```
 
 `SignalListChange<T>` exposes:
@@ -327,53 +271,120 @@ this.UseSubscription(_items, change =>
 - `NewValue`
 - `OldValue`
 
-## Derived values from `SignalList<T>`
+## Common `SignalList<T>` patterns
 
-Use `Computed<T>` or `Map(...)` when the UI depends on aggregate values.
+### Derived count
 
 ```csharp
-private readonly SignalList<TaskItem> _tasks = new();
-private readonly Computed<int> _completedCount;
-private readonly Computed<bool> _hasTasks;
+private readonly SignalList<TodoItem> _items;
+private readonly Computed<int> _pendingCount;
 
-public TasksView()
+public TodoViewModel()
 {
-    _completedCount = this.UseComputed(() => _tasks.Count(task => task.IsDone));
-    _hasTasks = this.UseComputed(() => _tasks.Count > 0);
+    _items = UseSignalList<TodoItem>();
+    _pendingCount = UseComputed(() => _items.Count(item => !item.Done));
 }
 ```
 
-## Lifecycle-owned methods outside hooks
+### Binding a control property
 
-If you are outside `Build()` and still inside a type with lifecycle ownership, use these methods:
+```csharp
+new TreeView()
+    .Items(_items);
+```
 
-- `Use(...)`
-- `UseSignal(...)`
-- `UseSignalList(...)`
-- `UseComputed(...)`
-- `UseEffect(...)`
-- `UseSubscription(...)`
+### Listening for structural changes
+
+```csharp
+UseSubscription(_items, change =>
+{
+    UIUpdateQueue.EnqueueUIUpdate(RebuildRows);
+});
+```
+
+## Mapping and projections
+
+Use `Map(...)` to derive a projection from any readable signal.
+
+```csharp
+var upperName = _name.Map(value => value.ToUpperInvariant());
+```
+
+Use `Computed<T>` when the derived value depends on multiple signals or when you want an explicitly owned field.
+
+```csharp
+_canSave = UseComputed(() =>
+    !string.IsNullOrWhiteSpace(_title.Value) && !_isSaving.Value);
+```
+
+## Hooks inside `Build()`
+
+When state is local to `Build()`, use hooks.
+
+```csharp
+public override VisualElement Build()
+{
+    var count = Hooks.UseSignal(0);
+    var label = Hooks.UseComputed(() => $"Count: {count.Value}");
+
+    Hooks.UseEffect(() =>
+    {
+        Console.WriteLine($"Counter changed to {count.Value}");
+    }, count);
+
+    return new VStack()
+        .Spacing(12)
+        .Children(
+            new Label().Text(label.Value),
+            new HStack()
+                .Spacing(8)
+                .Children(
+                    new Button().Text("-").OnTapped(() => count.Value--),
+                    new Button().Text("+").OnTapped(() => count.Value++)
+                )
+        );
+}
+```
+
+### Why hooks are preferred inside `Build()`
+
+`Build()` can run multiple times. Hooks keep state stable across rebuilds.
+
+Avoid this pattern inside `Build()`:
+
+```csharp
+var count = new Signal<int>(0);
+var label = new Computed<string>(() => $"Count: {count.Value}");
+```
+
+That recreates state every rebuild and usually leads to fragile behavior.
+
+## `IReactiveOwner` outside `Build()`
+
+Use owner methods when the state belongs to the control or view model instance.
 
 ### Example in a control
 
 ```csharp
 public class EditorView : UserControl
 {
-    private readonly Signal<string> _title = new(string.Empty);
-    private readonly Signal<bool> _isBusy = new(false);
+    private readonly Signal<string> _title;
+    private readonly Signal<bool> _isBusy;
     private readonly Computed<bool> _canSave;
 
     public EditorView()
     {
-        _canSave = this.UseComputed(() =>
+        _title = UseSignal(string.Empty);
+        _isBusy = UseSignal(false);
+        _canSave = UseComputed(() =>
             !string.IsNullOrWhiteSpace(_title.Value) && !_isBusy.Value);
 
-        this.UseEffect(() =>
+        UseEffect(() =>
         {
             Console.WriteLine($"Can save changed: {_canSave.Value}");
         });
 
-        this.UseSubscription(_title, value =>
+        UseSubscription(_title, value =>
         {
             Console.WriteLine($"Title: {value}");
         });
@@ -386,22 +397,23 @@ public class EditorView : UserControl
 ```csharp
 public class EditorViewModel : ViewModelBase
 {
-    private readonly Signal<string> _title = new(string.Empty);
-    private readonly Signal<bool> _isBusy = new(false);
-
+    private readonly Signal<string> _title;
+    private readonly Signal<bool> _isBusy;
     private readonly Computed<bool> _canSave;
 
     public EditorViewModel()
     {
-        _canSave = this.UseComputed(() =>
+        _title = UseSignal(string.Empty);
+        _isBusy = UseSignal(false);
+        _canSave = UseComputed(() =>
             !string.IsNullOrWhiteSpace(_title.Value) && !_isBusy.Value);
 
-        this.UseEffect(() =>
+        UseEffect(() =>
         {
             Logger.Write($"Can save: {_canSave.Value}");
         });
 
-        this.UseSubscription(_title, value =>
+        UseSubscription(_title, value =>
         {
             Logger.Write($"Title changed: {value}");
         });
@@ -409,78 +421,45 @@ public class EditorViewModel : ViewModelBase
 }
 ```
 
-## Using hooks inside `Build()`
+## MVVM guidance
 
-Inside `UserControl.Build()`, prefer hook ownership for local reactive state.
+`ViewModelBase` implements `IReactiveOwner`, so view models can use:
 
-Available hooks:
+- `UseSignal(...)`
+- `UseSignalList(...)`
+- `UseComputed(...)`
+- `UseEffect(...)`
+- `UseSubscription(...)`
 
-- `Hooks.UseSignal(...)`
-- `Hooks.UseComputed(...)`
-- `Hooks.UseEffect(...)`
+This is the preferred reactive API for long-lived MVVM state.
 
-`UserControl` already calls `Hooks.Begin(this)` before `Build()`, so hooks are safe there.
+## Structural UI updates must be deferred
 
-### Example: counter with hooks
+If a signal change mutates the UI tree structure (`ClearChildren`, `AddChild`, `RemoveChild`, `Rebuild`), defer the work through `UIUpdateQueue.EnqueueUIUpdate(...)`.
 
-```csharp
-public class CounterCard : UserControl
-{
-    public override VisualElement Build()
-    {
-        var count = Hooks.UseSignal(0);
-        var label = Hooks.UseComputed(() => $"Count: {count.Value}");
-
-        Hooks.UseEffect(() =>
-        {
-            Console.WriteLine($"Counter changed to {count.Value}");
-        }, count);
-
-        return new VStack()
-            .Spacing(12)
-            .Children(
-                new Label().Text(label.Value),
-                new HStack()
-                    .Spacing(8)
-                    .Children(
-                        new Button().Text("-").OnTapped(() => count.Value--),
-                        new Button().Text("+").OnTapped(() => count.Value++)
-                    )
-            );
-    }
-}
-```
-
-### Example: filter UI with hooks
+Correct:
 
 ```csharp
-public class SearchPanel : UserControl
+UseSubscription(_items, () =>
 {
-    public override VisualElement Build()
-    {
-        var query = Hooks.UseSignal(string.Empty);
-        var items = Hooks.UseSignal(new[] { "Button", "Label", "ComboBox", "ListView" });
-        var filtered = Hooks.UseComputed(() =>
-            items.Value
-                .Where(x => x.Contains(query.Value, StringComparison.OrdinalIgnoreCase))
-                .ToArray());
-
-        return new VStack()
-            .Spacing(10)
-            .Children(
-                new Entry()
-                    .Placeholder("Search controls")
-                    .Text(query),
-                new Label().Text($"Matches: {filtered.Value.Length}"),
-                new Label().Text(string.Join(", ", filtered.Value))
-            );
-    }
-}
+    UIUpdateQueue.EnqueueUIUpdate(RebuildRows);
+});
 ```
+
+Or batched by owner element:
+
+```csharp
+UseSubscription(_items, () =>
+{
+    UIUpdateQueue.EnqueueUIUpdate(this, Rebuild);
+});
+```
+
+Avoid mutating UI structure synchronously from a signal callback.
 
 ## Binding UI properties to signals
 
-Prefer property overloads that accept `IReadableSignal<T>` instead of manual subscriptions.
+Prefer signal-aware property overloads over manual subscriptions when available.
 
 ```csharp
 var title = new Signal<string>("Welcome");
@@ -491,13 +470,76 @@ var button = new Button()
     .IsEnabled(isEnabled);
 ```
 
-This keeps the element reactive without custom subscription plumbing.
+This keeps the element reactive without extra plumbing.
 
-## Manual subscriptions vs signal-aware property binding
+## Common mistakes to avoid
 
-Prefer this:
+### 1. Creating manual signals inside `Build()`
+
+Prefer hooks there.
+
+### 2. Duplicating derived state
+
+Avoid storing values that can be derived from other signals. Prefer `Computed<T>`.
+
+### 3. Using effects as state storage
+
+Effects are for reactions, not for holding data.
+
+### 4. Forgetting ownership outside hooks
+
+If a `Computed<T>`, `Effect`, or subscription is long-lived and created outside hooks, give it a clear owner.
+
+### 5. Mutating UI structure immediately from subscriptions
+
+Use `UIUpdateQueue.EnqueueUIUpdate(...)`.
+
+## Practical patterns
+
+### Form validation
 
 ```csharp
+var name = UseSignal(string.Empty);
+var email = UseSignal(string.Empty);
+var canSubmit = UseComputed(() =>
+    !string.IsNullOrWhiteSpace(name.Value) &&
+    email.Value.Contains('@'));
+```
+
+### Busy state
+
+```csharp
+var isBusy = UseSignal(false);
+
+var button = new Button()
+    .Text("Save")
+    .IsEnabled(isBusy.Map(x => !x));
+```
+
+### Empty state from `SignalList<T>`
+
+```csharp
+var notifications = UseSignalList<string>();
+var isEmpty = UseComputed(() => notifications.Count == 0);
+```
+
+### Selection state
+
+```csharp
+var selectedIndex = UseSignal(-1);
+var hasSelection = UseComputed(() => selectedIndex.Value >= 0);
+```
+
+## Summary
+
+- Use hooks for state created inside `Build()`.
+- Use `IReactiveOwner` methods for state created outside hooks.
+- Use `Signal<T>` for mutable state.
+- Use `SignalList<T>` for mutable collections.
+- Use `Computed<T>` for derived state.
+- Use `Effect` for side effects.
+- Prefer signal-aware UI bindings where available.
+- Defer structural UI mutations through `UIUpdateQueue.EnqueueUIUpdate(...)`.
 new Label().Text(nameSignal);
 ```
 

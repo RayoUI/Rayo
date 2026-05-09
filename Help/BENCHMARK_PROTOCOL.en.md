@@ -1,27 +1,27 @@
 # Benchmark Protocol
 
-Protocol for measuring performance changes in the `RayoUI` core in a repeatable way.
+Protocol for measuring core performance changes in `RayoUI` in a repeatable way.
 
 ## Goal
 
-Have a consistent way to compare:
+Provide a consistent way to compare:
 
-- the direct desktop `OpenGL` backend
-- the opt-in `SkiaSharp` backend
-- future layout, rendering, virtualization, and styling optimizations
+- the desktop OpenGL backend
+- the opt-in SkiaSharp backend
+- future optimizations to layout, rendering, virtualization and styles
 
-## Baseline scenarios
+## Base scenarios
 
 Use at least one representative app per category:
 
 - `Samples/Gallery` for general UI
 - `Samples/ToDoList` for lists and common controls
-- `Samples/VisualScripting` for a dense scene
+- `Samples/VisualScripting` for dense-scene scenarios
 - `Samples/Notepad` or `TextBox`/`Editor` for input and text
 
 ## Scenarios to measure
 
-Measure the following in each app:
+For each app measure:
 
 1. `Idle`
 2. `Hover`
@@ -32,10 +32,10 @@ Measure the following in each app:
 
 ## Preparation
 
-- Run on the same machine and at the same resolution
-- Keep the same build (`Debug` or `Release`) across comparisons
+- Run on the same machine and resolution
+- Keep the same build (`Debug` or `Release`) between comparisons
 - Close unnecessary tools
-- Wait a few seconds before capturing to avoid initial warm-up noise
+- Wait a few seconds before capturing to avoid initial warmup
 - Enable `PerformanceTracker.IsEnabled = true` or DevTools
 - Clear history before each scenario with `PerformanceTracker.ClearFrameHistory()`
 
@@ -46,7 +46,7 @@ To compare desktop backends without changing code:
 
 ## Recommended capture
 
-Capture between `60` and `120` frames per scenario and record:
+Capture between `60` and `120` frames per scenario and save:
 
 - `Avg FPS`
 - `Avg Frame Time`
@@ -76,7 +76,7 @@ dotnet run --project Samples\PerformanceRunner\PerformanceRunner.csproj -- galle
 dotnet run --project Samples\PerformanceRunner\PerformanceRunner.csproj -- todo 60 120
 ```
 
-With backend selection:
+With backend selector:
 
 ```powershell
 $env:RAYO_DESKTOP_RENDERER='opengl'
@@ -104,7 +104,7 @@ Avg Elements Rendered: ...
 
 ## Improvement criteria
 
-For backend/rendering changes:
+For backend/render changes:
 
 - reduce `Avg Frame Time`
 - reduce `P95 Frame Time`
@@ -122,7 +122,7 @@ For virtualization:
 - reduce `Avg Elements Arranged`
 - reduce `Avg Elements Rendered`
 
-## Practical rule
+## Rule of thumb
 
-Do not mark a phase as complete based only on visual impression.
-Always support completion with at least one `before/after` comparison table.
+Do not mark a phase as closed based only on visual impression.
+Always accompany closures with at least a before/after comparison table.
