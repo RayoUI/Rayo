@@ -418,6 +418,8 @@ public class ScrollView : CompositeView<ScrollView>, IInputHandler, IScrollable,
     {
         // ✅ FIX: Detect size change and force re-measure
         bool sizeChanged = ComputedWidth != width || ComputedHeight != height;
+        bool canScrollVertically = Orientation == ScrollOrientation.Vertical || Orientation == ScrollOrientation.Both;
+        bool canScrollHorizontally = Orientation == ScrollOrientation.Horizontal || Orientation == ScrollOrientation.Both;
 
         base.Arrange(x, y, width, height);
 
@@ -494,7 +496,10 @@ public class ScrollView : CompositeView<ScrollView>, IInputHandler, IScrollable,
                     break;
 
                 case HorizontalAlignment.Stretch:
-                    childWidth = contentAreaWidth - child.Margin.Horizontal;
+                    // In a scrollable axis, keep the child's measured size if it exceeds the viewport.
+                    childWidth = canScrollHorizontally
+                        ? Math.Max(contentAreaWidth - child.Margin.Horizontal, childWidth)
+                        : contentAreaWidth - child.Margin.Horizontal;
                     break;
             }
 
@@ -514,9 +519,10 @@ public class ScrollView : CompositeView<ScrollView>, IInputHandler, IScrollable,
                     break;
 
                 case VerticalAlignment.Stretch:
-                    // ✅ FIX: Allow stretching to content size if larger than viewport
-                    // Otherwise content is clamped to viewport height, defeating scrolling purpose
-                    childHeight = Math.Max(contentAreaHeight - child.Margin.Vertical, child.DesiredHeight);
+                    // In a scrollable axis, keep the child's measured size if it exceeds the viewport.
+                    childHeight = canScrollVertically
+                        ? Math.Max(contentAreaHeight - child.Margin.Vertical, childHeight)
+                        : contentAreaHeight - child.Margin.Vertical;
                     break;
             }
 

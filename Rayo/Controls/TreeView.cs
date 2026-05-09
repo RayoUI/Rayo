@@ -131,8 +131,9 @@ public class TreeNode
 /// </summary>
 internal class TreeNodeView : CompositeView<TreeNodeView>
 {
-    private readonly TreeNode _node;
+    private TreeNode _node;
     private readonly TreeView _treeView;
+    private readonly bool _includeChildren;
     private VStack? _layout;
     private VStack? _childrenContainer;
     private TreeNodeHeaderButton? _headerButton;
@@ -140,11 +141,36 @@ internal class TreeNodeView : CompositeView<TreeNodeView>
 
     public TreeNode Node => _node;
 
-    public TreeNodeView(TreeNode node, TreeView treeView)
+    public TreeNodeView(TreeNode node, TreeView treeView, bool includeChildren = true)
     {
         _node = node;
         _treeView = treeView;
+        _includeChildren = includeChildren;
         BuildComponents();
+    }
+
+    public void BindNode(TreeNode node)
+    {
+        if (ReferenceEquals(_node, node))
+        {
+            RefreshVisuals();
+            _headerButton?.RefreshContent();
+            return;
+        }
+
+        _node = node;
+
+        if (!_includeChildren)
+        {
+            ResetVirtualizedContent();
+        }
+        else
+        {
+            _headerButton?.RefreshContent();
+            UpdateExpandedState();
+        }
+
+        RefreshVisuals();
     }
 
     private void BuildComponents()
@@ -168,17 +194,43 @@ internal class TreeNodeView : CompositeView<TreeNodeView>
             _layout.AddChild(_headerButton);
         }
 
-        _childrenContainer = new VStack()
-            .Spacing(0)
-            .HorizontalAlignment(HorizontalAlignment.Stretch);
-
-        if (_node.IsExpanded)
+        if (_includeChildren)
         {
-            _layout.AddChild(_childrenContainer);
-            RebuildChildren();
+            _childrenContainer = new VStack()
+                .Spacing(0)
+                .HorizontalAlignment(HorizontalAlignment.Stretch);
+
+            if (_node.IsExpanded)
+            {
+                _layout.AddChild(_childrenContainer);
+                RebuildChildren();
+            }
         }
 
         RefreshVisuals();
+    }
+
+    private void ResetVirtualizedContent()
+    {
+        if (_layout == null)
+            return;
+
+        _layout.ClearChildren();
+        _headerButton = null;
+
+        if (_node.CustomTemplate != null)
+        {
+            var customContent = _node.CustomTemplate(_node, _treeView);
+            _layout.AddChild(customContent);
+        }
+        else
+        {
+            _headerButton = new TreeNodeHeaderButton(this);
+            _headerButton.Tapped += _ => OnNodeClicked();
+            _layout.AddChild(_headerButton);
+        }
+
+        MarkNeedsLayout();
     }
 
     private void OnNodeClicked()
@@ -190,6 +242,7 @@ internal class TreeNodeView : CompositeView<TreeNodeView>
             _node.IsExpanded = !_node.IsExpanded;
             UpdateExpandedState();
             _treeView.NotifyNodeExpanded(_node, _node.IsExpanded);
+            _treeView.RequestTreeRefresh();
         }
 
         _treeView.SelectNode(_node);
@@ -198,6 +251,12 @@ internal class TreeNodeView : CompositeView<TreeNodeView>
     private void UpdateExpandedState()
     {
         if (_layout == null || _childrenContainer == null) return;
+        if (!_includeChildren)
+        {
+            _headerButton?.RefreshContent();
+            MarkNeedsLayout();
+            return;
+        }
 
         if (_node.IsExpanded)
         {
@@ -320,6 +379,7 @@ internal class TreeNodeView : CompositeView<TreeNodeView>
                 _owner._node.IsExpanded = !_owner._node.IsExpanded;
                 _owner.UpdateExpandedState();
                 _owner._treeView.NotifyNodeExpanded(_owner._node, _owner._node.IsExpanded);
+                _owner._treeView.RequestTreeRefresh();
             }
 
             Tapped?.Invoke(e);
@@ -554,8 +614,8 @@ public class TreeView : CompositeView<TreeView>
     } = new();
     
     private TreeNode? _selectedNode = null;
-    private VStack? _treeContainer;
     private ScrollView? _scrollView;
+    private VirtualizedTreePanel? _treeContainer;
     private Frame? _rootFrame;
     private readonly Dictionary<TreeNode, TreeNodeView> _nodeViews = new();
 
@@ -748,14 +808,11 @@ public class TreeView : CompositeView<TreeView>
 
     private void BuildComponents()
     {
-        _treeContainer = new VStack()
-            .Spacing(0)
-            .HorizontalAlignment(HorizontalAlignment.Stretch);
-
         _scrollView = new ScrollView()
-            .Content(_treeContainer)
             .HorizontalAlignment(HorizontalAlignment.Stretch)
             .VerticalAlignment(VerticalAlignment.Stretch);
+        _treeContainer = new VirtualizedTreePanel(this, _scrollView);
+        _scrollView.Content(_treeContainer);
 
         _rootFrame = new Frame()
             .Background(Background)
@@ -929,6 +986,7 @@ public class TreeView : CompositeView<TreeView>
             newView.IsSelected = true;
         }
 
+        EnsureNodeVisible(node);
         NodeSelected?.Invoke(node);
         MarkNeedsPaint();
     }
@@ -944,21 +1002,80 @@ public class TreeView : CompositeView<TreeView>
         NodeExpanded?.Invoke(node, isExpanded);
     }
 
+    internal void RequestTreeRefresh()
+    {
+        RebuildTree();
+    }
+
+    internal void ReplaceVisibleNodeViews(Dictionary<TreeNode, TreeNodeView> visibleViews)
+    {
+        _nodeViews.Clear();
+
+        foreach (var pair in visibleViews)
+        {
+            _nodeViews[pair.Key] = pair.Value;
+            pair.Value.RefreshVisuals();
+        }
+    }
+
     private void RebuildTree()
     {
         if (_treeContainer == null) return;
 
-        _treeContainer.ClearChildren();
-        _nodeViews.Clear();
+        _treeContainer.Configure(
+            GetVisibleNodes(),
+            ItemHeight,
+            () => new TreeNodeView(new TreeNode(string.Empty), this, includeChildren: false),
+            BindVirtualizedNodeView);
+
+        MarkNeedsLayout();
+    }
+
+    private void BindVirtualizedNodeView(VisualElement element, TreeNode node)
+    {
+        if (element is TreeNodeView nodeView)
+        {
+            nodeView.BindNode(node);
+        }
+    }
+
+    private List<TreeNode> GetVisibleNodes()
+    {
+        var visibleNodes = new List<TreeNode>();
 
         foreach (var rootNode in RootNodes)
         {
-            var nodeView = new TreeNodeView(rootNode, this);
-            _treeContainer.AddChild(nodeView);
-            RegisterNodeView(rootNode, nodeView);
+            AddVisibleNodeRecursive(rootNode, visibleNodes);
         }
 
-        MarkNeedsLayout();
+        return visibleNodes;
+    }
+
+    private static void AddVisibleNodeRecursive(TreeNode node, List<TreeNode> visibleNodes)
+    {
+        visibleNodes.Add(node);
+
+        if (!node.IsExpanded)
+            return;
+
+        foreach (var child in node.Children)
+        {
+            AddVisibleNodeRecursive(child, visibleNodes);
+        }
+    }
+
+    private void EnsureNodeVisible(TreeNode node)
+    {
+        if (_scrollView == null)
+            return;
+
+        var visibleNodes = GetVisibleNodes();
+        int index = visibleNodes.IndexOf(node);
+        if (index < 0)
+            return;
+
+        float itemY = index * Math.Max(1, ItemHeight);
+        _scrollView.EnsureRectVisible(0, itemY, 1, Math.Max(1, ItemHeight));
     }
 
     public override void Measure(float availableWidth, float availableHeight)
@@ -989,5 +1106,157 @@ public class TreeView : CompositeView<TreeView>
     public override void Render(IRenderer renderer)
     {
         _rootFrame?.Render(renderer);
+    }
+}
+
+internal sealed class VirtualizedTreePanel : CompositeView<VirtualizedTreePanel>
+{
+    private readonly TreeView _ownerTreeView;
+    private readonly ScrollView _ownerScrollView;
+    private IReadOnlyList<TreeNode> _visibleNodes = Array.Empty<TreeNode>();
+    private float _itemHeight;
+    private Func<VisualElement>? _itemFactory;
+    private Action<VisualElement, TreeNode>? _itemBinder;
+    private readonly Dictionary<int, VisualElement> _activeChildren = new();
+    private readonly Stack<VisualElement> _recycledChildren = new();
+    private int _firstMaterializedIndex = -1;
+    private int _lastMaterializedIndex = -1;
+    private int _version;
+    private int _materializedVersion = -1;
+    private const int OverscanItems = 2;
+
+    public VirtualizedTreePanel(TreeView ownerTreeView, ScrollView ownerScrollView)
+    {
+        _ownerTreeView = ownerTreeView;
+        _ownerScrollView = ownerScrollView;
+        HorizontalAlignment = HorizontalAlignment.Stretch;
+        VerticalAlignment = VerticalAlignment.Top;
+    }
+
+    public void Configure(
+        IReadOnlyList<TreeNode> visibleNodes,
+        float itemHeight,
+        Func<VisualElement> itemFactory,
+        Action<VisualElement, TreeNode> itemBinder)
+    {
+        _visibleNodes = visibleNodes ?? Array.Empty<TreeNode>();
+        _itemHeight = itemHeight;
+        _itemFactory = itemFactory;
+        _itemBinder = itemBinder;
+        _version++;
+        _firstMaterializedIndex = -1;
+        _lastMaterializedIndex = -1;
+        MarkNeedsLayout();
+    }
+
+    public override void Measure(float availableWidth, float availableHeight)
+    {
+        DesiredWidth = float.IsInfinity(availableWidth) || availableWidth <= 0 ? Width : availableWidth;
+        DesiredHeight = _visibleNodes.Count * Math.Max(1, _itemHeight);
+    }
+
+    public override void Arrange(float x, float y, float width, float height)
+    {
+        base.Arrange(x, y, width, height);
+
+        if (_itemFactory == null || _itemBinder == null || _visibleNodes.Count == 0)
+        {
+            ClearMaterializedChildren();
+            return;
+        }
+
+        float itemExtent = Math.Max(1, _itemHeight);
+        float viewportHeight = Math.Max(0, _ownerScrollView.ComputedHeight - _ownerScrollView.Padding.Vertical);
+        float scrollOffset = _ownerScrollView.VerticalScrollOffset;
+
+        int firstVisible = Math.Max(0, (int)MathF.Floor(scrollOffset / itemExtent) - OverscanItems);
+        int visibleCount = Math.Max(1, (int)MathF.Ceiling(viewportHeight / itemExtent) + OverscanItems * 2);
+        int lastVisible = Math.Min(_visibleNodes.Count - 1, firstVisible + visibleCount - 1);
+
+        if (firstVisible != _firstMaterializedIndex ||
+            lastVisible != _lastMaterializedIndex ||
+            _materializedVersion != _version)
+        {
+            MaterializeRange(firstVisible, lastVisible);
+        }
+
+        foreach (var pair in Children.Select((child, localIndex) => (child, localIndex)))
+        {
+            int itemIndex = _firstMaterializedIndex + pair.localIndex;
+            float itemY = y + itemIndex * itemExtent;
+            pair.child.Measure(width, itemExtent);
+            pair.child.Arrange(x, itemY, width, itemExtent);
+        }
+    }
+
+    public override void Render(IRenderer renderer)
+    {
+    }
+
+    private void MaterializeRange(int firstIndex, int lastIndex)
+    {
+        var requiredIndices = new HashSet<int>();
+        for (int index = firstIndex; index <= lastIndex; index++)
+        {
+            requiredIndices.Add(index);
+        }
+
+        var orderedChildren = new List<VisualElement>(requiredIndices.Count);
+        var visibleViews = new Dictionary<TreeNode, TreeNodeView>();
+
+        foreach (var active in _activeChildren.ToArray())
+        {
+            if (requiredIndices.Contains(active.Key))
+                continue;
+
+            active.Value.Parent = null;
+            _activeChildren.Remove(active.Key);
+            _recycledChildren.Push(active.Value);
+        }
+
+        for (int index = firstIndex; index <= lastIndex; index++)
+        {
+            var node = _visibleNodes[index];
+            if (!_activeChildren.TryGetValue(index, out var child))
+            {
+                child = _recycledChildren.Count > 0 ? _recycledChildren.Pop() : _itemFactory!();
+                _activeChildren[index] = child;
+            }
+
+            _itemBinder!(child, node);
+            orderedChildren.Add(child);
+
+            if (child is TreeNodeView nodeView)
+            {
+                visibleViews[node] = nodeView;
+            }
+        }
+
+        Children = orderedChildren;
+        _firstMaterializedIndex = firstIndex;
+        _lastMaterializedIndex = lastIndex;
+        _materializedVersion = _version;
+
+        _ownerTreeView.ReplaceVisibleNodeViews(visibleViews);
+    }
+
+    private void ClearMaterializedChildren()
+    {
+        if (Children.Count == 0 && _firstMaterializedIndex == -1 && _lastMaterializedIndex == -1)
+            return;
+
+        foreach (var child in Children)
+        {
+            child.Parent = null;
+            _recycledChildren.Push(child);
+        }
+
+        Children = [];
+        _activeChildren.Clear();
+        _firstMaterializedIndex = -1;
+        _lastMaterializedIndex = -1;
+        _materializedVersion = _version;
+
+        _ownerTreeView.ReplaceVisibleNodeViews(new Dictionary<TreeNode, TreeNodeView>());
     }
 }

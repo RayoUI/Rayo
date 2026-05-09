@@ -68,13 +68,19 @@ public class DataGrid : CompositeView<DataGrid>
     public int SelectedIndex
     {
         get => field;
-        set => this.SetProperty(ref field, value, () => { Rebuild(); SelectionChanged?.Invoke(value); });
+        set => this.SetProperty(ref field, value, () =>
+        {
+            Rebuild();
+            EnsureSelectedRowVisible();
+            SelectionChanged?.Invoke(value);
+        });
     } = -1;
     #endregion
 
     // Visual components
     private Grid? _grid;
     private ScrollView? _scrollView;
+    private VirtualizedDataGridRowsPanel? _rowsPanel;
     private readonly List<float> _columnWeights = new();
     private const float ScrollbarSpacerWidth = 8f; // Match ScrollView's default ScrollbarWidth
 
@@ -200,6 +206,11 @@ public class DataGrid : CompositeView<DataGrid>
     private void BuildGrid()
     {
         _grid = new Grid();
+        _scrollView = new ScrollView();
+        _scrollView.HorizontalAlignment = HorizontalAlignment.Stretch;
+        _scrollView.VerticalAlignment = VerticalAlignment.Stretch;
+        _rowsPanel = new VirtualizedDataGridRowsPanel(_scrollView);
+        _scrollView.Content(_rowsPanel);
         ApplyGridStyling();
         AddChild(_grid);
     }
@@ -321,73 +332,58 @@ public class DataGrid : CompositeView<DataGrid>
 
     private void BuildDataRows()
     {
-        if (_grid == null) return;
+        if (_grid == null || _scrollView == null || _rowsPanel == null) return;
 
-        // Create a container Grid for all data rows that shares column definitions with header
-        var dataGrid = new Grid();
-        dataGrid.RowSpacing = 0;
-        dataGrid.ColumnSpacing = 0;
-        dataGrid.HorizontalAlignment = HorizontalAlignment.Stretch;
-
-        // Use EXACT same column definitions as the main grid
-        foreach (var weight in _columnWeights)
-        {
-            dataGrid.ColumnDefinitions.Add(GridLength.Stars(weight));
-        }
-
-        // Add row definitions for each data row
-        for (int row = 0; row < Items.Count; row++)
-        {
-            dataGrid.RowDefinitions.Add(GridLength.Pixels(RowHeight));
-        }
-
-        // Add cells to the data grid
-        for (int row = 0; row < Items.Count; row++)
-        {
-            var item = Items[row];
-            int rowIndex = row;
-            bool isSelected = row == SelectedIndex;
-
-            // Determine row background color
-            Brush rowBg = isSelected ? SelectedRowColor :
-                         (AlternatingRows && row % 2 == 1) ? AlternateRowColor :
-                         RowBackground;
-
-            for (int col = 0; col < Columns.Count; col++)
-            {
-                var column = Columns[col];
-                var cellValue = GetCellValue(item, column);
-                var textColor = isSelected ? SelectedTextColor : new Color(225, 229, 238);
-
-                var cell = new Button();
-                cell.Text(cellValue);
-                cell.TextColor(textColor);
-                cell.FontSize(13);
-                cell.Background(rowBg);
-                cell.HoverBackground(rowBg);
-                cell.PressedBackground(isSelected ? SelectedRowColor : new Color(50, 55, 65));
-                cell.BorderColor(ShowGridLines ? GridLineColor : Color.Transparent);
-                cell.BorderWidth(ShowGridLines ? 1 : 0);
-                cell.BorderRadius(0);
-                cell.Padding(new Thickness(8, 0, 8, 0));
-                cell.Height(RowHeight);
-                cell.HorizontalAlignment(HorizontalAlignment.Stretch);
-                cell.VerticalAlignment(VerticalAlignment.Stretch);
-                cell.TextAlignment(HorizontalAlignment.Left);
-                cell.OnTapped(() => SelectedIndex = rowIndex);
-
-                dataGrid.AddChild(cell, row, col);
-            }
-        }
-
-        // Wrap data grid in ScrollView
-        _scrollView = new ScrollView();
-        _scrollView.Content(dataGrid);
-        _scrollView.HorizontalAlignment = HorizontalAlignment.Stretch;
-        _scrollView.VerticalAlignment = VerticalAlignment.Stretch;
+        _rowsPanel.Configure(
+            Items,
+            Columns,
+            _columnWeights,
+            RowHeight,
+            AlternatingRows,
+            ShowGridLines,
+            CreateVirtualizedRow,
+            BindVirtualizedRow);
 
         // Add scrollview to main grid (row 1, spanning all columns including scrollbar spacer)
         _grid.AddChild(_scrollView, 1, 0, 1, Columns.Count + 1);
+    }
+
+    private VisualElement CreateVirtualizedRow()
+    {
+        return new RecyclableDataGridRow();
+    }
+
+    private void BindVirtualizedRow(VisualElement element, int rowIndex)
+    {
+        if (element is not RecyclableDataGridRow row)
+            return;
+
+        var item = Items[rowIndex];
+        bool isSelected = rowIndex == SelectedIndex;
+        Brush rowBg = isSelected ? SelectedRowColor :
+                     (AlternatingRows && rowIndex % 2 == 1) ? AlternateRowColor :
+                     RowBackground;
+        var textColor = isSelected ? SelectedTextColor : new Color(225, 229, 238);
+        var pressedBackground = isSelected ? SelectedRowColor : new Color(50, 55, 65);
+        var borderBrush = ShowGridLines ? GridLineColor : Color.Transparent;
+        float borderWidth = ShowGridLines ? 1 : 0;
+
+        var cellValues = new string[Columns.Count];
+        for (int col = 0; col < Columns.Count; col++)
+        {
+            cellValues[col] = GetCellValue(item, Columns[col]);
+        }
+
+        row.Bind(
+            cellValues,
+            _columnWeights,
+            RowHeight,
+            rowBg,
+            textColor,
+            pressedBackground,
+            borderBrush,
+            borderWidth,
+            () => SelectedIndex = rowIndex);
     }
 
     private void ApplyGridStyling()
@@ -487,6 +483,15 @@ public class DataGrid : CompositeView<DataGrid>
         }
     }
 
+    private void EnsureSelectedRowVisible()
+    {
+        if (_scrollView == null || SelectedIndex < 0 || SelectedIndex >= Items.Count)
+            return;
+
+        float rowY = SelectedIndex * Math.Max(1, RowHeight);
+        _scrollView.EnsureRectVisible(0, rowY, 1, Math.Max(1, RowHeight));
+    }
+
     public override void Measure(float availableWidth, float availableHeight)
     {
         float measuredWidth = Width > 0 ? Width : availableWidth;
@@ -514,6 +519,260 @@ public class DataGrid : CompositeView<DataGrid>
         if (BorderColor.PrimaryColor.A > 0)
         {
             renderer.DrawRoundedRectOutline(ComputedX, ComputedY, ComputedWidth, ComputedHeight, BorderRadius.TopLeft, 1, BorderColor);
+        }
+    }
+}
+
+internal sealed class VirtualizedDataGridRowsPanel : CompositeView<VirtualizedDataGridRowsPanel>
+{
+    private readonly ScrollView _ownerScrollView;
+    private IList<object> _items = Array.Empty<object>();
+    private IReadOnlyList<DataGridColumn> _columns = Array.Empty<DataGridColumn>();
+    private IReadOnlyList<float> _columnWeights = Array.Empty<float>();
+    private float _rowHeight;
+    private bool _alternatingRows;
+    private bool _showGridLines;
+    private Func<VisualElement>? _rowFactory;
+    private Action<VisualElement, int>? _rowBinder;
+    private readonly Dictionary<int, VisualElement> _activeRows = new();
+    private readonly Stack<VisualElement> _recycledRows = new();
+    private int _firstMaterializedRow = -1;
+    private int _lastMaterializedRow = -1;
+    private int _version;
+    private int _materializedVersion = -1;
+    private const int OverscanRows = 2;
+
+    public VirtualizedDataGridRowsPanel(ScrollView ownerScrollView)
+    {
+        _ownerScrollView = ownerScrollView;
+        HorizontalAlignment = HorizontalAlignment.Stretch;
+        VerticalAlignment = VerticalAlignment.Top;
+    }
+
+    public void Configure(
+        IList<object> items,
+        IReadOnlyList<DataGridColumn> columns,
+        IReadOnlyList<float> columnWeights,
+        float rowHeight,
+        bool alternatingRows,
+        bool showGridLines,
+        Func<VisualElement> rowFactory,
+        Action<VisualElement, int> rowBinder)
+    {
+        _items = items ?? Array.Empty<object>();
+        _columns = columns ?? Array.Empty<DataGridColumn>();
+        _columnWeights = columnWeights ?? Array.Empty<float>();
+        _rowHeight = rowHeight;
+        _alternatingRows = alternatingRows;
+        _showGridLines = showGridLines;
+        _rowFactory = rowFactory;
+        _rowBinder = rowBinder;
+        _version++;
+        _firstMaterializedRow = -1;
+        _lastMaterializedRow = -1;
+        MarkNeedsLayout();
+    }
+
+    public override void Measure(float availableWidth, float availableHeight)
+    {
+        DesiredWidth = float.IsInfinity(availableWidth) || availableWidth <= 0 ? Width : availableWidth;
+        DesiredHeight = _items.Count * Math.Max(1, _rowHeight);
+    }
+
+    public override void Arrange(float x, float y, float width, float height)
+    {
+        base.Arrange(x, y, width, height);
+
+        if (_rowFactory == null || _rowBinder == null || _items.Count == 0 || _columns.Count == 0)
+        {
+            ClearMaterializedRows();
+            return;
+        }
+
+        float rowExtent = Math.Max(1, _rowHeight);
+        float viewportHeight = Math.Max(0, _ownerScrollView.ComputedHeight - _ownerScrollView.Padding.Vertical);
+        float scrollOffset = _ownerScrollView.VerticalScrollOffset;
+
+        int firstVisible = Math.Max(0, (int)MathF.Floor(scrollOffset / rowExtent) - OverscanRows);
+        int visibleCount = Math.Max(1, (int)MathF.Ceiling(viewportHeight / rowExtent) + OverscanRows * 2);
+        int lastVisible = Math.Min(_items.Count - 1, firstVisible + visibleCount - 1);
+
+        if (firstVisible != _firstMaterializedRow ||
+            lastVisible != _lastMaterializedRow ||
+            _materializedVersion != _version)
+        {
+            MaterializeRange(firstVisible, lastVisible);
+        }
+
+        foreach (var pair in Children.Select((child, localIndex) => (child, localIndex)))
+        {
+            int rowIndex = _firstMaterializedRow + pair.localIndex;
+            float rowY = y + rowIndex * rowExtent;
+            pair.child.Arrange(x, rowY, width, rowExtent);
+        }
+    }
+
+    public override void Render(IRenderer renderer)
+    {
+    }
+
+    private void MaterializeRange(int firstRow, int lastRow)
+    {
+        var requiredRows = new HashSet<int>();
+        for (int row = firstRow; row <= lastRow; row++)
+        {
+            requiredRows.Add(row);
+        }
+
+        var orderedRows = new List<VisualElement>(requiredRows.Count);
+
+        foreach (var active in _activeRows.ToArray())
+        {
+            if (requiredRows.Contains(active.Key))
+                continue;
+
+            active.Value.Parent = null;
+            _activeRows.Remove(active.Key);
+            _recycledRows.Push(active.Value);
+        }
+
+        for (int row = firstRow; row <= lastRow; row++)
+        {
+            if (!_activeRows.TryGetValue(row, out var rowElement))
+            {
+                rowElement = _recycledRows.Count > 0 ? _recycledRows.Pop() : _rowFactory!();
+                _activeRows[row] = rowElement;
+            }
+
+            _rowBinder!(rowElement, row);
+            orderedRows.Add(rowElement);
+        }
+
+        Children = orderedRows;
+        _firstMaterializedRow = firstRow;
+        _lastMaterializedRow = lastRow;
+        _materializedVersion = _version;
+    }
+
+    private void ClearMaterializedRows()
+    {
+        if (Children.Count == 0 && _firstMaterializedRow == -1 && _lastMaterializedRow == -1)
+            return;
+
+        foreach (var child in Children)
+        {
+            child.Parent = null;
+            _recycledRows.Push(child);
+        }
+
+        Children = [];
+        _activeRows.Clear();
+        _firstMaterializedRow = -1;
+        _lastMaterializedRow = -1;
+        _materializedVersion = _version;
+    }
+}
+
+internal sealed class RecyclableDataGridRow : CompositeView<RecyclableDataGridRow>
+{
+    private readonly List<Button> _cells = new();
+    private IReadOnlyList<float> _columnWeights = Array.Empty<float>();
+    private float _rowHeight;
+
+    public RecyclableDataGridRow()
+    {
+        HorizontalAlignment = HorizontalAlignment.Stretch;
+        VerticalAlignment = VerticalAlignment.Top;
+    }
+
+    public void Bind(
+        IReadOnlyList<string> cellValues,
+        IReadOnlyList<float> columnWeights,
+        float rowHeight,
+        Brush rowBackground,
+        Brush textColor,
+        Brush pressedBackground,
+        Brush borderBrush,
+        float borderWidth,
+        Action onTap)
+    {
+        EnsureCellCount(cellValues.Count);
+        _columnWeights = columnWeights;
+        _rowHeight = rowHeight;
+
+        for (int i = 0; i < _cells.Count; i++)
+        {
+            var cell = _cells[i];
+            cell.Text = cellValues[i];
+            cell.TextColor = textColor;
+            cell.FontSize = 13;
+            cell.Background = rowBackground;
+            cell.HoverBackground = rowBackground;
+            cell.PressedBackground = pressedBackground;
+            cell.BorderColor = borderBrush;
+            cell.BorderWidth = borderWidth;
+            cell.BorderRadius = new CornerRadius(0);
+            cell.Padding = new Thickness(8, 0, 8, 0);
+            cell.Height = rowHeight;
+            cell.HorizontalAlignment = HorizontalAlignment.Stretch;
+            cell.VerticalAlignment = VerticalAlignment.Stretch;
+            cell.TextAlignment = HorizontalAlignment.Left;
+            cell.OnTapped(onTap);
+        }
+    }
+
+    public override void Measure(float availableWidth, float availableHeight)
+    {
+        float width = float.IsInfinity(availableWidth) || availableWidth <= 0 ? Width : availableWidth;
+        float totalWeight = Math.Max(1f, _columnWeights.Sum());
+
+        for (int i = 0; i < _cells.Count; i++)
+        {
+            float weight = i < _columnWeights.Count ? _columnWeights[i] : 1f;
+            float cellWidth = width * (weight / totalWeight);
+            _cells[i].Measure(cellWidth, _rowHeight);
+        }
+
+        DesiredWidth = width;
+        DesiredHeight = _rowHeight;
+    }
+
+    public override void Arrange(float x, float y, float width, float height)
+    {
+        base.Arrange(x, y, width, height);
+
+        float totalWeight = Math.Max(1f, _columnWeights.Sum());
+        float currentX = x;
+
+        for (int i = 0; i < _cells.Count; i++)
+        {
+            float weight = i < _columnWeights.Count ? _columnWeights[i] : 1f;
+            float cellWidth = i == _cells.Count - 1
+                ? Math.Max(0, x + width - currentX)
+                : width * (weight / totalWeight);
+            _cells[i].Arrange(currentX, y, cellWidth, height);
+            currentX += cellWidth;
+        }
+    }
+
+    public override void Render(IRenderer renderer)
+    {
+    }
+
+    private void EnsureCellCount(int count)
+    {
+        while (_cells.Count < count)
+        {
+            var cell = new Button();
+            _cells.Add(cell);
+            AddChild(cell);
+        }
+
+        while (_cells.Count > count)
+        {
+            var cell = _cells[^1];
+            _cells.RemoveAt(_cells.Count - 1);
+            RemoveChild(cell);
         }
     }
 }

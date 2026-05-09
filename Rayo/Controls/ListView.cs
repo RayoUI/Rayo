@@ -3,7 +3,6 @@
 using Rayo.Core;
 using Rayo.Core.Input;
 using Rayo.Core.Interfaces;
-using Rayo.Layout;
 using Rayo.Reactivity;
 using Rayo.Rendering;
 using Rayo.Rendering.Brushes;
@@ -197,6 +196,7 @@ public class ListView<T> : Rayo.Core.CompositeView<ListView<T>>, IInputHandler, 
         {
             if (this.SetProperty(ref field, value, RebuildItems))
             {
+                EnsureSelectedItemVisible();
                 if (SelectedItem is T selectedItem)
                     ItemSelected?.Invoke(selectedItem, value);
             }
@@ -225,7 +225,7 @@ public class ListView<T> : Rayo.Core.CompositeView<ListView<T>>, IInputHandler, 
     #region Fields
 
     private ScrollView _scrollView;
-    private VStack _itemsContainer;
+    private VirtualizedListPanel<T> _itemsPanel;
 
     #endregion
 
@@ -284,11 +284,11 @@ public class ListView<T> : Rayo.Core.CompositeView<ListView<T>>, IInputHandler, 
         Items = new List<T>();
         HorizontalAlignment = HorizontalAlignment.Stretch;
         VerticalAlignment = VerticalAlignment.Stretch;
-        _itemsContainer = new VStack();
-        _itemsContainer.Spacing = ItemSpacing;
         _scrollView = new ScrollView();
-        _scrollView.Content(_itemsContainer);
+        _itemsPanel = new VirtualizedListPanel<T>(_scrollView);
+        _scrollView.Content(_itemsPanel);
         AddChild(_scrollView);
+        RebuildItems();
     }
 
     #endregion
@@ -320,48 +320,53 @@ public class ListView<T> : Rayo.Core.CompositeView<ListView<T>>, IInputHandler, 
 
     private void RebuildItems()
     {
-        // Guard: evitar llamadas durante la construcción
-        if (_itemsContainer == null)
+        if (_itemsPanel == null)
         {
             return;
         }
 
-        _itemsContainer.Spacing(ItemSpacing);
-        _itemsContainer.ClearChildren();
-
-        for (int i = 0; i < Items.Count; i++)
-        {
-            int index = i;
-            var item = Items[i];
-            var isSelected = i == SelectedIndex;
-
-            var itemBg = isSelected ? ItemSelectedBackground : ItemBackground;
-            var hoverBg = isSelected ? ItemSelectedBackground : ItemHoverBackground;
-
-            var label = new Label(DisplayFunc(item));
-            label.Foreground = Color.White;
-            label.Padding = new Thickness(12, 0);
-            label.TextVerticalAlignment = VerticalAlignment.Center;
-            label.HorizontalAlignment = HorizontalAlignment.Stretch;
-            label.VerticalAlignment = VerticalAlignment.Stretch;
-
-            var listItem = new ListViewItem();
-            listItem.NormalBackground = itemBg;
-            listItem.HoverBackground = hoverBg;
-            listItem.PressedBackground = hoverBg;
-            listItem.OnTap(() =>
-            {
-                SelectedIndex = index;
-            });
-            listItem.Height(ItemHeight);
-            listItem.BorderRadius = new CornerRadius(4);
-            listItem.HorizontalAlignment = HorizontalAlignment.Stretch;
-            listItem.Content(label);
-
-            _itemsContainer.AddChild(listItem);
-        }
+        _itemsPanel.Configure(
+            Items,
+            ItemHeight,
+            ItemSpacing,
+            CreateListItem,
+            BindListItem);
 
         MarkNeedsLayout();
+    }
+
+    private VisualElement CreateListItem()
+    {
+        return new RecyclableListViewItem();
+    }
+
+    private void BindListItem(VisualElement element, int index)
+    {
+        if (element is not RecyclableListViewItem listItem)
+            return;
+
+        var item = Items[index];
+        var isSelected = index == SelectedIndex;
+
+        var itemBg = isSelected ? ItemSelectedBackground : ItemBackground;
+        var hoverBg = isSelected ? ItemSelectedBackground : ItemHoverBackground;
+
+        listItem.Bind(
+            DisplayFunc(item),
+            itemBg,
+            hoverBg,
+            ItemHeight,
+            () => SelectedIndex = index);
+    }
+
+    private void EnsureSelectedItemVisible()
+    {
+        if (_scrollView == null || SelectedIndex < 0 || SelectedIndex >= Items.Count)
+            return;
+
+        float itemExtent = Math.Max(1, ItemHeight + ItemSpacing);
+        float itemY = SelectedIndex * itemExtent;
+        _scrollView.EnsureRectVisible(0, itemY, 1, Math.Max(1, ItemHeight));
     }
 
     #endregion
@@ -417,6 +422,196 @@ public class ListView<T> : Rayo.Core.CompositeView<ListView<T>>, IInputHandler, 
     }
 
     #endregion
+}
+
+internal sealed class VirtualizedListPanel<T> : CompositeView<VirtualizedListPanel<T>>
+{
+    private readonly ScrollView _ownerScrollView;
+    private IList<T> _items = Array.Empty<T>();
+    private float _itemHeight;
+    private float _itemSpacing;
+    private Func<VisualElement>? _itemFactory;
+    private Action<VisualElement, int>? _itemBinder;
+    private readonly Dictionary<int, VisualElement> _activeChildren = new();
+    private readonly Stack<VisualElement> _recycledChildren = new();
+    private int _firstMaterializedIndex = -1;
+    private int _lastMaterializedIndex = -1;
+    private int _version;
+    private int _materializedVersion = -1;
+    private const int OverscanItems = 2;
+
+    public VirtualizedListPanel(ScrollView ownerScrollView)
+    {
+        _ownerScrollView = ownerScrollView;
+        HorizontalAlignment = HorizontalAlignment.Stretch;
+        VerticalAlignment = VerticalAlignment.Top;
+    }
+
+    public void Configure(
+        IList<T> items,
+        float itemHeight,
+        float itemSpacing,
+        Func<VisualElement> itemFactory,
+        Action<VisualElement, int> itemBinder)
+    {
+        _items = items ?? Array.Empty<T>();
+        _itemHeight = itemHeight;
+        _itemSpacing = itemSpacing;
+        _itemFactory = itemFactory;
+        _itemBinder = itemBinder;
+        _version++;
+        _firstMaterializedIndex = -1;
+        _lastMaterializedIndex = -1;
+        MarkNeedsLayout();
+    }
+
+    public override void Measure(float availableWidth, float availableHeight)
+    {
+        DesiredWidth = float.IsInfinity(availableWidth) || availableWidth <= 0 ? Width : availableWidth;
+        DesiredHeight = GetTotalContentHeight();
+    }
+
+    public override void Arrange(float x, float y, float width, float height)
+    {
+        base.Arrange(x, y, width, height);
+
+        if (_itemFactory == null || _itemBinder == null || _items.Count == 0)
+        {
+            ClearMaterializedChildren();
+            return;
+        }
+
+        float itemExtent = GetItemExtent();
+        if (itemExtent <= 0)
+        {
+            ClearMaterializedChildren();
+            return;
+        }
+
+        float viewportHeight = Math.Max(0, _ownerScrollView.ComputedHeight - _ownerScrollView.Padding.Vertical);
+        float scrollOffset = _ownerScrollView.VerticalScrollOffset;
+
+        int firstVisible = Math.Max(0, (int)MathF.Floor(scrollOffset / itemExtent) - OverscanItems);
+        int visibleCount = Math.Max(1, (int)MathF.Ceiling(viewportHeight / itemExtent) + OverscanItems * 2);
+        int lastVisible = Math.Min(_items.Count - 1, firstVisible + visibleCount - 1);
+
+        if (firstVisible != _firstMaterializedIndex ||
+            lastVisible != _lastMaterializedIndex ||
+            _materializedVersion != _version)
+        {
+            MaterializeRange(firstVisible, lastVisible);
+        }
+
+        foreach (var pair in Children.Select((child, localIndex) => (child, localIndex)))
+        {
+            int itemIndex = _firstMaterializedIndex + pair.localIndex;
+            float itemY = y + itemIndex * itemExtent;
+            float childHeight = Math.Max(0, _itemHeight);
+            pair.child.Arrange(x, itemY, width, childHeight);
+        }
+    }
+
+    public override void Render(IRenderer renderer)
+    {
+    }
+
+    private void MaterializeRange(int firstIndex, int lastIndex)
+    {
+        var requiredIndices = new HashSet<int>();
+        for (int index = firstIndex; index <= lastIndex; index++)
+        {
+            requiredIndices.Add(index);
+        }
+
+        var orderedChildren = new List<VisualElement>(requiredIndices.Count);
+
+        foreach (var active in _activeChildren.ToArray())
+        {
+            if (requiredIndices.Contains(active.Key))
+                continue;
+
+            active.Value.Parent = null;
+            _activeChildren.Remove(active.Key);
+            _recycledChildren.Push(active.Value);
+        }
+
+        for (int index = firstIndex; index <= lastIndex; index++)
+        {
+            if (!_activeChildren.TryGetValue(index, out var child))
+            {
+                child = _recycledChildren.Count > 0 ? _recycledChildren.Pop() : _itemFactory!();
+                _activeChildren[index] = child;
+            }
+
+            _itemBinder!(child, index);
+            orderedChildren.Add(child);
+        }
+
+        Children = orderedChildren;
+        _firstMaterializedIndex = firstIndex;
+        _lastMaterializedIndex = lastIndex;
+        _materializedVersion = _version;
+    }
+
+    private void ClearMaterializedChildren()
+    {
+        if (Children.Count == 0 && _firstMaterializedIndex == -1 && _lastMaterializedIndex == -1)
+            return;
+
+        foreach (var child in Children)
+        {
+            child.Parent = null;
+            _recycledChildren.Push(child);
+        }
+
+        Children = [];
+        _activeChildren.Clear();
+        _firstMaterializedIndex = -1;
+        _lastMaterializedIndex = -1;
+        _materializedVersion = _version;
+    }
+
+    private float GetItemExtent()
+    {
+        return Math.Max(1, _itemHeight + _itemSpacing);
+    }
+
+    private float GetTotalContentHeight()
+    {
+        if (_items.Count == 0)
+            return 0;
+
+        return _items.Count * _itemHeight + Math.Max(0, _items.Count - 1) * _itemSpacing;
+    }
+}
+
+internal sealed class RecyclableListViewItem : ListViewItem
+{
+    private readonly Label _label;
+
+    public RecyclableListViewItem()
+    {
+        _label = new Label();
+        _label.Foreground = Color.White;
+        _label.Padding = new Thickness(12, 0);
+        _label.TextVerticalAlignment = VerticalAlignment.Center;
+        _label.HorizontalAlignment = HorizontalAlignment.Stretch;
+        _label.VerticalAlignment = VerticalAlignment.Stretch;
+
+        BorderRadius = new CornerRadius(4);
+        HorizontalAlignment = HorizontalAlignment.Stretch;
+        Content = _label;
+    }
+
+    public void Bind(string text, Brush normalBackground, Brush hoverBackground, float height, Action onTap)
+    {
+        _label.Text(text);
+        NormalBackground = normalBackground;
+        HoverBackground = hoverBackground;
+        PressedBackground = hoverBackground;
+        Height = height;
+        OnTap(onTap);
+    }
 }
 
 /// <summary>

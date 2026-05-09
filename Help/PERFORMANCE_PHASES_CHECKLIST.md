@@ -33,11 +33,11 @@ Estado del plan de rendimiento del core de `RayoUI`.
 
 ## Fase 3 - Virtualizacion
 
-- [ ] Diseñar `VirtualizingScrollView` o panel virtualizado
-- [ ] Virtualizar `ListView`
-- [ ] Virtualizar `TreeView`
-- [ ] Virtualizar `DataGrid`
-- [ ] Introducir recycling de contenedores/items
+- [x] Diseñar `VirtualizingScrollView` o panel virtualizado
+- [x] Virtualizar `ListView`
+- [x] Virtualizar `TreeView`
+- [x] Virtualizar `DataGrid`
+- [x] Introducir recycling de contenedores/items
 
 ## Fase 4 - Reducir allocations y coste CPU del renderer
 
@@ -65,3 +65,4 @@ Estado del plan de rendimiento del core de `RayoUI`.
 - El render parcial todavia no esta activado porque `UIApplication.OnRender()` sigue limpiando toda la superficie con `Clear(...)` antes de dibujar el frame completo.
 - `UITree` ya expone una politica explicita de render parcial experimental, pero `UIApplication` la mantiene desactivada al informar que el frame actual arranca con clear completo.
 - `UITree` ya reutiliza texturas para el `root` y para cada overlay/dialog mediante `LayerCache`, invalida esas capas en relayout global, separa la invalidacion del `root` respecto a cambios internos de overlays y evita relayout completo del `root` cuando el trabajo pendiente pertenece solo a overlays, dejando una primera base retained-mode antes de activar render parcial real por regiones.
+- La Fase 3 queda implementada con paneles virtualizados internos para `ListView`, `DataGrid` y `TreeView`, recycling de contenedores visibles y soporte basico para mantener la seleccion dentro del viewport; el siguiente paso recomendado es medir escenarios largos y ajustar detalles de viewport, horizontal scroll y estabilidad visual.

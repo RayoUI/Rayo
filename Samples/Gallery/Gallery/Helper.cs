@@ -40,6 +40,7 @@ public static class Helper
             .Content(
                 new VStack()
                     .Spacing(15)
+                    .HorizontalAlignment(HorizontalAlignment.Stretch)
                     .Children(
                         new Label(title)
                             .FontSize(16)
