@@ -463,11 +463,6 @@ public class EventManager
             {
                 ProcessMouseMoveOptimized(_tree.Root, position);
             }
-            else
-            {
-                // Clear hover states on main-tree elements so they don't stay highlighted
-                ClearHoverStates();
-            }
 
             // Notify ONCE if there were changes in this frame
             if (_needsRenderThisFrame)

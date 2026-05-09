@@ -5,6 +5,7 @@
 - **Never create git commits** unless the user explicitly asks.
 - **All renderers must be updated together.** Any change to `IRenderer`, renderer-facing contracts, or the rendering pipeline must be applied to `Rayo.Rendering.OpenGL`, `Rayo.Rendering.SkiaSharp`, and `Rayo.Rendering.Vulkan`. If a fix is not applicable to one backend, leave a short code comment explaining why.
 - **Language is English - always.** All code comments, XML doc-comments, inline comments, doc files (`Help/`, `Doc/`), and user-facing strings must be in English.
+- **Verify behavior fixes** before claiming they work, especially for ComboBox hover behavior.
 
 ## Build
 
