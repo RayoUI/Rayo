@@ -19,12 +19,12 @@ public class Absolute : CompositeView<Absolute>
         ClipToBounds = false;
     }
 
-    public override void Measure(float availableWidth, float availableHeight)
+    protected override void Measure(float availableWidth, float availableHeight)
     {
         // Measure all children with infinite space since they're absolutely positioned
         foreach (var child in Children.ToArray())
         {
-            child.Measure(float.MaxValue, float.MaxValue);
+            child.MeasureUpdate(float.MaxValue, float.MaxValue);
         }
 
         // Absolute takes available space unless explicit size is set
@@ -69,7 +69,7 @@ public class Absolute : CompositeView<Absolute>
         }
     }
 
-    public override void Arrange(float x, float y, float width, float height)
+    protected override void Arrange(float x, float y, float width, float height)
     {
         base.Arrange(x, y, width, height);
 
@@ -86,7 +86,7 @@ public class Absolute : CompositeView<Absolute>
             float childWidth = child.Width > 0 ? child.Width : child.DesiredWidth;
             float childHeight = child.Height > 0 ? child.Height : child.DesiredHeight;
 
-            child.Arrange(childX, childY, childWidth, childHeight);
+            child.ArrangeUpdate(childX, childY, childWidth, childHeight);
         }
     }
 

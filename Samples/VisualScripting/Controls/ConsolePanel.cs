@@ -73,20 +73,20 @@ public class ConsolePanel : CompositeView<ConsolePanel>
     // Layout
     // -------------------------------------------------------------------------
 
-    public override void Measure(float availableWidth, float availableHeight)
+    protected override void Measure(float availableWidth, float availableHeight)
     {
         foreach (var child in Children)
-            child.Measure(availableWidth, HeaderHeight);
+            child.MeasureUpdate(availableWidth, HeaderHeight);
 
         DesiredWidth  = availableWidth;
         DesiredHeight = PanelHeight;
     }
 
-    public override void Arrange(float x, float y, float width, float height)
+    protected override void Arrange(float x, float y, float width, float height)
     {
         base.Arrange(x, y, width, PanelHeight);
         foreach (var child in Children)
-            child.Arrange(x, y, width, HeaderHeight);
+            child.ArrangeUpdate(x, y, width, HeaderHeight);
     }
 
     // -------------------------------------------------------------------------

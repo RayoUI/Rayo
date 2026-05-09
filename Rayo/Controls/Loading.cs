@@ -143,7 +143,7 @@ public class Loading : Rayo.Core.View<Loading>, IFrameAnimation
         AdvanceAnimation(deltaTime);
     }
 
-    public override void Measure(float availableWidth, float availableHeight)
+    protected override void Measure(float availableWidth, float availableHeight)
     {
         float measuredWidth = Width > 0 ? Width : 40f;
         float measuredHeight = Height > 0 ? Height : measuredWidth;
@@ -158,7 +158,7 @@ public class Loading : Rayo.Core.View<Loading>, IFrameAnimation
         DesiredHeight = measuredHeight;
     }
 
-    public override void Arrange(float x, float y, float width, float height)
+    protected override void Arrange(float x, float y, float width, float height)
     {
         base.Arrange(x, y, width, height);
     }

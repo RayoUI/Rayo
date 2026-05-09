@@ -59,13 +59,13 @@ public class ConnectionOverlay : View<ConnectionOverlay>
     // Layout
     // -------------------------------------------------------------------------
 
-    public override void Measure(float availableWidth, float availableHeight)
+    protected override void Measure(float availableWidth, float availableHeight)
     {
         DesiredWidth  = availableWidth;
         DesiredHeight = availableHeight;
     }
 
-    public override void Arrange(float x, float y, float width, float height)
+    protected override void Arrange(float x, float y, float width, float height)
     {
         base.Arrange(x, y, width, height);
     }

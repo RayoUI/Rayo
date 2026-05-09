@@ -38,9 +38,16 @@ public class DevToolAgent : IDisposable
     private readonly TimeSpan _treeChangeDebounceInterval = TimeSpan.FromMilliseconds(500);
     // Serializes all stream writes — NetworkStream does not support concurrent WriteAsync calls.
     private readonly SemaphoreSlim _sendLock = new SemaphoreSlim(1, 1);
+    private bool _isLogBridgeSubscribed;
 
     private static string Ts => DateTime.Now.ToString("HH:mm:ss.fff");
-    private static void Log(string msg) => Console.WriteLine($"[DevTool Agent {Ts}] {msg}");
+    private void Log(string msg)
+    {
+        if (!IsConnected)
+            return;
+
+        Console.WriteLine($"[DevTool Agent {Ts}] {msg}");
+    }
 
     public bool IsConnected => _client?.Connected == true;
     public int Port => _port;
@@ -60,8 +67,6 @@ public class DevToolAgent : IDisposable
         // Subscribe to structural changes (add/remove children)
         VisualElement.TreeStructureChanged += OnTreeStructureChanged;
 
-        // Subscribe to logs
-        DevToolLogger.OnLog += SendLogMessage;
     }
 
     public void Start()
@@ -103,6 +108,8 @@ public class DevToolAgent : IDisposable
 
                 _client = client;
                 _stream = _client.GetStream();
+                SubscribeLogBridge();
+                DevToolExtensions.ActivatePerformanceTracker();
                 Log($"Client connected from {remoteEndPoint}.");
 
                 await HandleClientAsync();
@@ -131,10 +138,30 @@ public class DevToolAgent : IDisposable
     /// </summary>
     private void CloseCurrentClient()
     {
+        UnsubscribeLogBridge();
         try { _stream?.Close(); } catch { }
         try { _client?.Close(); } catch { }
         _stream = null;
         _client = null;
+        DevToolExtensions.ActivatePerformanceTracker();
+    }
+
+    private void SubscribeLogBridge()
+    {
+        if (_isLogBridgeSubscribed)
+            return;
+
+        DevToolLogger.OnLog += SendLogMessage;
+        _isLogBridgeSubscribed = true;
+    }
+
+    private void UnsubscribeLogBridge()
+    {
+        if (!_isLogBridgeSubscribed)
+            return;
+
+        DevToolLogger.OnLog -= SendLogMessage;
+        _isLogBridgeSubscribed = false;
     }
 
     private async Task HandleClientAsync()
@@ -1201,7 +1228,7 @@ public class DevToolAgent : IDisposable
         _uiTree.RootChanged -= OnTreeChanged;
         _uiTree.OverlaysChanged -= OnOverlaysChanged;
         VisualElement.TreeStructureChanged -= OnTreeStructureChanged;
-        DevToolLogger.OnLog -= SendLogMessage;
+        UnsubscribeLogBridge();
         Stop();
     }
 }

@@ -286,13 +286,13 @@ public class ToggleSwitch : Rayo.Core.View<ToggleSwitch>,
         }
     }
 
-    public override void Measure(float availableWidth, float availableHeight)
+    protected override void Measure(float availableWidth, float availableHeight)
     {
         DesiredWidth = Width > 0 ? Width : SwitchWidth;
         DesiredHeight = Height > 0 ? Height : SwitchHeight;
     }
 
-    public override void Arrange(float x, float y, float width, float height)
+    protected override void Arrange(float x, float y, float width, float height)
     {
         base.Arrange(x, y, width, height);
     }

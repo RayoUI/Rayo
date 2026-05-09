@@ -83,7 +83,7 @@ public class SdlView : View<SdlView>, IFrameAnimation
 
     // ── Layout ────────────────────────────────────────────────────────────
 
-    public override void Measure(float availableWidth, float availableHeight)
+    protected override void Measure(float availableWidth, float availableHeight)
     {
         float w = HorizontalAlignment == HorizontalAlignment.Stretch || Width <= 0
             ? (availableWidth  > 0 && !float.IsInfinity(availableWidth)  ? availableWidth  : 400f)

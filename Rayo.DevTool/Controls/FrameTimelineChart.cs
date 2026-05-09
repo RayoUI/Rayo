@@ -31,7 +31,7 @@ public class FrameTimelineChart : View<FrameTimelineChart>
     }
     #endregion
 
-    public override void Measure(float availableWidth, float availableHeight)
+    protected override void Measure(float availableWidth, float availableHeight)
     {
         DesiredWidth  = Width  > 0 ? Width  : availableWidth;
         DesiredHeight = Height > 0 ? Height : availableHeight;

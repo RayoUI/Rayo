@@ -104,20 +104,20 @@ public class NodeToolbar : CompositeView<NodeToolbar>
     // Layout
     // -------------------------------------------------------------------------
 
-    public override void Measure(float availableWidth, float availableHeight)
+    protected override void Measure(float availableWidth, float availableHeight)
     {
         foreach (var child in Children)
-            child.Measure(ToolbarWidth, availableHeight);
+            child.MeasureUpdate(ToolbarWidth, availableHeight);
 
         DesiredWidth  = ToolbarWidth;
         DesiredHeight = availableHeight;
     }
 
-    public override void Arrange(float x, float y, float width, float height)
+    protected override void Arrange(float x, float y, float width, float height)
     {
         base.Arrange(x, y, ToolbarWidth, height);
         foreach (var child in Children)
-            child.Arrange(x, y, ToolbarWidth, height);
+            child.ArrangeUpdate(x, y, ToolbarWidth, height);
     }
 
     public override void Render(IRenderer renderer)

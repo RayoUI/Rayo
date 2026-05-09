@@ -41,19 +41,19 @@ public class NodePropertiesPanel : CompositeView<NodePropertiesPanel>
     // Layout overrides — fixed width, full height
     // -------------------------------------------------------------------------
 
-    public override void Measure(float availableWidth, float availableHeight)
+    protected override void Measure(float availableWidth, float availableHeight)
     {
         foreach (var child in Children)
-            child.Measure(PanelWidth, availableHeight);
+            child.MeasureUpdate(PanelWidth, availableHeight);
         DesiredWidth  = PanelWidth;
         DesiredHeight = availableHeight;
     }
 
-    public override void Arrange(float x, float y, float width, float height)
+    protected override void Arrange(float x, float y, float width, float height)
     {
         base.Arrange(x, y, PanelWidth, height);
         foreach (var child in Children)
-            child.Arrange(x, y, PanelWidth, height);
+            child.ArrangeUpdate(x, y, PanelWidth, height);
     }
 
     public override void Render(IRenderer renderer)

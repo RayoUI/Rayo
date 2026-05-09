@@ -279,7 +279,7 @@ public class RadioButton : Rayo.Core.View<RadioButton>,
         }
     }
 
-    public override void Measure(float availableWidth, float availableHeight)
+    protected override void Measure(float availableWidth, float availableHeight)
     {
         float textWidth = EstimateTextWidth(Label);
         float circleAreaWidth = CircleSize + CirclePadding * 2;
@@ -296,7 +296,7 @@ public class RadioButton : Rayo.Core.View<RadioButton>,
         DesiredHeight = Height > 0 ? Height : Math.Max(circleAreaHeight, FontSize);
     }
 
-    public override void Arrange(float x, float y, float width, float height)
+    protected override void Arrange(float x, float y, float width, float height)
     {
         base.Arrange(x, y, width, height);
     }

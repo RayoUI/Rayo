@@ -347,21 +347,23 @@ namespace Rayo.Reactivity
         }
 
         /// <summary>
-        /// Determines if a property change requires layout recalculation or just repaint.
-        /// Reads [LayoutProperty] or [PaintProperty] attribute.
-        /// Defaults to MarkNeedsPaint() when no attribute is present.
+        /// Determines the invalidation phase for a property change.
+        /// Defaults to paint invalidation when no attribute is present.
         /// </summary>
-        private static string GetMarkMethod(IPropertySymbol property)
+        private static string GetInvalidationMethod(IPropertySymbol property)
         {
             foreach (var attr in property.GetAttributes())
             {
                 var attrName = attr.AttributeClass?.Name;
+                if (attrName == "MeasurePropertyAttribute" || attrName == "MeasureProperty")
+                    return "InvalidateMeasure()";
                 if (attrName == "LayoutPropertyAttribute" || attrName == "LayoutProperty")
-                    return "MarkNeedsLayout()";
+                    return "InvalidateMeasure()";
+                if (attrName == "ArrangePropertyAttribute" || attrName == "ArrangeProperty")
+                    return "InvalidateArrange()";
                 if (attrName == "PaintPropertyAttribute" || attrName == "PaintProperty")
                     return "MarkNeedsPaint()";
             }
-            // No attribute — use the generator default behavior.
             return "MarkNeedsPaint()";
         }
 
@@ -610,7 +612,7 @@ namespace Rayo.Reactivity
             sb.AppendLine("// " + new string('-', 70));
             foreach (var prop in properties)
             {
-                var markMethod = GetMarkMethod(prop);
+                var markMethod = GetInvalidationMethod(prop);
                 sb.AppendLine($"//   {prop.Name} ({prop.Type.Name}) -> {markMethod}");
             }
             sb.AppendLine("// " + new string('-', 70));
@@ -652,7 +654,7 @@ namespace Rayo.Reactivity
                     propertyTypeFullName == "global::Rayo.Rendering.Brushes.Brush?";
                 var setMethodName = $"{propertyName}";
                 var paramName = char.ToLower(propertyName[0]) + propertyName.Substring(1);
-                var markMethod = GetMarkMethod(property);
+                var markMethod = GetInvalidationMethod(property);
 
                 // Detect if property is nullable
                 var isNullable = property.Type.NullableAnnotation == NullableAnnotation.Annotated;
@@ -1160,16 +1162,21 @@ namespace Rayo.Reactivity
                     .ToList();
 
                 var layoutNames = settableProps
-                    .Where(p => GetMarkMethod(p) == "MarkNeedsLayout()")
+                    .Where(p => GetInvalidationMethod(p) == "InvalidateMeasure()")
+                    .Select(p => $"\"{p.Name}\"")
+                    .ToList();
+
+                var arrangeNames = settableProps
+                    .Where(p => GetInvalidationMethod(p) == "InvalidateArrange()")
                     .Select(p => $"\"{p.Name}\"")
                     .ToList();
 
                 var paintNames = settableProps
-                    .Where(p => GetMarkMethod(p) == "MarkNeedsPaint()")
+                    .Where(p => GetInvalidationMethod(p) == "MarkNeedsPaint()")
                     .Select(p => $"\"{p.Name}\"")
                     .ToList();
 
-                if (layoutNames.Count > 0 || paintNames.Count > 0)
+                if (layoutNames.Count > 0 || arrangeNames.Count > 0 || paintNames.Count > 0)
                 {
                     sb.AppendLine();
                     sb.AppendLine("        // Registers which properties trigger layout vs repaint.");
@@ -1180,9 +1187,16 @@ namespace Rayo.Reactivity
 
                     if (layoutNames.Count > 0)
                     {
-                        sb.AppendLine($"            global::Rayo.Core.VisualElement.RegisterLayoutProperties(");
+                        sb.AppendLine($"            global::Rayo.Core.VisualElement.RegisterMeasureProperties(");
                         sb.AppendLine($"                typeof({fullyQualifiedClassName}),");
                         sb.AppendLine($"                {string.Join(", ", layoutNames)});");
+                    }
+
+                    if (arrangeNames.Count > 0)
+                    {
+                        sb.AppendLine($"            global::Rayo.Core.VisualElement.RegisterArrangeProperties(");
+                        sb.AppendLine($"                typeof({fullyQualifiedClassName}),");
+                        sb.AppendLine($"                {string.Join(", ", arrangeNames)});");
                     }
 
                     if (paintNames.Count > 0)

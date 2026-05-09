@@ -270,7 +270,7 @@ public class Button : Rayo.Core.View<Button>,
                            Background;
     }
 
-    public override void Measure(float availableWidth, float availableHeight)
+    protected override void Measure(float availableWidth, float availableHeight)
     {
         // Button displays text directly - no children
         float contentWidth = string.IsNullOrEmpty(Text) ? 0 : Text.Length * (FontSize * 0.6f);
@@ -283,7 +283,7 @@ public class Button : Rayo.Core.View<Button>,
         OnMeasured(DesiredWidth, DesiredHeight);
     }
 
-    public override void Arrange(float x, float y, float width, float height)
+    protected override void Arrange(float x, float y, float width, float height)
     {
         // Button is a leaf control - no children to arrange
         base.Arrange(x, y, width, height);

@@ -83,7 +83,7 @@ public class VectorShape : Rayo.Core.View<VectorShape>
         Height = 100;
     }
 
-    public override void Measure(float availableWidth, float availableHeight)
+    protected override void Measure(float availableWidth, float availableHeight)
     {
         if (Width == 0)
         {
@@ -96,7 +96,7 @@ public class VectorShape : Rayo.Core.View<VectorShape>
         }
     }
 
-    public override void Arrange(float x, float y, float width, float height)
+    protected override void Arrange(float x, float y, float width, float height)
     {
         base.Arrange(x, y, width, height);
     }
@@ -262,7 +262,7 @@ public class Shape : VectorShape
         }
     }
 
-    public override void Arrange(float x, float y, float width, float height)
+    protected override void Arrange(float x, float y, float width, float height)
     {
         base.Arrange(x, y, width, height);
         UpdatePath();

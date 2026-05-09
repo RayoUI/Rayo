@@ -312,11 +312,11 @@ internal class TreeNodeView : CompositeView<TreeNodeView>
 
     internal Brush GetTextColor() => _isSelected ? _treeView.SelectedTextColor : _treeView.TextColor;
 
-    public override void Measure(float availableWidth, float availableHeight)
+    protected override void Measure(float availableWidth, float availableHeight)
     {
         if (_layout != null)
         {
-            _layout.Measure(availableWidth, availableHeight);
+            _layout.MeasureUpdate(availableWidth, availableHeight);
             DesiredWidth = _layout.DesiredWidth;
             DesiredHeight = _layout.DesiredHeight;
         }
@@ -327,13 +327,13 @@ internal class TreeNodeView : CompositeView<TreeNodeView>
         }
     }
 
-    public override void Arrange(float x, float y, float width, float height)
+    protected override void Arrange(float x, float y, float width, float height)
     {
         base.Arrange(x, y, width, height);
 
         if (_layout != null)
         {
-            _layout.Arrange(x, y, width, height);
+            _layout.ArrangeUpdate(x, y, width, height);
         }
     }
 
@@ -429,7 +429,7 @@ internal class TreeNodeView : CompositeView<TreeNodeView>
             }
         }
 
-        public override void Measure(float availableWidth, float availableHeight)
+        protected override void Measure(float availableWidth, float availableHeight)
         {
             float width = availableWidth;
             if (float.IsPositiveInfinity(width))
@@ -542,8 +542,8 @@ internal class TreeNodeView : CompositeView<TreeNodeView>
                     Color = iconColor.PrimaryColor
                 };
                 
-                chevronView.Measure(chevronSize, chevronSize);
-                chevronView.Arrange(currentX, chevronY, chevronSize, chevronSize);
+                chevronView.MeasureUpdate(chevronSize, chevronSize);
+                chevronView.ArrangeUpdate(currentX, chevronY, chevronSize, chevronSize);
                 chevronView.Render(renderer);
 
                 currentX += chevronSize + spacing;
@@ -561,8 +561,8 @@ internal class TreeNodeView : CompositeView<TreeNodeView>
                     Color = iconColor.PrimaryColor
                 };
 
-                iconView.Measure(nodeIconSize, nodeIconSize);
-                iconView.Arrange(currentX, iconY, nodeIconSize, nodeIconSize);
+                iconView.MeasureUpdate(nodeIconSize, nodeIconSize);
+                iconView.ArrangeUpdate(currentX, iconY, nodeIconSize, nodeIconSize);
                 iconView.Render(renderer);
 
                 currentX += nodeIconSize + spacing;
@@ -592,8 +592,8 @@ internal class TreeNodeView : CompositeView<TreeNodeView>
                         Height = checkIconSize,
                         Color = Color.White
                     };
-                    checkIcon.Measure(checkIconSize, checkIconSize);
-                    checkIcon.Arrange(checkboxX + 2, checkboxY + 2, checkIconSize, checkIconSize);
+                    checkIcon.MeasureUpdate(checkIconSize, checkIconSize);
+                    checkIcon.ArrangeUpdate(checkboxX + 2, checkboxY + 2, checkIconSize, checkIconSize);
                     checkIcon.Render(renderer);
                 }
             }
@@ -1078,14 +1078,14 @@ public class TreeView : CompositeView<TreeView>
         _scrollView.EnsureRectVisible(0, itemY, 1, Math.Max(1, ItemHeight));
     }
 
-    public override void Measure(float availableWidth, float availableHeight)
+    protected override void Measure(float availableWidth, float availableHeight)
     {
         float measuredWidth = Width > 0 ? Width : 300;
         float measuredHeight = Height > 0 ? Height : 400;
 
         if (_rootFrame != null)
         {
-            _rootFrame.Measure(measuredWidth, measuredHeight);
+            _rootFrame.MeasureUpdate(measuredWidth, measuredHeight);
             DesiredWidth = _rootFrame.DesiredWidth;
             DesiredHeight = _rootFrame.DesiredHeight;
         }
@@ -1096,11 +1096,11 @@ public class TreeView : CompositeView<TreeView>
         }
     }
 
-    public override void Arrange(float x, float y, float width, float height)
+    protected override void Arrange(float x, float y, float width, float height)
     {
         base.Arrange(x, y, width, height);
 
-        _rootFrame?.Arrange(x, y, width, height);
+        _rootFrame?.ArrangeUpdate(x, y, width, height);
     }
 
     public override void Render(IRenderer renderer)
@@ -1149,13 +1149,13 @@ internal sealed class VirtualizedTreePanel : CompositeView<VirtualizedTreePanel>
         MarkNeedsLayout();
     }
 
-    public override void Measure(float availableWidth, float availableHeight)
+    protected override void Measure(float availableWidth, float availableHeight)
     {
         DesiredWidth = float.IsInfinity(availableWidth) || availableWidth <= 0 ? Width : availableWidth;
         DesiredHeight = _visibleNodes.Count * Math.Max(1, _itemHeight);
     }
 
-    public override void Arrange(float x, float y, float width, float height)
+    protected override void Arrange(float x, float y, float width, float height)
     {
         base.Arrange(x, y, width, height);
 
@@ -1184,8 +1184,8 @@ internal sealed class VirtualizedTreePanel : CompositeView<VirtualizedTreePanel>
         {
             int itemIndex = _firstMaterializedIndex + pair.localIndex;
             float itemY = y + itemIndex * itemExtent;
-            pair.child.Measure(width, itemExtent);
-            pair.child.Arrange(x, itemY, width, itemExtent);
+            pair.child.MeasureUpdate(width, itemExtent);
+            pair.child.ArrangeUpdate(x, itemY, width, itemExtent);
         }
     }
 

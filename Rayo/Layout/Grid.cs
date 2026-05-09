@@ -117,7 +117,7 @@ public class Grid : Layout<Grid>
         return this;
     }
 
-    public override void Measure(float availableWidth, float availableHeight)
+    protected override void Measure(float availableWidth, float availableHeight)
     {
         const float InfiniteThreshold = float.PositiveInfinity;
 
@@ -134,7 +134,7 @@ public class Grid : Layout<Grid>
                     // Pass available space to children for measurement
                     // Note: This is an approximation as we don't know the exact cell size yet
                     // But for Auto/content sizing, this usually works
-                    child.Measure(
+                    child.MeasureUpdate(
                         availableWidth - Padding.Horizontal,
                         availableHeight - Padding.Vertical
                     );
@@ -164,7 +164,7 @@ public class Grid : Layout<Grid>
             // We need to ensure children are measured first!
              foreach (var child in ChildrenInternal.ToArray())
             {
-                child.Measure(
+                child.MeasureUpdate(
                     availableWidth - Padding.Horizontal,
                     availableHeight - Padding.Vertical
                 );
@@ -268,7 +268,7 @@ public class Grid : Layout<Grid>
         DesiredHeight = measuredHeight;
     }
 
-    public override void Arrange(float x, float y, float width, float height)
+    protected override void Arrange(float x, float y, float width, float height)
     {
         base.Arrange(x, y, width, height);
 
@@ -352,7 +352,7 @@ public class Grid : Layout<Grid>
 
                 // Re-measure child with its specific cell size
                 // This ensures child knows the actual space available in its cell
-                child.Measure(cellWidth, cellHeight);
+                child.MeasureUpdate(cellWidth, cellHeight);
 
                 // Calcular el espacio disponible para el hijo (restando márgenes)
                 float availableWidth = cellWidth - child.Margin.Horizontal;
@@ -405,7 +405,7 @@ public class Grid : Layout<Grid>
                         break;
                 }
 
-                child.Arrange(childX, childY, childWidth, childHeight);
+                child.ArrangeUpdate(childX, childY, childWidth, childHeight);
             }
         }
     }

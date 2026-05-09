@@ -138,7 +138,7 @@ internal sealed class HeadlessToastManager : Rayo.Animation.IFrameAnimation
             return;
         }
 
-        _toastContainer.Measure(float.PositiveInfinity, float.PositiveInfinity);
+        _toastContainer.MeasureUpdate(float.PositiveInfinity, float.PositiveInfinity);
 
         float containerWidth = _toastContainer.DesiredWidth;
         float containerHeight = _toastContainer.DesiredHeight;
@@ -184,7 +184,7 @@ internal sealed class HeadlessToastManager : Rayo.Animation.IFrameAnimation
 
         _toastContainer.X = x;
         _toastContainer.Y = y;
-        _toastContainer.Arrange(x, y, containerWidth, containerHeight);
+        _toastContainer.ArrangeUpdate(x, y, containerWidth, containerHeight);
     }
 }
 
@@ -427,7 +427,7 @@ public class ToastManager
         if (_toastContainer == null || _toasts.Count == 0) return;
 
         // Measure container
-        _toastContainer.Measure(float.PositiveInfinity, float.PositiveInfinity);
+        _toastContainer.MeasureUpdate(float.PositiveInfinity, float.PositiveInfinity);
 
         float containerWidth = _toastContainer.DesiredWidth;
         float containerHeight = _toastContainer.DesiredHeight;
@@ -471,7 +471,7 @@ public class ToastManager
         // Set position properties so re-layout uses them
         _toastContainer.X = x;
         _toastContainer.Y = y;
-        _toastContainer.Arrange(x, y, containerWidth, containerHeight);
+        _toastContainer.ArrangeUpdate(x, y, containerWidth, containerHeight);
     }
 
     public void Clear()

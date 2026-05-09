@@ -105,7 +105,7 @@ public class Border : Rayo.Core.CompositeView<Border>
         );
     }
 
-    public override void Measure(float availableWidth, float availableHeight)
+    protected override void Measure(float availableWidth, float availableHeight)
     {
         var (sl, st, sr, sb) = ShadowExtent();
 
@@ -117,7 +117,7 @@ public class Border : Rayo.Core.CompositeView<Border>
 
         if (_content != null)
         {
-            _content.Measure(contentWidth, contentHeight);
+            _content.MeasureUpdate(contentWidth, contentHeight);
             DesiredWidth  = _content.DesiredWidth  + paddingH;
             DesiredHeight = _content.DesiredHeight + paddingV;
         }
@@ -131,7 +131,7 @@ public class Border : Rayo.Core.CompositeView<Border>
         if (Height > 0) DesiredHeight = Height;
     }
 
-    public override void Arrange(float x, float y, float width, float height)
+    protected override void Arrange(float x, float y, float width, float height)
     {
         base.Arrange(x, y, width, height);
 
@@ -144,7 +144,7 @@ public class Border : Rayo.Core.CompositeView<Border>
             float contentWidth  = width  - Padding.Left - Padding.Right  - BorderThickness.Left - BorderThickness.Right  - sl - sr;
             float contentHeight = height - Padding.Top  - Padding.Bottom - BorderThickness.Top  - BorderThickness.Bottom - st - sb;
 
-            _content.Arrange(contentX, contentY, contentWidth, contentHeight);
+            _content.ArrangeUpdate(contentX, contentY, contentWidth, contentHeight);
         }
     }
 

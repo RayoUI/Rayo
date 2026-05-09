@@ -658,7 +658,7 @@ public class DatePicker : Rayo.Core.CompositeView<DatePicker>,
         _isRebuildingCalendar = false;
     }
 
-    public override void Measure(float availableWidth, float availableHeight)
+    protected override void Measure(float availableWidth, float availableHeight)
     {
         float measuredWidth = Width > 0 ? Width : 240;
         float measuredHeight = Height > 0 ? Height : 44;
@@ -666,21 +666,21 @@ public class DatePicker : Rayo.Core.CompositeView<DatePicker>,
         // Measure the date button child
         if (_dateButton != null)
         {
-            _dateButton.Measure(measuredWidth, measuredHeight);
+            _dateButton.MeasureUpdate(measuredWidth, measuredHeight);
         }
 
         DesiredWidth = measuredWidth;
         DesiredHeight = measuredHeight;
     }
 
-    public override void Arrange(float x, float y, float width, float height)
+    protected override void Arrange(float x, float y, float width, float height)
     {
         base.Arrange(x, y, width, height);
 
         // Arrange the date button to fill the entire DatePicker area
         if (_dateButton != null)
         {
-            _dateButton.Arrange(x, y, width, height);
+            _dateButton.ArrangeUpdate(x, y, width, height);
         }
     }
 

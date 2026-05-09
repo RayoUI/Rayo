@@ -61,7 +61,7 @@ public class Frame : ContentView<Frame>, IPointerHandler
     // LAYOUT
     // =========================================================================
 
-    public override void Measure(float availableWidth, float availableHeight)
+    protected override void Measure(float availableWidth, float availableHeight)
     {
         const float InfiniteThreshold = float.PositiveInfinity;
 
@@ -129,7 +129,7 @@ public class Frame : ContentView<Frame>, IPointerHandler
                 ? Math.Max(0, frameHeight - Padding.Vertical - BorderWidth * 2 - Content.Margin.Vertical)
                 : float.PositiveInfinity;
 
-            Content.Measure(measureWidth, measureHeight);
+            Content.MeasureUpdate(measureWidth, measureHeight);
 
             // Get content's measured size, handling potential infinity values
             measuredContentWidth = Content.DesiredWidth > 0 ? Content.DesiredWidth : Content.Width;
@@ -207,7 +207,7 @@ public class Frame : ContentView<Frame>, IPointerHandler
         DesiredHeight = frameHeight;
     }
 
-    public override void Arrange(float x, float y, float width, float height)
+    protected override void Arrange(float x, float y, float width, float height)
     {
         // Set computed position and size
         ComputedX = x;
@@ -277,7 +277,7 @@ public class Frame : ContentView<Frame>, IPointerHandler
                 break;
         }
 
-        Content.Arrange(finalX, finalY, finalWidth, finalHeight);
+        Content.ArrangeUpdate(finalX, finalY, finalWidth, finalHeight);
     }
 
     // =========================================================================

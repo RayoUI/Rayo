@@ -537,20 +537,20 @@ public class SideBar : Rayo.Core.CompositeView<SideBar>
         item.Selected?.Invoke();
     }
 
-    public override void Measure(float availableWidth, float availableHeight)
+    protected override void Measure(float availableWidth, float availableHeight)
     {
         float w = IsCollapsed ? CollapsedWidth : ExpandedWidth;
 
         if (_container != null)
         {
-            _container.Measure(w, availableHeight);
+            _container.MeasureUpdate(w, availableHeight);
         }
 
         DesiredWidth = w;
         DesiredHeight = availableHeight;
     }
 
-    public override void Arrange(float x, float y, float width, float height)
+    protected override void Arrange(float x, float y, float width, float height)
     {
         base.Arrange(x, y, width, height);
 
@@ -558,7 +558,7 @@ public class SideBar : Rayo.Core.CompositeView<SideBar>
 
         if (_container != null)
         {
-            _container.Arrange(x, y, w, height);
+            _container.ArrangeUpdate(x, y, w, height);
         }
     }
 

@@ -100,22 +100,22 @@ public class TooltipHost : Rayo.Core.CompositeView<TooltipHost>, Rayo.Core.Input
         VerticalAlignment = _target.VerticalAlignment;
     }
 
-    public override void Measure(float availableWidth, float availableHeight)
+    protected override void Measure(float availableWidth, float availableHeight)
     {
         // Measure target
-        _target.Measure(availableWidth, availableHeight);
+        _target.MeasureUpdate(availableWidth, availableHeight);
 
         // Our desired size is the target's desired size
         DesiredWidth = _target.DesiredWidth;
         DesiredHeight = _target.DesiredHeight;
     }
 
-    public override void Arrange(float x, float y, float width, float height)
+    protected override void Arrange(float x, float y, float width, float height)
     {
         base.Arrange(x, y, width, height);
 
         // Arrange target to fill our space at the same absolute position
-        _target.Arrange(x, y, width, height);
+        _target.ArrangeUpdate(x, y, width, height);
     }
 
     private void OnHoverEnter()
@@ -136,7 +136,7 @@ public class TooltipHost : Rayo.Core.CompositeView<TooltipHost>, Rayo.Core.Input
         _tooltipFrame = new TooltipFrame(_tooltipText);
 
         // Measure tooltip to get its size
-        _tooltipFrame.Measure(float.PositiveInfinity, float.PositiveInfinity);
+        _tooltipFrame.MeasureUpdate(float.PositiveInfinity, float.PositiveInfinity);
 
         // Calculate tooltip position
         var (x, y) = CalculateTooltipPosition();

@@ -462,13 +462,13 @@ public class Drawer : Rayo.Core.CompositeView<Drawer>, IFrameAnimation
         };
     }
 
-    public override void Measure(float availableWidth, float availableHeight)
+    protected override void Measure(float availableWidth, float availableHeight)
     {
         DesiredWidth = 0;
         DesiredHeight = 0;
     }
 
-    public override void Arrange(float x, float y, float width, float height)
+    protected override void Arrange(float x, float y, float width, float height)
     {
         base.Arrange(x, y, 0, 0);
     }
@@ -534,7 +534,7 @@ internal class DrawerOverlay : Rayo.Core.CompositeView<DrawerOverlay>, Rayo.Core
         AddChild(_drawerFrame);
     }
 
-    public override void Measure(float availableWidth, float availableHeight)
+    protected override void Measure(float availableWidth, float availableHeight)
     {
         // Calculate drawer dimensions
         float drawerW = _drawer.Position == DrawerPosition.Left || _drawer.Position == DrawerPosition.Right
@@ -545,13 +545,13 @@ internal class DrawerOverlay : Rayo.Core.CompositeView<DrawerOverlay>, Rayo.Core
             ? _drawer.DrawerHeight
             : availableHeight;
 
-        _drawerFrame?.Measure(drawerW, drawerH);
+        _drawerFrame?.MeasureUpdate(drawerW, drawerH);
 
         DesiredWidth = availableWidth;
         DesiredHeight = availableHeight;
     }
 
-    public override void Arrange(float x, float y, float width, float height)
+    protected override void Arrange(float x, float y, float width, float height)
     {
         base.Arrange(x, y, width, height);
 
@@ -597,7 +597,7 @@ internal class DrawerOverlay : Rayo.Core.CompositeView<DrawerOverlay>, Rayo.Core
                 break;
         }
 
-        _drawerFrame.Arrange(x + drawerX, y + drawerY, drawerW, drawerH);
+        _drawerFrame.ArrangeUpdate(x + drawerX, y + drawerY, drawerW, drawerH);
     }
 
     public override void Render(IRenderer renderer)

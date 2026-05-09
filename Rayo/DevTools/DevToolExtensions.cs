@@ -79,6 +79,6 @@ public static class DevToolExtensions
         PerformanceTracker.IsEnabled =
             FpsOverlay.ShowExtendedStats ||
             DirtyHeatmap.Enabled ||
-            _agent != null; // always on when DevTool is connected
+            _agent?.IsConnected == true;
     }
 }

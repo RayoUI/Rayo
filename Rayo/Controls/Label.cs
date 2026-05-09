@@ -179,7 +179,7 @@ public class Label : Rayo.Core.View<Label>
         Text = text;
     }
 
-    public override void Measure(float availableWidth, float availableHeight)
+    protected override void Measure(float availableWidth, float availableHeight)
     {
         // Calculate desired size based on content
         // Support for multiline text with \n escape characters
@@ -225,7 +225,7 @@ public class Label : Rayo.Core.View<Label>
         DesiredHeight = Height > 0 ? Height : estimatedHeight;
     }
 
-    public override void Arrange(float x, float y, float width, float height)
+    protected override void Arrange(float x, float y, float width, float height)
     {
         base.Arrange(x, y, width, height);
     }

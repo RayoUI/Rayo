@@ -121,7 +121,7 @@ public class PaintCanvas : View<PaintCanvas>, IPointerHandler
         if (canvasWidth == 0 && canvasHeight == 0)
             _autoSized = false; // allow re-capture on next layout
 
-        MarkNeedsLayout();
+        InvalidateMeasure();
     }
 
     /// <summary>Removes the most recently committed stroke.</summary>
@@ -139,7 +139,7 @@ public class PaintCanvas : View<PaintCanvas>, IPointerHandler
 
     // ── Layout ────────────────────────────────────────────────────────────────
 
-    public override void Measure(float availableWidth, float availableHeight)
+    protected override void Measure(float availableWidth, float availableHeight)
     {
         if (_canvasWidth > 0 && _canvasHeight > 0)
         {
@@ -159,7 +159,7 @@ public class PaintCanvas : View<PaintCanvas>, IPointerHandler
         }
     }
 
-    public override void Arrange(float x, float y, float width, float height)
+    protected override void Arrange(float x, float y, float width, float height)
     {
         // ── Auto-size on first real layout ────────────────────────────────────
         // When no explicit size is set and this is the first valid layout pass,

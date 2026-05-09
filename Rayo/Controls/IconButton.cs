@@ -256,7 +256,7 @@ public class IconButton : Rayo.Core.View<IconButton>,
     // LAYOUT & RENDERING
     // =========================================================================
 
-    public override void Measure(float availableWidth, float availableHeight)
+    protected override void Measure(float availableWidth, float availableHeight)
     {
         // Calculate size based on icon size + padding
         float totalPadding = Padding.Left + Padding.Right;

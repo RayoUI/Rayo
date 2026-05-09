@@ -152,7 +152,7 @@ public class BezierConnector : View<BezierConnector>
         return this;
     }
 
-    public override void Measure(float availableWidth, float availableHeight)
+    protected override void Measure(float availableWidth, float availableHeight)
     {
         // BezierConnector coordinates are relative to the parent Absolute,
         // so DesiredWidth/Height should encompass from origin (0,0) to the max point.
@@ -170,7 +170,7 @@ public class BezierConnector : View<BezierConnector>
         DesiredHeight = maxY + padding;
     }
 
-    public override void Arrange(float x, float y, float width, float height)
+    protected override void Arrange(float x, float y, float width, float height)
     {
         base.Arrange(x, y, width, height);
     }

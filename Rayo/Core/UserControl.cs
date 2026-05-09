@@ -384,14 +384,14 @@ public abstract class UserControl : ContentView<UserControl>, IUIBuilder, IReact
         OnDispose();
     }
 
-    public override void Measure(float availableWidth, float availableHeight)
+    protected override void Measure(float availableWidth, float availableHeight)
     {
         EnsureBuilt();
 
         // Measure content
         if (Content != null)
         {
-            Content.Measure(availableWidth - Padding.Horizontal, availableHeight - Padding.Vertical);
+            Content.MeasureUpdate(availableWidth - Padding.Horizontal, availableHeight - Padding.Vertical);
 
             // If explicit size is set, use it. Otherwise use content size.
             DesiredWidth = Width > 0 ? Width : Content.DesiredWidth + Padding.Horizontal;
@@ -406,7 +406,7 @@ public abstract class UserControl : ContentView<UserControl>, IUIBuilder, IReact
         OnMeasured(DesiredWidth, DesiredHeight);
     }
 
-    public override void Arrange(float x, float y, float width, float height)
+    protected override void Arrange(float x, float y, float width, float height)
     {
         EnsureBuilt();
 
@@ -424,7 +424,7 @@ public abstract class UserControl : ContentView<UserControl>, IUIBuilder, IReact
             float contentWidth = width - Padding.Horizontal;
             float contentHeight = height - Padding.Vertical;
 
-            Content.Arrange(contentX, contentY, contentWidth, contentHeight);
+            Content.ArrangeUpdate(contentX, contentY, contentWidth, contentHeight);
         }
 
         OnArranged(x, y, width, height);

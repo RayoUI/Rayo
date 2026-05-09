@@ -53,7 +53,7 @@ public abstract class Shape<T> : Rayo.Core.View<T> where T : Rayo.Core.View<T>
 
     protected Shape() { }
 
-    public override void Measure(float availableWidth, float availableHeight)
+    protected override void Measure(float availableWidth, float availableHeight)
     {
         DesiredWidth = Width > 0 ? Width : 0;
         DesiredHeight = Height > 0 ? Height : 0;
@@ -65,7 +65,7 @@ public abstract class Shape<T> : Rayo.Core.View<T> where T : Rayo.Core.View<T>
         }
     }
 
-    public override void Arrange(float x, float y, float width, float height)
+    protected override void Arrange(float x, float y, float width, float height)
     {
         base.Arrange(x, y, width, height);
     }

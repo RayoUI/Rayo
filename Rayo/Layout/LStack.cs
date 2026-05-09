@@ -47,7 +47,7 @@ public class LStack : Layout<LStack>
         ShouldExpand = false;
     }
 
-    public override void Measure(float availableWidth, float availableHeight)
+    protected override void Measure(float availableWidth, float availableHeight)
     {
         const float InfiniteThreshold = float.PositiveInfinity;
 
@@ -59,7 +59,7 @@ public class LStack : Layout<LStack>
 
             foreach (var child in ChildrenInternal.ToArray())
             {
-                child.Measure(
+                child.MeasureUpdate(
                     availableWidth - Padding.Horizontal,
                     float.PositiveInfinity
                 );
@@ -110,7 +110,7 @@ public class LStack : Layout<LStack>
 
             foreach (var child in ChildrenInternal.ToArray())
             {
-                child.Measure(
+                child.MeasureUpdate(
                     float.PositiveInfinity,
                     availableHeight - Padding.Vertical
                 );
@@ -155,7 +155,7 @@ public class LStack : Layout<LStack>
         }
     }
 
-    public override void Arrange(float x, float y, float width, float height)
+    protected override void Arrange(float x, float y, float width, float height)
     {
         base.Arrange(x, y, width, height);
 
@@ -188,7 +188,7 @@ public class LStack : Layout<LStack>
             else
             {
                 // Re-measure non-stretch children with available space
-                child.Measure(contentWidth, float.PositiveInfinity);
+                child.MeasureUpdate(contentWidth, float.PositiveInfinity);
                 
                 float childHeight = child.HasExplicitHeight ? child.Height : child.DesiredHeight;
                 fixedHeight += childHeight + child.Margin.Vertical;
@@ -209,7 +209,7 @@ public class LStack : Layout<LStack>
         {
             if (child.VerticalAlignment == VerticalAlignment.Stretch && !child.HasExplicitHeight)
             {
-                child.Measure(contentWidth, heightPerStretch);
+                child.MeasureUpdate(contentWidth, heightPerStretch);
             }
         }
 
@@ -313,7 +313,7 @@ public class LStack : Layout<LStack>
                     break;
             }
 
-            child.Arrange(childX, childY, childWidth, childHeight);
+            child.ArrangeUpdate(childX, childY, childWidth, childHeight);
             currentY += childHeight + child.Margin.Vertical + Spacing + extraSpacing;
         }
     }
@@ -334,7 +334,7 @@ public class LStack : Layout<LStack>
             else
             {
                 // Re-measure non-stretch children with available space
-                child.Measure(float.PositiveInfinity, contentHeight);
+                child.MeasureUpdate(float.PositiveInfinity, contentHeight);
                 
                 float childWidth = child.HasExplicitWidth ? child.Width : child.DesiredWidth;
                 fixedWidth += childWidth + child.Margin.Horizontal;
@@ -355,7 +355,7 @@ public class LStack : Layout<LStack>
         {
             if (child.HorizontalAlignment == HorizontalAlignment.Stretch && !child.HasExplicitWidth)
             {
-                child.Measure(widthPerStretch, contentHeight);
+                child.MeasureUpdate(widthPerStretch, contentHeight);
             }
         }
 
@@ -459,7 +459,7 @@ public class LStack : Layout<LStack>
                     break;
             }
 
-            child.Arrange(childX, childY, childWidth, childHeight);
+            child.ArrangeUpdate(childX, childY, childWidth, childHeight);
             currentX += childWidth + child.Margin.Horizontal + Spacing + extraSpacing;
         }
     }

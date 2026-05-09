@@ -119,13 +119,13 @@ public class ScriptNode : View<ScriptNode>, IInputHandler, IFocusable
     // Layout
     // -------------------------------------------------------------------------
 
-    public override void Measure(float availableWidth, float availableHeight)
+    protected override void Measure(float availableWidth, float availableHeight)
     {
         DesiredWidth  = NodeWidth;
         DesiredHeight = ComputeHeight();
     }
 
-    public override void Arrange(float x, float y, float width, float height)
+    protected override void Arrange(float x, float y, float width, float height)
     {
         base.Arrange(x - PortHitZone, y, NodeWidth + 2f * PortHitZone, ComputeHeight());
 
@@ -180,8 +180,8 @@ public class ScriptNode : View<ScriptNode>, IInputHandler, IFocusable
                     X = Model.X;
                     Y = Model.Y;
 
-                    // MarkNeedsLayout triggers Arrange which calls UpdatePortPositions
-                    MarkNeedsLayout();
+                    // Arrange invalidation updates the port positions without forcing re-measure.
+                    InvalidateArrange();
                     return true;
                 }
 

@@ -49,7 +49,7 @@ public class VStack : Layout<VStack>
     {
     }
 
-    public override void Measure(float availableWidth, float availableHeight)
+    protected override void Measure(float availableWidth, float availableHeight)
     {
         float maxWidth = Padding.Horizontal;
         float totalHeight = Padding.Vertical;
@@ -78,7 +78,7 @@ public class VStack : Layout<VStack>
             else
             {
                 // Measure non-stretch children with infinity to get their natural size
-                child.Measure(
+                child.MeasureUpdate(
                     availableWidth - Padding.Horizontal,
                     float.PositiveInfinity
                 );
@@ -109,7 +109,7 @@ public class VStack : Layout<VStack>
             // FIX: Use HasExplicitHeight instead of checking Height <= 0
             if (child.VerticalAlignment == VerticalAlignment.Stretch && !child.HasExplicitHeight && availableHeight < InfiniteThreshold)
             {
-                child.Measure(
+                child.MeasureUpdate(
                     availableWidth - Padding.Horizontal,
                     heightPerStretch
                 );
@@ -175,7 +175,7 @@ public class VStack : Layout<VStack>
         DesiredHeight = measuredHeight;
     }
 
-    public override void Arrange(float x, float y, float width, float height)
+    protected override void Arrange(float x, float y, float width, float height)
     {
         base.Arrange(x, y, width, height);
 
@@ -235,7 +235,7 @@ public class VStack : Layout<VStack>
 
             if (child.VerticalAlignment == VerticalAlignment.Stretch && !child.HasExplicitHeight && allowStretch)
             {
-                child.Measure(contentWidth, heightPerStretch);
+                child.MeasureUpdate(contentWidth, heightPerStretch);
             }
         }
 
@@ -364,7 +364,7 @@ public class VStack : Layout<VStack>
                 }
             }
 
-            child.Arrange(childX, childY, childWidth, childHeight);
+            child.ArrangeUpdate(childX, childY, childWidth, childHeight);
 
             currentY += childHeight + child.Margin.Vertical + Spacing + extraSpacing;
         }

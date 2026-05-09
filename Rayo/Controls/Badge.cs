@@ -241,7 +241,7 @@ public class Badge : CompositeView<Badge>
         };
     }
 
-    public override void Measure(float availableWidth, float availableHeight)
+    protected override void Measure(float availableWidth, float availableHeight)
     {
         if (!ShouldShow())
         {
@@ -290,7 +290,7 @@ public class Badge : CompositeView<Badge>
         DesiredHeight = height;
     }
 
-    public override void Arrange(float x, float y, float width, float height)
+    protected override void Arrange(float x, float y, float width, float height)
     {
         base.Arrange(x, y, width, height);
     }
@@ -493,14 +493,14 @@ public class BadgeContainer : CompositeView<BadgeContainer>
         }
     }
 
-    public override void Measure(float availableWidth, float availableHeight)
+    protected override void Measure(float availableWidth, float availableHeight)
     {
         float contentWidth = 0;
         float contentHeight = 0;
 
         if (Content != null)
         {
-            Content.Measure(availableWidth, availableHeight);
+            Content.MeasureUpdate(availableWidth, availableHeight);
             contentWidth = Content.DesiredWidth > 0 ? Content.DesiredWidth : Content.Width;
             contentHeight = Content.DesiredHeight > 0 ? Content.DesiredHeight : Content.Height;
         }
@@ -510,7 +510,7 @@ public class BadgeContainer : CompositeView<BadgeContainer>
             contentHeight = Height > 0 ? Height : 0;
         }
 
-        Badge?.Measure(float.MaxValue, float.MaxValue);
+        Badge?.MeasureUpdate(float.MaxValue, float.MaxValue);
 
         _extraLeft = _extraRight = _extraTop = _extraBottom = 0;
 
@@ -560,7 +560,7 @@ public class BadgeContainer : CompositeView<BadgeContainer>
         DesiredHeight = Height > 0 ? Height : desiredHeight;
     }
 
-    public override void Arrange(float x, float y, float width, float height)
+    protected override void Arrange(float x, float y, float width, float height)
     {
         base.Arrange(x, y, width, height);
 
@@ -572,7 +572,7 @@ public class BadgeContainer : CompositeView<BadgeContainer>
         // Arrange content inside expanded bounds while preserving its own size
         if (Content != null)
         {
-            Content.Arrange(contentX, contentY, contentWidth, contentHeight);
+            Content.ArrangeUpdate(contentX, contentY, contentWidth, contentHeight);
         }
 
         // Position badge
@@ -600,7 +600,7 @@ public class BadgeContainer : CompositeView<BadgeContainer>
             badgeX += BadgeOffsetX;
             badgeY += BadgeOffsetY;
 
-            Badge.Arrange(badgeX, badgeY, badgeWidth, badgeHeight);
+            Badge.ArrangeUpdate(badgeX, badgeY, badgeWidth, badgeHeight);
         }
     }
 

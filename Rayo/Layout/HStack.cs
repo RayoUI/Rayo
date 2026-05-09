@@ -75,7 +75,7 @@ public class HStack : Layout<HStack>
         return this;
     }
 
-    public override void Measure(float availableWidth, float availableHeight)
+    protected override void Measure(float availableWidth, float availableHeight)
     {
         // CRITICAL: Save explicit size flags before modifying Width/Height
         bool hadExplicitWidth = HasExplicitWidth;
@@ -108,7 +108,7 @@ public class HStack : Layout<HStack>
             else
             {
                 // Measure non-stretch children with infinity to get their natural size
-                child.Measure(
+                child.MeasureUpdate(
                     float.PositiveInfinity,
                     availableHeight - Padding.Vertical
                 );
@@ -139,7 +139,7 @@ public class HStack : Layout<HStack>
             // FIX: Use HasExplicitWidth instead of checking Width <= 0
             if (child.HorizontalAlignment == HorizontalAlignment.Stretch && !child.HasExplicitWidth && availableWidth < InfiniteThreshold)
             {
-                child.Measure(
+                child.MeasureUpdate(
                     widthPerStretch,
                     availableHeight - Padding.Vertical
                 );
@@ -202,7 +202,7 @@ public class HStack : Layout<HStack>
         DesiredHeight = measuredHeight;
     }
 
-    public override void Arrange(float x, float y, float width, float height)
+    protected override void Arrange(float x, float y, float width, float height)
     {
         base.Arrange(x, y, width, height);
 
@@ -263,7 +263,7 @@ public class HStack : Layout<HStack>
 
             if (child.HorizontalAlignment == HorizontalAlignment.Stretch && !child.HasExplicitWidth && allowStretch)
             {
-                child.Measure(widthPerStretch, contentHeight);
+                child.MeasureUpdate(widthPerStretch, contentHeight);
             }
         }
 
@@ -392,7 +392,7 @@ public class HStack : Layout<HStack>
                 }
             }
 
-            child.Arrange(childX, childY, childWidth, childHeight);
+            child.ArrangeUpdate(childX, childY, childWidth, childHeight);
 
             currentX += childWidth + child.Margin.Horizontal + Spacing + extraSpacing;
         }

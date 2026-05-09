@@ -6,9 +6,11 @@
 /// </summary>
 public class FrameScheduler
 {
-    private bool _layoutScheduled = false;
+    private bool _measureScheduled = false;
+    private bool _arrangeScheduled = false;
     private bool _paintScheduled = false;
-    private readonly HashSet<VisualElement> _dirtyLayoutElements = new();
+    private readonly HashSet<VisualElement> _dirtyMeasureElements = new();
+    private readonly HashSet<VisualElement> _dirtyArrangeElements = new();
     private readonly HashSet<VisualElement> _dirtyPaintElements = new();
     private Action? _onFrameScheduled;
 
@@ -25,14 +27,31 @@ public class FrameScheduler
     /// Programa un layout para el siguiente frame
     /// Múltiples llamadas en el mismo frame se batchean en una sola
     /// </summary>
-    public void ScheduleLayout(VisualElement element)
+    public void ScheduleMeasure(VisualElement element)
     {
-        bool wasEmpty = _dirtyLayoutElements.Count == 0 && _dirtyPaintElements.Count == 0;
+        bool wasEmpty = _dirtyMeasureElements.Count == 0 &&
+            _dirtyArrangeElements.Count == 0 &&
+            _dirtyPaintElements.Count == 0;
 
-        _dirtyLayoutElements.Add(element);
-        _layoutScheduled = true;
+        _dirtyMeasureElements.Add(element);
+        _measureScheduled = true;
+        _arrangeScheduled = true;
 
-        // Solo notificar si es el primer cambio de este frame
+        if (wasEmpty)
+        {
+            _onFrameScheduled?.Invoke();
+        }
+    }
+
+    public void ScheduleArrange(VisualElement element)
+    {
+        bool wasEmpty = _dirtyMeasureElements.Count == 0 &&
+            _dirtyArrangeElements.Count == 0 &&
+            _dirtyPaintElements.Count == 0;
+
+        _dirtyArrangeElements.Add(element);
+        _arrangeScheduled = true;
+
         if (wasEmpty)
         {
             _onFrameScheduled?.Invoke();
@@ -45,12 +64,13 @@ public class FrameScheduler
     /// </summary>
     public void SchedulePaint(VisualElement element)
     {
-        bool wasEmpty = _dirtyLayoutElements.Count == 0 && _dirtyPaintElements.Count == 0;
+        bool wasEmpty = _dirtyMeasureElements.Count == 0 &&
+            _dirtyArrangeElements.Count == 0 &&
+            _dirtyPaintElements.Count == 0;
 
         _dirtyPaintElements.Add(element);
         _paintScheduled = true;
 
-        // Solo notificar si es el primer cambio de este frame
         if (wasEmpty)
         {
             _onFrameScheduled?.Invoke();
@@ -60,12 +80,14 @@ public class FrameScheduler
     /// <summary>
     /// Verifica si hay trabajo programado para este frame
     /// </summary>
-    public bool HasScheduledWork => _layoutScheduled || _paintScheduled;
+    public bool HasScheduledWork => _measureScheduled || _arrangeScheduled || _paintScheduled;
 
     /// <summary>
     /// Verifica si hay layout programado
     /// </summary>
-    public bool NeedsLayout => _layoutScheduled;
+    public bool NeedsMeasure => _measureScheduled;
+
+    public bool NeedsArrange => _arrangeScheduled;
 
     /// <summary>
     /// Verifica si hay paint programado
@@ -75,7 +97,9 @@ public class FrameScheduler
     /// <summary>
     /// Obtiene los elementos que necesitan layout
     /// </summary>
-    public IReadOnlyCollection<VisualElement> DirtyLayoutElements => _dirtyLayoutElements;
+    public IReadOnlyCollection<VisualElement> DirtyMeasureElements => _dirtyMeasureElements;
+
+    public IReadOnlyCollection<VisualElement> DirtyArrangeElements => _dirtyArrangeElements;
 
     /// <summary>
     /// Obtiene los elementos que necesitan paint
@@ -88,9 +112,11 @@ public class FrameScheduler
     /// </summary>
     public void FrameComplete()
     {
-        _layoutScheduled = false;
+        _measureScheduled = false;
+        _arrangeScheduled = false;
         _paintScheduled = false;
-        _dirtyLayoutElements.Clear();
+        _dirtyMeasureElements.Clear();
+        _dirtyArrangeElements.Clear();
         _dirtyPaintElements.Clear();
     }
 
@@ -99,9 +125,11 @@ public class FrameScheduler
     /// </summary>
     public void Reset()
     {
-        _layoutScheduled = false;
+        _measureScheduled = false;
+        _arrangeScheduled = false;
         _paintScheduled = false;
-        _dirtyLayoutElements.Clear();
+        _dirtyMeasureElements.Clear();
+        _dirtyArrangeElements.Clear();
         _dirtyPaintElements.Clear();
     }
 }

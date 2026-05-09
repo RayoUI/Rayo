@@ -925,7 +925,7 @@ public abstract class TextBox<T> : Rayo.Core.View<T>, IInputHandler, IFocusable,
         // Esta función se llama solo cuando el usuario mueve el cursor, no en cada render
     }
 
-    public override void Measure(float availableWidth, float availableHeight)
+    protected override void Measure(float availableWidth, float availableHeight)
     {
         // Calculate desired size based on content or default
         // TextBox usually has a default width if empty, unlike Button
@@ -977,7 +977,7 @@ public abstract class TextBox<T> : Rayo.Core.View<T>, IInputHandler, IFocusable,
         base.Measure(availableWidth, availableHeight);
     }
 
-    public override void Arrange(float x, float y, float width, float height)
+    protected override void Arrange(float x, float y, float width, float height)
     {
         base.Arrange(x, y, width, height);
     }

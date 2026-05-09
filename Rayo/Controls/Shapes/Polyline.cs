@@ -81,7 +81,7 @@ public class Polyline : Shape<Polyline>
         _maxY = Points.Max(p => p.Y);
     }
 
-    public override void Measure(float availableWidth, float availableHeight)
+    protected override void Measure(float availableWidth, float availableHeight)
     {
         if (Width > 0)
             DesiredWidth = Width;

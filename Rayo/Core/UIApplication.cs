@@ -700,7 +700,7 @@ public class UIApplication : IDisposable
         foreach (var overlay in overlaySnapshot)
         {
             // Overlays always get the full window size to position themselves
-            overlay.Measure(_window!.Size.X, _window.Size.Y);
+            overlay.MeasureUpdate(_window!.Size.X, _window.Size.Y);
 
             // For overlays with Stretch alignment, use full window size
             // Otherwise use desired size and explicit position
@@ -709,7 +709,7 @@ public class UIApplication : IDisposable
             float w = overlay.HorizontalAlignment == HorizontalAlignment.Stretch ? _window.Size.X : overlay.DesiredWidth;
             float h = overlay.VerticalAlignment == VerticalAlignment.Stretch ? _window.Size.Y : overlay.DesiredHeight;
 
-            overlay.Arrange(x, y, w, h);
+            overlay.ArrangeUpdate(x, y, w, h);
         }
 
         // CRITICAL: Process pending UI updates HERE, after layout but BEFORE render
@@ -727,14 +727,14 @@ public class UIApplication : IDisposable
         {
             if (overlay.NeedsLayout)
             {
-                overlay.Measure(_window!.Size.X, _window.Size.Y);
+                overlay.MeasureUpdate(_window!.Size.X, _window.Size.Y);
 
                 float x = overlay.X;
                 float y = overlay.Y;
                 float w = overlay.HorizontalAlignment == HorizontalAlignment.Stretch ? _window.Size.X : overlay.DesiredWidth;
                 float h = overlay.VerticalAlignment == VerticalAlignment.Stretch ? _window.Size.Y : overlay.DesiredHeight;
 
-                overlay.Arrange(x, y, w, h);
+                overlay.ArrangeUpdate(x, y, w, h);
             }
         }
 
@@ -959,14 +959,14 @@ public class UIApplication : IDisposable
                 var overlaySnapshot = _overlays.ToList();
                 foreach (var overlay in overlaySnapshot)
                 {
-                    overlay.Measure(_window.Size.X, _window.Size.Y);
+                    overlay.MeasureUpdate(_window.Size.X, _window.Size.Y);
 
                     float x = overlay.X;
                     float y = overlay.Y;
                     float w = overlay.HorizontalAlignment == HorizontalAlignment.Stretch ? _window.Size.X : overlay.DesiredWidth;
                     float h = overlay.VerticalAlignment == VerticalAlignment.Stretch ? _window.Size.Y : overlay.DesiredHeight;
 
-                    overlay.Arrange(x, y, w, h);
+                    overlay.ArrangeUpdate(x, y, w, h);
                 }
 
                 // === PHASE 2B: PROCESS PENDING UI UPDATES ===
@@ -984,14 +984,14 @@ public class UIApplication : IDisposable
                 {
                     if (overlay.NeedsLayout)
                     {
-                        overlay.Measure(_window.Size.X, _window.Size.Y);
+                        overlay.MeasureUpdate(_window.Size.X, _window.Size.Y);
 
                         float x = overlay.X;
                         float y = overlay.Y;
                         float w = overlay.HorizontalAlignment == HorizontalAlignment.Stretch ? _window.Size.X : overlay.DesiredWidth;
                         float h = overlay.VerticalAlignment == VerticalAlignment.Stretch ? _window.Size.Y : overlay.DesiredHeight;
 
-                        overlay.Arrange(x, y, w, h);
+                        overlay.ArrangeUpdate(x, y, w, h);
                     }
                 }
 

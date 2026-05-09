@@ -118,7 +118,7 @@ public class ProgressBar : Rayo.Core.View<ProgressBar>
         Height = 4;
     }
 
-    public override void Measure(float availableWidth, float availableHeight)
+    protected override void Measure(float availableWidth, float availableHeight)
     {
         float measuredWidth = Width;
         float measuredHeight = Height > 0 ? Height : BarHeight;
@@ -133,7 +133,7 @@ public class ProgressBar : Rayo.Core.View<ProgressBar>
         DesiredHeight = measuredHeight;
     }
 
-    public override void Arrange(float x, float y, float width, float height)
+    protected override void Arrange(float x, float y, float width, float height)
     {
         base.Arrange(x, y, width, height);
     }

@@ -65,21 +65,21 @@ internal class EditorRoot : CompositeView<EditorRoot>
         AddChild(_console);
     }
 
-    public override void Measure(float availableWidth, float availableHeight)
+    protected override void Measure(float availableWidth, float availableHeight)
     {
         float mainH = Math.Max(0f, availableHeight - ConsolePanel.PanelHeight);
-        _main.Measure(availableWidth, mainH);
-        _console.Measure(availableWidth, ConsolePanel.PanelHeight);
+        _main.MeasureUpdate(availableWidth, mainH);
+        _console.MeasureUpdate(availableWidth, ConsolePanel.PanelHeight);
         DesiredWidth = availableWidth;
         DesiredHeight = availableHeight;
     }
 
-    public override void Arrange(float x, float y, float width, float height)
+    protected override void Arrange(float x, float y, float width, float height)
     {
         base.Arrange(x, y, width, height);
         float mainH = Math.Max(0f, height - ConsolePanel.PanelHeight);
-        _main.Arrange(x, y, width, mainH);
-        _console.Arrange(x, y + mainH, width, ConsolePanel.PanelHeight);
+        _main.ArrangeUpdate(x, y, width, mainH);
+        _console.ArrangeUpdate(x, y + mainH, width, ConsolePanel.PanelHeight);
     }
 
     public override void Render(IRenderer renderer) { /* children render themselves */ }

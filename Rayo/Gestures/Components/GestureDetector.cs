@@ -384,11 +384,11 @@ public class GestureDetector : CompositeView<GestureDetector>, IInputHandler, IP
 
     // ========== Layout and Rendering ==========
 
-    public override void Measure(float availableWidth, float availableHeight)
+    protected override void Measure(float availableWidth, float availableHeight)
     {
         if (_child != null)
         {
-            _child.Measure(availableWidth, availableHeight);
+            _child.MeasureUpdate(availableWidth, availableHeight);
             DesiredWidth = _child.DesiredWidth;
             DesiredHeight = _child.DesiredHeight;
         }
@@ -399,13 +399,13 @@ public class GestureDetector : CompositeView<GestureDetector>, IInputHandler, IP
         }
     }
 
-    public override void Arrange(float x, float y, float width, float height)
+    protected override void Arrange(float x, float y, float width, float height)
     {
         base.Arrange(x, y, width, height);
 
         if (_child != null)
         {
-            _child.Arrange(x, y, width, height);
+            _child.ArrangeUpdate(x, y, width, height);
         }
     }
 

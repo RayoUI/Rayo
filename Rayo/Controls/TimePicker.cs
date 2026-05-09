@@ -672,21 +672,21 @@ public class TimePicker : CompositeView<TimePicker>,
     }
 
 
-    public override void Measure(float availableWidth, float availableHeight)
+    protected override void Measure(float availableWidth, float availableHeight)
     {
         float measuredWidth = Width > 0 ? Width : 180;
         float measuredHeight = Height > 0 ? Height : 44;
 
-        _timeButton?.Measure(measuredWidth, measuredHeight);
+        _timeButton?.MeasureUpdate(measuredWidth, measuredHeight);
 
         DesiredWidth = measuredWidth;
         DesiredHeight = measuredHeight;
     }
 
-    public override void Arrange(float x, float y, float width, float height)
+    protected override void Arrange(float x, float y, float width, float height)
     {
         base.Arrange(x, y, width, height);
-        _timeButton?.Arrange(x, y, width, height);
+        _timeButton?.ArrangeUpdate(x, y, width, height);
     }
 
     public override void Render(IRenderer renderer)

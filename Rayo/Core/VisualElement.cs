@@ -45,8 +45,9 @@ public abstract class VisualElement : BindableObject, IDisposable, IInputTranspa
 
     #region Property-effect registration (Avalonia-style)
     // Keyed by concrete Type. Populated by [ModuleInitializer] methods in generated extension classes.
-    private static readonly Dictionary<Type, HashSet<string>> s_layoutProps = new();
-    private static readonly Dictionary<Type, HashSet<string>> s_paintProps  = new();
+    private static readonly Dictionary<Type, HashSet<string>> s_measureProps = new();
+    private static readonly Dictionary<Type, HashSet<string>> s_arrangeProps = new();
+    private static readonly Dictionary<Type, HashSet<string>> s_paintProps = new();
 
     /// <summary>
     /// Registers properties that require a layout pass when changed.
@@ -62,8 +63,28 @@ public abstract class VisualElement : BindableObject, IDisposable, IInputTranspa
     /// </summary>
     public static void RegisterLayoutProperties(Type type, params string[] names)
     {
-        if (!s_layoutProps.TryGetValue(type, out var set))
-            s_layoutProps[type] = set = new HashSet<string>();
+        RegisterMeasureProperties(type, names);
+    }
+
+    /// <summary>
+    /// Registers properties that require a measure pass when changed.
+    /// Called automatically by source-generated [ModuleInitializer] methods.
+    /// </summary>
+    public static void RegisterMeasureProperties(Type type, params string[] names)
+    {
+        if (!s_measureProps.TryGetValue(type, out var set))
+            s_measureProps[type] = set = new HashSet<string>();
+        foreach (var n in names) set.Add(n);
+    }
+
+    /// <summary>
+    /// Registers properties that require an arrange pass when changed.
+    /// Called automatically by source-generated [ModuleInitializer] methods.
+    /// </summary>
+    public static void RegisterArrangeProperties(Type type, params string[] names)
+    {
+        if (!s_arrangeProps.TryGetValue(type, out var set))
+            s_arrangeProps[type] = set = new HashSet<string>();
         foreach (var n in names) set.Add(n);
     }
 
@@ -92,8 +113,10 @@ public abstract class VisualElement : BindableObject, IDisposable, IInputTranspa
         if (propertyName is null) return;
 
         var type = GetType();
-        if (s_layoutProps.TryGetValue(type, out var lp) && lp.Contains(propertyName))
-            MarkNeedsLayout();
+        if (s_measureProps.TryGetValue(type, out var mp) && mp.Contains(propertyName))
+            InvalidateMeasure();
+        else if (s_arrangeProps.TryGetValue(type, out var ap) && ap.Contains(propertyName))
+            InvalidateArrange();
         else if (s_paintProps.TryGetValue(type, out var pp) && pp.Contains(propertyName))
             MarkNeedsPaint();
     }
@@ -196,14 +219,14 @@ public abstract class VisualElement : BindableObject, IDisposable, IInputTranspa
     #endregion
 
     #region Position (X, Y)
-    [LayoutProperty]
+    [ArrangeProperty]
     public float X
     {
         get => field;
         set => this.SetProperty(ref field, value);
     }
 
-    [LayoutProperty]
+    [ArrangeProperty]
     public float Y
     {
         get => field;
@@ -212,42 +235,42 @@ public abstract class VisualElement : BindableObject, IDisposable, IInputTranspa
     #endregion
 
     #region Size (Width, Height, MinWidth, MinHeight, MaxWidth, MaxHeight)
-    [LayoutProperty]
+    [MeasureProperty]
     public float Width
     {
         get => field;
         set => this.SetProperty(ref field, value, () => HasExplicitWidth = true);
     } = 0;
 
-    [LayoutProperty]
+    [MeasureProperty]
     public float Height
     {
         get => field;
         set => this.SetProperty(ref field, value, () => HasExplicitHeight = true);
     } = 0;
 
-    [LayoutProperty]
+    [MeasureProperty]
     public float MinWidth
     {
         get => field;
         set => this.SetProperty(ref field, value);
     } = 0;
 
-    [LayoutProperty]
+    [MeasureProperty]
     public float MinHeight
     {
         get => field;
         set => this.SetProperty(ref field, value);
     } = 0;
 
-    [LayoutProperty]
+    [MeasureProperty]
     public float MaxWidth
     {
         get => field;
         set => this.SetProperty(ref field, value);
     } = float.PositiveInfinity;
 
-    [LayoutProperty]
+    [MeasureProperty]
     public float MaxHeight
     {
         get => field;
@@ -256,7 +279,7 @@ public abstract class VisualElement : BindableObject, IDisposable, IInputTranspa
     #endregion
 
     #region Margin
-    [LayoutProperty]
+    [MeasureProperty]
     public Thickness Margin
     {
         get => field;
@@ -265,7 +288,7 @@ public abstract class VisualElement : BindableObject, IDisposable, IInputTranspa
     #endregion
 
     #region Padding
-    [LayoutProperty]
+    [MeasureProperty]
     public Thickness Padding
     {
         get => field;
@@ -292,7 +315,7 @@ public abstract class VisualElement : BindableObject, IDisposable, IInputTranspa
     #endregion
 
     #region Alignment
-    [LayoutProperty]
+    [MeasureProperty]
     public HorizontalAlignment HorizontalAlignment
     {
         get => field;
@@ -304,7 +327,7 @@ public abstract class VisualElement : BindableObject, IDisposable, IInputTranspa
         });
     } = HorizontalAlignment.Left;
 
-    [LayoutProperty]
+    [MeasureProperty]
     public VerticalAlignment VerticalAlignment
     {
         get => field;
@@ -331,7 +354,7 @@ public abstract class VisualElement : BindableObject, IDisposable, IInputTranspa
         set => this.SetProperty(ref field, Math.Clamp(value, 0f, 1f));
     } = 1.0f;
 
-    [LayoutProperty]
+    [MeasureProperty]
     public bool IsVisible
     {
         get => field;
@@ -436,7 +459,21 @@ public abstract class VisualElement : BindableObject, IDisposable, IInputTranspa
     #region Computed Layout
 
     [NotFluent]
-    internal bool NeedsLayout { get; set; } = true;
+    internal bool NeedsMeasure { get; set; } = true;
+
+    [NotFluent]
+    internal bool NeedsArrange { get; set; } = true;
+
+    [NotFluent]
+    internal bool NeedsLayout
+    {
+        get => NeedsMeasure || NeedsArrange;
+        set
+        {
+            NeedsMeasure = value;
+            NeedsArrange = value;
+        }
+    }
 
     [NotFluent]
     internal bool NeedsPaint { get; set; } = true;
@@ -458,6 +495,30 @@ public abstract class VisualElement : BindableObject, IDisposable, IInputTranspa
 
     [NotFluent]
     public float DesiredHeight { get; set; }
+
+    [NotFluent]
+    internal float LastMeasuredAvailableWidth { get; private set; } = float.NaN;
+
+    [NotFluent]
+    internal float LastMeasuredAvailableHeight { get; private set; } = float.NaN;
+
+    [NotFluent]
+    internal bool HasValidMeasure { get; private set; }
+
+    [NotFluent]
+    internal float LastArrangedX { get; private set; } = float.NaN;
+
+    [NotFluent]
+    internal float LastArrangedY { get; private set; } = float.NaN;
+
+    [NotFluent]
+    internal float LastArrangedWidth { get; private set; } = float.NaN;
+
+    [NotFluent]
+    internal float LastArrangedHeight { get; private set; } = float.NaN;
+
+    [NotFluent]
+    internal bool HasValidArrange { get; private set; }
 
     #endregion
 
@@ -613,22 +674,55 @@ public abstract class VisualElement : BindableObject, IDisposable, IInputTranspa
     #region Dirty Tracking
     public void MarkNeedsLayout()
     {
-        if (!NeedsLayout)
+        InvalidateMeasure();
+    }
+
+    public void InvalidateMeasure()
+    {
+        bool wasDirty = NeedsMeasure;
+        if (!NeedsMeasure)
         {
-            NeedsLayout = true;
+            NeedsMeasure = true;
+            NeedsArrange = true;
             NeedsPaint = true;
-
-            // Record in performance tracker (dirty heatmap + dirty log).
-            Rayo.DevTools.PerformanceTracker.RecordLayoutDirty(this);
-
-            if (Parent != null && !Parent.NeedsLayout)
-            {
-                Parent.MarkNeedsLayout();
-            }
         }
 
-        // Always notify UITree to trigger layout AND render (works on Desktop and Android)
-        (UIApplication.Current?.Tree ?? UITree.Current)?.MarkElementNeedsLayout(this);
+        HasValidMeasure = false;
+
+        if (!wasDirty)
+            Rayo.DevTools.PerformanceTracker.RecordLayoutDirty(this);
+
+        var current = this;
+        while (current.Parent != null && !current.CreatesMeasureBoundaryForParent())
+        {
+            current = current.Parent;
+            if (current.NeedsMeasure)
+                break;
+
+            current.NeedsMeasure = true;
+            current.NeedsArrange = true;
+            current.NeedsPaint = true;
+        }
+
+        (UIApplication.Current?.Tree ?? UITree.Current)?.MarkElementNeedsMeasure(this);
+    }
+
+    public void InvalidateArrange()
+    {
+        if (!NeedsArrange)
+        {
+            NeedsArrange = true;
+            NeedsPaint = true;
+            Rayo.DevTools.PerformanceTracker.RecordLayoutDirty(this);
+        }
+
+        if (Parent != null && !Parent.NeedsArrange)
+        {
+            Parent.NeedsArrange = true;
+            Parent.NeedsPaint = true;
+        }
+
+        (UIApplication.Current?.Tree ?? UITree.Current)?.MarkElementNeedsArrange(this);
     }
 
     public void MarkNeedsPaint()
@@ -841,25 +935,101 @@ public abstract class VisualElement : BindableObject, IDisposable, IInputTranspa
     /// </summary>
     protected internal virtual bool RendersChildrenManually => false;
 
-    public virtual void Measure(float availableWidth, float availableHeight)
+    internal bool CreatesMeasureBoundaryForParent()
     {
-        // Use ToArray to avoid collection modification during iteration
-        foreach (var child in GetChildren().ToArray())
-        {
-            child.Measure(availableWidth, availableHeight);
-        }
+        return HasExplicitWidth && HasExplicitHeight;
+    }
 
+    private void ExecuteMeasure(float availableWidth, float availableHeight, bool force)
+    {
+        if (!force && !NeedsMeasure && IsMeasureValidFor(availableWidth, availableHeight))
+            return;
+
+        Measure(availableWidth, availableHeight);
+        LastMeasuredAvailableWidth = availableWidth;
+        LastMeasuredAvailableHeight = availableHeight;
+        HasValidMeasure = true;
+        NeedsMeasure = false;
+        NeedsArrange = true;
+        NeedsPaint = true;
         OnMeasured(DesiredWidth, DesiredHeight);
     }
 
-    public virtual void Arrange(float x, float y, float width, float height)
+    private void ExecuteArrange(float x, float y, float width, float height, bool force)
+    {
+        bool rectChanged = !HasValidArrange ||
+            LastArrangedX != x ||
+            LastArrangedY != y ||
+            LastArrangedWidth != width ||
+            LastArrangedHeight != height;
+
+        if (!force && !NeedsArrange && !rectChanged)
+            return;
+
+        Arrange(x, y, width, height);
+        LastArrangedX = x;
+        LastArrangedY = y;
+        LastArrangedWidth = width;
+        LastArrangedHeight = height;
+        HasValidArrange = true;
+        NeedsArrange = false;
+        NeedsPaint = true;
+        OnArranged(x, y, width, height);
+    }
+
+    public bool IsMeasureValidFor(float availableWidth, float availableHeight)
+    {
+        return HasValidMeasure &&
+               LastMeasuredAvailableWidth == availableWidth &&
+               LastMeasuredAvailableHeight == availableHeight;
+    }
+
+    public void MeasureUpdate(float availableWidth, float availableHeight)
+    {
+        if (!NeedsMeasure && IsMeasureValidFor(availableWidth, availableHeight))
+            return;
+
+        ExecuteMeasure(availableWidth, availableHeight, force: false);
+    }
+
+    internal void ForceMeasure(float availableWidth, float availableHeight)
+    {
+        ExecuteMeasure(availableWidth, availableHeight, force: true);
+    }
+
+    public void ArrangeUpdate(float x, float y, float width, float height)
+    {
+        bool rectChanged = !HasValidArrange ||
+            LastArrangedX != x ||
+            LastArrangedY != y ||
+            LastArrangedWidth != width ||
+            LastArrangedHeight != height;
+
+        if (!NeedsArrange && !rectChanged)
+            return;
+
+        ExecuteArrange(x, y, width, height, force: false);
+    }
+
+    internal void ForceArrange(float x, float y, float width, float height)
+    {
+        ExecuteArrange(x, y, width, height, force: true);
+    }
+
+    protected virtual void Measure(float availableWidth, float availableHeight)
+    {
+        foreach (var child in GetChildren().ToArray())
+        {
+            child.MeasureUpdate(availableWidth, availableHeight);
+        }
+    }
+
+    protected virtual void Arrange(float x, float y, float width, float height)
     {
         ComputedX = x;
         ComputedY = y;
         ComputedWidth = width;
         ComputedHeight = height;
-
-        OnArranged(x, y, width, height);
     }
 
     public abstract void Render(IRenderer renderer);

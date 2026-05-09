@@ -177,13 +177,13 @@ public class ArkanoidCanvas : View<ArkanoidCanvas>,
         }
     }
 
-    public override void Measure(float availableWidth, float availableHeight)
+    protected override void Measure(float availableWidth, float availableHeight)
     {
         DesiredWidth  = float.IsPositiveInfinity(availableWidth)  ? 0 : availableWidth;
         DesiredHeight = float.IsPositiveInfinity(availableHeight) ? 0 : availableHeight;
     }
 
-    public override void Arrange(float x, float y, float width, float height)
+    protected override void Arrange(float x, float y, float width, float height)
     {
         base.Arrange(x, y, width, height);
 

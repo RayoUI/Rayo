@@ -316,7 +316,7 @@ public class Stepper : Rayo.Core.CompositeView<Stepper>
         }
     }
 
-    public override void Measure(float availableWidth, float availableHeight)
+    protected override void Measure(float availableWidth, float availableHeight)
     {
         float measuredWidth, measuredHeight;
 
@@ -331,16 +331,16 @@ public class Stepper : Rayo.Core.CompositeView<Stepper>
             measuredHeight = Height > 0 ? Height : 100;
         }
 
-        _container?.Measure(measuredWidth, measuredHeight);
+        _container?.MeasureUpdate(measuredWidth, measuredHeight);
 
         DesiredWidth = measuredWidth;
         DesiredHeight = measuredHeight;
     }
 
-    public override void Arrange(float x, float y, float width, float height)
+    protected override void Arrange(float x, float y, float width, float height)
     {
         base.Arrange(x, y, width, height);
-        _container?.Arrange(x, y, width, height);
+        _container?.ArrangeUpdate(x, y, width, height);
     }
 
     public override void Render(IRenderer renderer)

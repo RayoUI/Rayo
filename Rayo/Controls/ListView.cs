@@ -375,10 +375,10 @@ public class ListView<T> : Rayo.Core.CompositeView<ListView<T>>, IInputHandler, 
 
     #region Layout Overrides
 
-    public override void Measure(float availableWidth, float availableHeight)
+    protected override void Measure(float availableWidth, float availableHeight)
     {
         // Measure ScrollView with available space minus our padding
-        _scrollView.Measure(
+        _scrollView.MeasureUpdate(
             availableWidth - Padding.Horizontal,
             availableHeight - Padding.Vertical
         );
@@ -405,7 +405,7 @@ public class ListView<T> : Rayo.Core.CompositeView<ListView<T>>, IInputHandler, 
         OnMeasured(DesiredWidth, DesiredHeight);
     }
 
-    public override void Arrange(float x, float y, float width, float height)
+    protected override void Arrange(float x, float y, float width, float height)
     {
         base.Arrange(x, y, width, height);
 
@@ -415,7 +415,7 @@ public class ListView<T> : Rayo.Core.CompositeView<ListView<T>>, IInputHandler, 
         float contentWidth = width - Padding.Horizontal;
         float contentHeight = height - Padding.Vertical;
 
-        _scrollView.Arrange(contentX, contentY, contentWidth, contentHeight);
+        _scrollView.ArrangeUpdate(contentX, contentY, contentWidth, contentHeight);
     }
 
     public override void Render(IRenderer renderer)
@@ -467,13 +467,13 @@ internal sealed class VirtualizedListPanel<T> : CompositeView<VirtualizedListPan
         MarkNeedsLayout();
     }
 
-    public override void Measure(float availableWidth, float availableHeight)
+    protected override void Measure(float availableWidth, float availableHeight)
     {
         DesiredWidth = float.IsInfinity(availableWidth) || availableWidth <= 0 ? Width : availableWidth;
         DesiredHeight = GetTotalContentHeight();
     }
 
-    public override void Arrange(float x, float y, float width, float height)
+    protected override void Arrange(float x, float y, float width, float height)
     {
         base.Arrange(x, y, width, height);
 
@@ -509,7 +509,7 @@ internal sealed class VirtualizedListPanel<T> : CompositeView<VirtualizedListPan
             int itemIndex = _firstMaterializedIndex + pair.localIndex;
             float itemY = y + itemIndex * itemExtent;
             float childHeight = Math.Max(0, _itemHeight);
-            pair.child.Arrange(x, itemY, width, childHeight);
+            pair.child.ArrangeUpdate(x, itemY, width, childHeight);
         }
     }
 

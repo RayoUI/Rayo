@@ -233,7 +233,7 @@ public class Splitter : Rayo.Core.Layout<Splitter>, IPointerHandler, IInputHandl
 
     #region Layout Overrides
 
-    public override void Measure(float availableWidth, float availableHeight)
+    protected override void Measure(float availableWidth, float availableHeight)
     {
         var visibleChildren = Children.Where(c => c.IsVisible).ToList();
         if (visibleChildren.Count == 0)
@@ -267,14 +267,14 @@ public class Splitter : Rayo.Core.Layout<Splitter>, IPointerHandler, IInputHandl
             if (Orientation == SplitterOrientation.Horizontal)
             {
                 // Horizontal: Height is restricted, Width is flexible (unless fixed)
-                child.Measure(float.PositiveInfinity, availableForChildrenHeight);
+                child.MeasureUpdate(float.PositiveInfinity, availableForChildrenHeight);
                 measuredWidth += child.DesiredWidth;
                 measuredHeight = Math.Max(measuredHeight, child.DesiredHeight);
             }
             else
             {
                 // Vertical: Width is restricted, Height is flexible
-                child.Measure(availableForChildrenWidth, float.PositiveInfinity);
+                child.MeasureUpdate(availableForChildrenWidth, float.PositiveInfinity);
                 measuredWidth = Math.Max(measuredWidth, child.DesiredWidth);
                 measuredHeight += child.DesiredHeight;
             }
@@ -307,7 +307,7 @@ public class Splitter : Rayo.Core.Layout<Splitter>, IPointerHandler, IInputHandl
         }
     }
 
-    public override void Arrange(float x, float y, float width, float height)
+    protected override void Arrange(float x, float y, float width, float height)
     {
         base.Arrange(x, y, width, height);
         _splitters.Clear();
@@ -402,7 +402,7 @@ public class Splitter : Rayo.Core.Layout<Splitter>, IPointerHandler, IInputHandl
             if (Orientation == SplitterOrientation.Horizontal)
             {
                 // Arrange child at absolute position
-                child.Arrange(x + currentPos, y + contentY, size, contentHeight);
+                child.ArrangeUpdate(x + currentPos, y + contentY, size, contentHeight);
                 currentPos += size;
 
                 // Add Splitter in local coordinates if not last
@@ -415,7 +415,7 @@ public class Splitter : Rayo.Core.Layout<Splitter>, IPointerHandler, IInputHandl
             else
             {
                 // Arrange child at absolute position
-                child.Arrange(x + contentX, y + currentPos, contentWidth, size);
+                child.ArrangeUpdate(x + contentX, y + currentPos, contentWidth, size);
                 currentPos += size;
 
                 // Add Splitter in local coordinates

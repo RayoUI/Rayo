@@ -16,7 +16,8 @@ public class UITree
     public static UITree? Current { get; set; }
 
     public VisualElement? Root { get; private set; }
-    private bool _needsLayout = true;
+    private bool _needsMeasure = true;
+    private bool _needsArrange = true;
     private bool _needsRender = true;
     private bool _renderRequestQueued;
     private float _lastWidth;
@@ -116,7 +117,7 @@ public class UITree
         {
             _overlays.Add(overlay);
             MarkOverlayLayerDirty(overlay);
-            MarkElementNeedsLayout(overlay);
+            MarkElementNeedsMeasure(overlay);
             OverlaysChanged?.Invoke();
         }
     }
@@ -137,16 +138,31 @@ public class UITree
 
     public void MarkNeedsLayout()
     {
-        _needsLayout = true;
+        MarkNeedsMeasure();
+    }
+
+    public void MarkNeedsMeasure()
+    {
+        _needsMeasure = true;
+        _needsArrange = true;
         _dirtyRegions.MarkFullScreenDirty();
         MarkAllCachedLayersDirty();
         MarkNeedsRender();
     }
 
-    public void MarkElementNeedsLayout(VisualElement element)
+    public void MarkElementNeedsMeasure(VisualElement element)
     {
-        _needsLayout = true;
-        _scheduler.ScheduleLayout(element);
+        _scheduler.ScheduleMeasure(element);
+        _dirtyRegions.MarkElementDirty(element, DirtyReason.LayoutChanged);
+        MarkElementRetainedLayerDirty(element);
+
+        MarkNeedsRender();
+    }
+
+    public void MarkElementNeedsArrange(VisualElement element)
+    {
+        _needsArrange = true;
+        _scheduler.ScheduleArrange(element);
         _dirtyRegions.MarkElementDirty(element, DirtyReason.LayoutChanged);
         MarkElementRetainedLayerDirty(element);
 
@@ -201,53 +217,46 @@ public class UITree
             _lastHeight = height;
             _dirtyRegions.MarkFullScreenDirty();
             MarkAllCachedLayersDirty();
-            MarkNeedsLayout();
+            MarkNeedsMeasure();
         }
 
-        bool rootNeedsLayout = _needsLayout || Root.NeedsLayout || HasScheduledRootLayoutWork();
-        var overlaysNeedingLayout = CaptureOverlaysNeedingLayout();
+        bool fullRootMeasure = _needsMeasure || Root.NeedsMeasure;
+        bool fullRootArrange = _needsArrange || Root.NeedsArrange;
 
-        // Use the new granular dirty flags system
-        if (rootNeedsLayout || overlaysNeedingLayout.Count > 0)
+        if (fullRootMeasure)
         {
-            if (rootNeedsLayout)
-            {
-                _dirtyRegions.MarkFullScreenDirty();
-                Rayo.DevTools.PerformanceTracker.RecordMeasured();
-                Root.Measure(width, height);
-                Rayo.DevTools.PerformanceTracker.RecordArranged();
-                Root.Arrange(0, 0, width, height);
-                ClearDirtyFlags(Root);
-
-                // If the root moved, refresh every overlay too because they share the viewport.
-                overlaysNeedingLayout = _overlays;
-            }
-
-            foreach (var overlay in overlaysNeedingLayout)
-            {
-                LayoutOverlay(overlay, width, height);
-            }
-
-            _needsLayout = false;
-
-            // Complete scheduler frame
+            _dirtyRegions.MarkFullScreenDirty();
+            Rayo.DevTools.PerformanceTracker.RecordMeasured();
+            Root.MeasureUpdate(width, height);
+            Rayo.DevTools.PerformanceTracker.RecordArranged();
+            Root.ArrangeUpdate(0, 0, width, height);
+            ClearDirtyFlags(Root);
+            LayoutOverlays(_overlays, width, height);
+            _needsMeasure = false;
+            _needsArrange = false;
             _scheduler.FrameComplete();
+            MarkNeedsRender();
+            return;
+        }
 
+        bool didMeasure = ProcessIncrementalMeasureRoots(width, height);
+        bool didArrange = ProcessIncrementalArrangeRoots(width, height);
+        bool didOverlayLayout = ProcessIncrementalOverlayLayout(width, height);
+
+        if (didMeasure || didArrange || didOverlayLayout)
+        {
+            _scheduler.FrameComplete();
             MarkNeedsRender();
         }
-		else if (Root.NeedsPaint || _scheduler.NeedsPaint)
+        else if (Root.NeedsPaint || _scheduler.NeedsPaint || AnyOverlayNeedsPaint())
         {
-            var dirtyElements = CaptureTrackedDirtyElements(includeLayout: false, includePaint: true);
+            var dirtyElements = CaptureTrackedDirtyElements(includeMeasure: false, includeArrange: false, includePaint: true);
             if (dirtyElements.Count > 0)
-            {
                 ClearDirtyFlagsForTrackedElements(dirtyElements);
-            }
             else
-            {
                 ClearDirtyFlags(Root);
-            }
-			// Ensure paint-only frames release scheduled work so idle mode can resume
-			_scheduler.FrameComplete();
+
+            _scheduler.FrameComplete();
             MarkNeedsRender();
         }
     }
@@ -261,7 +270,8 @@ public class UITree
 
     private void ClearDirtyFlags(VisualElement element)
     {
-        element.NeedsLayout = false;
+        element.NeedsMeasure = false;
+        element.NeedsArrange = false;
         element.NeedsPaint = false;
         // Use GetChildren() instead of Children property to handle LayoutBase correctly
         foreach (var child in element.GetChildren().ToArray())
@@ -272,15 +282,103 @@ public class UITree
 
     private void LayoutOverlay(VisualElement overlay, float width, float height)
     {
-        overlay.Measure(width, height);
+        overlay.MeasureUpdate(width, height);
 
         float x = overlay.X;
         float y = overlay.Y;
         float w = overlay.HorizontalAlignment == HorizontalAlignment.Stretch ? width : overlay.DesiredWidth;
         float h = overlay.VerticalAlignment == VerticalAlignment.Stretch ? height : overlay.DesiredHeight;
 
-        overlay.Arrange(x, y, w, h);
+        overlay.ArrangeUpdate(x, y, w, h);
         ClearDirtyFlags(overlay);
+    }
+
+    private void LayoutOverlays(IEnumerable<VisualElement> overlays, float width, float height)
+    {
+        foreach (var overlay in overlays)
+            LayoutOverlay(overlay, width, height);
+    }
+
+    private bool ProcessIncrementalMeasureRoots(float width, float height)
+    {
+        var roots = CollectMeasureRoots();
+        if (roots.Count == 0)
+            return false;
+
+        foreach (var root in roots)
+        {
+            if (FindOwningOverlay(root) != null)
+                continue;
+
+            if (!root.HasValidMeasure)
+            {
+                _needsMeasure = true;
+                return ProcessIncrementalMeasureRootsFallback(width, height);
+            }
+
+            Rayo.DevTools.PerformanceTracker.RecordMeasured();
+            root.ForceMeasure(root.LastMeasuredAvailableWidth, root.LastMeasuredAvailableHeight);
+
+            var arrangeHost = root.Parent ?? root;
+            Rayo.DevTools.PerformanceTracker.RecordArranged();
+            arrangeHost.ForceArrange(arrangeHost.ComputedX, arrangeHost.ComputedY, arrangeHost.ComputedWidth, arrangeHost.ComputedHeight);
+            ClearDirtyFlags(arrangeHost);
+        }
+
+        _needsArrange = false;
+        return true;
+    }
+
+    private bool ProcessIncrementalMeasureRootsFallback(float width, float height)
+    {
+        if (Root == null)
+            return false;
+
+        Rayo.DevTools.PerformanceTracker.RecordMeasured();
+        Root.MeasureUpdate(width, height);
+        Rayo.DevTools.PerformanceTracker.RecordArranged();
+        Root.ArrangeUpdate(0, 0, width, height);
+        ClearDirtyFlags(Root);
+        LayoutOverlays(_overlays, width, height);
+        _needsMeasure = false;
+        _needsArrange = false;
+        return true;
+    }
+
+    private bool ProcessIncrementalArrangeRoots(float width, float height)
+    {
+        var roots = CollectArrangeRoots();
+        if (roots.Count == 0)
+            return false;
+
+        foreach (var root in roots)
+        {
+            if (FindOwningOverlay(root) != null)
+                continue;
+
+            var arrangeHost = root.Parent ?? root;
+            float arrangeWidth = ReferenceEquals(arrangeHost, Root) ? width : arrangeHost.ComputedWidth;
+            float arrangeHeight = ReferenceEquals(arrangeHost, Root) ? height : arrangeHost.ComputedHeight;
+            float arrangeX = ReferenceEquals(arrangeHost, Root) ? 0 : arrangeHost.ComputedX;
+            float arrangeY = ReferenceEquals(arrangeHost, Root) ? 0 : arrangeHost.ComputedY;
+
+            Rayo.DevTools.PerformanceTracker.RecordArranged();
+            arrangeHost.ForceArrange(arrangeX, arrangeY, arrangeWidth, arrangeHeight);
+            ClearDirtyFlags(arrangeHost);
+        }
+
+        _needsArrange = false;
+        return true;
+    }
+
+    private bool ProcessIncrementalOverlayLayout(float width, float height)
+    {
+        var overlays = CaptureOverlaysNeedingLayout();
+        if (overlays.Count == 0)
+            return false;
+
+        LayoutOverlays(overlays, width, height);
+        return true;
     }
 
     private void ClearDirtyFlagsForTrackedElements(IReadOnlyList<VisualElement> dirtyElements)
@@ -296,7 +394,8 @@ public class UITree
             {
                 if (cleared.Add(current))
                 {
-                    current.NeedsLayout = false;
+                    current.NeedsMeasure = false;
+                    current.NeedsArrange = false;
                     current.NeedsPaint = false;
                 }
 
@@ -310,23 +409,30 @@ public class UITree
         if (!cleared.Add(element))
             return;
 
-        element.NeedsLayout = false;
+        element.NeedsMeasure = false;
+        element.NeedsArrange = false;
         element.NeedsPaint = false;
 
         foreach (var child in element.GetChildren())
         {
-            if (child.NeedsLayout || child.NeedsPaint)
+            if (child.NeedsMeasure || child.NeedsArrange || child.NeedsPaint)
                 ClearDirtySubtree(child, cleared);
         }
     }
 
-    private List<VisualElement> CaptureTrackedDirtyElements(bool includeLayout, bool includePaint)
+    private List<VisualElement> CaptureTrackedDirtyElements(bool includeMeasure, bool includeArrange, bool includePaint)
     {
         var tracked = new HashSet<VisualElement>();
 
-        if (includeLayout)
+        if (includeMeasure)
         {
-            foreach (var element in _scheduler.DirtyLayoutElements)
+            foreach (var element in _scheduler.DirtyMeasureElements)
+                tracked.Add(element);
+        }
+
+        if (includeArrange)
+        {
+            foreach (var element in _scheduler.DirtyArrangeElements)
                 tracked.Add(element);
         }
 
@@ -338,12 +444,12 @@ public class UITree
 
         if (tracked.Count == 0)
         {
-            if (Root != null && (Root.NeedsLayout || Root.NeedsPaint))
+            if (Root != null && (Root.NeedsMeasure || Root.NeedsArrange || Root.NeedsPaint))
                 tracked.Add(Root);
 
             foreach (var overlay in _overlays)
             {
-                if (overlay.NeedsLayout || overlay.NeedsPaint)
+                if (overlay.NeedsMeasure || overlay.NeedsArrange || overlay.NeedsPaint)
                     tracked.Add(overlay);
             }
         }
@@ -351,15 +457,9 @@ public class UITree
         return tracked.ToList();
     }
 
-    private bool HasScheduledRootLayoutWork()
+    private bool AnyOverlayNeedsPaint()
     {
-        foreach (var element in _scheduler.DirtyLayoutElements)
-        {
-            if (FindOwningOverlay(element) == null)
-                return true;
-        }
-
-        return false;
+        return _overlays.Any(static overlay => overlay.NeedsPaint);
     }
 
     private IReadOnlyList<VisualElement> CaptureOverlaysNeedingLayout()
@@ -369,7 +469,14 @@ public class UITree
 
         var overlays = new HashSet<VisualElement>();
 
-        foreach (var element in _scheduler.DirtyLayoutElements)
+        foreach (var element in _scheduler.DirtyMeasureElements)
+        {
+            var owningOverlay = FindOwningOverlay(element);
+            if (owningOverlay != null)
+                overlays.Add(owningOverlay);
+        }
+
+        foreach (var element in _scheduler.DirtyArrangeElements)
         {
             var owningOverlay = FindOwningOverlay(element);
             if (owningOverlay != null)
@@ -378,11 +485,93 @@ public class UITree
 
         foreach (var overlay in _overlays)
         {
-            if (overlay.NeedsLayout)
+            if (overlay.NeedsMeasure || overlay.NeedsArrange)
                 overlays.Add(overlay);
         }
 
         return overlays.Count == 0 ? Array.Empty<VisualElement>() : overlays.ToList();
+    }
+
+    private List<VisualElement> CollectMeasureRoots()
+    {
+        var roots = new HashSet<VisualElement>();
+
+        foreach (var element in _scheduler.DirtyMeasureElements)
+        {
+            if (FindOwningOverlay(element) != null)
+                continue;
+
+            var root = FindMeasureRelayoutRoot(element);
+            roots.Add(root);
+        }
+
+        return DeduplicateRoots(roots);
+    }
+
+    private List<VisualElement> CollectArrangeRoots()
+    {
+        var roots = new HashSet<VisualElement>();
+
+        foreach (var element in _scheduler.DirtyArrangeElements)
+        {
+            if (FindOwningOverlay(element) != null)
+                continue;
+
+            var root = FindArrangeRelayoutRoot(element);
+            roots.Add(root);
+        }
+
+        return DeduplicateRoots(roots);
+    }
+
+    private static List<VisualElement> DeduplicateRoots(IEnumerable<VisualElement> candidates)
+    {
+        var roots = new List<VisualElement>();
+
+        foreach (var candidate in candidates)
+        {
+            bool covered = roots.Any(existing => IsAncestorOrSelf(existing, candidate));
+            if (covered)
+                continue;
+
+            roots.RemoveAll(existing => IsAncestorOrSelf(candidate, existing));
+            roots.Add(candidate);
+        }
+
+        return roots;
+    }
+
+    private VisualElement FindMeasureRelayoutRoot(VisualElement element)
+    {
+        var current = element;
+
+        while (current.Parent != null &&
+               current.Parent.NeedsMeasure &&
+               !current.CreatesMeasureBoundaryForParent())
+        {
+            current = current.Parent;
+        }
+
+        return current;
+    }
+
+    private static VisualElement FindArrangeRelayoutRoot(VisualElement element)
+    {
+        return element.Parent ?? element;
+    }
+
+    private static bool IsAncestorOrSelf(VisualElement ancestor, VisualElement element)
+    {
+        var current = element;
+        while (current != null)
+        {
+            if (ReferenceEquals(current, ancestor))
+                return true;
+
+            current = current.Parent;
+        }
+
+        return false;
     }
 
     public void Render(IRenderer renderer, bool fullSurfaceCleared = true)
@@ -521,7 +710,7 @@ public class UITree
         var layer = _layerCache.GetOrCreateLayer(GetRootLayerId(), width, height);
         layer.MarkUsed();
 
-        if (Root.NeedsLayout || Root.NeedsPaint || renderState.RequiresFullRender || layer.IsDirty)
+        if (Root.NeedsMeasure || Root.NeedsArrange || Root.NeedsPaint || renderState.RequiresFullRender || layer.IsDirty)
         {
             renderer.BeginRenderToTexture(layer.Texture!);
             renderer.Clear(RenderColor.Transparent);
@@ -570,7 +759,7 @@ public class UITree
         var layer = _layerCache.GetOrCreateLayer(layerId, width, height);
         layer.MarkUsed();
 
-        if (overlay.NeedsLayout || overlay.NeedsPaint || layer.IsDirty)
+        if (overlay.NeedsMeasure || overlay.NeedsArrange || overlay.NeedsPaint || layer.IsDirty)
         {
             renderer.BeginRenderToTexture(layer.Texture!);
             renderer.Clear(RenderColor.Transparent);
@@ -611,7 +800,7 @@ public class UITree
         var baseLayer = _layerCache.GetOrCreateLayer(baseLayerId, width, height);
         baseLayer.MarkUsed();
 
-        if (host.NeedsLayout || host.NeedsPaint || renderState.RequiresFullRender || baseLayer.IsDirty)
+        if (host.NeedsMeasure || host.NeedsArrange || host.NeedsPaint || renderState.RequiresFullRender || baseLayer.IsDirty)
         {
             renderer.BeginRenderToTexture(baseLayer.Texture!);
             renderer.Clear(RenderColor.Transparent);
@@ -703,7 +892,7 @@ public class UITree
         var layer = _layerCache.GetOrCreateLayer(layerId, width, height);
         layer.MarkUsed();
 
-        bool branchDirty = renderState.RequiresFullRender || branch.NeedsLayout || branch.NeedsPaint || layer.IsDirty || SubtreeIntersectsDirty(branch, renderState);
+        bool branchDirty = renderState.RequiresFullRender || branch.NeedsMeasure || branch.NeedsArrange || branch.NeedsPaint || layer.IsDirty || SubtreeIntersectsDirty(branch, renderState);
         if (branchDirty)
         {
             renderer.BeginRenderToTexture(layer.Texture!);

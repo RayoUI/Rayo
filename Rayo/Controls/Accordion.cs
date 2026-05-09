@@ -433,13 +433,13 @@ public class Expander : CompositeView<Expander>
         }
     }
 
-    public override void Measure(float availableWidth, float availableHeight)
+    protected override void Measure(float availableWidth, float availableHeight)
     {
         float measuredWidth = Width > 0 ? Width : 0f;
 
         if (_headerButton != null)
         {
-            _headerButton.Measure(availableWidth, availableHeight);
+            _headerButton.MeasureUpdate(availableWidth, availableHeight);
             float headerWidth = _headerButton.DesiredWidth > 0 ? _headerButton.DesiredWidth : _headerButton.Width;
             _headerMeasuredHeight = _headerButton.DesiredHeight > 0 ? _headerButton.DesiredHeight : _headerButton.Height;
             measuredWidth = MathF.Max(measuredWidth, headerWidth);
@@ -455,7 +455,7 @@ public class Expander : CompositeView<Expander>
                 ? availableHeight
                 : MathF.Max(0, availableHeight - _headerMeasuredHeight);
 
-            _contentFrame.Measure(availableWidth, contentAvailableHeight);
+            _contentFrame.MeasureUpdate(availableWidth, contentAvailableHeight);
             _contentMeasuredHeight = _contentFrame.DesiredHeight > 0 ? _contentFrame.DesiredHeight : _contentFrame.Height;
             float contentWidth = _contentFrame.DesiredWidth > 0 ? _contentFrame.DesiredWidth : _contentFrame.Width;
             measuredWidth = MathF.Max(measuredWidth, contentWidth);
@@ -478,12 +478,12 @@ public class Expander : CompositeView<Expander>
         }
     }
 
-    public override void Arrange(float x, float y, float width, float height)
+    protected override void Arrange(float x, float y, float width, float height)
     {
         base.Arrange(x, y, width, height);
 
         float headerHeight = MathF.Min(_headerMeasuredHeight, height);
-        _headerButton?.Arrange(x, y, width, headerHeight);
+        _headerButton?.ArrangeUpdate(x, y, width, headerHeight);
 
         float remainingHeight = MathF.Max(0, height - headerHeight);
         float naturalContentHeight = _contentMeasuredHeight * _contentAnimationProgress;
@@ -492,7 +492,7 @@ public class Expander : CompositeView<Expander>
         if (_contentFrame != null)
         {
             _contentFrame.IsVisible(contentHeight > 0.001f);
-            _contentFrame.Arrange(x, y + headerHeight, width, contentHeight);
+            _contentFrame.ArrangeUpdate(x, y + headerHeight, width, contentHeight);
         }
     }
 
@@ -613,11 +613,11 @@ public class Accordion : CompositeView<Accordion>
         return this;
     }
 
-    public override void Measure(float availableWidth, float availableHeight)
+    protected override void Measure(float availableWidth, float availableHeight)
     {
         if (_layout != null)
         {
-            _layout.Measure(availableWidth, availableHeight);
+            _layout.MeasureUpdate(availableWidth, availableHeight);
             DesiredWidth = _layout.DesiredWidth;
             DesiredHeight = _layout.DesiredHeight;
         }
@@ -628,13 +628,13 @@ public class Accordion : CompositeView<Accordion>
         }
     }
 
-    public override void Arrange(float x, float y, float width, float height)
+    protected override void Arrange(float x, float y, float width, float height)
     {
         base.Arrange(x, y, width, height);
 
         if (_layout != null)
         {
-            _layout.Arrange(x, y, width, height);
+            _layout.ArrangeUpdate(x, y, width, height);
         }
     }
 

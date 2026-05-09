@@ -244,7 +244,7 @@ public class Slider : Rayo.Core.View<Slider>,
                position.Y >= trackY && position.Y <= trackY + TrackHeight;
     }
 
-    public override void Measure(float availableWidth, float availableHeight)
+    protected override void Measure(float availableWidth, float availableHeight)
     {
         if (Width == 0) Width = 200;
         if (Height == 0) Height = Math.Max(TrackHeight, ThumbSize) + 10;
@@ -253,7 +253,7 @@ public class Slider : Rayo.Core.View<Slider>,
         DesiredHeight = Height;
     }
 
-    public override void Arrange(float x, float y, float width, float height)
+    protected override void Arrange(float x, float y, float width, float height)
     {
         base.Arrange(x, y, width, height);
     }

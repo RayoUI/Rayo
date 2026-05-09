@@ -61,13 +61,13 @@ public class Icon : View<Icon>
         IconData = iconData;
     }
 
-    public override void Measure(float availableWidth, float availableHeight)
+    protected override void Measure(float availableWidth, float availableHeight)
     {
         if (Width == 0) Width = DefaultIconSize;
         if (Height == 0) Height = DefaultIconSize;
     }
 
-    public override void Arrange(float x, float y, float width, float height)
+    protected override void Arrange(float x, float y, float width, float height)
     {
         base.Arrange(x, y, width, height);
     }

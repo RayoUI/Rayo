@@ -308,11 +308,11 @@ public class Card : Rayo.Core.CompositeView<Card>
         }
     }
 
-    public override void Measure(float availableWidth, float availableHeight)
+    protected override void Measure(float availableWidth, float availableHeight)
     {
         if (_cardFrame != null)
         {
-            _cardFrame.Measure(availableWidth, availableHeight);
+            _cardFrame.MeasureUpdate(availableWidth, availableHeight);
             DesiredWidth = _cardFrame.DesiredWidth;
             DesiredHeight = _cardFrame.DesiredHeight;
         }
@@ -323,13 +323,13 @@ public class Card : Rayo.Core.CompositeView<Card>
         }
     }
 
-    public override void Arrange(float x, float y, float width, float height)
+    protected override void Arrange(float x, float y, float width, float height)
     {
         base.Arrange(x, y, width, height);
 
         if (_cardFrame != null)
         {
-            _cardFrame.Arrange(x, y, width, height);
+            _cardFrame.ArrangeUpdate(x, y, width, height);
         }
     }
 

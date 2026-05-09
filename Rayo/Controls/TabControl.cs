@@ -1018,7 +1018,7 @@ public class TabControl : CompositeView<TabControl>
         return false;
     }
 
-    public override void Measure(float availableWidth, float availableHeight)
+    protected override void Measure(float availableWidth, float availableHeight)
     {
         // ✅ CORREGIDO: Implementar medición correcta respetando Alignment
 
@@ -1075,17 +1075,17 @@ public class TabControl : CompositeView<TabControl>
         // Medir los hijos con el espacio disponible (no el deseado)
         foreach (var child in Children.ToArray())
         {
-            child.Measure(desiredWidth, desiredHeight);
+            child.MeasureUpdate(desiredWidth, desiredHeight);
         }
     }
 
-    public override void Arrange(float x, float y, float width, float height)
+    protected override void Arrange(float x, float y, float width, float height)
     {
         base.Arrange(x, y, width, height);
 
         // Arrange del container (headers + content)
         if (Children.Count > 0)
-            Children[0].Arrange(x, y, width, height);
+            Children[0].ArrangeUpdate(x, y, width, height);
 
         UpdateScrollButtonStates();
     }
@@ -1135,7 +1135,7 @@ public class TabControl : CompositeView<TabControl>
     /// </summary>
     private class OverlayFrame : CompositeView<OverlayFrame>
     {
-        public override void Measure(float availableWidth, float availableHeight)
+        protected override void Measure(float availableWidth, float availableHeight)
         {
             // Si tiene tamaño explícito, usarlo
             float w = Width > 0 ? Width : availableWidth;
@@ -1149,7 +1149,7 @@ public class TabControl : CompositeView<TabControl>
             {
                 if (child.IsVisible)
                 {
-                    child.Measure(w, h);
+                    child.MeasureUpdate(w, h);
                     maxChildW = Math.Max(maxChildW, child.DesiredWidth);
                     maxChildH = Math.Max(maxChildH, child.DesiredHeight);
                 }
@@ -1159,7 +1159,7 @@ public class TabControl : CompositeView<TabControl>
             DesiredHeight = Height > 0 ? Height : maxChildH;
         }
 
-        public override void Arrange(float x, float y, float width, float height)
+        protected override void Arrange(float x, float y, float width, float height)
         {
             base.Arrange(x, y, width, height);
 
@@ -1210,7 +1210,7 @@ public class TabControl : CompositeView<TabControl>
                         break;
                 }
 
-                child.Arrange(childX, childY, childW, childH);
+                child.ArrangeUpdate(childX, childY, childW, childH);
             }
         }
 
@@ -1455,7 +1455,7 @@ public class TabControl : CompositeView<TabControl>
             IsInputTransparent = true;
         }
 
-        public override void Measure(float availableWidth, float availableHeight)
+        protected override void Measure(float availableWidth, float availableHeight)
         {
             DesiredWidth = _owner.TabCloseButtonHitSize;
             DesiredHeight = _owner.TabCloseButtonHitSize;
@@ -1796,7 +1796,7 @@ internal class DraggableTabButton : Button, IDraggable, IDropTarget, IInputHandl
         MarkNeedsPaint();
     }
 
-    public override void Arrange(float x, float y, float width, float height)
+    protected override void Arrange(float x, float y, float width, float height)
     {
         base.Arrange(x, y, width, height);
     }

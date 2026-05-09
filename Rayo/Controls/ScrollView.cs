@@ -186,7 +186,7 @@ public class ScrollView : CompositeView<ScrollView>, IInputHandler, IScrollable,
             if (_contentHeight == 0 || _contentHeight < ComputedHeight)
             {
                 // Measure the content with the current viewport size
-                Measure(ComputedWidth, ComputedHeight);
+                MeasureUpdate(ComputedWidth, ComputedHeight);
             }
             float maxScroll = MaxVerticalScroll;
             float newValue = Math.Max(0, Math.Min(value, maxScroll));
@@ -226,9 +226,9 @@ public class ScrollView : CompositeView<ScrollView>, IInputHandler, IScrollable,
     {
         if (ComputedWidth > 0 && ComputedHeight > 0 && !NeedsLayout)
         {
-            // OPTIMIZATION: Call Arrange directly with current bounds to update child positions based on new scroll offsets
-            // without triggering a full re-measure/re-layout pass on the whole tree.
-            Arrange(ComputedX, ComputedY, ComputedWidth, ComputedHeight);
+            // Scroll offsets change child placement without changing this element's bounds.
+            // Use the forced arrange path so the new wrapper doesn't skip the call when the rect is unchanged.
+            ForceArrange(ComputedX, ComputedY, ComputedWidth, ComputedHeight);
             
             // On Android, we need to ensure the renderer knows something changed visual-wise
             MarkNeedsPaint();
@@ -312,7 +312,7 @@ public class ScrollView : CompositeView<ScrollView>, IInputHandler, IScrollable,
         }
     }
 
-    public override void Measure(float availableWidth, float availableHeight)
+    protected override void Measure(float availableWidth, float availableHeight)
     {
         const float InfiniteThreshold = float.PositiveInfinity;
 
@@ -377,7 +377,7 @@ public class ScrollView : CompositeView<ScrollView>, IInputHandler, IScrollable,
 
         foreach (var child in Children.ToArray())
         {
-            child.Measure(measureWidth, measureHeight);
+            child.MeasureUpdate(measureWidth, measureHeight);
 
             float childWidth = child.DesiredWidth > 0 ? child.DesiredWidth : child.Width;
             float childHeight = child.DesiredHeight > 0 ? child.DesiredHeight : child.Height;
@@ -414,7 +414,7 @@ public class ScrollView : CompositeView<ScrollView>, IInputHandler, IScrollable,
         DesiredHeight = scrollViewHeight;
     }
 
-    public override void Arrange(float x, float y, float width, float height)
+    protected override void Arrange(float x, float y, float width, float height)
     {
         // ✅ FIX: Detect size change and force re-measure
         bool sizeChanged = ComputedWidth != width || ComputedHeight != height;
@@ -439,7 +439,7 @@ public class ScrollView : CompositeView<ScrollView>, IInputHandler, IScrollable,
         if (sizeChanged)
         {
             // Re-measure with the new size to recalculate _contentWidth and _contentHeight
-            Measure(width, height);
+            MeasureUpdate(width, height);
 
             // ✅ Adjust offsets if they are now greater than the maximum allowed (again, after re-measure)
             if (_verticalScrollOffset > MaxVerticalScroll)
@@ -526,7 +526,7 @@ public class ScrollView : CompositeView<ScrollView>, IInputHandler, IScrollable,
                     break;
             }
 
-            child.Arrange(childX, childY, childWidth, childHeight);
+            child.ArrangeUpdate(childX, childY, childWidth, childHeight);
         }
     }
 

@@ -232,7 +232,7 @@ public class NodeEditorCanvas : CompositeView<NodeEditorCanvas>, IDropTarget, II
             // Update port positions immediately to prevent connection lag
             node.UpdatePortPositions();
         }
-        _canvas.MarkNeedsLayout();
+        _canvas.InvalidateArrange();
         _overlay.MarkNeedsPaint();
     }
 
@@ -302,7 +302,7 @@ public class NodeEditorCanvas : CompositeView<NodeEditorCanvas>, IDropTarget, II
         _canvas.AddChild(node);
 
         // Initialize port positions immediately after adding to canvas
-        node.Arrange(node.X, node.Y, node.Width, node.Height);
+        node.ArrangeUpdate(node.X, node.Y, node.Width, node.Height);
         node.UpdatePortPositions();
     }
 
@@ -369,17 +369,17 @@ public class NodeEditorCanvas : CompositeView<NodeEditorCanvas>, IDropTarget, II
     // Layout delegation
     // -------------------------------------------------------------------------
 
-    public override void Measure(float availableWidth, float availableHeight)
+    protected override void Measure(float availableWidth, float availableHeight)
     {
-        _canvas.Measure(availableWidth, availableHeight);
+        _canvas.MeasureUpdate(availableWidth, availableHeight);
         DesiredWidth  = _canvas.DesiredWidth;
         DesiredHeight = _canvas.DesiredHeight;
     }
 
-    public override void Arrange(float x, float y, float width, float height)
+    protected override void Arrange(float x, float y, float width, float height)
     {
         base.Arrange(x, y, width, height);
-        _canvas.Arrange(x, y, width, height);
+        _canvas.ArrangeUpdate(x, y, width, height);
     }
 
     public override void Render(IRenderer renderer)

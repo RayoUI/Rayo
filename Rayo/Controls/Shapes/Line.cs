@@ -111,7 +111,7 @@ public class Line : Shape<Line>
             Height = maxY - minY + StrokeThickness;
     }
 
-    public override void Measure(float availableWidth, float availableHeight)
+    protected override void Measure(float availableWidth, float availableHeight)
     {
         float minX = Math.Min(_x1, _x2);
         float maxX = Math.Max(_x1, _x2);

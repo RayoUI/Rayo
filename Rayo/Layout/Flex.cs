@@ -191,7 +191,7 @@ public class Flex : Layout<Flex>
 
     #region Layout Algorithm
 
-    public override void Measure(float availableWidth, float availableHeight)
+    protected override void Measure(float availableWidth, float availableHeight)
     {
         // Aplicar tamaño explícito si existe
         float containerWidth = HasExplicitWidth ? Width : availableWidth;
@@ -224,7 +224,7 @@ public class Flex : Layout<Flex>
             float measureWidth = isRow ? float.PositiveInfinity : contentWidth;
             float measureHeight = isRow ? contentHeight : float.PositiveInfinity;
 
-            child.Measure(measureWidth, measureHeight);
+            child.MeasureUpdate(measureWidth, measureHeight);
 
             float childWidth = child.DesiredWidth > 0 ? child.DesiredWidth : child.Width;
             float childHeight = child.DesiredHeight > 0 ? child.DesiredHeight : child.Height;
@@ -262,7 +262,7 @@ public class Flex : Layout<Flex>
         DesiredHeight = HasExplicitHeight ? Height : totalHeight + Padding.Vertical;
     }
 
-    public override void Arrange(float x, float y, float width, float height)
+    protected override void Arrange(float x, float y, float width, float height)
     {
         base.Arrange(x, y, width, height);
 
@@ -290,7 +290,7 @@ public class Flex : Layout<Flex>
             float measureWidth = isRow ? float.PositiveInfinity : contentWidth;
             float measureHeight = isRow ? contentHeight : float.PositiveInfinity;
 
-            child.Measure(measureWidth, measureHeight);
+            child.MeasureUpdate(measureWidth, measureHeight);
 
             float childWidth = child.DesiredWidth > 0 ? child.DesiredWidth : child.Width;
             float childHeight = child.DesiredHeight > 0 ? child.DesiredHeight : child.Height;
@@ -639,7 +639,7 @@ public class Flex : Layout<Flex>
                 finalHeight = item.FinalMainSize;
             }
 
-            item.Element.Arrange(finalX, finalY, finalWidth, finalHeight);
+            item.Element.ArrangeUpdate(finalX, finalY, finalWidth, finalHeight);
 
             currentMainPos += item.FinalMainSize + itemSpacing;
         }

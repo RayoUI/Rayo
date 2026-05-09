@@ -124,7 +124,7 @@ public class Image : Rayo.Core.View<Image>
 
     #region Layout Overrides
 
-    public override void Measure(float availableWidth, float availableHeight)
+    protected override void Measure(float availableWidth, float availableHeight)
     {
         if (Width == 0 && Height == 0)
         {
@@ -141,7 +141,7 @@ public class Image : Rayo.Core.View<Image>
         }
     }
 
-    public override void Arrange(float x, float y, float width, float height)
+    protected override void Arrange(float x, float y, float width, float height)
     {
         base.Arrange(x, y, width, height);
     }

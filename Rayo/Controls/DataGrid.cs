@@ -492,22 +492,22 @@ public class DataGrid : CompositeView<DataGrid>
         _scrollView.EnsureRectVisible(0, rowY, 1, Math.Max(1, RowHeight));
     }
 
-    public override void Measure(float availableWidth, float availableHeight)
+    protected override void Measure(float availableWidth, float availableHeight)
     {
         float measuredWidth = Width > 0 ? Width : availableWidth;
         float measuredHeight = Height > 0 ? Height : availableHeight;
 
-        _grid?.Measure(measuredWidth, measuredHeight);
+        _grid?.MeasureUpdate(measuredWidth, measuredHeight);
 
         DesiredWidth = measuredWidth;
         DesiredHeight = measuredHeight;
     }
 
-    public override void Arrange(float x, float y, float width, float height)
+    protected override void Arrange(float x, float y, float width, float height)
     {
         base.Arrange(x, y, width, height);
 
-        _grid?.Arrange(x, y, width, height);
+        _grid?.ArrangeUpdate(x, y, width, height);
     }
 
     public override void Render(IRenderer renderer)
@@ -573,13 +573,13 @@ internal sealed class VirtualizedDataGridRowsPanel : CompositeView<VirtualizedDa
         MarkNeedsLayout();
     }
 
-    public override void Measure(float availableWidth, float availableHeight)
+    protected override void Measure(float availableWidth, float availableHeight)
     {
         DesiredWidth = float.IsInfinity(availableWidth) || availableWidth <= 0 ? Width : availableWidth;
         DesiredHeight = _items.Count * Math.Max(1, _rowHeight);
     }
 
-    public override void Arrange(float x, float y, float width, float height)
+    protected override void Arrange(float x, float y, float width, float height)
     {
         base.Arrange(x, y, width, height);
 
@@ -608,7 +608,7 @@ internal sealed class VirtualizedDataGridRowsPanel : CompositeView<VirtualizedDa
         {
             int rowIndex = _firstMaterializedRow + pair.localIndex;
             float rowY = y + rowIndex * rowExtent;
-            pair.child.Arrange(x, rowY, width, rowExtent);
+            pair.child.ArrangeUpdate(x, rowY, width, rowExtent);
         }
     }
 
@@ -721,7 +721,7 @@ internal sealed class RecyclableDataGridRow : CompositeView<RecyclableDataGridRo
         }
     }
 
-    public override void Measure(float availableWidth, float availableHeight)
+    protected override void Measure(float availableWidth, float availableHeight)
     {
         float width = float.IsInfinity(availableWidth) || availableWidth <= 0 ? Width : availableWidth;
         float totalWeight = Math.Max(1f, _columnWeights.Sum());
@@ -730,14 +730,14 @@ internal sealed class RecyclableDataGridRow : CompositeView<RecyclableDataGridRo
         {
             float weight = i < _columnWeights.Count ? _columnWeights[i] : 1f;
             float cellWidth = width * (weight / totalWeight);
-            _cells[i].Measure(cellWidth, _rowHeight);
+            _cells[i].MeasureUpdate(cellWidth, _rowHeight);
         }
 
         DesiredWidth = width;
         DesiredHeight = _rowHeight;
     }
 
-    public override void Arrange(float x, float y, float width, float height)
+    protected override void Arrange(float x, float y, float width, float height)
     {
         base.Arrange(x, y, width, height);
 
@@ -750,7 +750,7 @@ internal sealed class RecyclableDataGridRow : CompositeView<RecyclableDataGridRo
             float cellWidth = i == _cells.Count - 1
                 ? Math.Max(0, x + width - currentX)
                 : width * (weight / totalWeight);
-            _cells[i].Arrange(currentX, y, cellWidth, height);
+            _cells[i].ArrangeUpdate(currentX, y, cellWidth, height);
             currentX += cellWidth;
         }
     }
