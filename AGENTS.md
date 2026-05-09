@@ -132,6 +132,7 @@ Rayo uses a signals-first reactive model:
 
 Prefer generated property overloads that accept `IReadableSignal<T>` over manual subscriptions when binding UI properties.
 When a signal change will mutate the UI tree structure (`ClearChildren`, `AddChild`, `RemoveChild`, `Rebuild`), defer the work through `UIUpdateQueue.EnqueueUIUpdate(...)`.
+Outside `Build()` hooks, prefer lifecycle-owned reactive methods on `IReactiveOwner` such as `UseComputed(...)`, `UseEffect(...)`, and `UseSubscription(...)` over manual `RegisterDisposable(...)` boilerplate.
 
 Reference docs that currently exist in the repo:
 - `Help/SIGNALS_GUIDE.md`

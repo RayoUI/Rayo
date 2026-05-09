@@ -14,8 +14,14 @@ Rayo uses signals for mutable state, computed state, and effects:
 ## Prefer Signals for State
 
 ```csharp
-private readonly Signal<string> _query = new("");
-private readonly Signal<bool> _isBusy = new(false);
+private readonly Signal<string> _query;
+private readonly Signal<bool> _isBusy;
+
+public EditorView()
+{
+    _query = UseSignal(string.Empty);
+    _isBusy = UseSignal(false);
+}
 ```
 
 ## Prefer Computed for Derived Values
@@ -25,15 +31,14 @@ private readonly Computed<bool> _canSave;
 
 public EditorView()
 {
-    _canSave = new Computed<bool>(() => _title.Value.Length > 0 && !_isBusy.Value);
-    RegisterDisposable(_canSave);
+    _canSave = this.UseComputed(() => _title.Value.Length > 0 && !_isBusy.Value);
 }
 ```
 
 ## Prefer Effects for Imperative Reactions
 
 ```csharp
-RegisterDisposable(new Effect(() =>
+this.UseEffect(() =>
 {
     Logger.Write($"Search query changed: {_query.Value}");
 }));
@@ -44,11 +49,40 @@ RegisterDisposable(new Effect(() =>
 If a signal change leads to tree mutations, defer that work:
 
 ```csharp
-RegisterDisposable(_items.Subscribe(() =>
+this.UseSubscription(_items, () =>
 {
     UIUpdateQueue.EnqueueUIUpdate(RebuildRows);
 }));
 ```
+
+## Prefer Lifecycle-Owned Helpers Outside Hooks
+
+When code runs outside `Build()` hooks, prefer lifecycle-owned methods on `IReactiveOwner` over manual `RegisterDisposable(...)` boilerplate.
+
+```csharp
+private readonly Computed<bool> _canSave;
+
+public EditorView()
+{
+    _canSave = this.UseComputed(() => !string.IsNullOrWhiteSpace(_title.Value));
+
+    this.UseEffect(() => Logger.Write($"Busy: {_isBusy.Value}"));
+
+    this.UseSubscription(_query, value =>
+    {
+        Logger.Write($"Query changed: {value}");
+    });
+}
+```
+
+Available lifecycle-owned methods:
+
+- `Use(...)`
+- `UseSignal(...)`
+- `UseSignalList(...)`
+- `UseComputed(...)`
+- `UseEffect(...)`
+- `UseSubscription(...)`
 
 ## Use Hook APIs Inside Build
 

@@ -14,30 +14,36 @@ public class PokemonViewModel : ViewModelBase
 
 
     // Reactive properties for UI binding
-    public SignalList<string> Items { get; private set; } = new();
-    public Signal<ImageSource?> Avatar { get; private set; } = new(null);
-    public Signal<bool> IsLoading { get; private set; } = new(false);
-    public Signal<bool> IsLoadingSprite { get; private set; } = new(false);
-    public Signal<string?> SelectedPokemon { get; private set; } = new(null);
+    public SignalList<string> Items { get; private set; } = null!;
+    public Signal<ImageSource?> Avatar { get; private set; } = null!;
+    public Signal<bool> IsLoading { get; private set; } = null!;
+    public Signal<bool> IsLoadingSprite { get; private set; } = null!;
+    public Signal<string?> SelectedPokemon { get; private set; } = null!;
 
     // Computed properties for UI display
-    public Computed<string> DisplayTitle { get; private set; } = new(() => "Select a Pokemon");
-    public Computed<bool> ShowLoading { get; private set; } = new(() => false);
-    public Computed<bool> ShowImage { get; private set; } = new(() => true);
+    public Computed<string> DisplayTitle { get; private set; } = null!;
+    public Computed<bool> ShowLoading { get; private set; } = null!;
+    public Computed<bool> ShowImage { get; private set; } = null!;
 
     protected override void OnInitialized()
     {
         Logger?.LogInfo("PokemonViewModel initialized");
 
+        Items = UseSignalList<string>();
+        Avatar = UseSignal<ImageSource?>(null);
+        IsLoading = UseSignal(false);
+        IsLoadingSprite = UseSignal(false);
+        SelectedPokemon = UseSignal<string?>(null);
+
         // Initialize computed properties after signals are ready
-        DisplayTitle = new Computed<string>(() =>
+        DisplayTitle = UseComputed(() =>
         {
             var name = SelectedPokemon.Value;
             return string.IsNullOrEmpty(name) ? "Select a Pokemon" : name.ToUpperInvariant();
         });
 
-        ShowLoading = new Computed<bool>(() => IsLoadingSprite.Value);
-        ShowImage = new Computed<bool>(() => !IsLoadingSprite.Value);
+        ShowLoading = UseComputed(() => IsLoadingSprite.Value);
+        ShowImage = UseComputed(() => !IsLoadingSprite.Value);
     }
 
     public async Task LoadPokemonsAsync()

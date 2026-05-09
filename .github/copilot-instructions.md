@@ -67,7 +67,7 @@ Pointer and hit-test logic is transform-aware:
 | `HitTestEngine` | Depth-first hit-test respecting `ZIndex` |
 | `DragDropManager` | Universal drag & drop, ghost rendering, threshold handling |
 | `UserControl` | Reusable component base with `Build()`, lifecycle hooks, `BuildStyles()`, style scope, DI injection |
-| `ViewBase<TViewModel>` / `ViewModelBase` | MVVM support |
+| `ViewBase<TViewModel>` / `ViewModelBase` | MVVM support; `ViewModelBase` implements `IReactiveOwner` to allow view models to use lifecycle-owned reactive APIs directly. |
 
 ### Layout containers
 
@@ -174,6 +174,8 @@ Rayo uses a signals-first reactive model:
 Prefer generated property overloads that accept `IReadableSignal<T>` over manual subscriptions.
 
 When a signal change mutates UI tree structure (`ClearChildren`, `AddChild`, `RemoveChild`, `Rebuild`), defer the change through `UIUpdateQueue.EnqueueUIUpdate(...)`.
+
+Outside `Build()` hooks, prefer lifecycle-owned reactive methods on `IReactiveOwner` such as `UseComputed(...)`, `UseEffect(...)`, and `UseSubscription(...)` over manual `RegisterDisposable(...)` boilerplate.
 
 Reference docs that currently exist in the repo:
 - `Help/SIGNALS_GUIDE.md`

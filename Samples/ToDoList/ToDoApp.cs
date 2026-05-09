@@ -23,18 +23,20 @@ public class TodoItem
 // ─────────────────────────────────────────────────────────────
 public class ToDoApp : UserControl
 {
-    private readonly SignalList<TodoItem> _tasks = new();
+    private readonly SignalList<TodoItem> _tasks;
     private Computed<int?> _taskCount;
 
     public ToDoApp()
     {
+        _tasks = UseSignalList<TodoItem>();
+
         // Initialize tasks in constructor
         for (int i = 0; i < 15; i++)
         {
             _tasks.Add(new TodoItem { Text = "Task " + (i + 1) });
         }
 
-        _taskCount = new Computed<int?>(() => _tasks.Count);
+        _taskCount = UseComputed<int?>(() => _tasks.Count);
     }
 
     public override VisualElement Build()
@@ -144,7 +146,7 @@ public class ToDoList(SignalList<TodoItem> tasks, Action<TodoItem> onDelete) : U
     protected override void OnInit()
     {
         // Defer UI updates to avoid modifying the tree during event processing
-        tasks.Subscribe(() => UIUpdateQueue.EnqueueUIUpdate(RebuildList));
+        UseSubscription(tasks, () => UIUpdateQueue.EnqueueUIUpdate(RebuildList));
     }
 
     public override VisualElement Build()

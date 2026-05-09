@@ -24,7 +24,7 @@ namespace Rayo.Core;
 /// }
 /// </code>
 /// </remarks>
-public abstract class ViewModelBase : IDisposable
+public abstract class ViewModelBase : IDisposable, IReactiveOwner
 {
     private bool _isInitialized;
     private bool _isDisposed;
@@ -64,13 +64,66 @@ public abstract class ViewModelBase : IDisposable
         _disposables.Add(disposable);
     }
 
+    void IReactiveOwner.RegisterDisposable(IDisposable disposable)
+    {
+        RegisterDisposable(disposable);
+    }
+
+    public T Use<T>(T disposable) where T : IDisposable
+    {
+        ArgumentNullException.ThrowIfNull(disposable);
+        RegisterDisposable(disposable);
+        return disposable;
+    }
+
+    public Signal<T> UseSignal<T>(T initialValue)
+    {
+        return new Signal<T>(initialValue);
+    }
+
+    public SignalList<T> UseSignalList<T>()
+    {
+        return new SignalList<T>();
+    }
+
+    public SignalList<T> UseSignalList<T>(IEnumerable<T> items)
+    {
+        ArgumentNullException.ThrowIfNull(items);
+        return new SignalList<T>(items);
+    }
+
+    public Computed<T> UseComputed<T>(Func<T> compute)
+    {
+        ArgumentNullException.ThrowIfNull(compute);
+        return Use(new Computed<T>(compute));
+    }
+
+    public Effect UseEffect(Action effect)
+    {
+        ArgumentNullException.ThrowIfNull(effect);
+        return Use(new Effect(effect));
+    }
+
+    public IDisposable UseSubscription<T>(IReadableSignal<T> signal, Action<T> callback)
+    {
+        ArgumentNullException.ThrowIfNull(signal);
+        ArgumentNullException.ThrowIfNull(callback);
+        return Use(signal.Subscribe(callback));
+    }
+
+    public IDisposable UseSubscription(ISignal signal, Action callback)
+    {
+        ArgumentNullException.ThrowIfNull(signal);
+        ArgumentNullException.ThrowIfNull(callback);
+        return Use(signal.Subscribe(callback));
+    }
+
     /// <summary>
     /// Subscribes to a signal and automatically disposes on ViewModel disposal.
     /// </summary>
     protected void Subscribe<T>(IReadableSignal<T> signal, Action<T> callback)
     {
-        var subscription = signal.Subscribe(callback);
-        RegisterDisposable(subscription);
+        UseSubscription(signal, callback);
     }
 
     /// <summary>
@@ -78,8 +131,7 @@ public abstract class ViewModelBase : IDisposable
     /// </summary>
     protected void Subscribe(ISignal signal, Action callback)
     {
-        var subscription = signal.Subscribe(callback);
-        RegisterDisposable(subscription);
+        UseSubscription(signal, callback);
     }
 
     public void Dispose()

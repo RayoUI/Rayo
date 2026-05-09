@@ -10,7 +10,7 @@ namespace Rayo.Core;
 /// Base class for creating reusable UI components with their own state and lifecycle.
 /// Similar to Flutter's StatelessWidget/StatefulWidget or React's Class Components.
 /// </summary>
-public abstract class UserControl : ContentView<UserControl>, IUIBuilder
+public abstract class UserControl : ContentView<UserControl>, IUIBuilder, IReactiveOwner
 {
     private bool _isBuilt = false;
     private bool _hasInitialized = false;
@@ -416,4 +416,55 @@ public abstract class UserControl : ContentView<UserControl>, IUIBuilder
         // We don't render anything ourselves (transparent wrapper)
         // UITree will render our content automatically via GetChildren()
     }
+
+
+    public T Use<T>(T disposable) where T : IDisposable
+    {
+        ArgumentNullException.ThrowIfNull(disposable);
+        RegisterDisposable(disposable);
+        return disposable;
+    }
+
+    public Signal<T> UseSignal<T>(T initialValue)
+    {
+        return new Signal<T>(initialValue);
+    }
+
+    public SignalList<T> UseSignalList<T>()
+    {
+        return new SignalList<T>();
+    }
+
+    public SignalList<T> UseSignalList<T>(IEnumerable<T> items)
+    {
+        ArgumentNullException.ThrowIfNull(items);
+        return new SignalList<T>(items);
+    }
+
+    public Computed<T> UseComputed<T>(Func<T> compute)
+    {
+        ArgumentNullException.ThrowIfNull(compute);
+        return Use(new Computed<T>(compute));
+    }
+
+    public Effect UseEffect(Action effect)
+    {
+        ArgumentNullException.ThrowIfNull(effect);
+        return Use(new Effect(effect));
+    }
+
+    public IDisposable UseSubscription<T>(IReadableSignal<T> signal, Action<T> callback)
+    {
+        ArgumentNullException.ThrowIfNull(signal);
+        ArgumentNullException.ThrowIfNull(callback);
+        return Use(signal.Subscribe(callback));
+    }
+
+    public IDisposable UseSubscription(ISignal signal, Action callback)
+    {
+        ArgumentNullException.ThrowIfNull(signal);
+        ArgumentNullException.ThrowIfNull(callback);
+        return Use(signal.Subscribe(callback));
+    }
+
 }

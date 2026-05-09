@@ -22,8 +22,7 @@ public class TodoHeader : UserControl
 
     public TodoHeader()
     {
-        _pendingCount = new Computed<int>(() => _items.Count(item => !item.Done));
-        RegisterDisposable(_pendingCount);
+        _pendingCount = UseComputed(() => _items.Count(item => !item.Done));
     }
 }
 ```

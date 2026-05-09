@@ -88,6 +88,19 @@ bool busy = _isBusy.Value;
 
 Changes only notify subscribers when the new value is different from the current value according to `EqualityComparer<T>.Default`.
 
+When the signal belongs to a `VisualElement` or `ViewModelBase`, you can create it as a lifecycle-owned resource:
+
+```csharp
+private readonly Signal<string> _query;
+private readonly Signal<bool> _isBusy;
+
+public SearchView()
+{
+    _query = UseSignal(string.Empty);
+    _isBusy = UseSignal(false);
+}
+```
+
 ## Subscribing to a signal
 
 You can subscribe with a typed callback:
@@ -110,6 +123,8 @@ IDisposable subscription = _query.Subscribe(() =>
 
 Dispose subscriptions when the owner goes away unless the subscription is registered in a component-managed lifetime.
 
+When you are inside a `VisualElement` or `ViewModelBase`, prefer lifecycle-owned methods instead of manual registration.
+
 ## Mapping a signal
 
 Use `Map(...)` to create a computed projection:
@@ -120,8 +135,7 @@ private readonly Computed<string> _upperName;
 
 public MyView()
 {
-    _upperName = _name.Map(name => name.ToUpperInvariant());
-    RegisterDisposable(_upperName);
+    _upperName = this.UseComputed(() => _name.Value.ToUpperInvariant());
 }
 ```
 
@@ -138,10 +152,8 @@ private readonly Computed<bool> _canSave;
 
 public EditorView()
 {
-    _canSave = new Computed<bool>(() =>
+    _canSave = this.UseComputed(() =>
         !string.IsNullOrWhiteSpace(_title.Value) && !_isSaving.Value);
-
-    RegisterDisposable(_canSave);
 }
 ```
 
@@ -166,8 +178,7 @@ private readonly Computed<int> _nextValue;
 
 public CounterView()
 {
-    _nextValue = new Computed<int>(() => _count.Value + _step.Value);
-    RegisterDisposable(_nextValue);
+    _nextValue = this.UseComputed(() => _count.Value + _step.Value);
 }
 ```
 
@@ -176,7 +187,7 @@ When `_count` or `_step` changes, `_nextValue` becomes dirty, recomputes, and no
 ## Subscribing to a computed value
 
 ```csharp
-RegisterDisposable(_canSave.Subscribe(value =>
+this.UseSubscription(_canSave, value =>
 {
     Console.WriteLine($"Can save: {value}");
 }));
@@ -193,7 +204,7 @@ private readonly Signal<string> _query = new(string.Empty);
 
 public SearchView()
 {
-    RegisterDisposable(new Effect(() =>
+    this.UseEffect(() =>
     {
         Console.WriteLine($"Current query: {_query.Value}");
     }));
@@ -207,7 +218,7 @@ This is appropriate for side effects, not for representing state.
 ### Logging
 
 ```csharp
-RegisterDisposable(new Effect(() =>
+this.UseEffect(() =>
 {
     Logger.Write($"Counter value: {_counter.Value}");
 }));
@@ -216,7 +227,7 @@ RegisterDisposable(new Effect(() =>
 ### Persisting preferences
 
 ```csharp
-RegisterDisposable(new Effect(() =>
+this.UseEffect(() =>
 {
     Preferences.Set("theme", _theme.Value);
 }));
@@ -225,7 +236,7 @@ RegisterDisposable(new Effect(() =>
 ### Bridging state to an async workflow trigger
 
 ```csharp
-RegisterDisposable(new Effect(() =>
+this.UseEffect(() =>
 {
     if (_reloadRequested.Value)
     {
@@ -244,10 +255,32 @@ Create a reactive list:
 private readonly SignalList<string> _items = new();
 ```
 
+Or create it as a lifecycle-owned resource:
+
+```csharp
+private readonly SignalList<string> _items;
+
+public ItemsView()
+{
+    _items = UseSignalList<string>();
+}
+```
+
 Or seed it from existing data:
 
 ```csharp
 private readonly SignalList<string> _items = new(["One", "Two", "Three"]);
+```
+
+Lifecycle-owned seeded variant:
+
+```csharp
+private readonly SignalList<string> _items;
+
+public ItemsView()
+{
+    _items = UseSignalList(["One", "Two", "Three"]);
+}
 ```
 
 Use it like a normal mutable list:
@@ -272,7 +305,7 @@ These reads participate in dependency tracking.
 ### Subscribe to the full collection
 
 ```csharp
-RegisterDisposable(_items.Subscribe(values =>
+this.UseSubscription(_items, values =>
 {
     Console.WriteLine($"Item count: {values.Count}");
 }));
@@ -281,7 +314,7 @@ RegisterDisposable(_items.Subscribe(values =>
 ### Subscribe to individual list changes
 
 ```csharp
-RegisterDisposable(_items.Subscribe(change =>
+this.UseSubscription(_items, change =>
 {
     Console.WriteLine($"Type: {change.Type}, Index: {change.Index}");
 }));
@@ -305,11 +338,74 @@ private readonly Computed<bool> _hasTasks;
 
 public TasksView()
 {
-    _completedCount = new Computed<int>(() => _tasks.Count(task => task.IsDone));
-    _hasTasks = _tasks.Map(items => items.Count > 0);
+    _completedCount = this.UseComputed(() => _tasks.Count(task => task.IsDone));
+    _hasTasks = this.UseComputed(() => _tasks.Count > 0);
+}
+```
 
-    RegisterDisposable(_completedCount);
-    RegisterDisposable(_hasTasks);
+## Lifecycle-owned methods outside hooks
+
+If you are outside `Build()` and still inside a type with lifecycle ownership, use these methods:
+
+- `Use(...)`
+- `UseSignal(...)`
+- `UseSignalList(...)`
+- `UseComputed(...)`
+- `UseEffect(...)`
+- `UseSubscription(...)`
+
+### Example in a control
+
+```csharp
+public class EditorView : UserControl
+{
+    private readonly Signal<string> _title = new(string.Empty);
+    private readonly Signal<bool> _isBusy = new(false);
+    private readonly Computed<bool> _canSave;
+
+    public EditorView()
+    {
+        _canSave = this.UseComputed(() =>
+            !string.IsNullOrWhiteSpace(_title.Value) && !_isBusy.Value);
+
+        this.UseEffect(() =>
+        {
+            Console.WriteLine($"Can save changed: {_canSave.Value}");
+        });
+
+        this.UseSubscription(_title, value =>
+        {
+            Console.WriteLine($"Title: {value}");
+        });
+    }
+}
+```
+
+### Example in a view model
+
+```csharp
+public class EditorViewModel : ViewModelBase
+{
+    private readonly Signal<string> _title = new(string.Empty);
+    private readonly Signal<bool> _isBusy = new(false);
+
+    private readonly Computed<bool> _canSave;
+
+    public EditorViewModel()
+    {
+        _canSave = this.UseComputed(() =>
+            !string.IsNullOrWhiteSpace(_title.Value) && !_isBusy.Value);
+
+        this.UseEffect(() =>
+        {
+            Logger.Write($"Can save: {_canSave.Value}");
+        });
+
+        this.UseSubscription(_title, value =>
+        {
+            Logger.Write($"Title changed: {value}");
+        });
+    }
 }
 ```
 
@@ -424,7 +520,7 @@ Use `UIUpdateQueue.EnqueueUIUpdate(...)`.
 ### Correct
 
 ```csharp
-RegisterDisposable(_items.Subscribe(() =>
+Subscribe(_items, () =>
 {
     UIUpdateQueue.EnqueueUIUpdate(RebuildRows);
 }));
@@ -433,7 +529,7 @@ RegisterDisposable(_items.Subscribe(() =>
 Or batch by element:
 
 ```csharp
-RegisterDisposable(_items.Subscribe(() =>
+Subscribe(_items, () =>
 {
     UIUpdateQueue.EnqueueUIUpdate(this, Rebuild);
 }));
@@ -508,13 +604,13 @@ public class TodoPanel : UserControl
 ### In a `UserControl`
 
 - prefer hooks inside `Build()` for local state,
-- if you create `Computed<T>` or `Effect` manually, register them for disposal,
+- prefer `UseComputed(...)`, `UseEffect(...)`, and `UseSubscription(...)` over manual registration,
+- if you still create `Computed<T>` or `Effect` manually, register them for disposal,
 - if you subscribe manually, register the returned `IDisposable`.
 
 ```csharp
-RegisterDisposable(_status.Subscribe(_ => MarkNeedsPaint()));
-RegisterDisposable(_canSave);
-RegisterDisposable(new Effect(() => Logger.Write(_status.Value)));
+this.UseSubscription(_status, _ => MarkNeedsPaint());
+this.UseEffect(() => Logger.Write(_status.Value));
 ```
 
 ### In a view model or service
