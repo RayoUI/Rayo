@@ -16,9 +16,9 @@ public class OpenGLViewApp : UserControl
 {
     // ── Reactive state ────────────────────────────────────────────────────────
 
-    private readonly Signal<float> _animSpeed  = new(1.0f);
-    private readonly Signal<bool>  _animate    = new(true);
-    private readonly Signal<Brush> _cubeColor  = new(new Color(0.2f, 0.6f, 1.0f));
+    private readonly Signal<float> _animSpeed;
+    private readonly Signal<bool>  _animate;
+    private readonly Signal<Brush> _cubeColor;
 
     private readonly Computed<string> _speedLabel;
 
@@ -33,7 +33,10 @@ public class OpenGLViewApp : UserControl
 
     public OpenGLViewApp()
     {
-        _speedLabel = new Computed<string>(() => $"Speed: {_animSpeed.Value:F1}x");
+        _animSpeed = UseSignal(1.0f);
+        _animate = UseSignal(true);
+        _cubeColor = UseSignal<Brush>(new Color(0.2f, 0.6f, 1.0f));
+        _speedLabel = UseComputed(() => $"Speed: {_animSpeed.Value:F1}x");
     }
 
     // ── Build ─────────────────────────────────────────────────────────────────

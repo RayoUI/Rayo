@@ -14,16 +14,18 @@ using Rayo.Rendering;
 public class MonoGameViewApp : UserControl
 {
     // ── Reactive state ─────────────────────────────────────────────────────────
-    private readonly Signal<float> _animSpeed = new(1.0f);
-    private readonly Signal<int>   _ballCount = new(5);
+    private readonly Signal<float> _animSpeed;
+    private readonly Signal<int>   _ballCount;
 
     private readonly Computed<string>  _speedLabel;
     private readonly Computed<string>  _countLabel;
 
     public MonoGameViewApp()
     {
-        _speedLabel = new Computed<string>(() => $"Speed: {_animSpeed.Value:F1}x");
-        _countLabel = new Computed<string>(() => $"Balls: {_ballCount.Value}");
+        _animSpeed = UseSignal(1.0f);
+        _ballCount = UseSignal(5);
+        _speedLabel = UseComputed(() => $"Speed: {_animSpeed.Value:F1}x");
+        _countLabel = UseComputed(() => $"Balls: {_ballCount.Value}");
     }
 
     // ── Build ──────────────────────────────────────────────────────────────────

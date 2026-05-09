@@ -23,7 +23,7 @@ public class FileInfo
 
 public class NotepadApp : UserControl
 {
-    private Signal<TabControl?> _tabControl = new(null);
+    private Signal<TabControl?> _tabControl;
 
     private readonly List<FileInfo> _files = new()
     {
@@ -31,6 +31,11 @@ public class NotepadApp : UserControl
         new("Notes.md", "- Item 1\n- Item 2\n- Item 3"),
         new("Config.json", "{\n  \"theme\": \"dark\",\n  \"fontSize\": 14\n}")
     };
+
+    public NotepadApp()
+    {
+        _tabControl = UseSignal<TabControl?>(null);
+    }
 
     protected override void OnAfterBuild(VisualElement builtElement)
     {
@@ -42,7 +47,7 @@ public class NotepadApp : UserControl
 
     public override VisualElement Build()
     {
-        _tabControl = new Signal<TabControl?>(null);
+        _tabControl.Value = null;
 
         return new VStack()
             .HorizontalAlignment(HorizontalAlignment.Stretch)

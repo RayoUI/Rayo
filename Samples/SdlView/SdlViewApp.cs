@@ -16,11 +16,11 @@ public class SdlViewApp : UserControl
 {
     // ── Reactive state ────────────────────────────────────────────────────────
 
-    private readonly Signal<float>        _animSpeed  = new(1.0f);
-    private readonly Signal<bool>         _animate    = new(true);
-    private readonly Signal<int>          _rings      = new(6);
-    private readonly Signal<int>          _segments   = new(8);
-    private readonly Signal<SdlColorMode> _colorMode  = new(SdlColorMode.Rainbow);
+    private readonly Signal<float>        _animSpeed;
+    private readonly Signal<bool>         _animate;
+    private readonly Signal<int>          _rings;
+    private readonly Signal<int>          _segments;
+    private readonly Signal<SdlColorMode> _colorMode;
 
     private readonly Computed<string> _speedLabel;
 
@@ -36,7 +36,12 @@ public class SdlViewApp : UserControl
 
     public SdlViewApp()
     {
-        _speedLabel = new Computed<string>(() => $"Speed: {_animSpeed.Value:F1}x");
+        _animSpeed = UseSignal(1.0f);
+        _animate = UseSignal(true);
+        _rings = UseSignal(6);
+        _segments = UseSignal(8);
+        _colorMode = UseSignal(SdlColorMode.Rainbow);
+        _speedLabel = UseComputed(() => $"Speed: {_animSpeed.Value:F1}x");
     }
 
     // ── Build ─────────────────────────────────────────────────────────────────

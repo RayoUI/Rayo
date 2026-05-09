@@ -15,9 +15,9 @@ public class ToggleSwitchPage : UserControl
 {
     public override VisualElement Build()
     {
-        var isEnabled = new Signal<bool>(false);
-        var notifications = new Signal<bool>(true);
-        var darkMode = new Signal<bool>(false);
+        var isEnabled = UseSignal(false);
+        var notifications = UseSignal(true);
+        var darkMode = UseSignal(false);
 
         return new VStack()
             .Spacing(20)

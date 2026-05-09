@@ -15,13 +15,13 @@ public class GestureDetectorPage : UserControl
     public override VisualElement Build()
     {
         // Signal state for demos
-        var tapCount = new Signal<int>(0);
-        var doubleTapCount = new Signal<int>(0);
-        var longPressCount = new Signal<int>(0);
-        var lastSwipe = new Signal<string>("None");
-        var panOffset = new Signal<string>("X: 0, Y: 0");
-        var dragBoxX = new Signal<float>(0);
-        var dragBoxY = new Signal<float>(0);
+        var tapCount = UseSignal(0);
+        var doubleTapCount = UseSignal(0);
+        var longPressCount = UseSignal(0);
+        var lastSwipe = UseSignal("None");
+        var panOffset = UseSignal("X: 0, Y: 0");
+        var dragBoxX = UseSignal(0f);
+        var dragBoxY = UseSignal(0f);
 
         return new VStack()
             .Spacing(20)
@@ -250,8 +250,8 @@ public class GestureDetectorPage : UserControl
             );
 
         // Bind margin to position
-        x.Subscribe(newX => box.Margin(new Thickness(newX, y.Value, 0, 0)));
-        y.Subscribe(newY => box.Margin(new Thickness(x.Value, newY, 0, 0)));
+        UseSubscription(x, newX => box.Margin(new Thickness(newX, y.Value, 0, 0)));
+        UseSubscription(y, newY => box.Margin(new Thickness(x.Value, newY, 0, 0)));
 
         return new GestureDetector(box)
             .OnPanUpdate(delta =>
@@ -269,8 +269,8 @@ public class GestureDetectorPage : UserControl
 
     private VisualElement CreateMultiGestureDemo()
     {
-        var status = new Signal<string>("Waiting for gesture...");
-        var bgColor = new Signal<Color>(new Color(100, 100, 120));
+        var status = UseSignal("Waiting for gesture...");
+        var bgColor = UseSignal(new Color(100, 100, 120));
 
         var Frame = new Frame();
         Frame.Size(new Size(250, 80));
@@ -285,7 +285,7 @@ public class GestureDetectorPage : UserControl
         );
 
         // Bind background color
-        bgColor.Subscribe(c => Frame.Background(c));
+        UseSubscription(bgColor, c => Frame.Background(c));
         Frame.Background(bgColor.Value);
 
         return new GestureDetector(Frame)

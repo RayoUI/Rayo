@@ -13,8 +13,8 @@ public class StepperPage : UserControl
 {
     public override VisualElement Build()
     {
-        var value1 = new Signal<double>(0);
-        var value2 = new Signal<double>(50);
+        var value1 = UseSignal(0d);
+        var value2 = UseSignal(50d);
 
         return new VStack()
             .Spacing(20)

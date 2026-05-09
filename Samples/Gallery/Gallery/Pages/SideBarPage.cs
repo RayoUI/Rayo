@@ -9,8 +9,14 @@ namespace Gallery.Pages;
 
 public class SideBarPage : UserControl
 {
-    private Signal<string> _selectedItem = new("Home");
-    private Signal<bool> _isCollapsed = new(false);
+    private readonly Signal<string> _selectedItem;
+    private readonly Signal<bool> _isCollapsed;
+
+    public SideBarPage()
+    {
+        _selectedItem = UseSignal("Home");
+        _isCollapsed = UseSignal(false);
+    }
 
     public override VisualElement Build()
     {
@@ -18,7 +24,7 @@ public class SideBarPage : UserControl
             .FontSize(16)
             .Foreground(new Color(180, 185, 195));
 
-        _selectedItem.Subscribe(item =>
+        UseSubscription(_selectedItem, item =>
         {
             contentLabel.Text($"Selected: {item}");
         });

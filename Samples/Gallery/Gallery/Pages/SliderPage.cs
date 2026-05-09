@@ -12,9 +12,9 @@ public class SliderPage : UserControl
 {
     public override VisualElement Build()
     {
-        var volume = new Signal<float>(50);
-        var brightness = new Signal<float>(75);
-        var temperature = new Signal<float>(20);
+        var volume = UseSignal(50f);
+        var brightness = UseSignal(75f);
+        var temperature = UseSignal(20f);
 
         return new VStack()
             .Spacing(20)
@@ -71,7 +71,7 @@ public class SliderPage : UserControl
                             new Label()
                                 .Text(temperature.Map(t => $"Temperature: {t:F1}°C"))
                                 .FontSize(18)
-                                .Foreground(new Computed<Color>(() =>
+                                .Foreground(UseComputed(() =>
                                 {
                                     var temp = temperature.Value;
                                     if (temp < 15) return ColorDefault.Primary;

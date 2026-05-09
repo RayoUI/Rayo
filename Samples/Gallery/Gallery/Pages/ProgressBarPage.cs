@@ -14,8 +14,8 @@ public class ProgressBarPage : UserControl
 {
     public override VisualElement Build()
     {
-        var progress = new Signal<float>(0);
-        var isIndeterminate = new Signal<bool>(false);
+        var progress = UseSignal(0f);
+        var isIndeterminate = UseSignal(false);
 
         return new VStack()
             .Spacing(20)

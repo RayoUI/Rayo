@@ -13,8 +13,8 @@ public class TimePickerPage : UserControl
 {
     public override VisualElement Build()
     {
-        var selectedTime = new Signal<TimeSpan>(new TimeSpan(12, 0, 0));
-        var dialogTime = new Signal<TimeSpan>(new TimeSpan(9, 30, 0));
+        var selectedTime = UseSignal(new TimeSpan(12, 0, 0));
+        var dialogTime = UseSignal(new TimeSpan(9, 30, 0));
 
         var dialogPreview = new Frame();
         dialogPreview.Height(90);

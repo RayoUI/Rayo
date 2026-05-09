@@ -79,11 +79,16 @@ internal class NavItem : Frame, IPointerHandler
 /// </summary>
 public class GalleryBuilder : UserControl
 {
-    private readonly Signal<string> _currentPage = new("Button");
+    private readonly Signal<string> _currentPage;
     private Drawer? _navigationDrawer;
 
     // Breakpoint for switching between mobile and desktop layout
     private const float MobileBreakpoint = 600f;
+
+    public GalleryBuilder()
+    {
+        _currentPage = UseSignal("Button");
+    }
 
     public override VisualElement Build()
     {
@@ -355,7 +360,7 @@ public class GalleryBuilder : UserControl
             .HorizontalAlignment(HorizontalAlignment.Stretch);
 
         // Bind text color to selection state
-        _currentPage.Subscribe(p =>
+        UseSubscription(_currentPage, p =>
         {
             label.Foreground(p == pageName ? new Color(120, 180, 255) : new Color(200, 200, 200));
         });
@@ -368,7 +373,7 @@ public class GalleryBuilder : UserControl
         navItem.Content(label);
 
         // Bind background to selection state
-        _currentPage.Subscribe(p =>
+        UseSubscription(_currentPage, p =>
         {
             navItem.Background(p == pageName ? new Color(59, 130, 246, 0.3f) : Color.Transparent);
         });
@@ -405,7 +410,7 @@ public class GalleryBuilder : UserControl
             .VerticalAlignment(VerticalAlignment.Stretch);
 
         // Update content when page changes
-        _currentPage.Subscribe(page =>
+        UseSubscription(_currentPage, page =>
         {
             contentFrame.Content(GetPageContent(page));
         });

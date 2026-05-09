@@ -34,7 +34,7 @@ public class ConsolePanel : CompositeView<ConsolePanel>
         HorizontalAlignment = HorizontalAlignment.Stretch;
 
         // Subscribe to console line changes
-        _viewModel.ConsoleLines.Subscribe(() => MarkNeedsPaint());
+        UseSubscription(_viewModel.ConsoleLines, () => MarkNeedsPaint());
 
         BuildHeader();
     }

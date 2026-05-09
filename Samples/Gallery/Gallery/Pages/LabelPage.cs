@@ -12,7 +12,7 @@ public class LabelPage : UserControl
 {
     public override VisualElement Build()
     {
-        var counter = new Signal<int>(0);
+        var counter = UseSignal(0);
 
         return new VStack()
             .Spacing(20)
