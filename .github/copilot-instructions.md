@@ -138,6 +138,7 @@ Style scoping rules:
 Reference docs that currently exist in the repo:
 - `Help/STYLE_ENGINE.md`
 - `Help/ARCHITECTURE.md`
+- `Help/SIGNALS_GUIDE.md`
 
 ### Fluent DSL and source generator
 
@@ -175,9 +176,8 @@ Prefer generated property overloads that accept `IReadableSignal<T>` over manual
 When a signal change mutates UI tree structure (`ClearChildren`, `AddChild`, `RemoveChild`, `Rebuild`), defer the change through `UIUpdateQueue.EnqueueUIUpdate(...)`.
 
 Reference docs that currently exist in the repo:
-- `Doc/SIGNALS_BEST_PRACTICES.md`
-- `Doc/SIGNAL_LIST_REACTIVITY.md`
-- `Doc/COMPUTED_LIFECYCLE.md`
+- `Help/SIGNALS_GUIDE.md`
+- `Help/SIGNALS_BEST_PRACTICES.md`
 
 ### Dependency injection
 
@@ -208,4 +208,4 @@ public class MyComponent : UserControl
 - change an API,
 - discover a gotcha or non-obvious behavior.
 
-Outdated guidance produces incorrect code. Keep both files accurate.
+Outdated guidance produces incorrect code. Keep both files accurate. Ensure documentation references point to files that actually exist in the workspace.

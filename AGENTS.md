@@ -133,6 +133,10 @@ Rayo uses a signals-first reactive model:
 Prefer generated property overloads that accept `IReadableSignal<T>` over manual subscriptions when binding UI properties.
 When a signal change will mutate the UI tree structure (`ClearChildren`, `AddChild`, `RemoveChild`, `Rebuild`), defer the work through `UIUpdateQueue.EnqueueUIUpdate(...)`.
 
+Reference docs that currently exist in the repo:
+- `Help/SIGNALS_GUIDE.md`
+- `Help/SIGNALS_BEST_PRACTICES.md`
+
 ### Common value types
 
 - `Color` implicitly converts to `Brush`. Use `brush.PrimaryColor` to extract the `Color` back.

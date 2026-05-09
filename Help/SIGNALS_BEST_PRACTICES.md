@@ -1,5 +1,7 @@
 ﻿# Signals Best Practices
 
+For a complete usage guide with practical examples, see `Help/SIGNALS_GUIDE.md`.
+
 ## Overview
 
 Rayo uses signals for mutable state, computed state, and effects:
