@@ -755,18 +755,84 @@ public abstract class VisualElement : BindableObject, IDisposable, IInputTranspa
     /// Returns children sorted by ZIndex ascending (then by insertion order for ties),
     /// matching MAUI's rendering and hit-test semantics.
     /// </summary>
-    internal IEnumerable<VisualElement> GetChildrenByZIndex()
+    internal IReadOnlyList<VisualElement> GetChildrenByZIndex()
     {
-        var children = GetChildren();
-        // Avoid LINQ overhead when no child has a non-default ZIndex
-        if (!children.Any(c => c.ZIndex != 0))
-            return children;
+        var source = GetChildren();
+        if (source is IReadOnlyList<VisualElement> readOnlyList)
+        {
+            if (!HasNonDefaultZIndex(readOnlyList))
+                return readOnlyList;
 
-        return children
-            .Select((child, index) => (child, index))
-            .OrderBy(t => t.child.ZIndex)
-            .ThenBy(t => t.index)
-            .Select(t => t.child);
+            return CreateZOrderedSnapshot(readOnlyList);
+        }
+
+        if (source is IList<VisualElement> list)
+        {
+            var listSnapshot = new List<VisualElement>(list.Count);
+            for (int i = 0; i < list.Count; i++)
+            {
+                listSnapshot.Add(list[i]);
+            }
+
+            if (!HasNonDefaultZIndex(listSnapshot))
+                return listSnapshot;
+
+            StableSortByZIndex(listSnapshot);
+            return listSnapshot;
+        }
+
+        var snapshot = new List<VisualElement>();
+        foreach (var child in source)
+        {
+            snapshot.Add(child);
+        }
+
+        if (!HasNonDefaultZIndex(snapshot))
+            return snapshot;
+
+        StableSortByZIndex(snapshot);
+        return snapshot;
+    }
+
+    private static bool HasNonDefaultZIndex(IReadOnlyList<VisualElement> children)
+    {
+        for (int i = 0; i < children.Count; i++)
+        {
+            if (children[i].ZIndex != 0)
+                return true;
+        }
+
+        return false;
+    }
+
+    private static List<VisualElement> CreateZOrderedSnapshot(IReadOnlyList<VisualElement> children)
+    {
+        var snapshot = new List<VisualElement>(children.Count);
+        for (int i = 0; i < children.Count; i++)
+        {
+            snapshot.Add(children[i]);
+        }
+
+        StableSortByZIndex(snapshot);
+        return snapshot;
+    }
+
+    private static void StableSortByZIndex(List<VisualElement> children)
+    {
+        for (int i = 1; i < children.Count; i++)
+        {
+            var current = children[i];
+            int currentZIndex = current.ZIndex;
+            int j = i - 1;
+
+            while (j >= 0 && children[j].ZIndex > currentZIndex)
+            {
+                children[j + 1] = children[j];
+                j--;
+            }
+
+            children[j + 1] = current;
+        }
     }
 
     /// <summary>

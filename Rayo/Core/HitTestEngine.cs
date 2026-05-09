@@ -203,8 +203,8 @@ public class HitTestEngine
     {
         // Materialise sorted list once (ZIndex ascending = render order),
         // then iterate in reverse so the topmost element (highest ZIndex) is tested first.
-        var sorted = element.GetChildrenByZIndex().ToArray();
-        for (int i = sorted.Length - 1; i >= 0; i--)
+        var sorted = element.GetChildrenByZIndex();
+        for (int i = sorted.Count - 1; i >= 0; i--)
         {
             HitTestRecursive(sorted[i], point, options, results, ref zIndex, ancestors, worldTransform);
 

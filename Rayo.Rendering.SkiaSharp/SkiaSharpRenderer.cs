@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Globalization;
 using System.Numerics;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
 using Rayo.Rendering;
@@ -25,6 +26,13 @@ public class SkiaSharpRenderer : IRenderer, INativeGradientRenderer
     // Default font
     private SkiaSharpFont? _defaultFont;
     private readonly Dictionary<string, SkiaSharpTexture> _textureCache = new();
+    private readonly Dictionary<PaintCacheKey, SKPaint> _paintCache = new();
+    private readonly Dictionary<FontCacheKey, SKFont> _fontCache = new();
+    private readonly Dictionary<TextMeasureCacheKey, Vector2> _textMeasureCache = new();
+    private readonly Dictionary<VectorPathCacheKey, SKPath> _vectorPathCache = new();
+    private readonly Dictionary<RoundedClipCacheKey, SKPath> _roundedClipPathCache = new();
+    private readonly Dictionary<ColorArrayCacheKey, SKColor[]> _gradientColorCache = new();
+    private readonly SKPaint _gradientPaint = new() { Style = SKPaintStyle.Fill, IsAntialias = true };
 
     // Render-to-texture state
     private readonly Stack<(SKCanvas canvas, SkiaSharpTexture target)> _renderTargetStack = new();
@@ -40,6 +48,9 @@ public class SkiaSharpRenderer : IRenderer, INativeGradientRenderer
 
     // DPI scale factor (set externally)
     private static float _dpiScaleFactor = 1.0f;
+    private const int MaxVectorPathCacheEntries = 256;
+    private const int MaxRoundedClipCacheEntries = 128;
+    private const int MaxGradientColorCacheEntries = 128;
 
     public bool IsRenderingToTexture => _renderTargetStack.Count > 0;
 
@@ -221,33 +232,122 @@ public class SkiaSharpRenderer : IRenderer, INativeGradientRenderer
         _canvas.Clear(ToSKColor(color));
     }
 
+    private SKPaint GetCachedFillPaint(Color color, bool antialias = true)
+    {
+        var skColor = ToSKColor(color);
+        var key = PaintCacheKey.Create(skColor, SKPaintStyle.Fill, antialias);
+        if (_paintCache.TryGetValue(key, out var paint))
+            return paint;
+
+        paint = new SKPaint
+        {
+            Color = skColor,
+            Style = SKPaintStyle.Fill,
+            IsAntialias = antialias
+        };
+        _paintCache[key] = paint;
+        return paint;
+    }
+
+    private SKPaint GetCachedStrokePaint(Color color, float strokeWidth, bool antialias = true,
+        SKStrokeCap strokeCap = SKStrokeCap.Butt, SKStrokeJoin strokeJoin = SKStrokeJoin.Miter)
+    {
+        var skColor = ToSKColor(color);
+        var key = PaintCacheKey.Create(skColor, SKPaintStyle.Stroke, antialias, strokeWidth, strokeCap, strokeJoin);
+        if (_paintCache.TryGetValue(key, out var paint))
+            return paint;
+
+        paint = new SKPaint
+        {
+            Color = skColor,
+            Style = SKPaintStyle.Stroke,
+            StrokeWidth = strokeWidth,
+            IsAntialias = antialias,
+            StrokeCap = strokeCap,
+            StrokeJoin = strokeJoin
+        };
+        _paintCache[key] = paint;
+        return paint;
+    }
+
+    private SKFont GetCachedFont(SKTypeface typeface, float fontSize, bool embolden = false, float skewX = 0f)
+    {
+        var key = FontCacheKey.Create(typeface, fontSize, embolden, skewX);
+        if (_fontCache.TryGetValue(key, out var font))
+            return font;
+
+        font = new SKFont(typeface, fontSize)
+        {
+            Subpixel = true,
+            Embolden = embolden,
+            SkewX = skewX
+        };
+        _fontCache[key] = font;
+        return font;
+    }
+
+    private SKPath GetCachedVectorPath(VectorPath vectorPath)
+    {
+        var key = VectorPathCacheKey.Create(vectorPath);
+        if (_vectorPathCache.TryGetValue(key, out var cachedPath))
+            return cachedPath;
+
+        if (_vectorPathCache.Count >= MaxVectorPathCacheEntries)
+        {
+            foreach (var path in _vectorPathCache.Values)
+                path.Dispose();
+            _vectorPathCache.Clear();
+        }
+
+        var skPath = BuildSKPath(vectorPath);
+        _vectorPathCache[key] = skPath;
+        return skPath;
+    }
+
+    private SKPath GetCachedRoundedClipPath(float x, float y, float width, float height, float topLeft, float topRight, float bottomRight, float bottomLeft)
+    {
+        var key = RoundedClipCacheKey.Create(x, y, width, height, topLeft, topRight, bottomRight, bottomLeft);
+        if (_roundedClipPathCache.TryGetValue(key, out var cachedPath))
+            return cachedPath;
+
+        if (_roundedClipPathCache.Count >= MaxRoundedClipCacheEntries)
+        {
+            foreach (var cachedClipPath in _roundedClipPathCache.Values)
+                cachedClipPath.Dispose();
+            _roundedClipPathCache.Clear();
+        }
+
+        var rect = new SKRect(x, y, x + width, y + height);
+        var radii = new[]
+        {
+            new SKPoint(topLeft, topLeft),
+            new SKPoint(topRight, topRight),
+            new SKPoint(bottomRight, bottomRight),
+            new SKPoint(bottomLeft, bottomLeft)
+        };
+
+        using var roundRect = new SKRoundRect();
+        roundRect.SetRectRadii(rect, radii);
+
+        var path = new SKPath();
+        path.AddRoundRect(roundRect);
+        _roundedClipPathCache[key] = path;
+        return path;
+    }
+
     // === Primitive Drawing Methods ===
 
     public void DrawRect(float x, float y, float width, float height, Color color)
     {
         if (_canvas == null) return;
-
-        using var paint = new SKPaint
-        {
-            Color = ToSKColor(color),
-            Style = SKPaintStyle.Fill,
-            IsAntialias = true
-        };
-
+        var paint = GetCachedFillPaint(color);
         _canvas.DrawRect(x, y, width, height, paint);
     }
 
     public void DrawRoundedRect(float x, float y, float width, float height, float radius, Color color)
     {
         if (_canvas == null) return;
-
-        using var paint = new SKPaint
-        {
-            Color = ToSKColor(color),
-            Style = SKPaintStyle.Fill,
-            IsAntialias = true
-        };
-
+        var paint = GetCachedFillPaint(color);
         var rect = new SKRect(x, y, x + width, y + height);
         _canvas.DrawRoundRect(rect, radius, radius, paint);
     }
@@ -290,13 +390,7 @@ public class SkiaSharpRenderer : IRenderer, INativeGradientRenderer
         float overlap = 0.5f;
         float effectiveThickness = thickness + overlap;
 
-        using var paint = new SKPaint
-        {
-            Color = ToSKColor(color),
-            Style = SKPaintStyle.Stroke,
-            StrokeWidth = effectiveThickness,
-            IsAntialias = true
-        };
+        var paint = GetCachedStrokePaint(color, effectiveThickness);
 
         // FIX: Inset rect so the stroke is drawn inside the bounds
         float halfThickness = effectiveThickness / 2f;
@@ -318,15 +412,11 @@ public class SkiaSharpRenderer : IRenderer, INativeGradientRenderer
         float overlap = 0.5f;
         float effectiveThickness = thickness + overlap;
 
-        using var paint = new SKPaint
-        {
-            Color = ToSKColor(color),
-            Style = SKPaintStyle.Stroke,
-            StrokeWidth = effectiveThickness,
-            IsAntialias = true,
-            StrokeCap = SKStrokeCap.Round,   // Smooth corners on the stroke
-            StrokeJoin = SKStrokeJoin.Round  // Smooth joins between edges
-        };
+        var paint = GetCachedStrokePaint(
+            color,
+            effectiveThickness,
+            strokeCap: SKStrokeCap.Round,
+            strokeJoin: SKStrokeJoin.Round);
 
         // Adjust rectangle to center the stroke within the bounds
         // SKPaint.Stroke centers the stroke on the path, so we need to inset by half the thickness
@@ -349,14 +439,7 @@ public class SkiaSharpRenderer : IRenderer, INativeGradientRenderer
     {
         if (_canvas == null) return;
 
-        using var paint = new SKPaint
-        {
-            Color = ToSKColor(color),
-            Style = SKPaintStyle.Stroke,
-            StrokeWidth = thickness,
-            IsAntialias = true,
-            StrokeCap = SKStrokeCap.Round
-        };
+        var paint = GetCachedStrokePaint(color, thickness, strokeCap: SKStrokeCap.Round);
 
         _canvas.DrawLine(x1, y1, x2, y2, paint);
     }
@@ -365,12 +448,7 @@ public class SkiaSharpRenderer : IRenderer, INativeGradientRenderer
     {
         if (_canvas == null) return;
 
-        using var paint = new SKPaint
-        {
-            Color = ToSKColor(color),
-            Style = SKPaintStyle.Fill,
-            IsAntialias = true
-        };
+        var paint = GetCachedFillPaint(color);
 
         _canvas.DrawCircle(cx, cy, radius, paint);
     }
@@ -379,13 +457,7 @@ public class SkiaSharpRenderer : IRenderer, INativeGradientRenderer
     {
         if (_canvas == null) return;
 
-        using var paint = new SKPaint
-        {
-            Color = ToSKColor(color),
-            Style = SKPaintStyle.Stroke,
-            StrokeWidth = thickness,
-            IsAntialias = true
-        };
+        var paint = GetCachedStrokePaint(color, thickness);
 
         _canvas.DrawCircle(cx, cy, radius, paint);
     }
@@ -421,12 +493,7 @@ public class SkiaSharpRenderer : IRenderer, INativeGradientRenderer
 
         path.Close();
 
-        using var paint = new SKPaint
-        {
-            Color = ToSKColor(color),
-            Style = SKPaintStyle.Fill,
-            IsAntialias = true
-        };
+        var paint = GetCachedFillPaint(color);
 
         _canvas.DrawPath(path, paint);
     }
@@ -437,13 +504,8 @@ public class SkiaSharpRenderer : IRenderer, INativeGradientRenderer
     {
         if (_canvas == null) return;
 
-        using var skPath = ConvertToSKPath(path);
-        using var paint = new SKPaint
-        {
-            Color = ToSKColor(fillColor),
-            Style = SKPaintStyle.Fill,
-            IsAntialias = true
-        };
+        var skPath = GetCachedVectorPath(path);
+        var paint = GetCachedFillPaint(fillColor);
 
         _canvas.DrawPath(skPath, paint);
     }
@@ -452,14 +514,8 @@ public class SkiaSharpRenderer : IRenderer, INativeGradientRenderer
     {
         if (_canvas == null) return;
 
-        using var skPath = ConvertToSKPath(path);
-        using var paint = new SKPaint
-        {
-            Color = ToSKColor(strokeColor),
-            Style = SKPaintStyle.Stroke,
-            StrokeWidth = strokeWidth,
-            IsAntialias = true
-        };
+        var skPath = GetCachedVectorPath(path);
+        var paint = GetCachedStrokePaint(strokeColor, strokeWidth);
 
         _canvas.DrawPath(skPath, paint);
     }
@@ -468,30 +524,13 @@ public class SkiaSharpRenderer : IRenderer, INativeGradientRenderer
     {
         if (_canvas == null) return;
 
-        using var skPath = ConvertToSKPath(path);
+        var skPath = GetCachedVectorPath(path);
 
-        // Draw fill first
-        using (var fillPaint = new SKPaint
-        {
-            Color = ToSKColor(fillColor),
-            Style = SKPaintStyle.Fill,
-            IsAntialias = true
-        })
-        {
-            _canvas.DrawPath(skPath, fillPaint);
-        }
+        var fillPaint = GetCachedFillPaint(fillColor);
+        _canvas.DrawPath(skPath, fillPaint);
 
-        // Then draw stroke
-        using (var strokePaint = new SKPaint
-        {
-            Color = ToSKColor(strokeColor),
-            Style = SKPaintStyle.Stroke,
-            StrokeWidth = strokeWidth,
-            IsAntialias = true
-        })
-        {
-            _canvas.DrawPath(skPath, strokePaint);
-        }
+        var strokePaint = GetCachedStrokePaint(strokeColor, strokeWidth);
+        _canvas.DrawPath(skPath, strokePaint);
     }
 
     public void DrawPath(VectorPath path, Brushes.Brush fillColor)
@@ -512,13 +551,7 @@ public class SkiaSharpRenderer : IRenderer, INativeGradientRenderer
         path.MoveTo(startX, startY);
         path.QuadTo(controlX, controlY, endX, endY);
 
-        using var paint = new SKPaint
-        {
-            Color = ToSKColor(color),
-            Style = SKPaintStyle.Stroke,
-            StrokeWidth = thickness,
-            IsAntialias = true
-        };
+        var paint = GetCachedStrokePaint(color, thickness);
 
         _canvas.DrawPath(path, paint);
     }
@@ -532,13 +565,7 @@ public class SkiaSharpRenderer : IRenderer, INativeGradientRenderer
         path.MoveTo(startX, startY);
         path.CubicTo(cp1X, cp1Y, cp2X, cp2Y, endX, endY);
 
-        using var paint = new SKPaint
-        {
-            Color = ToSKColor(color),
-            Style = SKPaintStyle.Stroke,
-            StrokeWidth = thickness,
-            IsAntialias = true
-        };
+        var paint = GetCachedStrokePaint(color, thickness);
 
         _canvas.DrawPath(path, paint);
     }
@@ -588,17 +615,16 @@ public class SkiaSharpRenderer : IRenderer, INativeGradientRenderer
         var styledTypeface = SKTypeface.FromFamilyName(baseFont.Typeface.FamilyName, style)
                           ?? baseFont.Typeface;
 
-        using var renderFont = new SKFont(styledTypeface, fontSize);
-        renderFont.Subpixel = true;
-        // Apply synthetic bold/italic only when the resolved typeface does not already match.
-        renderFont.Embolden = isBold  && styledTypeface.IsBold  == false;
-        renderFont.SkewX    = isItalic && styledTypeface.IsItalic == false ? -0.25f : 0f;
+        bool syntheticBold = isBold && styledTypeface.IsBold == false;
+        float syntheticSkew = isItalic && styledTypeface.IsItalic == false ? -0.25f : 0f;
+        var renderFont = GetCachedFont(styledTypeface, fontSize, syntheticBold, syntheticSkew);
 
-        using var paint = new SKPaint
-        {
-            Color       = ToSKColor(color.PrimaryColor),
-            IsAntialias = true
-        };
+        var textColor = new Color(
+            color.PrimaryColor.R,
+            color.PrimaryColor.G,
+            color.PrimaryColor.B,
+            color.PrimaryColor.A * color.Opacity);
+        var paint = GetCachedFillPaint(textColor);
 
         float baselineY = y - renderFont.Metrics.Ascent;
 
@@ -628,7 +654,7 @@ public class SkiaSharpRenderer : IRenderer, INativeGradientRenderer
                 if (string.IsNullOrEmpty(renderText)) continue;
 
                 var tf = ResolveTypefaceForTextElement(styledTypeface, renderText, needsEmoji, fontSize);
-                using var cf = new SKFont(tf, fontSize) { Subpixel = true };
+                var cf = GetCachedFont(tf, fontSize);
 
                 var b = new SKRect();
                 cf.MeasureText(renderText, out b, paint);
@@ -648,9 +674,7 @@ public class SkiaSharpRenderer : IRenderer, INativeGradientRenderer
                 if (string.IsNullOrEmpty(renderText)) continue;
 
                 var tf = ResolveTypefaceForTextElement(styledTypeface, renderText, needsEmoji, fontSize);
-                using var cf = new SKFont(tf, fontSize) { Subpixel = true };
-                cf.Embolden = renderFont.Embolden;
-                cf.SkewX    = renderFont.SkewX;
+                var cf = GetCachedFont(tf, fontSize, renderFont.Embolden, renderFont.SkewX);
 
                 // Per-glyph baseline so emoji with a different ascent sits on the same line.
                 float glyphBaselineY = y - cf.Metrics.Ascent;
@@ -669,16 +693,9 @@ public class SkiaSharpRenderer : IRenderer, INativeGradientRenderer
             throw new ArgumentException("Font must be a SkiaSharpFont", nameof(font));
 
         // Create a font at the requested size (may differ from cached font size)
-        using var renderFont = new SKFont(skFont.Typeface, fontSize);
-        renderFont.Subpixel = true;
-        renderFont.Embolden = font.IsBold;
-        renderFont.SkewX    = font.IsItalic ? -0.25f : 0f;
+        var renderFont = GetCachedFont(skFont.Typeface, fontSize, font.IsBold, font.IsItalic ? -0.25f : 0f);
 
-        using var paint = new SKPaint
-        {
-            Color = ToSKColor(color),
-            IsAntialias = true
-        };
+        var paint = GetCachedFillPaint(color);
 
         // baseline Y for the primary font — used for all-same-font fast path
         var metrics = renderFont.Metrics;
@@ -716,8 +733,7 @@ public class SkiaSharpRenderer : IRenderer, INativeGradientRenderer
 
                 var typefaceToUse = ResolveTypefaceForTextElement(skFont.Typeface, renderText, requiresEmojiPresentation, fontSize);
 
-                using var charFont = new SKFont(typefaceToUse, fontSize);
-                charFont.Subpixel = true;
+                var charFont = GetCachedFont(typefaceToUse, fontSize);
 
                 var bounds = new SKRect();
                 charFont.MeasureText(renderText, out bounds, paint);
@@ -741,8 +757,7 @@ public class SkiaSharpRenderer : IRenderer, INativeGradientRenderer
 
                 var typefaceToUse = ResolveTypefaceForTextElement(skFont.Typeface, renderText, requiresEmojiPresentation, fontSize);
 
-                using var charFont = new SKFont(typefaceToUse, fontSize);
-                charFont.Subpixel = true;
+                var charFont = GetCachedFont(typefaceToUse, fontSize);
 
                 // Use each glyph's own ascent so cross-font baselines stay aligned.
                 float glyphBaselineY = y - charFont.Metrics.Ascent;
@@ -776,8 +791,12 @@ public class SkiaSharpRenderer : IRenderer, INativeGradientRenderer
         if (font is not SkiaSharpFont skFont)
             return MeasureText(text, fontSize); // Fallback
 
+        var measureKey = TextMeasureCacheKey.Create(skFont.Typeface, text, fontSize, font.IsBold, font.IsItalic);
+        if (_textMeasureCache.TryGetValue(measureKey, out var cachedMeasure))
+            return cachedMeasure;
+
         // Create a font at the requested size for accurate measurement
-        using var measureFont = new SKFont(skFont.Typeface, fontSize);
+        var measureFont = GetCachedFont(skFont.Typeface, fontSize, font.IsBold, font.IsItalic ? -0.25f : 0f);
         
         // Check for missing glyphs using the measure font
         bool hasMissingGlyphs = !measureFont.ContainsGlyphs(text) || RequiresEmojiFallback(text);
@@ -788,7 +807,7 @@ public class SkiaSharpRenderer : IRenderer, INativeGradientRenderer
         if (!hasMissingGlyphs)
         {
             // Use SKPaint.MeasureText with bounds for accurate visual width
-            using var paint = new SKPaint { IsAntialias = true };
+            var paint = GetCachedFillPaint(Color.White);
             var bounds = new SKRect();
             measureFont.MeasureText(text, out bounds, paint);
 
@@ -800,7 +819,7 @@ public class SkiaSharpRenderer : IRenderer, INativeGradientRenderer
         else
         {
             // Measure by grapheme cluster with fallback
-            using var paint = new SKPaint { IsAntialias = true };
+            var paint = GetCachedFillPaint(Color.White);
             float currentX = 0;
             float minX = float.MaxValue;
             float maxX = float.MinValue;
@@ -817,7 +836,7 @@ public class SkiaSharpRenderer : IRenderer, INativeGradientRenderer
 
                 var typefaceToUse = ResolveTypefaceForTextElement(skFont.Typeface, renderText, requiresEmojiPresentation, fontSize);
 
-                using var charFont = new SKFont(typefaceToUse, fontSize);
+                var charFont = GetCachedFont(typefaceToUse, fontSize);
 
                 var bounds = new SKRect();
                 charFont.MeasureText(renderText, out bounds, paint);
@@ -837,7 +856,9 @@ public class SkiaSharpRenderer : IRenderer, INativeGradientRenderer
             width = minX == float.MaxValue ? 0 : Math.Max(0, maxX - minX);
         }
 
-        return new Vector2(width, height);
+        var result = new Vector2(width, height);
+        _textMeasureCache[measureKey] = result;
+        return result;
     }
 
     // === Texture Methods ===
@@ -1038,24 +1059,9 @@ public class SkiaSharpRenderer : IRenderer, INativeGradientRenderer
         width = Math.Max(0, width);
         height = Math.Max(0, height);
 
-        var rect = new SKRect(x, y, x + width, y + height);
-        var radii = new[]
-        {
-            new SKPoint(topLeft, topLeft),
-            new SKPoint(topRight, topRight),
-            new SKPoint(bottomRight, bottomRight),
-            new SKPoint(bottomLeft, bottomLeft)
-        };
-
-        using var roundRect = new SKRoundRect();
-        roundRect.SetRectRadii(rect, radii);
-
-        using var path = new SKPath();
-        path.AddRoundRect(roundRect);
-
         _roundedClipStack.Push(1);
         _canvas.Save();
-        _canvas.ClipPath(path, antialias: true);
+        _canvas.ClipPath(GetCachedRoundedClipPath(x, y, width, height, topLeft, topRight, bottomRight, bottomLeft), antialias: true);
     }
 
     public void PopRoundedClip()
@@ -1268,7 +1274,7 @@ public class SkiaSharpRenderer : IRenderer, INativeGradientRenderer
         //    to the user's emoji font (e.g. Segoe UI Emoji) over whatever MatchCharacter returns.
         foreach (var emojiTf in _emojiTypefaces)
         {
-            using var probe = new SKFont(emojiTf, 12f);
+            var probe = GetCachedFont(emojiTf, 12f);
             if (probe.ContainsGlyphs(char.ConvertFromUtf32(codePoint)))
             {
                 _fallbackFontCache[codePoint] = emojiTf;
@@ -1284,12 +1290,12 @@ public class SkiaSharpRenderer : IRenderer, INativeGradientRenderer
         return fallback;
     }
 
-    private static bool TypefaceSupportsTextElement(SKTypeface typeface, string textElement, float fontSize)
+    private bool TypefaceSupportsTextElement(SKTypeface typeface, string textElement, float fontSize)
     {
         if (string.IsNullOrEmpty(textElement))
             return false;
 
-        using var font = new SKFont(typeface, fontSize);
+        var font = GetCachedFont(typeface, fontSize);
         return font.ContainsGlyphs(textElement);
     }
 
@@ -1303,13 +1309,15 @@ public class SkiaSharpRenderer : IRenderer, INativeGradientRenderer
         }
     }
 
-    private SKPath ConvertToSKPath(VectorPath vectorPath)
+    private static SKPath BuildSKPath(VectorPath vectorPath)
     {
         var skPath = new SKPath();
         var currentPoint = SKPoint.Empty;
 
-        foreach (var command in vectorPath.Commands)
+        var commands = vectorPath.Commands;
+        for (int index = 0; index < commands.Count; index++)
         {
+            var command = commands[index];
             switch (command.Type)
             {
                 case PathCommandType.MoveTo:
@@ -1414,6 +1422,27 @@ public class SkiaSharpRenderer : IRenderer, INativeGradientRenderer
     {
         if (_disposed) return;
 
+        foreach (var paint in _paintCache.Values)
+            paint.Dispose();
+        _paintCache.Clear();
+
+        foreach (var font in _fontCache.Values)
+            font.Dispose();
+        _fontCache.Clear();
+
+        _textMeasureCache.Clear();
+
+        foreach (var path in _vectorPathCache.Values)
+            path.Dispose();
+        _vectorPathCache.Clear();
+
+        foreach (var path in _roundedClipPathCache.Values)
+            path.Dispose();
+        _roundedClipPathCache.Clear();
+
+        _gradientColorCache.Clear();
+        _gradientPaint.Dispose();
+
         foreach (var texture in _textureCache.Values)
             texture.Dispose();
         _textureCache.Clear();
@@ -1469,14 +1498,38 @@ public class SkiaSharpRenderer : IRenderer, INativeGradientRenderer
         };
     }
 
-    private SKColor[] ToSKColors(Color[] colors)
+    private SKColor[] GetCachedGradientColors(Color[] colors)
     {
+        var key = ColorArrayCacheKey.Create(colors);
+        if (_gradientColorCache.TryGetValue(key, out var cachedColors))
+            return cachedColors;
+
+        if (_gradientColorCache.Count >= MaxGradientColorCacheEntries)
+        {
+            _gradientColorCache.Clear();
+        }
+
         var skColors = new SKColor[colors.Length];
         for (int i = 0; i < colors.Length; i++)
         {
             skColors[i] = ToSKColor(colors[i]);
         }
+
+        _gradientColorCache[key] = skColors;
         return skColors;
+    }
+
+    private void DrawWithGradientShader(SKShader shader, Action<SKPaint> drawAction)
+    {
+        _gradientPaint.Shader = shader;
+        try
+        {
+            drawAction(_gradientPaint);
+        }
+        finally
+        {
+            _gradientPaint.Shader = null;
+        }
     }
 
     /// <summary>
@@ -1491,16 +1544,10 @@ public class SkiaSharpRenderer : IRenderer, INativeGradientRenderer
         var absoluteStart = new SKPoint(x + startPoint.X * width, y + startPoint.Y * height);
         var absoluteEnd = new SKPoint(x + endPoint.X * width, y + endPoint.Y * height);
 
-        using var shader = SKShader.CreateLinearGradient(absoluteStart, absoluteEnd, ToSKColors(colors), positions, ToSKTileMode(spreadMethod));
-        using var paint = new SKPaint
-        {
-            Shader = shader,
-            Style = SKPaintStyle.Fill,
-            IsAntialias = true
-        };
+        using var shader = SKShader.CreateLinearGradient(absoluteStart, absoluteEnd, GetCachedGradientColors(colors), positions, ToSKTileMode(spreadMethod));
 
         var rect = new SKRect(x, y, x + width, y + height);
-        _canvas.DrawRoundRect(rect, radius, radius, paint);
+        DrawWithGradientShader(shader, paint => _canvas.DrawRoundRect(rect, radius, radius, paint));
     }
 
     /// <summary>
@@ -1514,15 +1561,8 @@ public class SkiaSharpRenderer : IRenderer, INativeGradientRenderer
         var absoluteStart = new SKPoint(x + startPoint.X * width, y + startPoint.Y * height);
         var absoluteEnd = new SKPoint(x + endPoint.X * width, y + endPoint.Y * height);
 
-        using var shader = SKShader.CreateLinearGradient(absoluteStart, absoluteEnd, ToSKColors(colors), positions, ToSKTileMode(spreadMethod));
-        using var paint = new SKPaint
-        {
-            Shader = shader,
-            Style = SKPaintStyle.Fill,
-            IsAntialias = true
-        };
-
-        _canvas.DrawRect(x, y, width, height, paint);
+        using var shader = SKShader.CreateLinearGradient(absoluteStart, absoluteEnd, GetCachedGradientColors(colors), positions, ToSKTileMode(spreadMethod));
+        DrawWithGradientShader(shader, paint => _canvas.DrawRect(x, y, width, height, paint));
     }
 
     /// <summary>
@@ -1539,16 +1579,10 @@ public class SkiaSharpRenderer : IRenderer, INativeGradientRenderer
         float absoluteRadiusY = radiusY * height;
         float effectiveRadius = MathF.Max(absoluteRadiusX, absoluteRadiusY);
 
-        using var shader = SKShader.CreateRadialGradient(absoluteCenter, effectiveRadius, ToSKColors(colors), positions, ToSKTileMode(spreadMethod));
-        using var paint = new SKPaint
-        {
-            Shader = shader,
-            Style = SKPaintStyle.Fill,
-            IsAntialias = true
-        };
+        using var shader = SKShader.CreateRadialGradient(absoluteCenter, effectiveRadius, GetCachedGradientColors(colors), positions, ToSKTileMode(spreadMethod));
 
         var rect = new SKRect(x, y, x + width, y + height);
-        _canvas.DrawRoundRect(rect, radius, radius, paint);
+        DrawWithGradientShader(shader, paint => _canvas.DrawRoundRect(rect, radius, radius, paint));
     }
 
     /// <summary>
@@ -1564,15 +1598,8 @@ public class SkiaSharpRenderer : IRenderer, INativeGradientRenderer
         float absoluteRadiusY = radiusY * height;
         float effectiveRadius = MathF.Max(absoluteRadiusX, absoluteRadiusY);
 
-        using var shader = SKShader.CreateRadialGradient(absoluteCenter, effectiveRadius, ToSKColors(colors), positions, ToSKTileMode(spreadMethod));
-        using var paint = new SKPaint
-        {
-            Shader = shader,
-            Style = SKPaintStyle.Fill,
-            IsAntialias = true
-        };
-
-        _canvas.DrawRect(x, y, width, height, paint);
+        using var shader = SKShader.CreateRadialGradient(absoluteCenter, effectiveRadius, GetCachedGradientColors(colors), positions, ToSKTileMode(spreadMethod));
+        DrawWithGradientShader(shader, paint => _canvas.DrawRect(x, y, width, height, paint));
     }
 
 
@@ -1588,21 +1615,14 @@ public class SkiaSharpRenderer : IRenderer, INativeGradientRenderer
 
         // SkiaSharp CreateSweepGradient signature: (center, colors, positions) or (center, colors, colorPos, tileMode, startAngle, endAngle)
         // We need to use the matrix-based approach or the simple overload
-        using var shader = SKShader.CreateSweepGradient(absoluteCenter, ToSKColors(colors), positions);
+        using var shader = SKShader.CreateSweepGradient(absoluteCenter, GetCachedGradientColors(colors), positions);
         
         // Apply rotation for start angle if needed
         SKMatrix rotationMatrix = SKMatrix.CreateRotationDegrees(startAngle, absoluteCenter.X, absoluteCenter.Y);
         using var rotatedShader = shader.WithLocalMatrix(rotationMatrix);
         
-        using var paint = new SKPaint
-        {
-            Shader = rotatedShader,
-            Style = SKPaintStyle.Fill,
-            IsAntialias = true
-        };
-
         var rect = new SKRect(x, y, x + width, y + height);
-        _canvas.DrawRoundRect(rect, radius, radius, paint);
+        DrawWithGradientShader(rotatedShader, paint => _canvas.DrawRoundRect(rect, radius, radius, paint));
     }
 
     /// <summary>
@@ -1616,20 +1636,13 @@ public class SkiaSharpRenderer : IRenderer, INativeGradientRenderer
         var absoluteCenter = new SKPoint(x + center.X * width, y + center.Y * height);
 
 
-        using var shader = SKShader.CreateSweepGradient(absoluteCenter, ToSKColors(colors), positions);
+        using var shader = SKShader.CreateSweepGradient(absoluteCenter, GetCachedGradientColors(colors), positions);
         
         // Apply rotation for start angle if needed
         SKMatrix rotationMatrix = SKMatrix.CreateRotationDegrees(startAngle, absoluteCenter.X, absoluteCenter.Y);
         using var rotatedShader = shader.WithLocalMatrix(rotationMatrix);
         
-        using var paint = new SKPaint
-        {
-            Shader = rotatedShader,
-            Style = SKPaintStyle.Fill,
-            IsAntialias = true
-        };
-
-        _canvas.DrawRect(x, y, width, height, paint);
+        DrawWithGradientShader(rotatedShader, paint => _canvas.DrawRect(x, y, width, height, paint));
     }
 
     /// <summary>
@@ -1641,19 +1654,149 @@ public class SkiaSharpRenderer : IRenderer, INativeGradientRenderer
 
         var center = new SKPoint(cx, cy);
 
-        using var shader = SKShader.CreateRadialGradient(center, radius, ToSKColors(colors), positions, SKShaderTileMode.Clamp);
-        using var paint = new SKPaint
-        {
-            Shader = shader,
-            Style = SKPaintStyle.Fill,
-            IsAntialias = true
-        };
-
-        _canvas.DrawCircle(cx, cy, radius, paint);
+        using var shader = SKShader.CreateRadialGradient(center, radius, GetCachedGradientColors(colors), positions, SKShaderTileMode.Clamp);
+        DrawWithGradientShader(shader, paint => _canvas.DrawCircle(cx, cy, radius, paint));
     }
 
     ~SkiaSharpRenderer()
     {
         Dispose();
+    }
+
+    private readonly record struct PaintCacheKey(
+        uint PackedColor,
+        SKPaintStyle Style,
+        int StrokeWidthBits,
+        SKStrokeCap StrokeCap,
+        SKStrokeJoin StrokeJoin,
+        bool IsAntialias)
+    {
+        public static PaintCacheKey Create(SKColor color, SKPaintStyle style, bool isAntialias,
+            float strokeWidth = 0f, SKStrokeCap strokeCap = SKStrokeCap.Butt, SKStrokeJoin strokeJoin = SKStrokeJoin.Miter)
+        {
+            uint packedColor =
+                ((uint)color.Alpha << 24) |
+                ((uint)color.Red << 16) |
+                ((uint)color.Green << 8) |
+                color.Blue;
+
+            return new PaintCacheKey(
+                packedColor,
+                style,
+                BitConverter.SingleToInt32Bits(strokeWidth),
+                strokeCap,
+                strokeJoin,
+                isAntialias);
+        }
+    }
+
+    private readonly record struct FontCacheKey(
+        int TypefaceId,
+        int FontSizeBits,
+        bool Embolden,
+        int SkewXBits)
+    {
+        public static FontCacheKey Create(SKTypeface typeface, float fontSize, bool embolden, float skewX)
+        {
+            return new FontCacheKey(
+                RuntimeHelpers.GetHashCode(typeface),
+                BitConverter.SingleToInt32Bits(fontSize),
+                embolden,
+                BitConverter.SingleToInt32Bits(skewX));
+        }
+    }
+
+    private readonly record struct TextMeasureCacheKey(
+        int TypefaceId,
+        string Text,
+        int FontSizeBits,
+        bool IsBold,
+        bool IsItalic)
+    {
+        public static TextMeasureCacheKey Create(SKTypeface typeface, string text, float fontSize, bool isBold, bool isItalic)
+        {
+            return new TextMeasureCacheKey(
+                RuntimeHelpers.GetHashCode(typeface),
+                text,
+                BitConverter.SingleToInt32Bits(fontSize),
+                isBold,
+                isItalic);
+        }
+    }
+
+    private readonly record struct VectorPathCacheKey(int IdentityHash, int CommandsHash, int CommandCount)
+    {
+        public static VectorPathCacheKey Create(VectorPath path)
+        {
+            var commands = path.Commands;
+            var hash = new HashCode();
+            hash.Add(commands.Count);
+
+            for (int i = 0; i < commands.Count; i++)
+            {
+                var command = commands[i];
+                hash.Add((int)command.Type);
+                hash.Add(command.Point.X);
+                hash.Add(command.Point.Y);
+                hash.Add(command.ControlPoint1.X);
+                hash.Add(command.ControlPoint1.Y);
+                hash.Add(command.ControlPoint2.X);
+                hash.Add(command.ControlPoint2.Y);
+                hash.Add(command.Radius);
+                hash.Add(command.StartAngle);
+                hash.Add(command.SweepAngle);
+                hash.Add(command.LargeArc);
+                hash.Add(command.Clockwise);
+            }
+
+            return new VectorPathCacheKey(
+                RuntimeHelpers.GetHashCode(path),
+                hash.ToHashCode(),
+                commands.Count);
+        }
+    }
+
+    private readonly record struct RoundedClipCacheKey(
+        int XBits,
+        int YBits,
+        int WidthBits,
+        int HeightBits,
+        int TopLeftBits,
+        int TopRightBits,
+        int BottomRightBits,
+        int BottomLeftBits)
+    {
+        public static RoundedClipCacheKey Create(float x, float y, float width, float height, float topLeft, float topRight, float bottomRight, float bottomLeft)
+        {
+            return new RoundedClipCacheKey(
+                BitConverter.SingleToInt32Bits(x),
+                BitConverter.SingleToInt32Bits(y),
+                BitConverter.SingleToInt32Bits(width),
+                BitConverter.SingleToInt32Bits(height),
+                BitConverter.SingleToInt32Bits(topLeft),
+                BitConverter.SingleToInt32Bits(topRight),
+                BitConverter.SingleToInt32Bits(bottomRight),
+                BitConverter.SingleToInt32Bits(bottomLeft));
+        }
+    }
+
+    private readonly record struct ColorArrayCacheKey(int Length, int ColorsHash)
+    {
+        public static ColorArrayCacheKey Create(Color[] colors)
+        {
+            var hash = new HashCode();
+            hash.Add(colors.Length);
+
+            for (int i = 0; i < colors.Length; i++)
+            {
+                var color = colors[i];
+                hash.Add(color.R);
+                hash.Add(color.G);
+                hash.Add(color.B);
+                hash.Add(color.A);
+            }
+
+            return new ColorArrayCacheKey(colors.Length, hash.ToHashCode());
+        }
     }
 }

@@ -148,15 +148,7 @@ public class UITree
         _needsLayout = true;
         _scheduler.ScheduleLayout(element);
         _dirtyRegions.MarkElementDirty(element, DirtyReason.LayoutChanged);
-        var owningOverlay = FindOwningOverlay(element);
-        if (owningOverlay != null)
-        {
-            MarkOverlayLayerDirty(owningOverlay);
-        }
-        else
-        {
-            MarkRootLayerDirty();
-        }
+        MarkElementRetainedLayerDirty(element);
 
         MarkNeedsRender();
     }
@@ -165,15 +157,7 @@ public class UITree
     {
         _scheduler.SchedulePaint(element);
         _dirtyRegions.MarkElementDirty(element, DirtyReason.ContentChanged);
-        var owningOverlay = FindOwningOverlay(element);
-        if (owningOverlay != null)
-        {
-            MarkOverlayLayerDirty(owningOverlay);
-        }
-        else
-        {
-            MarkRootLayerDirty();
-        }
+        MarkElementRetainedLayerDirty(element);
 
         MarkNeedsRender();
     }
@@ -482,7 +466,7 @@ public class UITree
                 }
 
                 // Use GetChildrenByZIndex() so ZIndex controls rendering order (like MAUI)
-                foreach (var child in element.GetChildrenByZIndex().ToArray())
+                foreach (var child in element.GetChildrenByZIndex())
                 {
                     RenderElement(child, renderer, renderState);
                 }
@@ -520,6 +504,12 @@ public class UITree
         if (_layerCache == null)
         {
             RenderElement(Root, renderer, renderState);
+            return;
+        }
+
+        if (CanUseRetainedChildLayers(Root))
+        {
+            RenderRetainedContainer(Root, renderer, renderState, GetRootBaseLayerId());
             return;
         }
 
@@ -565,6 +555,12 @@ public class UITree
             return;
         }
 
+        if (CanUseRetainedChildLayers(overlay))
+        {
+            RenderRetainedContainer(overlay, renderer, renderState, GetOverlayBaseLayerId(overlay));
+            return;
+        }
+
         float width = Math.Max(0, overlay.ComputedWidth);
         float height = Math.Max(0, overlay.ComputedHeight);
         if (width <= 0 || height <= 0)
@@ -599,6 +595,157 @@ public class UITree
         renderer.DrawTexture(layer.Texture!, overlay.ComputedX, overlay.ComputedY, width, height);
     }
 
+    private void RenderRetainedContainer(VisualElement host, IRenderer renderer, RenderState renderState, string baseLayerId)
+    {
+        if (_layerCache == null)
+        {
+            RenderElement(host, renderer, renderState);
+            return;
+        }
+
+        float width = Math.Max(0, host.ComputedWidth);
+        float height = Math.Max(0, host.ComputedHeight);
+        if (width <= 0 || height <= 0)
+            return;
+
+        var baseLayer = _layerCache.GetOrCreateLayer(baseLayerId, width, height);
+        baseLayer.MarkUsed();
+
+        if (host.NeedsLayout || host.NeedsPaint || renderState.RequiresFullRender || baseLayer.IsDirty)
+        {
+            renderer.BeginRenderToTexture(baseLayer.Texture!);
+            renderer.Clear(RenderColor.Transparent);
+            renderer.PushTransform(Matrix3x2.CreateTranslation(-host.ComputedX, -host.ComputedY));
+
+            try
+            {
+                RenderElementVisualsOnly(host, renderer);
+            }
+            finally
+            {
+                renderer.PopTransform();
+                renderer.EndRenderToTexture();
+            }
+
+            baseLayer.IsDirty = false;
+        }
+
+        bool hasTransform = host.HasRenderTransform;
+        if (hasTransform)
+        {
+            renderer.PushTransform(host.GetRenderTransform());
+        }
+
+        try
+        {
+            renderer.DrawTexture(baseLayer.Texture!, host.ComputedX, host.ComputedY, width, height);
+
+            var clipBounds = GetClipBounds(host);
+            bool shouldClipChildren = host.ClipToBounds && clipBounds.width > 0 && clipBounds.height > 0;
+            bool useRoundedClip = shouldClipChildren && HasRoundedClip(clipBounds.radius);
+            if (useRoundedClip)
+            {
+                renderer.PushRoundedClip(
+                    clipBounds.x,
+                    clipBounds.y,
+                    clipBounds.width,
+                    clipBounds.height,
+                    clipBounds.radius.TopLeft,
+                    clipBounds.radius.TopRight,
+                    clipBounds.radius.BottomRight,
+                    clipBounds.radius.BottomLeft);
+            }
+            else if (shouldClipChildren)
+            {
+                renderer.PushScissor(clipBounds.x, clipBounds.y, clipBounds.width, clipBounds.height);
+            }
+
+            foreach (var child in host.GetChildrenByZIndex())
+            {
+                RenderRetainedBranch(host, child, renderer, renderState);
+            }
+
+            if (useRoundedClip)
+            {
+                renderer.PopRoundedClip();
+            }
+            else if (shouldClipChildren)
+            {
+                renderer.PopScissor();
+            }
+        }
+        finally
+        {
+            if (hasTransform)
+            {
+                renderer.PopTransform();
+            }
+        }
+    }
+
+    private void RenderRetainedBranch(VisualElement host, VisualElement branch, IRenderer renderer, RenderState renderState)
+    {
+        if (!branch.IsVisible)
+            return;
+
+        if (_layerCache == null)
+        {
+            RenderElement(branch, renderer, renderState);
+            return;
+        }
+
+        float width = Math.Max(0, branch.ComputedWidth);
+        float height = Math.Max(0, branch.ComputedHeight);
+        if (width <= 0 || height <= 0)
+            return;
+
+        string layerId = GetRetainedBranchLayerId(host, branch);
+        var layer = _layerCache.GetOrCreateLayer(layerId, width, height);
+        layer.MarkUsed();
+
+        bool branchDirty = renderState.RequiresFullRender || branch.NeedsLayout || branch.NeedsPaint || layer.IsDirty || SubtreeIntersectsDirty(branch, renderState);
+        if (branchDirty)
+        {
+            renderer.BeginRenderToTexture(layer.Texture!);
+            renderer.Clear(RenderColor.Transparent);
+            renderer.PushTransform(Matrix3x2.CreateTranslation(-branch.ComputedX, -branch.ComputedY));
+
+            try
+            {
+                RenderElement(branch, renderer, renderState with { RequiresFullRender = true, AllowPartialTraversal = false });
+            }
+            finally
+            {
+                renderer.PopTransform();
+                renderer.EndRenderToTexture();
+            }
+
+            layer.IsDirty = false;
+        }
+
+        renderer.DrawTexture(layer.Texture!, branch.ComputedX, branch.ComputedY, width, height);
+    }
+
+    private void RenderElementVisualsOnly(VisualElement element, IRenderer renderer)
+    {
+        var effects = element.GetVisualEffects();
+
+        if (effects.Count > 0)
+        {
+            _effectsRenderer.RenderEffects(element, renderer, EffectRenderPhase.PreRender);
+            _effectsRenderer.RenderEffects(element, renderer, EffectRenderPhase.Background);
+        }
+
+        element.InvokeOnBeforeRender(renderer);
+        element.Render(renderer);
+        element.InvokeOnAfterRender(renderer);
+
+        if (effects.Count > 0)
+        {
+            _effectsRenderer.RenderEffects(element, renderer, EffectRenderPhase.PostRender);
+        }
+    }
+
     private static bool HasRoundedClip(Rayo.CornerRadius radius)
     {
         return radius.TopLeft > 0 || radius.TopRight > 0 || radius.BottomRight > 0 || radius.BottomLeft > 0;
@@ -620,9 +767,25 @@ public class UITree
         return $"overlay:{RuntimeHelpers.GetHashCode(overlay)}";
     }
 
+    private static string GetOverlayBaseLayerId(VisualElement overlay)
+    {
+        return $"{GetOverlayLayerId(overlay)}:base";
+    }
+
     private static string GetRootLayerId()
     {
         return "root";
+    }
+
+    private static string GetRootBaseLayerId()
+    {
+        return "root:base";
+    }
+
+    private static string GetRetainedBranchLayerId(VisualElement host, VisualElement branch)
+    {
+        string hostId = ReferenceEquals(host, Current?.Root) ? "root" : $"overlay:{RuntimeHelpers.GetHashCode(host)}";
+        return $"{hostId}:branch:{RuntimeHelpers.GetHashCode(branch)}";
     }
 
     private void MarkAllCachedLayersDirty()
@@ -633,6 +796,7 @@ public class UITree
     private void MarkRootLayerDirty()
     {
         _layerCache?.MarkLayerDirty(GetRootLayerId());
+        _layerCache?.MarkLayerDirty(GetRootBaseLayerId());
     }
 
     private void CleanupLayerCacheIfNeeded()
@@ -654,6 +818,64 @@ public class UITree
             return;
 
         _layerCache.MarkLayerDirty(GetOverlayLayerId(overlay));
+        _layerCache.MarkLayerDirty(GetOverlayBaseLayerId(overlay));
+    }
+
+    private void MarkElementRetainedLayerDirty(VisualElement element)
+    {
+        if (_layerCache == null)
+            return;
+
+        var host = FindOwningOverlay(element) ?? Root;
+        if (host == null)
+            return;
+
+        if (!CanUseRetainedChildLayers(host) || ReferenceEquals(host, element))
+        {
+            MarkContainerBaseLayerDirty(host);
+            return;
+        }
+
+        var branch = FindDirectRetainedBranch(host, element);
+        if (branch == null)
+        {
+            MarkContainerBaseLayerDirty(host);
+            return;
+        }
+
+        _layerCache.MarkLayerDirty(GetRetainedBranchLayerId(host, branch));
+    }
+
+    private void MarkContainerBaseLayerDirty(VisualElement host)
+    {
+        if (_layerCache == null)
+            return;
+
+        if (ReferenceEquals(host, Root))
+        {
+            _layerCache.MarkLayerDirty(GetRootBaseLayerId());
+            _layerCache.MarkLayerDirty(GetRootLayerId());
+            return;
+        }
+
+        _layerCache.MarkLayerDirty(GetOverlayBaseLayerId(host));
+        _layerCache.MarkLayerDirty(GetOverlayLayerId(host));
+    }
+
+    private static bool CanUseRetainedChildLayers(VisualElement host)
+    {
+        return !host.RendersChildrenManually && host.GetVisualEffects().Count == 0;
+    }
+
+    private static VisualElement? FindDirectRetainedBranch(VisualElement host, VisualElement element)
+    {
+        var current = element;
+        while (current != null && current.Parent != null && !ReferenceEquals(current.Parent, host))
+        {
+            current = current.Parent;
+        }
+
+        return current != null && ReferenceEquals(current.Parent, host) ? current : null;
     }
 
     private VisualElement? FindOwningOverlay(VisualElement element)

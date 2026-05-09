@@ -250,8 +250,8 @@ public class DragDropManager
         // Search children in reverse ZIndex order so a higher-ZIndex interactive
         // non-draggable element (e.g. a scroll button overlay) blocks the search
         // from reaching draggables hidden visually behind it.
-        var children = element.GetChildrenByZIndex().ToArray();
-        for (int i = children.Length - 1; i >= 0; i--)
+        var children = element.GetChildrenByZIndex();
+        for (int i = children.Count - 1; i >= 0; i--)
         {
             var child = children[i];
             var found = FindDraggableAt(x, y, child);
