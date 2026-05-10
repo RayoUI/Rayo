@@ -1,18 +1,18 @@
-﻿namespace Rayo.Controls;
+namespace Rayo.Controls;
 
 using Rayo.Core;
-using Rayo.Core.Interfaces;
-using Rayo.Layout;
-using System.Collections.Generic;
-using IRenderer = Rayo.Rendering.IRenderer;
-using Rayo.Rendering; // Para extension methods
-using Rayo.Rendering.Brushes;
-using Rayo.Reactivity;
 using Rayo.Core.Input;
 using Rayo.Core.Input.Gestures;
+using Rayo.Core.Interfaces;
+using Rayo.Layout;
+using Rayo.Reactivity;
+using Rayo.Rendering;
+using Rayo.Rendering.Brushes;
+using Rayo.Rendering.Graphics.VectorGraphics;
+using IRenderer = Rayo.Rendering.IRenderer;
 
 /// <summary>
-/// Posición de las tabs en el TabControl
+/// Posicion de las tabs en el TabControl.
 /// </summary>
 public enum TabPosition
 {
@@ -23,11 +23,12 @@ public enum TabPosition
 }
 
 /// <summary>
-/// Representa un tab individual
+/// Representa un tab individual.
 /// </summary>
 public class TabItem
 {
     public string Title { get; set; }
+
     public VisualElement Content { get; set; }
 
     /// <summary>
@@ -42,36 +43,38 @@ public class TabItem
         Content = content;
     }
 }
+
 /// <summary>
 /// Control de pestañas/tabs con soporte para drag & drop universal y navegación con scroll.
 /// </summary>
-
 public class TabControl : CompositeView<TabControl>
 {
-    private List<TabItem> _tabs = new();
-    private int _selectedIndex = 0;
-    private TabHeadersScrollView _tabHeadersScroll = null!;
-    private VisualElement _tabHeadersStack = null!; // Base class para HStack o VStack
+    private const float HeaderSpacing = 2f;
+    private const float AutoScrollZone = 48f;
+    private const float AutoScrollStep = 8f;
+
+    private List<TabItem> _tabs = [];
+    private int _selectedIndex;
+
+    private VisualElement _root = null!;
+    private VisualElement _headerStrip = null!;
+    private TabHeadersScrollView _headerScroll = null!;
+    private OverlayPanel _headerOverlay = null!;
     private Frame _contentFrame = null!;
-    private VisualElement _headersContainer = null!;
-    private TabScrollButton _scrollLeftButton = null!;
-    private TabScrollButton _scrollRightButton = null!;
-    private bool _headersInputSuppressed;
-    private float _autoScrollMouseX;
-    private float _autoScrollMouseY;
+    private TabScrollButton _scrollBackwardButton = null!;
+    private TabScrollButton _scrollForwardButton = null!;
+
+    private float _dragPointerX;
+    private float _dragPointerY;
     private bool _autoScrollActive;
     private Action<float>? _autoScrollTick;
-
-    // =========================================================================
-    // PROPERTIES
-    // =========================================================================
 
     #region TabBackground
     public Brush TabBackground
     {
         get => field;
         set => this.SetProperty(ref field, value, RebuildHeaders);
-    } = new Color(40, 40, 45);
+    } = new Color(45, 45, 48);
     #endregion
 
     #region TabActiveBackground
@@ -79,7 +82,7 @@ public class TabControl : CompositeView<TabControl>
     {
         get => field;
         set => this.SetProperty(ref field, value, RebuildHeaders);
-    } = new Color(59, 130, 246);
+    } = new Color(30, 30, 30);
     #endregion
 
     #region TabHoverBackground
@@ -87,14 +90,14 @@ public class TabControl : CompositeView<TabControl>
     {
         get => field;
         set => this.SetProperty(ref field, value, RebuildHeaders);
-    } = new Color(50, 50, 55);
+    } = new Color(60, 60, 60);
     #endregion
 
     #region TabCloseButtonColor
     public Color TabCloseButtonColor
     {
         get => field;
-        set => this.SetProperty(ref field, value);
+        set => this.SetProperty(ref field, value, RebuildHeaders);
     } = new Color(200, 200, 200);
     #endregion
 
@@ -102,15 +105,15 @@ public class TabControl : CompositeView<TabControl>
     public Color TabCloseButtonHoverColor
     {
         get => field;
-        set => this.SetProperty(ref field, value);
-    } = new Color(255, 255, 255);
+        set => this.SetProperty(ref field, value, RebuildHeaders);
+    } = Color.White;
     #endregion
 
     #region TabCloseButtonSize
     public float TabCloseButtonSize
     {
         get => field;
-        set => this.SetProperty(ref field, value);
+        set => this.SetProperty(ref field, value, RebuildHeaders);
     } = 12f;
     #endregion
 
@@ -118,7 +121,7 @@ public class TabControl : CompositeView<TabControl>
     public float TabCloseButtonHitSize
     {
         get => field;
-        set => this.SetProperty(ref field, value);
+        set => this.SetProperty(ref field, value, RebuildHeaders);
     } = 20f;
     #endregion
 
@@ -126,7 +129,7 @@ public class TabControl : CompositeView<TabControl>
     public Color TabAccentColor
     {
         get => field;
-        set => this.SetProperty(ref field, value);
+        set => this.SetProperty(ref field, value, RebuildHeaders);
     } = new Color(0, 122, 204);
     #endregion
 
@@ -134,7 +137,7 @@ public class TabControl : CompositeView<TabControl>
     public Color TabDropIndicatorColor
     {
         get => field;
-        set => this.SetProperty(ref field, value);
+        set => this.SetProperty(ref field, value, RebuildHeaders);
     } = new Color(0, 122, 204);
     #endregion
 
@@ -145,9 +148,9 @@ public class TabControl : CompositeView<TabControl>
         set => this.SetProperty(ref field, value, () =>
         {
             if (_contentFrame != null)
-                _contentFrame.Background(ContentBackground);
+                _contentFrame.Background = value;
         });
-    } = new Color(30, 30, 35);
+    } = new Color(30, 30, 30);
     #endregion
 
     #region TabHeight
@@ -156,7 +159,7 @@ public class TabControl : CompositeView<TabControl>
     {
         get => field;
         set => this.SetProperty(ref field, value, RebuildLayout);
-    } = 36;
+    } = 30f;
     #endregion
 
     #region TabWidth
@@ -164,8 +167,8 @@ public class TabControl : CompositeView<TabControl>
     public float TabWidth
     {
         get => field;
-        set => this.SetProperty(ref field, value, RebuildHeaders);
-    } = 120;
+        set => this.SetProperty(ref field, value, RebuildLayout);
+    } = 120f;
     #endregion
 
     #region ScrollButtonWidth
@@ -174,7 +177,7 @@ public class TabControl : CompositeView<TabControl>
     {
         get => field;
         set => this.SetProperty(ref field, value, RebuildLayout);
-    } = 24;
+    } = 20f;
     #endregion
 
     #region Position
@@ -192,7 +195,7 @@ public class TabControl : CompositeView<TabControl>
     {
         get => field;
         set => this.SetProperty(ref field, value, RebuildLayout);
-    } = 36;
+    } = 0f;
     #endregion
 
     #region VerticalTabWidth
@@ -201,7 +204,7 @@ public class TabControl : CompositeView<TabControl>
     {
         get => field;
         set => this.SetProperty(ref field, value, RebuildLayout);
-    } = 150;
+    } = 0f;
     #endregion
 
     #region EnableTabReorder
@@ -218,30 +221,20 @@ public class TabControl : CompositeView<TabControl>
     {
         get => field;
         set => this.SetProperty(ref field, value, RebuildHeaders);
-    } = true;
+    } = false;
     #endregion
 
     #region SelectedIndex
     public int SelectedIndex
     {
         get => _selectedIndex;
-        set
-        {
-            if (_selectedIndex != value && value >= 0 && value < _tabs.Count)
-            {
-                _selectedIndex = value;
-                UpdateContent();
-                TabChanged?.Invoke(value);
-                RebuildHeaders();
-                QueueEnsureSelectedTabVisible();
-            }
-        }
+        set => SelectIndex(value, raiseEvent: true);
     }
     #endregion
 
     #region SelectedTab
     [NotFluent]
-    public TabItem? SelectedTab => _selectedIndex >= 0 && _selectedIndex < _tabs.Count ? _tabs[_selectedIndex] : null;
+    public TabItem? SelectedTab => IsValidIndex(_selectedIndex) ? _tabs[_selectedIndex] : null;
     #endregion
 
     #region TabCount
@@ -250,71 +243,37 @@ public class TabControl : CompositeView<TabControl>
     #endregion
 
     #region Items
-    /// <summary>
-    /// Gets or sets the complete tab-item collection. Assigning a
-    /// <see cref="SignalList{T}"/> via the generated fluent overload causes the
-    /// headers to rebuild automatically whenever items are added, removed, or replaced.
-    /// </summary>
     public IList<TabItem> Items
     {
         get => _tabs;
-        set
-        {
-            _tabs = value?.ToList() ?? new List<TabItem>();
-            if (_selectedIndex >= _tabs.Count)
-                _selectedIndex = Math.Max(0, _tabs.Count - 1);
-            if (_contentFrame != null)
-            {
-                RebuildHeaders();
-                if (_tabs.Count > 0)
-                {
-                    UpdateContent();
-                    QueueEnsureSelectedTabVisible();
-                }
-                else
-                    _contentFrame.ClearContent();
-            }
-        }
+        set => SetItems(value);
     }
     #endregion
 
     #region TabHeaderTemplate
     /// <summary>
     /// Optional factory that creates a fully custom header element for each tab.
-    /// The factory receives the <see cref="TabItem"/>, its zero-based index, and
-    /// <see langword="true"/> when that tab is currently selected.
-    /// The wrapper automatically handles tap-to-select and drag-and-drop reordering.
-    /// <para>
-    /// <b>Tip:</b> Return a purely decorative element (e.g. <c>HStack</c> of
-    /// <c>TextBlock</c>s) so that pointer events bubble up to the wrapper and tab
-    /// selection works correctly. Interactive children (e.g. <c>Button</c>) would
-    /// capture pointer events and prevent the tab from being selected.
-    /// </para>
+    /// The wrapper automatically handles selection, close hit-testing and drag/drop reordering.
     /// </summary>
     [NotFluent]
     public Func<TabItem, int, bool, VisualElement>? TabHeaderTemplate
     {
         get => field;
-        set
-        {
-            field = value;
-            RebuildHeaders();
-        }
+        set => this.SetProperty(ref field, value, RebuildHeaders);
     }
     #endregion
-
-
-    // =========================================================================
-    // EVENTS
-    // =========================================================================
 
     public event Action<int>? TabChanged;
 
     public event Action<int, int>? TabReordered;
 
+    public TabControl()
+    {
+        CreateVisualTree();
+    }
+
     /// <summary>
     /// Sets a custom factory function that builds the header element for each tab.
-    /// See <see cref="TabHeaderTemplate"/> for details and usage notes.
     /// </summary>
     public TabControl WithTabHeaderTemplate(Func<TabItem, int, bool, VisualElement> factory)
     {
@@ -323,636 +282,78 @@ public class TabControl : CompositeView<TabControl>
     }
 
     /// <summary>
-    /// Establishes a two-way reactive binding between <paramref name="binding"/> and
-    /// the selected-tab index. Changes in the control push the new index into the
-    /// binding and changes to the binding update the selected tab.
-    /// Subscriptions are cleaned up automatically when the element is unmounted.
+    /// Establishes a two-way reactive binding between <paramref name="binding"/> and the selected tab.
     /// </summary>
     public TabControl BindSelectedIndex(IWritableSignal<int> binding)
     {
-        // Binding → Control: when the signal value changes, update SelectedIndex.
-        var subscription = binding.Subscribe(v =>
+        var subscription = binding.Subscribe(index =>
         {
-            UIUpdateQueue.EnqueueUIUpdate(this, () => SelectedIndex = v);
+            UIUpdateQueue.EnqueueUIUpdate(this, () => SelectedIndex = index);
         });
+
         RegisterDisposable(subscription);
         SelectedIndex = binding.Value;
 
-        // Control → Binding: when the user selects a tab, push the index back.
-        Action<int> handler = index => { binding.Value = index; };
-        TabChanged += handler;
-        // Clean up the event subscription when the element is disposed/unmounted.
-        RegisterDisposable(new ActionDisposable(() => TabChanged -= handler));
+        Action<int> changedHandler = index => binding.Value = index;
+        TabChanged += changedHandler;
+        RegisterDisposable(new ActionDisposable(() => TabChanged -= changedHandler));
 
         return this;
-    }
-
-
-    // =========================================================================
-    // INITIALIZATION
-    // =========================================================================
-
-    public TabControl()
-    {
-        // Initialize reactive properties
-        TabBackground = new Color(45, 45, 48); // Flat Dark
-        TabActiveBackground = new Color(30, 30, 30); // Matches content
-        TabHoverBackground = new Color(60, 60, 60);
-        ContentBackground = new Color(30, 30, 30);
-        TabHeight = 30;
-        TabWidth = 120;
-        ScrollButtonWidth = 20;
-        Position = TabPosition.Top;
-        VerticalTabHeight = 0;
-        VerticalTabWidth = 0;
-        EnableTabReorder = true;
-        ShowTabCloseButtons = false;
-
-        CreateLayout();
-    }
-
-    private void CreateLayout()
-    {
-        // Limpiar hijos anteriores si existen
-        ClearChildren();
-
-        // Crear stack de headers con orientación según posición
-        bool isHorizontal = IsHorizontalPosition();
-        float headerThickness = GetHeaderCrossSize();
-        _tabHeadersStack = isHorizontal
-            ? new HStack().Spacing(2).HorizontalAlignment(HorizontalAlignment.Left)
-            : new VStack().Spacing(2).VerticalAlignment(VerticalAlignment.Top);
-
-        _tabHeadersScroll = new TabHeadersScrollView();
-        _tabHeadersScroll.Content(_tabHeadersStack);
-        _tabHeadersScroll.Orientation = isHorizontal ? ScrollOrientation.Horizontal : ScrollOrientation.Vertical;
-
-        _tabHeadersScroll.ShowHorizontalScrollbar = false;
-        _tabHeadersScroll.ShowVerticalScrollbar = false;
-
-        var leftIcon = isHorizontal ? Icons.ChevronLeft : Icons.ChevronUp;
-        var rightIcon = isHorizontal ? Icons.ChevronRight : Icons.ChevronDown;
-        var leftGradientStart = isHorizontal ? new System.Numerics.Vector2(1f, 0.5f) : new System.Numerics.Vector2(0.5f, 1f);
-        var leftGradientEnd = isHorizontal ? new System.Numerics.Vector2(0f, 0.5f) : new System.Numerics.Vector2(0.5f, 0f);
-        var rightGradientStart = isHorizontal ? new System.Numerics.Vector2(0f, 0.5f) : new System.Numerics.Vector2(0.5f, 0f);
-        var rightGradientEnd = isHorizontal ? new System.Numerics.Vector2(1f, 0.5f) : new System.Numerics.Vector2(0.5f, 1f);
-
-        var leftButtonSize = isHorizontal
-            ? new Size(ScrollButtonWidth, headerThickness)
-            : new Size(headerThickness, ScrollButtonWidth);
-
-        _scrollLeftButton = new TabScrollButton(this, leftIcon, leftGradientEnd, leftGradientStart, () => ScrollLeft());
-        _scrollLeftButton.Width = leftButtonSize.Width;
-        _scrollLeftButton.Height = leftButtonSize.Height;
-        _scrollLeftButton.Background = new Color(37, 37, 38);
-        _scrollLeftButton.IsVisible = false;
-        _scrollLeftButton.ZIndex = 1; // Ensure scroll buttons receive input before scrollview content
-
-        var rightButtonSize = isHorizontal
-            ? new Size(ScrollButtonWidth, headerThickness)
-            : new Size(headerThickness, ScrollButtonWidth);
-
-        _scrollRightButton = new TabScrollButton(this, rightIcon, rightGradientEnd, rightGradientStart, () => ScrollRight());
-        _scrollRightButton.Width = rightButtonSize.Width;
-        _scrollRightButton.Height = rightButtonSize.Height;
-        _scrollRightButton.Background = new Color(37, 37, 38);
-        _scrollRightButton.IsVisible = false;
-        _scrollRightButton.ZIndex = 1; // Ensure scroll buttons receive input before scrollview content
-
-        // Configurar container de headers con botones
-        var overlay = new OverlayFrame();
-
-        if (isHorizontal)
-        {
-            _tabHeadersScroll.Height(headerThickness).HorizontalAlignment(HorizontalAlignment.Stretch);
-            overlay.Height = headerThickness;
-            overlay.HorizontalAlignment = HorizontalAlignment.Stretch;
-
-            // Capa 1: ScrollView (Fondo)
-            overlay.AddChild(_tabHeadersScroll);
-
-            // Capa 2: Botones (Frente) - Alineados a los extremos
-            _scrollLeftButton.HorizontalAlignment(HorizontalAlignment.Left);
-            _scrollRightButton.HorizontalAlignment(HorizontalAlignment.Right);
-
-            overlay.AddChild(_scrollLeftButton);
-            overlay.AddChild(_scrollRightButton);
-        }
-        else
-        {
-            _tabHeadersScroll.Width(headerThickness).VerticalAlignment(VerticalAlignment.Stretch);
-            overlay.Width = headerThickness;
-            overlay.VerticalAlignment = VerticalAlignment.Stretch;
-
-            // Capa 1: ScrollView (Fondo)
-            overlay.AddChild(_tabHeadersScroll);
-
-            // Capa 2: Botones (Frente) - Alineados a los extremos
-            _scrollLeftButton.VerticalAlignment(VerticalAlignment.Top);
-            _scrollRightButton.VerticalAlignment(VerticalAlignment.Bottom);
-
-            overlay.AddChild(_scrollLeftButton);
-            overlay.AddChild(_scrollRightButton);
-        }
-
-        _headersContainer = overlay;
-
-        _contentFrame = new Frame();
-        _contentFrame.Background = ContentBackground;
-        _contentFrame.HorizontalAlignment = HorizontalAlignment.Stretch;
-        _contentFrame.VerticalAlignment = VerticalAlignment.Stretch;
-
-        // Crear container según posición
-        VisualElement container;
-        switch (Position)
-        {
-            case TabPosition.Top:
-                container = new VStack()
-                    .Children(_headersContainer, _contentFrame)
-                    .Spacing(0)
-                    .HorizontalAlignment(HorizontalAlignment.Stretch)
-                    .VerticalAlignment(VerticalAlignment.Stretch);
-                break;
-
-            case TabPosition.Bottom:
-                container = new VStack()
-                    .Children(_contentFrame, _headersContainer)
-                    .Spacing(0)
-                    .HorizontalAlignment(HorizontalAlignment.Stretch)
-                    .VerticalAlignment(VerticalAlignment.Stretch);
-                break;
-
-            case TabPosition.Left:
-                container = new HStack()
-                    .Children(_headersContainer, _contentFrame)
-                    .Spacing(0)
-                    .HorizontalAlignment(HorizontalAlignment.Stretch)
-                    .VerticalAlignment(VerticalAlignment.Stretch);
-                break;
-
-            case TabPosition.Right:
-                container = new HStack()
-                    .Children(_contentFrame, _headersContainer)
-                    .Spacing(0)
-                    .HorizontalAlignment(HorizontalAlignment.Stretch)
-                    .VerticalAlignment(VerticalAlignment.Stretch);
-                break;
-
-            default:
-                container = new VStack()
-                    .Children(_headersContainer, _contentFrame)
-                    .Spacing(0)
-                    .HorizontalAlignment(HorizontalAlignment.Stretch)
-                    .VerticalAlignment(VerticalAlignment.Stretch);
-                break;
-        }
-
-        AddChild(container);
-    }
-
-    private void RebuildLayout()
-    {
-        // Guard against calls during initialization
-        // CreateLayout() will initialize all necessary fields
-        CreateLayout();
-        RebuildHeaders();
-        if (_tabs.Count > 0)
-            UpdateContent();
-        InvalidateMeasure();
     }
 
     public TabControl AddTab(string title, VisualElement content)
     {
-        _tabs.Add(new TabItem(title, content));
-        RebuildHeaders();
-        if (_tabs.Count == 1)
-        {
-            UpdateContent();
-        }
-        return this;
+        return AddTab(new TabItem(title, content));
     }
 
     public TabControl AddTab(TabItem tab)
     {
+        ArgumentNullException.ThrowIfNull(tab);
+
         _tabs.Add(tab);
-        RebuildHeaders();
         if (_tabs.Count == 1)
-        {
-            UpdateContent();
-        }
+            _selectedIndex = 0;
+
+        RefreshAfterItemsChanged(selectionChanged: _tabs.Count == 1, ensureVisible: true);
         return this;
     }
 
     public void RemoveTab(int index)
     {
-        if (index < 0 || index >= _tabs.Count)
+        if (!IsValidIndex(index))
             return;
 
+        bool selectionChanged = index == _selectedIndex;
         _tabs.RemoveAt(index);
 
-        // Ajustar el índice seleccionado
-        if (_selectedIndex >= _tabs.Count)
+        if (_tabs.Count == 0)
         {
-            _selectedIndex = _tabs.Count - 1;
+            _selectedIndex = 0;
         }
-
-        RebuildHeaders();
-
-        // Si había tabs, actualizar el contenido
-        if (_tabs.Count > 0)
+        else if (selectionChanged)
         {
-            UpdateContent();
+            _selectedIndex = Math.Min(index, _tabs.Count - 1);
         }
-        else
-        {
-            // No hay tabs, limpiar el contenido
-            _contentFrame.ClearContent();
-        }
-    }
-
-    private void ScrollLeft()
-    {
-        bool isHorizontal = IsHorizontalPosition();
-        float scrollStep = GetTabScrollStep();
-
-        if (isHorizontal)
-        {
-            float newOffset = Math.Max(0, _tabHeadersScroll.HorizontalScrollOffset - scrollStep);
-            _tabHeadersScroll.HorizontalScrollOffset = newOffset;
-        }
-        else
-        {
-            float newOffset = Math.Max(0, _tabHeadersScroll.VerticalScrollOffset - scrollStep);
-            _tabHeadersScroll.VerticalScrollOffset = newOffset;
-        }
-
-        UpdateScrollButtonStates();
-    }
-
-    private void ScrollRight()
-    {
-        bool isHorizontal = IsHorizontalPosition();
-        float scrollStep = GetTabScrollStep();
-
-        if (isHorizontal)
-        {
-            float contentWidth = _tabHeadersStack.ComputedWidth;
-            float viewWidth = _tabHeadersScroll.ComputedWidth;
-            float maxOffset = Math.Max(0, contentWidth - viewWidth);
-            float newOffset = Math.Min(maxOffset, _tabHeadersScroll.HorizontalScrollOffset + scrollStep);
-            _tabHeadersScroll.HorizontalScrollOffset = newOffset;
-        }
-        else
-        {
-            float contentHeight = _tabHeadersStack.ComputedHeight;
-            float viewHeight = _tabHeadersScroll.ComputedHeight;
-            float maxOffset = Math.Max(0, contentHeight - viewHeight);
-            float newOffset = Math.Min(maxOffset, _tabHeadersScroll.VerticalScrollOffset + scrollStep);
-            _tabHeadersScroll.VerticalScrollOffset = newOffset;
-        }
-
-        UpdateScrollButtonStates();
-    }
-
-    private void UpdateScrollButtonStates()
-    {
-        // Guard against calls during initialization
-        if (_tabHeadersStack == null || _tabHeadersScroll == null || _scrollLeftButton == null || _scrollRightButton == null)
-            return;
-
-        bool isHorizontal = IsHorizontalPosition();
-
-        float contentSize, viewSize, currentOffset;
-
-        if (isHorizontal)
-        {
-            contentSize = _tabHeadersStack.ComputedWidth;
-            viewSize = _tabHeadersScroll.ComputedWidth;
-            currentOffset = _tabHeadersScroll.HorizontalScrollOffset;
-        }
-        else
-        {
-            contentSize = _tabHeadersStack.ComputedHeight;
-            viewSize = _tabHeadersScroll.ComputedHeight;
-            currentOffset = _tabHeadersScroll.VerticalScrollOffset;
-        }
-
-        if (contentSize <= viewSize || contentSize == 0 || viewSize == 0)
-        {
-            if (_scrollLeftButton.IsVisible || _scrollRightButton.IsVisible)
-            {
-                _scrollLeftButton.IsVisible = false;
-                _scrollRightButton.IsVisible = false;
-                _scrollLeftButton.MarkNeedsPaint();
-                _scrollRightButton.MarkNeedsPaint();
-            }
-            return;
-        }
-
-        float maxOffset = Math.Max(0, contentSize - viewSize);
-
-        bool canScrollLeft = currentOffset > 0.1f;
-        bool leftChanged = _scrollLeftButton.IsVisible != canScrollLeft;
-        _scrollLeftButton.IsVisible = canScrollLeft;
-        if (leftChanged)
-        {
-            _scrollLeftButton.MarkNeedsPaint();
-        }
-
-        bool canScrollRight = currentOffset < maxOffset - 0.1f;
-        bool rightChanged = _scrollRightButton.IsVisible != canScrollRight;
-        _scrollRightButton.IsVisible = canScrollRight;
-        if (rightChanged)
-        {
-            _scrollRightButton.MarkNeedsPaint();
-        }
-
-        if (!canScrollLeft && !canScrollRight)
-        {
-            SetHeaderInputSuppressed(false);
-        }
-
-        if (_scrollLeftButton.IsVisible || _scrollRightButton.IsVisible)
-        {
-            MarkNeedsPaint();
-        }
-    }
-
-    internal void SetHeaderInputSuppressed(bool suppressed)
-    {
-        if (_headersInputSuppressed == suppressed)
-            return;
-
-        _headersInputSuppressed = suppressed;
-
-        if (_tabHeadersStack == null)
-            return;
-
-        foreach (var child in _tabHeadersStack.GetChildren())
-        {
-            child.IsInputTransparent = suppressed;
-            if (suppressed)
-            {
-                child.IsHovered = false;
-                child.IsPressed = false;
-                child.MarkNeedsPaint();
-            }
-        }
-    }
-
-    private bool IsHorizontalPosition()
-        => Position == TabPosition.Top || Position == TabPosition.Bottom;
-
-    private float GetHorizontalTabWidthValue() => TabWidth;
-
-    private float GetHorizontalTabHeightValue() => TabHeight;
-
-    private float GetVerticalTabWidthValue() => VerticalTabWidth > 0 ? VerticalTabWidth : TabHeight;
-
-    private float GetVerticalTabHeightValue() => VerticalTabHeight > 0 ? VerticalTabHeight : TabWidth;
-
-    private Size GetTabButtonSize()
-        => IsHorizontalPosition()
-            ? new Size(GetHorizontalTabWidthValue(), GetHorizontalTabHeightValue())
-            : new Size(GetVerticalTabWidthValue(), GetVerticalTabHeightValue());
-
-    private float GetHeaderCrossSize()
-        => IsHorizontalPosition() ? GetHorizontalTabHeightValue() : GetVerticalTabWidthValue();
-
-    private float GetTabScrollStep()
-        => IsHorizontalPosition() ? GetHorizontalTabWidthValue() : GetVerticalTabHeightValue();
-
-    private void RebuildHeaders()
-    {
-        // Guard against calls during initialization before CreateLayout() runs
-        if (_tabHeadersStack == null) return;
-
-        // Cast to Layout to access ClearChildren
-        if (_tabHeadersStack is HStack headerHStack)
-        {
-            headerHStack.ClearChildren();
-        }
-        else if (_tabHeadersStack is VStack headerVStack)
-        {
-            headerVStack.ClearChildren();
-        }
-
-        var tabSize = GetTabButtonSize();
-
-        for (int i = 0; i < _tabs.Count; i++)
-        {
-            int index = i;
-            var tab = _tabs[i];
-            var isSelected = i == _selectedIndex;
-
-            VisualElement header;
-
-            if (TabHeaderTemplate != null)
-            {
-                // Build the user-supplied custom content and wrap it so the control
-                // can handle tap-to-select and drag-and-drop automatically.
-                var customContent = TabHeaderTemplate(tab, i, isSelected);
-                var wrapper = new CustomTabHeaderWrapper(i, customContent, this);
-                wrapper.Width = tabSize.Width;
-                wrapper.Height = tabSize.Height;
-                wrapper.Background = isSelected ? TabActiveBackground : TabBackground;
-                wrapper.IsEnabled = tab.IsEnabled;
-                header = wrapper;
-            }
-            else
-            {
-                var tabButton = new DraggableTabButton(i, tab.Title, this);
-                tabButton.Background(isSelected ? TabActiveBackground : TabBackground);
-                tabButton.HoverBackground(isSelected ? TabActiveBackground : TabHoverBackground);
-                tabButton.Size(tabSize);
-                tabButton.BorderRadius(0);
-                tabButton.IsEnabled = tab.IsEnabled;
-                tabButton.OnTapped(() =>
-                {
-                    if (index != _selectedIndex)
-                    {
-                        SelectedIndex = index;
-                    }
-                });
-                header = tabButton;
-            }
-
-            // Cast to Layout to access AddChild
-            if (_tabHeadersStack is HStack h)
-            {
-                h.AddChild(header);
-            }
-            else if (_tabHeadersStack is VStack v)
-            {
-                v.AddChild(header);
-            }
-        }
-
-        UpdateScrollButtonStates();
-        InvalidateMeasure();
-    }
-
-    private void UpdateContent()
-    {
-        _contentFrame.ClearContent();
-
-        if (_selectedIndex >= 0 && _selectedIndex < _tabs.Count)
-        {
-            var content = _tabs[_selectedIndex].Content;
-            _contentFrame.Content(content);
-
-            // Try to set focus on first focusable element in the content
-            TrySetFocusOnContent(content);
-        }
-
-        InvalidateMeasure();
-    }
-
-    private void QueueEnsureSelectedTabVisible()
-    {
-        if (_tabHeadersScroll == null || _tabHeadersStack == null)
-            return;
-
-        UIUpdateQueue.EnqueueUIUpdate(this, EnsureSelectedTabVisible);
-    }
-
-    private void EnsureSelectedTabVisible()
-    {
-        if (_tabHeadersScroll == null || _tabHeadersStack == null)
-            return;
-
-        VisualElement? header = null;
-        int index = 0;
-        foreach (var child in _tabHeadersStack.GetChildren())
-        {
-            if (index == _selectedIndex)
-            {
-                header = child;
-                break;
-            }
-            index++;
-        }
-
-        if (header == null)
-            return;
-
-        float rectX = header.ComputedX - _tabHeadersScroll.ComputedX + _tabHeadersScroll.HorizontalScrollOffset;
-        float rectY = header.ComputedY - _tabHeadersScroll.ComputedY + _tabHeadersScroll.VerticalScrollOffset;
-        _tabHeadersScroll.EnsureRectVisible(rectX, rectY, header.ComputedWidth, header.ComputedHeight);
-        UpdateScrollButtonStates();
-    }
-
-    private void TrySetFocusOnContent(VisualElement element)
-    {
-        if (UIApplication.Current == null) return;
-
-        // Check if the element itself is focusable
-        if (element is IFocusable && element is IInputHandler handler && handler.CanHandleInput)
-        {
-            // Delay focus setting to allow the element to be fully built and arranged
-            UIApplication.Current.RunOnMainThread(() =>
-            {
-                UIApplication.Current.EventManager.SetFocus(element);
-            });
-            return;
-        }
-
-        // Check children recursively
-        foreach (var child in element.GetChildren())
-        {
-            TrySetFocusOnContent(child);
-            if (UIApplication.Current.EventManager.FocusedElement != null)
-                return; // Found and set focus, stop searching
-        }
-    }
-
-    internal void ReorderTab(int fromIndex, int toIndex)
-    {
-        if (fromIndex == toIndex || fromIndex < 0 || fromIndex >= _tabs.Count || toIndex < 0 || toIndex >= _tabs.Count)
-            return;
-
-        var draggedTab = _tabs[fromIndex];
-        _tabs.RemoveAt(fromIndex);
-        _tabs.Insert(toIndex, draggedTab);
-
-        if (_selectedIndex == fromIndex)
-        {
-            _selectedIndex = toIndex;
-        }
-        else if (fromIndex < _selectedIndex && toIndex >= _selectedIndex)
+        else if (index < _selectedIndex)
         {
             _selectedIndex--;
-        }
-        else if (fromIndex > _selectedIndex && toIndex <= _selectedIndex)
-        {
-            _selectedIndex++;
+            selectionChanged = true;
         }
 
-        TabReordered?.Invoke(fromIndex, toIndex);
-        RebuildHeaders();
+        RefreshAfterItemsChanged(selectionChanged, ensureVisible: true);
     }
 
-    internal void HandleDragScroll(float mouseX, float mouseY)
+    public void DebugHitTest(float x, float y)
     {
-        const float ScrollZone = 50f;
-        const float ScrollSpeed = 5f;
+        Console.WriteLine("========================================");
+        Console.WriteLine($"[TabControl.DebugHitTest] Point ({x}, {y})");
 
-        _autoScrollMouseX = mouseX;
-        _autoScrollMouseY = mouseY;
-        _autoScrollActive = true;
-
-        if (IsHorizontalPosition())
+        foreach (var child in Children)
         {
-            float scrollViewX = _tabHeadersScroll.ComputedX;
-            float scrollViewWidth = _tabHeadersScroll.ComputedWidth;
-            float scrollViewRight = scrollViewX + scrollViewWidth;
-
-            if (mouseX < scrollViewX + ScrollZone && _tabHeadersScroll.HorizontalScrollOffset > 0)
-            {
-                float newOffset = Math.Max(0, _tabHeadersScroll.HorizontalScrollOffset - ScrollSpeed);
-                _tabHeadersScroll.HorizontalScrollOffset = newOffset;
-                UpdateScrollButtonStates();
-            }
-            else if (mouseX > scrollViewRight - ScrollZone)
-            {
-                float contentWidth = _tabHeadersStack.ComputedWidth;
-                float viewWidth = _tabHeadersScroll.ComputedWidth;
-                float maxOffset = Math.Max(0, contentWidth - viewWidth);
-
-                if (_tabHeadersScroll.HorizontalScrollOffset < maxOffset)
-                {
-                    float newOffset = Math.Min(maxOffset, _tabHeadersScroll.HorizontalScrollOffset + ScrollSpeed);
-                    _tabHeadersScroll.HorizontalScrollOffset = newOffset;
-                    UpdateScrollButtonStates();
-                }
-            }
+            Console.WriteLine($"[TabControl.DebugHitTest] {child.GetType().Name} @ ({child.ComputedX}, {child.ComputedY}, {child.ComputedWidth}, {child.ComputedHeight})");
         }
-        else
-        {
-            float scrollViewY = _tabHeadersScroll.ComputedY;
-            float scrollViewHeight = _tabHeadersScroll.ComputedHeight;
-            float scrollViewBottom = scrollViewY + scrollViewHeight;
 
-            if (mouseY < scrollViewY + ScrollZone && _tabHeadersScroll.VerticalScrollOffset > 0)
-            {
-                float newOffset = Math.Max(0, _tabHeadersScroll.VerticalScrollOffset - ScrollSpeed);
-                _tabHeadersScroll.VerticalScrollOffset = newOffset;
-                UpdateScrollButtonStates();
-            }
-            else if (mouseY > scrollViewBottom - ScrollZone)
-            {
-                float contentHeight = _tabHeadersStack.ComputedHeight;
-                float viewHeight = _tabHeadersScroll.ComputedHeight;
-                float maxOffset = Math.Max(0, contentHeight - viewHeight);
-
-                if (_tabHeadersScroll.VerticalScrollOffset < maxOffset)
-                {
-                    float newOffset = Math.Min(maxOffset, _tabHeadersScroll.VerticalScrollOffset + ScrollSpeed);
-                    _tabHeadersScroll.VerticalScrollOffset = newOffset;
-                    UpdateScrollButtonStates();
-                }
-            }
-        }
+        Console.WriteLine("========================================");
     }
 
     protected override void OnMounted()
@@ -969,14 +370,14 @@ public class TabControl : CompositeView<TabControl>
                 return;
 
             var dragDrop = app.EventManager.DragDrop;
-            var sourceElement = dragDrop.CurrentDragData?.SourceElement;
-            if (!dragDrop.IsDragging || !IsDragFromThisControl(sourceElement))
+            var dragInfo = dragDrop.CurrentDragData?.Data as TabDragInfo;
+            if (!dragDrop.IsDragging || dragInfo?.Owner != this)
             {
                 _autoScrollActive = false;
                 return;
             }
 
-            HandleDragScroll(_autoScrollMouseX, _autoScrollMouseY);
+            HandleDragScroll(_dragPointerX, _dragPointerY);
         };
 
         app.Updated += _autoScrollTick;
@@ -986,9 +387,7 @@ public class TabControl : CompositeView<TabControl>
     {
         var app = UIApplication.Current;
         if (app != null && _autoScrollTick != null)
-        {
             app.Updated -= _autoScrollTick;
-        }
 
         _autoScrollTick = null;
         _autoScrollActive = false;
@@ -996,350 +395,747 @@ public class TabControl : CompositeView<TabControl>
         base.OnUnmounted();
     }
 
-    private bool IsDragFromThisControl(VisualElement? sourceElement)
-    {
-        var current = sourceElement;
-        while (current != null)
-        {
-            if (current == this)
-                return true;
-
-            current = current.Parent;
-        }
-
-        return false;
-    }
-
     protected override void Measure(float availableWidth, float availableHeight)
     {
-        // ✅ CORREGIDO: Implementar medición correcta respetando Alignment
+        float measuredWidth = ResolveMeasuredWidth(availableWidth);
+        float measuredHeight = ResolveMeasuredHeight(availableHeight);
 
-        // Calcular el tamaño deseado basándose en:
-        // 1. Width/Height explícitos si están definidos
-        // 2. Alignment (Stretch → usar todo el disponible)
-        // 3. Contenido (mínimo necesario)
+        _root.MeasureUpdate(measuredWidth, measuredHeight);
 
-        float desiredWidth = Width;
-        float desiredHeight = Height;
-
-        // Ancho: Si es 0 (no especificado), verificar alignment
-        if (desiredWidth == 0)
-        {
-            if (HorizontalAlignment == HorizontalAlignment.Stretch)
-            {
-                // Stretch → usar todo el ancho disponible
-                desiredWidth = availableWidth;
-            }
-            else
-            {
-                // No stretch → calcular el mínimo necesario
-                // Para TabControl, el mínimo depende de la orientación de las tabs
-                float minWidth = IsHorizontalPosition()
-                    ? _tabs.Count * GetHorizontalTabWidthValue() + ScrollButtonWidth * 2
-                    : GetHeaderCrossSize() + 200;
-                desiredWidth = Math.Min(minWidth, availableWidth);
-            }
-        }
-
-        // Alto: Si es 0 (no especificado), verificar alignment
-        if (desiredHeight == 0)
-        {
-            if (VerticalAlignment == VerticalAlignment.Stretch)
-            {
-                // Stretch → usar todo el alto disponible
-                desiredHeight = availableHeight;
-            }
-            else
-            {
-                // No stretch → calcular el mínimo necesario
-                // Para TabControl, el mínimo depende de la orientación
-                float minHeight = IsHorizontalPosition()
-                    ? GetHorizontalTabHeightValue() + 100
-                    : _tabs.Count * GetVerticalTabHeightValue() + 100;
-                desiredHeight = Math.Min(minHeight, availableHeight);
-            }
-        }
-
-        // ✅ CRÍTICO: No modificar Width/Height aquí
-        // Solo establecer DesiredSize para que el padre pueda decidir
-        // El tamaño final se establece en Arrange
-
-        // Medir los hijos con el espacio disponible (no el deseado)
-        foreach (var child in Children.ToArray())
-        {
-            child.MeasureUpdate(desiredWidth, desiredHeight);
-        }
+        DesiredWidth = ResolveDesiredLength(Width, HorizontalAlignment, availableWidth, _root.DesiredWidth);
+        DesiredHeight = ResolveDesiredLength(Height, VerticalAlignment, availableHeight, _root.DesiredHeight);
     }
 
     protected override void Arrange(float x, float y, float width, float height)
     {
         base.Arrange(x, y, width, height);
-
-        // Arrange del container (headers + content)
-        if (Children.Count > 0)
-            Children[0].ArrangeUpdate(x, y, width, height);
-
-        UpdateScrollButtonStates();
+        _root.ArrangeUpdate(x, y, width, height);
+        UpdateScrollButtons();
     }
 
     public override void Render(IRenderer renderer)
     {
-        // Los hijos se renderizan automáticamente en el orden correcto
+        foreach (var child in GetChildrenByZIndex())
+        {
+            RenderSubtree(child, renderer);
+        }
+    }
+
+    protected internal override bool RendersChildrenManually => true;
+
+    private void CreateVisualTree()
+    {
+        ClearChildren();
+
+        bool isHorizontal = IsHorizontalPosition();
+        float headerCrossSize = GetHeaderCrossSize();
+
+        _headerStrip = isHorizontal
+            ? new HStack().Spacing(HeaderSpacing).HorizontalAlignment(HorizontalAlignment.Left)
+            : new VStack().Spacing(HeaderSpacing).VerticalAlignment(VerticalAlignment.Top);
+
+        _headerScroll = new TabHeadersScrollView
+        {
+            Orientation = isHorizontal ? ScrollOrientation.Horizontal : ScrollOrientation.Vertical,
+            ShowHorizontalScrollbar = false,
+            ShowVerticalScrollbar = false
+        };
+        _headerScroll.Content(_headerStrip);
+
+        _scrollBackwardButton = new TabScrollButton(
+            isHorizontal ? Icons.ChevronLeft : Icons.ChevronUp,
+            ScrollBackward);
+        _scrollForwardButton = new TabScrollButton(
+            isHorizontal ? Icons.ChevronRight : Icons.ChevronDown,
+            ScrollForward);
+
+        if (isHorizontal)
+        {
+            _headerScroll.Height = headerCrossSize;
+            _headerScroll.HorizontalAlignment = HorizontalAlignment.Stretch;
+            _scrollBackwardButton.Width = ScrollButtonWidth;
+            _scrollBackwardButton.Height = headerCrossSize;
+            _scrollBackwardButton.HorizontalAlignment = HorizontalAlignment.Left;
+            _scrollForwardButton.Width = ScrollButtonWidth;
+            _scrollForwardButton.Height = headerCrossSize;
+            _scrollForwardButton.HorizontalAlignment = HorizontalAlignment.Right;
+        }
+        else
+        {
+            _headerScroll.Width = headerCrossSize;
+            _headerScroll.VerticalAlignment = VerticalAlignment.Stretch;
+            _scrollBackwardButton.Width = headerCrossSize;
+            _scrollBackwardButton.Height = ScrollButtonWidth;
+            _scrollBackwardButton.VerticalAlignment = VerticalAlignment.Top;
+            _scrollForwardButton.Width = headerCrossSize;
+            _scrollForwardButton.Height = ScrollButtonWidth;
+            _scrollForwardButton.VerticalAlignment = VerticalAlignment.Bottom;
+        }
+
+        _scrollBackwardButton.IsVisible = false;
+        _scrollForwardButton.IsVisible = false;
+
+        _headerOverlay = new OverlayPanel();
+        if (isHorizontal)
+        {
+            _headerOverlay.Height = headerCrossSize;
+            _headerOverlay.HorizontalAlignment = HorizontalAlignment.Stretch;
+        }
+        else
+        {
+            _headerOverlay.Width = headerCrossSize;
+            _headerOverlay.VerticalAlignment = VerticalAlignment.Stretch;
+        }
+
+        _headerOverlay.AddChild(_headerScroll);
+        _headerOverlay.AddChild(_scrollBackwardButton);
+        _headerOverlay.AddChild(_scrollForwardButton);
+
+        _contentFrame = new Frame
+        {
+            Background = ContentBackground,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch
+        };
+
+        _root = BuildRoot();
+        AddChild(_root);
+
+        RebuildHeaders();
+        UpdateContent();
+    }
+
+    private VisualElement BuildRoot()
+    {
+        return Position switch
+        {
+            TabPosition.Top => new VStack()
+                .Spacing(0)
+                .HorizontalAlignment(HorizontalAlignment.Stretch)
+                .VerticalAlignment(VerticalAlignment.Stretch)
+                .Children(_headerOverlay, _contentFrame),
+            TabPosition.Bottom => new VStack()
+                .Spacing(0)
+                .HorizontalAlignment(HorizontalAlignment.Stretch)
+                .VerticalAlignment(VerticalAlignment.Stretch)
+                .Children(_contentFrame, _headerOverlay),
+            TabPosition.Left => new HStack()
+                .Spacing(0)
+                .HorizontalAlignment(HorizontalAlignment.Stretch)
+                .VerticalAlignment(VerticalAlignment.Stretch)
+                .Children(_headerOverlay, _contentFrame),
+            TabPosition.Right => new HStack()
+                .Spacing(0)
+                .HorizontalAlignment(HorizontalAlignment.Stretch)
+                .VerticalAlignment(VerticalAlignment.Stretch)
+                .Children(_contentFrame, _headerOverlay),
+            _ => new VStack()
+                .Spacing(0)
+                .HorizontalAlignment(HorizontalAlignment.Stretch)
+                .VerticalAlignment(VerticalAlignment.Stretch)
+                .Children(_headerOverlay, _contentFrame)
+        };
+    }
+
+    private void RebuildLayout()
+    {
+        CreateVisualTree();
+        InvalidateMeasure();
+    }
+
+    private void SetItems(IList<TabItem>? items)
+    {
+        _tabs = items?.ToList() ?? [];
+        NormalizeSelectedIndex();
+        RefreshAfterItemsChanged(selectionChanged: true, ensureVisible: true);
+    }
+
+    private void RefreshAfterItemsChanged(bool selectionChanged, bool ensureVisible)
+    {
+        RebuildHeaders();
+        UpdateContent();
+
+        if (_tabs.Count == 0)
+        {
+            _headerScroll.HorizontalScrollOffset = 0;
+            _headerScroll.VerticalScrollOffset = 0;
+        }
+        else if (ensureVisible)
+        {
+            QueueEnsureSelectedTabVisible();
+        }
+
+        if (selectionChanged && _tabs.Count > 0)
+            TabChanged?.Invoke(_selectedIndex);
+        else if (selectionChanged && _tabs.Count == 0)
+            TabChanged?.Invoke(0);
+    }
+
+    private void SelectIndex(int value, bool raiseEvent)
+    {
+        if (!IsValidIndex(value) || value == _selectedIndex)
+            return;
+
+        _selectedIndex = value;
+        RebuildHeaders();
+        UpdateContent();
+        QueueEnsureSelectedTabVisible();
+        RefreshLocalLayout();
+
+        if (raiseEvent)
+            TabChanged?.Invoke(value);
+    }
+
+    private void RebuildHeaders()
+    {
+        if (_headerStrip == null)
+            return;
+
+        ClearHeaderStrip();
+
+        var headerSize = GetTabButtonSize();
+
+        for (int i = 0; i < _tabs.Count; i++)
+        {
+            var tab = _tabs[i];
+            bool isSelected = i == _selectedIndex;
+            VisualElement content = TabHeaderTemplate?.Invoke(tab, i, isSelected) ?? CreateDefaultHeaderContent(tab, isSelected);
+
+            var header = new TabHeaderHost(this, i, tab, content)
+            {
+                Width = headerSize.Width,
+                Height = headerSize.Height,
+                HorizontalAlignment = HorizontalAlignment.Left,
+                VerticalAlignment = VerticalAlignment.Top
+            };
+
+            AddHeaderStripChild(header);
+        }
+
+        UpdateScrollButtons();
+        InvalidateMeasure();
+    }
+
+    private VisualElement CreateDefaultHeaderContent(TabItem tab, bool isSelected)
+    {
+        var rightPadding = ShowTabCloseButtons ? TabCloseButtonHitSize + 14f : 10f;
+        var textColor = !tab.IsEnabled
+            ? new Color(120, 120, 120)
+            : isSelected
+                ? Color.White
+                : new Color(210, 210, 210);
+
+        return new HStack()
+            .Spacing(0)
+            .Padding(new Thickness(10, 0, rightPadding, 0))
+            .HorizontalAlignment(HorizontalAlignment.Stretch)
+            .VerticalAlignment(VerticalAlignment.Stretch)
+            .Children(
+                new Label()
+                    .Text(tab.Title)
+                    .FontSize(13)
+                    .Foreground(textColor)
+                    .HorizontalAlignment(HorizontalAlignment.Stretch)
+                    .VerticalAlignment(VerticalAlignment.Center));
+    }
+
+    private void UpdateContent()
+    {
+        if (_tabs.Count == 0 || !IsValidIndex(_selectedIndex))
+        {
+            _contentFrame.ClearContent();
+            _contentFrame.MarkNeedsPaint();
+            return;
+        }
+
+        var content = _tabs[_selectedIndex].Content;
+        if (!ReferenceEquals(_contentFrame.Content, content))
+        {
+            _contentFrame.ClearContent();
+        }
+
+        _contentFrame.Content = content;
+        _contentFrame.InvalidateMeasure();
+        _contentFrame.MarkNeedsPaint();
+        TrySetFocusOnContent(content);
     }
 
     /// <summary>
-    /// ✅ Método de debugging para verificar hit-testing en un punto.
+    /// Performs a local measure/arrange pass on the TabControl internal tree
+    /// without propagating a full-tree relayout to ancestor containers (e.g. an
+    /// external ScrollView). This prevents the external scroll offset from
+    /// being reset after a tab selection or reorder.
     /// </summary>
-    public void DebugHitTest(float x, float y)
+    private void RefreshLocalLayout()
     {
-        Console.WriteLine("════════════════════════════════════════");
-        Console.WriteLine($"[TabControl.DebugHitTest] Testing point ({x}, {y})");
-
-        // Verificar cada child manualmente
-        for (int i = 0; i < Children.Count; i++)
+        // Re-measure and re-arrange internal tree using the last known available
+        // size so that newly created TabHeaderHost elements get valid
+        // ComputedWidth/Height before the next render frame.
+        if (ComputedWidth > 0 && ComputedHeight > 0)
         {
-            var child = Children[i];
-            Console.WriteLine($"[TabControl.DebugHitTest] Child[{i}]: {child.GetType().Name}");
-            Console.WriteLine($"[TabControl.DebugHitTest]    IsVisible: {child.IsVisible}");
-            Console.WriteLine($"[TabControl.DebugHitTest]    Bounds: ({child.ComputedX}, {child.ComputedY}, {child.ComputedWidth}, {child.ComputedHeight})");
-
-            bool isInside = x >= child.ComputedX && x <= child.ComputedX + child.ComputedWidth &&
-      y >= child.ComputedY && y <= child.ComputedY + child.ComputedHeight;
-            Console.WriteLine($"[TabControl.DebugHitTest]    Point inside? {isInside}");
-
-            // Verificar interfaces modernas del sistema de input
-            if (child is IPointerHandler)
-                Console.WriteLine($"[TabControl.DebugHitTest]    ✓ Implements IPointerHandler");
-            if (child is ITappable)
-                Console.WriteLine($"[TabControl.DebugHitTest]    ✓ Implements ITappable");
-            if (child is IInputHandler)
-                Console.WriteLine($"[TabControl.DebugHitTest]    ✓ Implements IInputHandler");
-            if (child is IGestureRecognizerHost)
-                Console.WriteLine($"[TabControl.DebugHitTest]    ✓ Implements IGestureRecognizerHost");
+            ForceMeasure(LastMeasuredAvailableWidth, LastMeasuredAvailableHeight);
+            ForceArrange(ComputedX, ComputedY, ComputedWidth, ComputedHeight);
+        }
+        else
+        {
+            // Fallback: invalidate measure so the tree schedules a proper layout.
+            InvalidateMeasure();
         }
 
-        Console.WriteLine("════════════════════════════════════════");
+        MarkNeedsPaint();
+        var tree = UIApplication.Current?.Tree ?? UITree.Current;
+        tree?.MarkNeedsRender();
     }
 
-    /// <summary>
-    /// Frame simple que permite superponer hijos (Overlay).
-    /// Reemplaza al Grid para asegurar que los botones queden encima del ScrollView.
-    /// </summary>
-    private class OverlayFrame : CompositeView<OverlayFrame>
+    private void QueueEnsureSelectedTabVisible()
     {
-        protected override void Measure(float availableWidth, float availableHeight)
+        if (_tabs.Count == 0)
+            return;
+
+        UIUpdateQueue.EnqueueUIUpdate(this, EnsureSelectedTabVisible);
+    }
+
+    private void EnsureSelectedTabVisible()
+    {
+        if (_tabs.Count == 0)
+            return;
+
+        var selectedHeader = GetHeaderChildren().ElementAtOrDefault(_selectedIndex);
+        if (selectedHeader == null)
+            return;
+
+        float rectX = selectedHeader.ComputedX - _headerStrip.ComputedX;
+        float rectY = selectedHeader.ComputedY - _headerStrip.ComputedY;
+        _headerScroll.EnsureRectVisible(rectX, rectY, selectedHeader.ComputedWidth, selectedHeader.ComputedHeight);
+        UpdateScrollButtons();
+    }
+
+    private void TrySetFocusOnContent(VisualElement element)
+    {
+        var app = UIApplication.Current;
+        if (app == null)
+            return;
+
+        if (element is IFocusable && element is IInputHandler handler && handler.CanHandleInput)
         {
-            // Si tiene tamaño explícito, usarlo
-            float w = Width > 0 ? Width : availableWidth;
-            float h = Height > 0 ? Height : availableHeight;
-
-            float maxChildW = 0;
-            float maxChildH = 0;
-
-            // Measure all children
-            foreach (var child in Children.ToArray())
-            {
-                if (child.IsVisible)
-                {
-                    child.MeasureUpdate(w, h);
-                    maxChildW = Math.Max(maxChildW, child.DesiredWidth);
-                    maxChildH = Math.Max(maxChildH, child.DesiredHeight);
-                }
-            }
-
-            DesiredWidth = Width > 0 ? Width : maxChildW;
-            DesiredHeight = Height > 0 ? Height : maxChildH;
+            app.RunOnMainThread(() => app.EventManager.SetFocus(element));
+            return;
         }
 
-        protected override void Arrange(float x, float y, float width, float height)
+        foreach (var child in element.GetChildren())
         {
-            base.Arrange(x, y, width, height);
-
-            foreach (var child in Children.ToArray())
-            {
-                if (!child.IsVisible) continue;
-
-                float childW = child.DesiredWidth;
-                float childH = child.DesiredHeight;
-                float childX = x;
-                float childY = y;
-
-                // Horizontal Alignment
-                switch (child.HorizontalAlignment)
-                {
-                    case HorizontalAlignment.Stretch:
-                        childW = width - child.Margin.Horizontal;
-                        childX = x + child.Margin.Left;
-                        break;
-                    case HorizontalAlignment.Center:
-                        childX = x + (width - childW) / 2 + child.Margin.Left;
-                        break;
-                    case HorizontalAlignment.Right:
-                        childX = x + width - childW - child.Margin.Right;
-                        break;
-                    case HorizontalAlignment.Left:
-                    default:
-                        childX = x + child.Margin.Left;
-                        break;
-                }
-
-                // Vertical Alignment
-                switch (child.VerticalAlignment)
-                {
-                    case VerticalAlignment.Stretch:
-                        childH = height - child.Margin.Vertical;
-                        childY = y + child.Margin.Top;
-                        break;
-                    case VerticalAlignment.Center:
-                        childY = y + (height - childH) / 2 + child.Margin.Top;
-                        break;
-                    case VerticalAlignment.Bottom:
-                        childY = y + height - childH - child.Margin.Bottom;
-                        break;
-                    case VerticalAlignment.Top:
-                    default:
-                        childY = y + child.Margin.Top;
-                        break;
-                }
-
-                child.ArrangeUpdate(childX, childY, childW, childH);
-            }
+            TrySetFocusOnContent(child);
+            if (app.EventManager.FocusedElement != null)
+                return;
         }
+    }
+
+    internal void ReorderTab(int fromIndex, int toIndex)
+    {
+        if (!IsValidIndex(fromIndex))
+            return;
+
+        int finalIndex = NormalizeReorderTarget(fromIndex, toIndex);
+        if (finalIndex == fromIndex)
+            return;
+
+        var selectedTab = SelectedTab;
+        var reordered = _tabs.ToList();
+        var movedTab = reordered[fromIndex];
+        reordered.RemoveAt(fromIndex);
+        reordered.Insert(finalIndex, movedTab);
+        _tabs = reordered;
+
+        if (selectedTab != null)
+            _selectedIndex = Math.Max(0, _tabs.IndexOf(selectedTab));
+        else
+            NormalizeSelectedIndex();
+
+        TabReordered?.Invoke(fromIndex, finalIndex);
+        RebuildHeaders();
+        UpdateContent();
+        QueueEnsureSelectedTabVisible();
+        RefreshLocalLayout();
+    }
+
+    internal int CalculateInsertIndex(int targetIndex, float pointerX, float pointerY)
+    {
+        if (!IsValidIndex(targetIndex))
+            return targetIndex;
+
+        var targetHeader = GetHeaderChildren().ElementAtOrDefault(targetIndex);
+        if (targetHeader == null)
+            return targetIndex;
+
+        bool insertAfter = IsHorizontalPosition()
+            ? pointerX >= targetHeader.ComputedX + (targetHeader.ComputedWidth / 2f)
+            : pointerY >= targetHeader.ComputedY + (targetHeader.ComputedHeight / 2f);
+
+        return insertAfter ? targetIndex + 1 : targetIndex;
+    }
+
+    private int NormalizeReorderTarget(int fromIndex, int rawInsertIndex)
+    {
+        int normalized = Math.Clamp(rawInsertIndex, 0, _tabs.Count);
+        if (fromIndex < normalized)
+            normalized--;
+
+        return Math.Clamp(normalized, 0, Math.Max(0, _tabs.Count - 1));
+    }
+
+    internal void HandleDragScroll(float pointerX, float pointerY)
+    {
+        _dragPointerX = pointerX;
+        _dragPointerY = pointerY;
+        _autoScrollActive = true;
+
+        if (IsHorizontalPosition())
+        {
+            float left = _headerScroll.ComputedX;
+            float right = left + _headerScroll.ComputedWidth;
+
+            if (pointerX <= left + AutoScrollZone)
+                _headerScroll.HorizontalScrollOffset -= AutoScrollStep;
+            else if (pointerX >= right - AutoScrollZone)
+                _headerScroll.HorizontalScrollOffset += AutoScrollStep;
+        }
+        else
+        {
+            float top = _headerScroll.ComputedY;
+            float bottom = top + _headerScroll.ComputedHeight;
+
+            if (pointerY <= top + AutoScrollZone)
+                _headerScroll.VerticalScrollOffset -= AutoScrollStep;
+            else if (pointerY >= bottom - AutoScrollZone)
+                _headerScroll.VerticalScrollOffset += AutoScrollStep;
+        }
+
+        UpdateScrollButtons();
+    }
+
+    internal void StopAutoScroll()
+    {
+        _autoScrollActive = false;
+    }
+
+    internal Brush ResolveHeaderBackground(int index, bool isHovered)
+    {
+        if (index == _selectedIndex)
+            return TabActiveBackground;
+
+        return isHovered ? TabHoverBackground : TabBackground;
+    }
+
+    private void ScrollBackward()
+    {
+        if (IsHorizontalPosition())
+            _headerScroll.HorizontalScrollOffset -= GetTabScrollStep();
+        else
+            _headerScroll.VerticalScrollOffset -= GetTabScrollStep();
+
+        UpdateScrollButtons();
+    }
+
+    private void ScrollForward()
+    {
+        if (IsHorizontalPosition())
+            _headerScroll.HorizontalScrollOffset += GetTabScrollStep();
+        else
+            _headerScroll.VerticalScrollOffset += GetTabScrollStep();
+
+        UpdateScrollButtons();
+    }
+
+    private void UpdateScrollButtons()
+    {
+        if (_headerStrip == null || _headerScroll == null)
+            return;
+
+        bool isHorizontal = IsHorizontalPosition();
+        float contentSize = isHorizontal ? _headerStrip.ComputedWidth : _headerStrip.ComputedHeight;
+        float viewportSize = isHorizontal ? _headerScroll.ComputedWidth : _headerScroll.ComputedHeight;
+        float offset = isHorizontal ? _headerScroll.HorizontalScrollOffset : _headerScroll.VerticalScrollOffset;
+
+        bool needsScroll = contentSize > viewportSize + 0.5f && viewportSize > 0;
+        if (!needsScroll)
+        {
+            _scrollBackwardButton.IsVisible = false;
+            _scrollForwardButton.IsVisible = false;
+            return;
+        }
+
+        float maxOffset = Math.Max(0, contentSize - viewportSize);
+        _scrollBackwardButton.IsVisible = offset > 0.1f;
+        _scrollForwardButton.IsVisible = offset < maxOffset - 0.1f;
+    }
+
+    private IEnumerable<VisualElement> GetHeaderChildren()
+    {
+        return _headerStrip?.GetChildren() ?? Enumerable.Empty<VisualElement>();
+    }
+
+    private void AddHeaderStripChild(VisualElement child)
+    {
+        switch (_headerStrip)
+        {
+            case HStack h:
+                h.AddChild(child);
+                break;
+            case VStack v:
+                v.AddChild(child);
+                break;
+        }
+    }
+
+    private void ClearHeaderStrip()
+    {
+        switch (_headerStrip)
+        {
+            case HStack h:
+                h.ClearChildren();
+                break;
+            case VStack v:
+                v.ClearChildren();
+                break;
+        }
+    }
+
+    private bool IsHorizontalPosition()
+    {
+        return Position == TabPosition.Top || Position == TabPosition.Bottom;
+    }
+
+    private Size GetTabButtonSize()
+    {
+        return IsHorizontalPosition()
+            ? new Size(TabWidth, TabHeight)
+            : new Size(GetVerticalTabWidthValue(), GetVerticalTabHeightValue());
+    }
+
+    private float GetHeaderCrossSize()
+    {
+        return IsHorizontalPosition() ? TabHeight : GetVerticalTabWidthValue();
+    }
+
+    private float GetTabScrollStep()
+    {
+        return IsHorizontalPosition() ? TabWidth : GetVerticalTabHeightValue();
+    }
+
+    private float GetVerticalTabWidthValue()
+    {
+        return VerticalTabWidth > 0 ? VerticalTabWidth : TabHeight;
+    }
+
+    private float GetVerticalTabHeightValue()
+    {
+        return VerticalTabHeight > 0 ? VerticalTabHeight : TabWidth;
+    }
+
+    private bool IsValidIndex(int index)
+    {
+        return index >= 0 && index < _tabs.Count;
+    }
+
+    private void NormalizeSelectedIndex()
+    {
+        if (_tabs.Count == 0)
+        {
+            _selectedIndex = 0;
+            return;
+        }
+
+        _selectedIndex = Math.Clamp(_selectedIndex, 0, _tabs.Count - 1);
+    }
+
+    private float ResolveMeasuredWidth(float availableWidth)
+    {
+        if (Width > 0)
+            return Width;
+
+        if (HorizontalAlignment == HorizontalAlignment.Stretch && !float.IsInfinity(availableWidth))
+            return availableWidth;
+
+        return availableWidth;
+    }
+
+    private float ResolveMeasuredHeight(float availableHeight)
+    {
+        if (Height > 0)
+            return Height;
+
+        if (VerticalAlignment == VerticalAlignment.Stretch && !float.IsInfinity(availableHeight))
+            return availableHeight;
+
+        return availableHeight;
+    }
+
+    private static float ResolveDesiredLength(float explicitLength, Enum alignment, float availableLength, float measuredLength)
+    {
+        if (explicitLength > 0)
+            return explicitLength;
+
+        bool isStretch = alignment.Equals(HorizontalAlignment.Stretch) || alignment.Equals(VerticalAlignment.Stretch);
+        if (isStretch && !float.IsInfinity(availableLength))
+            return availableLength;
+
+        if (float.IsNaN(measuredLength) || float.IsInfinity(measuredLength) || measuredLength <= 0)
+            return 0;
+
+        if (float.IsInfinity(availableLength))
+            return measuredLength;
+
+        return Math.Min(measuredLength, availableLength);
+    }
+
+    private static void RenderSubtree(VisualElement element, IRenderer renderer)
+    {
+        if (!element.IsVisible)
+            return;
+
+        element.InvokeOnBeforeRender(renderer);
+        element.Render(renderer);
+        element.InvokeOnAfterRender(renderer);
+
+        if (element.RendersChildrenManually)
+            return;
+
+        foreach (var child in element.GetChildrenByZIndex())
+        {
+            RenderSubtree(child, renderer);
+        }
+    }
+
+    private sealed record TabDragInfo(TabControl Owner, int Index);
+
+    private sealed class TabHeaderHost : Frame, IPointerHandler, ITappable, IGestureRecognizerHost, IDraggable, IDropTarget
+    {
+        private const float AccentThickness = 2f;
+        private const float CloseButtonOffset = 6f;
+        private static readonly IconData CloseIcon = Icons.Close;
+        private readonly DropConstraints _constraints = new DropConstraints()
+            .AcceptType("tab")
+            .WithEffects(DragDropEffect.Move);
+
+        private readonly TabControl _owner;
+        private readonly int _index;
+        private readonly TabItem _tab;
+        private readonly TapRecognizer _tapRecognizer;
+
+        public bool IsDragging { get; set; }
+
+        public bool IsDropTargetActive { get; set; }
+
+        public List<IGestureRecognizer> GestureRecognizers { get; } = [];
+
+        public event Action<TapGestureEventArgs>? Tapped;
+
+        public TabHeaderHost(TabControl owner, int index, TabItem tab, VisualElement content)
+        {
+            _owner = owner;
+            _index = index;
+            _tab = tab;
+            Padding = new Thickness(0);
+            BorderWidth = 0;
+            HorizontalAlignment = HorizontalAlignment.Left;
+            VerticalAlignment = VerticalAlignment.Top;
+            IsEnabled = tab.IsEnabled;
+            Content = content;
+            IsInputTransparent = false;
+
+            _tapRecognizer = new TapRecognizer(
+                maxMovementThreshold: 15f,
+                maxPressDurationMs: 500,
+                doubleTapWindowMs: 300);
+            _tapRecognizer.TapDetected += OnTapDetected;
+            GestureRecognizers.Add(_tapRecognizer);
+
+            RefreshVisualState();
+        }
+
+        protected internal override bool RendersChildrenManually => true;
 
         public override void Render(IRenderer renderer)
         {
-            // Render all children in order (overlay effect)
-            foreach (var child in Children.ToArray())
+            base.Render(renderer);
+
+            foreach (var child in GetChildrenByZIndex())
             {
-                if (child.IsVisible)
-                {
-                    child.Render(renderer);
-                }
+                RenderSubtree(child, renderer);
             }
-        }
-    }
-
-    // =========================================================================
-    // CUSTOM TAB HEADER WRAPPER
-    // =========================================================================
-
-    /// <summary>
-    /// Wraps a custom header element produced by <see cref="TabHeaderTemplate"/>.
-    /// Handles tap-to-select via <see cref="IPointerHandler"/> and drag-and-drop
-    /// reordering via <see cref="IDraggable"/> / <see cref="IDropTarget"/>.
-    /// The accent bar and drop-target outline are painted in
-    /// <see cref="OnAfterRender"/> so they appear above the content.
-    /// </summary>
-    private class CustomTabHeaderWrapper : Frame, IDraggable, IDropTarget, Rayo.Core.Input.IPointerHandler
-    {
-        private const float CloseButtonOffset = 5f;
-        private readonly int _tabIndex;
-        private readonly TabControl _owner;
-        private readonly DropConstraints _constraints;
-        private readonly TabCloseGlyph? _closeGlyph;
-
-        public bool IsDragging { get; set; }
-        public bool IsDropTargetActive { get; set; }
-
-        public CustomTabHeaderWrapper(int tabIndex, VisualElement content, TabControl owner)
-        {
-            _tabIndex = tabIndex;
-            _owner = owner;
-            _constraints = new DropConstraints().AcceptType("tab").WithEffects(DragDropEffect.Move);
-
-            if (_owner.ShowTabCloseButtons)
-            {
-                var overlay = new OverlayFrame();
-                overlay.HorizontalAlignment = HorizontalAlignment.Stretch;
-                overlay.VerticalAlignment = VerticalAlignment.Stretch;
-                overlay.AddChild(content);
-
-                _closeGlyph = new TabCloseGlyph(_owner, _tabIndex)
-                {
-                    HorizontalAlignment = HorizontalAlignment.Right,
-                    VerticalAlignment = VerticalAlignment.Center,
-                    Margin = new Thickness(0, 0, CloseButtonOffset, 0),
-                    ZIndex = 1
-                };
-                overlay.AddChild(_closeGlyph);
-                Content = overlay;
-            }
-            else
-            {
-                Content = content;
-            }
-            // Headers have explicit sizes; override Frame's default stretch alignment.
-            HorizontalAlignment = HorizontalAlignment.Left;
-            VerticalAlignment = VerticalAlignment.Top;
-        }
-
-        // ─── IPointerHandler (via Frame) ─────────────────────────────────────
-
-        public void OnPointerReleased(PointerEventArgs e)
-        {
-            // Do not activate when a drag was in progress (the drop handles that).
-            var app = UIApplication.Current;
-            if (app != null && app.EventManager.DragDrop.IsDragging)
-                return;
-
-            if (_owner.ShowTabCloseButtons && IsCloseButtonHit(e.Position))
-            {
-                _owner.RemoveTab(_tabIndex);
-                return;
-            }
-
-            if (_tabIndex != _owner.SelectedIndex)
-                _owner.SelectedIndex = _tabIndex;
         }
 
         public void OnPointerEntered(PointerEventArgs e)
         {
-            bool isSelected = _owner.SelectedIndex == _tabIndex;
-            if (!isSelected && IsEnabled)
-            {
-                base.Background = _owner.TabHoverBackground;
-                MarkNeedsPaint();
-            }
+            if (!IsEnabled)
+                return;
+
+            IsHovered = true;
+            RefreshVisualState();
         }
 
         public void OnPointerExited(PointerEventArgs e)
         {
-            bool isSelected = _owner.SelectedIndex == _tabIndex;
-            base.Background = isSelected ? _owner.TabActiveBackground : _owner.TabBackground;
-            MarkNeedsPaint();
+            IsHovered = false;
+            IsPressed = false;
+            _tapRecognizer.Reset();
+            RefreshVisualState();
         }
 
-        // ─── Render ──────────────────────────────────────────────────────────
+        public void OnPointerPressed(PointerEventArgs e)
+        {
+            if (!IsEnabled)
+                return;
+
+            IsPressed = true;
+            _tapRecognizer.ProcessPointerEvent(e);
+        }
+
+        public void OnPointerReleased(PointerEventArgs e)
+        {
+            IsPressed = false;
+            if (!IsEnabled)
+                return;
+
+            _tapRecognizer.ProcessPointerEvent(e);
+        }
+
+        public void OnPointerMoved(PointerEventArgs e)
+        {
+            if (!IsEnabled)
+                return;
+
+            _tapRecognizer.ProcessPointerEvent(e);
+        }
+
+        public void OnPointerCanceled(PointerEventArgs e)
+        {
+            IsPressed = false;
+            _tapRecognizer.Reset();
+            RefreshVisualState();
+        }
 
         protected override void OnAfterRender(IRenderer renderer)
         {
-            bool isSelected = _owner.SelectedIndex == _tabIndex;
+            bool isSelected = _owner.SelectedIndex == _index;
             if (isSelected || IsDragging)
-            {
-                // Accent bar at the top edge (same style as DraggableTabButton).
-                renderer.DrawRect(ComputedX, ComputedY, ComputedWidth, 2, _owner.TabAccentColor);
-            }
+                DrawAccent(renderer);
 
             if (IsDropTargetActive)
-            {
-                renderer.DrawRectOutline(
-                    ComputedX, ComputedY, ComputedWidth, ComputedHeight,
-                    2, _owner.TabDropIndicatorColor);
-            }
+                renderer.DrawRectOutline(ComputedX, ComputedY, ComputedWidth, ComputedHeight, 2f, _owner.TabDropIndicatorColor);
 
+            if (_owner.ShowTabCloseButtons)
+                DrawCloseIcon(renderer);
         }
-
-        // ─── IDraggable ──────────────────────────────────────────────────────
 
         public DragData? OnDragStart(float mouseX, float mouseY)
         {
-            if (!_owner.EnableTabReorder) return null;
-            var title = _tabIndex < _owner._tabs.Count
-                ? _owner._tabs[_tabIndex].Title
-                : string.Empty;
-            return new DragData("tab", _tabIndex, this)
+            if (!_owner.EnableTabReorder || !IsEnabled)
+                return null;
+
+            return new DragData("tab", new TabDragInfo(_owner, _index), this)
                 .WithAllowedEffects(DragDropEffect.Move)
-                .WithMetadata("title", title);
+                .WithMetadata("title", _tab.Title);
         }
 
         public void OnDragging(float mouseX, float mouseY)
@@ -1348,78 +1144,126 @@ public class TabControl : CompositeView<TabControl>
                 _owner.HandleDragScroll(mouseX, mouseY);
         }
 
-        public void OnDragEnd(bool wasDropped) => MarkNeedsPaint();
-
-        // ─── IDropTarget ─────────────────────────────────────────────────────
+        public void OnDragEnd(bool wasDropped)
+        {
+            _owner.StopAutoScroll();
+            _tapRecognizer.Reset();
+            RefreshVisualState();
+            MarkNeedsPaint();
+        }
 
         public bool CanAcceptDataType(string dataType)
-            => _owner.EnableTabReorder && dataType == "tab";
+        {
+            return _owner.EnableTabReorder && dataType == "tab";
+        }
 
-        public DropConstraints? Constraints
-            => _owner.EnableTabReorder ? _constraints : null;
+        public DropConstraints? Constraints => _owner.EnableTabReorder ? _constraints : null;
 
-        public DragDropEffect? AllowedEffects
-            => _owner.EnableTabReorder ? DragDropEffect.Move : (DragDropEffect?)null;
+        public DragDropEffect? AllowedEffects => _owner.EnableTabReorder ? DragDropEffect.Move : null;
 
         public bool OnDragEnter(DragData dragData)
         {
-            if (!_owner.EnableTabReorder) return false;
-            if (dragData.Data is not int draggedIndex || draggedIndex == _tabIndex) return false;
+            if (!_owner.EnableTabReorder || dragData.Data is not TabDragInfo dragInfo || dragInfo.Owner != _owner || dragInfo.Index == _index)
+                return false;
+
             IsDropTargetActive = true;
-            UpdateDragHighlight(true);
+            RefreshVisualState();
             MarkNeedsPaint();
             return true;
         }
 
         public void OnDragOver(DragData dragData, float mouseX, float mouseY)
         {
-            if (_owner.EnableTabReorder) _owner.HandleDragScroll(mouseX, mouseY);
+            _owner.HandleDragScroll(mouseX, mouseY);
         }
 
         public void OnDragLeave(DragData dragData)
         {
             IsDropTargetActive = false;
-            UpdateDragHighlight(false);
+            RefreshVisualState();
             MarkNeedsPaint();
         }
 
         public bool OnDrop(DragData dragData, float mouseX, float mouseY)
         {
-            if (!_owner.EnableTabReorder) return false;
             IsDropTargetActive = false;
-            UpdateDragHighlight(false);
+            RefreshVisualState();
             MarkNeedsPaint();
-            if (dragData.Data is not int draggedIndex || draggedIndex == _tabIndex) return false;
-            float relX = mouseX - ComputedX;
-            int targetIndex = relX < ComputedWidth / 2 ? _tabIndex : _tabIndex + 1;
-            if (draggedIndex < targetIndex) targetIndex--;
-            _owner.ReorderTab(draggedIndex, targetIndex);
+
+            if (dragData.Data is not TabDragInfo dragInfo || dragInfo.Owner != _owner || dragInfo.Index == _index)
+                return false;
+
+            int insertIndex = _owner.CalculateInsertIndex(_index, mouseX, mouseY);
+            UIUpdateQueue.EnqueueUIUpdate(_owner, () => _owner.ReorderTab(dragInfo.Index, insertIndex));
             return true;
         }
 
-        private void UpdateDragHighlight(bool isActive)
+        private void RefreshVisualState()
         {
-            if (isActive && _owner.SelectedIndex != _tabIndex)
+            Background = _owner.ResolveHeaderBackground(_index, IsHovered || IsDropTargetActive);
+            MarkNeedsPaint();
+        }
+
+        private void OnTapDetected(TapGestureEventArgs e)
+        {
+            var app = UIApplication.Current;
+            if (!IsEnabled || (app != null && app.EventManager.DragDrop.IsDragging))
+                return;
+
+            if (_owner.ShowTabCloseButtons && IsCloseButtonHit(e.Position))
             {
-                base.Background = _owner.TabHoverBackground;
+                _owner.RemoveTab(_index);
+                Tapped?.Invoke(e);
                 return;
             }
 
-            bool isSelected = _owner.SelectedIndex == _tabIndex;
-            base.Background = isSelected ? _owner.TabActiveBackground : _owner.TabBackground;
+            if (_owner.SelectedIndex != _index)
+                _owner.SelectedIndex = _index;
+
+            Tapped?.Invoke(e);
+        }
+
+        private void DrawAccent(IRenderer renderer)
+        {
+            if (_owner.IsHorizontalPosition())
+            {
+                float y = _owner.Position == TabPosition.Bottom
+                    ? ComputedY + ComputedHeight - AccentThickness
+                    : ComputedY;
+                renderer.DrawRect(ComputedX, y, ComputedWidth, AccentThickness, _owner.TabAccentColor);
+            }
+            else
+            {
+                float x = _owner.Position == TabPosition.Right
+                    ? ComputedX + ComputedWidth - AccentThickness
+                    : ComputedX;
+                renderer.DrawRect(x, ComputedY, AccentThickness, ComputedHeight, _owner.TabAccentColor);
+            }
+        }
+
+        private void DrawCloseIcon(IRenderer renderer)
+        {
+            var bounds = GetCloseButtonBounds();
+            var color = (IsHovered || _owner.SelectedIndex == _index)
+                ? _owner.TabCloseButtonHoverColor
+                : _owner.TabCloseButtonColor;
+
+            float iconSize = Math.Min(_owner.TabCloseButtonSize, Math.Min(bounds.size, bounds.size));
+            float iconX = bounds.x + (bounds.size - iconSize) / 2f;
+            float iconY = bounds.y + (bounds.size - iconSize) / 2f;
+
+            float scaleX = iconSize / CloseIcon.ViewBoxWidth;
+            float scaleY = iconSize / CloseIcon.ViewBoxHeight;
+            float scale = Math.Min(scaleX, scaleY);
+
+            foreach (var command in CloseIcon.Commands)
+            {
+                command.Draw(renderer, iconX, iconY, scale, color);
+            }
         }
 
         private bool IsCloseButtonHit(System.Numerics.Vector2 position)
         {
-            if (!_owner.ShowTabCloseButtons)
-                return false;
-
-            if (_closeGlyph != null)
-            {
-                return position.X >= _closeGlyph.ComputedX && position.X <= _closeGlyph.ComputedX + _closeGlyph.ComputedWidth &&
-                       position.Y >= _closeGlyph.ComputedY && position.Y <= _closeGlyph.ComputedY + _closeGlyph.ComputedHeight;
-            }
-
             var bounds = GetCloseButtonBounds();
             return position.X >= bounds.x && position.X <= bounds.x + bounds.size &&
                    position.Y >= bounds.y && position.Y <= bounds.y + bounds.size;
@@ -1429,559 +1273,108 @@ public class TabControl : CompositeView<TabControl>
         {
             float size = _owner.TabCloseButtonHitSize;
             float x = ComputedX + ComputedWidth - size - CloseButtonOffset;
-            float y = ComputedY + (ComputedHeight - size) / 2;
+            float y = ComputedY + (ComputedHeight - size) / 2f;
             return (x, y, size);
         }
     }
 
-    private sealed class TabCloseGlyph : Rayo.Core.View<TabCloseGlyph>
+    private sealed class OverlayPanel : CompositeView<OverlayPanel>
     {
-        private readonly TabControl _owner;
-        private readonly int _tabIndex;
-        private static readonly IconData CloseIcon = Icons.Close;
-
-        public TabCloseGlyph(TabControl owner, int tabIndex)
-        {
-            _owner = owner;
-            _tabIndex = tabIndex;
-            IsInputTransparent = true;
-        }
+        protected internal override bool RendersChildrenManually => true;
 
         protected override void Measure(float availableWidth, float availableHeight)
         {
-            DesiredWidth = _owner.TabCloseButtonHitSize;
-            DesiredHeight = _owner.TabCloseButtonHitSize;
+            float desiredWidth = Width > 0 ? Width : 0;
+            float desiredHeight = Height > 0 ? Height : 0;
+
+            foreach (var child in Children)
+            {
+                child.MeasureUpdate(
+                    Width > 0 ? Width : availableWidth,
+                    Height > 0 ? Height : availableHeight);
+
+                desiredWidth = Math.Max(desiredWidth, child.DesiredWidth);
+                desiredHeight = Math.Max(desiredHeight, child.DesiredHeight);
+            }
+
+            DesiredWidth = desiredWidth;
+            DesiredHeight = desiredHeight;
+        }
+
+        protected override void Arrange(float x, float y, float width, float height)
+        {
+            base.Arrange(x, y, width, height);
+
+            foreach (var child in Children)
+            {
+                float childWidth = child.HorizontalAlignment == HorizontalAlignment.Stretch ? width : child.DesiredWidth;
+                float childHeight = child.VerticalAlignment == VerticalAlignment.Stretch ? height : child.DesiredHeight;
+                float childX = x;
+                float childY = y;
+
+                if (child.HorizontalAlignment == HorizontalAlignment.Right)
+                    childX = x + width - childWidth;
+                else if (child.HorizontalAlignment == HorizontalAlignment.Center)
+                    childX = x + (width - childWidth) / 2f;
+
+                if (child.VerticalAlignment == VerticalAlignment.Bottom)
+                    childY = y + height - childHeight;
+                else if (child.VerticalAlignment == VerticalAlignment.Center)
+                    childY = y + (height - childHeight) / 2f;
+
+                child.ArrangeUpdate(childX, childY, childWidth, childHeight);
+            }
         }
 
         public override void Render(IRenderer renderer)
         {
-            var wrapper = Parent?.Parent as CustomTabHeaderWrapper;
-            bool isHovered = wrapper?.IsHovered == true;
-            bool isSelected = _owner.SelectedIndex == _tabIndex;
-            var color = isHovered || isSelected
-                ? _owner.TabCloseButtonHoverColor
-                : _owner.TabCloseButtonColor;
-
-            float iconSize = Math.Min(_owner.TabCloseButtonSize, Math.Min(ComputedWidth, ComputedHeight));
-            float iconX = ComputedX + (ComputedWidth - iconSize) / 2;
-            float iconY = ComputedY + (ComputedHeight - iconSize) / 2;
-            RenderCloseIcon(renderer, iconX, iconY, iconSize, color);
-        }
-
-        private static void RenderCloseIcon(IRenderer renderer, float x, float y, float size, Color color)
-        {
-            float scaleX = size / CloseIcon.ViewBoxWidth;
-            float scaleY = size / CloseIcon.ViewBoxHeight;
-            float scale = Math.Min(scaleX, scaleY);
-
-            float offsetX = (size - (CloseIcon.ViewBoxWidth * scale)) / 2;
-            float offsetY = (size - (CloseIcon.ViewBoxHeight * scale)) / 2;
-
-            float renderX = x + offsetX;
-            float renderY = y + offsetY;
-
-            foreach (var command in CloseIcon.Commands)
+            foreach (var child in GetChildrenByZIndex())
             {
-                command.Draw(renderer, renderX, renderY, scale, color);
+                RenderSubtree(child, renderer);
             }
         }
     }
 
-    // =========================================================================
-    // DISPOSABLE HELPER
-    // =========================================================================
-
-    /// <summary>
-    /// Minimal <see cref="IDisposable"/> that executes an action on <see cref="Dispose"/>.
-    /// Used to unsubscribe event handlers registered via <see cref="VisualElement.RegisterDisposable"/>.
-    /// </summary>
     private sealed class ActionDisposable : IDisposable
     {
-        private Action? _action;
-        public ActionDisposable(Action action) => _action = action;
-        public void Dispose() { _action?.Invoke(); _action = null; }
+        private Action? _dispose;
+
+        public ActionDisposable(Action dispose)
+        {
+            _dispose = dispose;
+        }
+
+        public void Dispose()
+        {
+            _dispose?.Invoke();
+            _dispose = null;
+        }
     }
 }
 
 /// <summary>
-/// Custom ScrollView that disables built-in drag scrolling to avoid conflict with tab dragging.
+/// ScrollView especializado para las cabeceras del TabControl.
+/// Desactiva el drag-scroll legacy para no competir con el drag & drop de tabs.
 /// </summary>
 internal class TabHeadersScrollView : ScrollView, IInputHandler
 {
-    // Explicitly implement IInputHandler to override ScrollView's implementation
-    // and disable drag scrolling behavior.
     bool IInputHandler.HandleInput(InputEventArgs args)
     {
         return false;
     }
 }
 
-/// <summary>
-/// ✅ Botón especializado para scroll de tabs.
-/// Hereda de Button para aprovechar la funcionalidad existente.
-/// </summary>
-internal class TabScrollButton : IconButton, IInputHandler, IPointerHandler
+internal class TabScrollButton : IconButton
 {
-    private readonly Action _clickAction;
-    private readonly System.Numerics.Vector2 _gradientStart;
-    private readonly System.Numerics.Vector2 _gradientEnd;
-    private readonly TabControl _owner;
-
-    public TabScrollButton(TabControl owner, IconData iconData, System.Numerics.Vector2 gradientStart, System.Numerics.Vector2 gradientEnd, Action onClick)
+    public TabScrollButton(IconData iconData, Action onTap)
     {
-        _clickAction = onClick;
-        _owner = owner;
-        _gradientStart = gradientStart;
-        _gradientEnd = gradientEnd;
         IconData = iconData;
-        Width = 30;
-        Height = 40;
+        IconSize = 14f;
+        Background = new Color(37, 37, 38, 0.95f);
+        HoverBackground = new Color(60, 60, 60, 0.95f);
+        PressedBackground = new Color(25, 25, 25, 0.95f);
         BorderRadius = new CornerRadius(0);
         Padding = new Thickness(0);
-
-        // Default colors
-        Background = new Color(37, 37, 38);
-        HoverBackground = new Color(60, 60, 60);
-        PressedBackground = new Color(30, 30, 30);
-        IconColor = Color.White;
-        IconSize = 16;
-
-        UpdateStateColors(Background);
-        Tapped += _ => _clickAction();
-    }
-
-    public bool CanHandleInput => true;
-
-    bool IInputHandler.HandleInput(InputEventArgs args)
-    {
-        return false;
-    }
-
-    void Rayo.Core.Input.IPointerHandler.OnPointerEntered(PointerEventArgs e)
-    {
-        base.OnPointerEntered(e);
-        _owner.SetHeaderInputSuppressed(true);
-    }
-
-    void Rayo.Core.Input.IPointerHandler.OnPointerExited(PointerEventArgs e)
-    {
-        base.OnPointerExited(e);
-        _owner.SetHeaderInputSuppressed(false);
-    }
-
-    public new Color Background
-    {
-        get => base.Background.PrimaryColor;
-        set
-        {
-            if (!base.Background.PrimaryColor.Equals(value))
-            {
-                UpdateStateColors(value);
-            }
-        }
-    }
-
-    private void UpdateStateColors(Color baseColor)
-    {
-        var hoverColor = new Color(
-            Math.Min(1f, baseColor.R * 1.5f),
-            Math.Min(1f, baseColor.G * 1.5f),
-            Math.Min(1f, baseColor.B * 1.5f),
-            baseColor.A);
-
-        var pressedColor = new Color(
-            baseColor.R * 0.7f,
-            baseColor.G * 0.7f,
-            baseColor.B * 0.7f,
-            baseColor.A);
-
-        base.Background = CreateGradientBrush(baseColor);
-        HoverBackground = CreateGradientBrush(hoverColor);
-        PressedBackground = CreateGradientBrush(pressedColor);
-
-        MarkNeedsPaint();
-    }
-
-    private Rayo.Rendering.Brushes.LinearGradientBrush CreateGradientBrush(Color baseColor)
-    {
-        var edgeColor = new Color(
-            Math.Min(1f, baseColor.R * 1.2f),
-            Math.Min(1f, baseColor.G * 1.2f),
-            Math.Min(1f, baseColor.B * 1.2f),
-            baseColor.A * 0.4f);
-
-        var innerColor = new Color(
-            baseColor.R * 0.8f,
-            baseColor.G * 0.8f,
-            baseColor.B * 0.8f,
-            baseColor.A);
-
-        return new Rayo.Rendering.Brushes.LinearGradientBrush(innerColor, edgeColor)
-        {
-            StartPoint = _gradientStart,
-            EndPoint = _gradientEnd
-        };
-    }
-
-}
-
-/// <summary>
-/// Botón de tab con capacidad de arrastre usando el sistema universal de Drag & Drop.
-/// ✅ REFACTORIZADO: Hereda de Button para mejor manejo de eventos.
-/// </summary>
-internal class DraggableTabButton : Button, IDraggable, IDropTarget, IInputHandler
-{
-    private readonly int _tabIndex;
-    private readonly string _tabTitle;
-    private readonly TabControl _owner;
-    private const float CloseButtonOffset = 5f;
-    private static readonly IconData CloseIcon = Icons.Close;
-    private readonly DropConstraints _constraints = new DropConstraints()
-        .AcceptType("tab")
-        .WithEffects(DragDropEffect.Move);
-
-    // IDraggable
-    public bool IsDragging { get; set; }
-
-    // IDropTarget
-    public bool IsDropTargetActive { get; set; }
-
-    public DraggableTabButton(int tabIndex, string tabTitle, TabControl owner)
-    {
-        _tabIndex = tabIndex;
-        _tabTitle = tabTitle;
-        _owner = owner;
-
-        // Button properties
-        Text = tabTitle;
-        Width = 150;
-        Height = 40;
-        BorderRadius = new CornerRadius(0);
-        Padding = _owner.ShowTabCloseButtons ? new Thickness(10, 0, 30, 0) : new Thickness(10, 0, 10, 0);
-        FontSize = 14;
-        TextColor = Color.White;
-
-        UpdatePressedBackground(Background);
-    }
-
-    public bool CanHandleInput => true;
-
-    public bool HandleInput(InputEventArgs args)
-    {
-        if (!IsVisible) return false;
-
-        switch (args.EventType)
-        {
-            case InputEventType.MouseDown:
-                IsPressed = true;
-                MarkNeedsPaint();
-                return true;
-
-            case InputEventType.MouseDrag:
-                if (!_owner.EnableTabReorder)
-                    return false;
-
-                if (IsPressed)
-                {
-                    var app = UIApplication.Current;
-                    if (app != null)
-                    {
-                        var dd = app.EventManager.DragDrop;
-
-                        // Try to start drag if not started
-                        if (!dd.IsDragging && dd.CurrentDraggable == null)
-                        {
-                            dd.TryStartDrag(args.Position.X, args.Position.Y);
-                        }
-
-                        // Drive the drag process manually since we captured the input
-                        if (dd.CurrentDraggable != null)
-                        {
-                            dd.ProcessMouseMove(args.Position.X, args.Position.Y);
-
-                            if (dd.IsDragging)
-                            {
-                                IsPressed = false; // Cancel press visual
-                                MarkNeedsPaint();
-                                return true;
-                            }
-                        }
-                    }
-                }
-                return true;
-
-            case InputEventType.MouseUp:
-                if (IsPressed)
-                {
-                    IsPressed = false;
-                    MarkNeedsPaint();
-
-                    if (_owner.ShowTabCloseButtons && IsCloseButtonHit(args.Position))
-                    {
-                        _owner.RemoveTab(_tabIndex);
-                        return true;
-                    }
-
-                    // Only click if not dragging
-                    var app = UIApplication.Current;
-                    if (app == null || !app.EventManager.DragDrop.IsDragging)
-                    {
-                    // Create and invoke the Tapped event using object initialization
-                        var tapArgs = new Rayo.Core.Input.Gestures.TapGestureEventArgs
-                        {
-                            Position = args.Position,
-                            TapCount = 1,
-                            PointerType = Rayo.Core.Input.PointerType.Mouse,
-                            Timestamp = DateTime.UtcNow
-                        };
-                        // Invoke the protected Button event
-                        OnTapGesture(tapArgs);
-                    }
-                    return true;
-                }
-                break;
-        }
-        return false;
-    }
-
-    public void OnFocusGained() { }
-    public void OnFocusLost() { }
-
-    // Helper method to invoke the Tapped event from this derived class
-    private void OnTapGesture(TapGestureEventArgs args)
-    {
-        // Since we can't invoke Tapped directly (it's a Button event),
-        // get subscribed handlers using reflection or simply
-        // invoke the handlers from the OnTap method we added
-        var field = typeof(Button).GetField("Tapped", 
-            System.Reflection.BindingFlags.Instance | 
-            System.Reflection.BindingFlags.NonPublic);
-        
-        if (field != null)
-        {
-            var eventDelegate = field.GetValue(this) as Action<TapGestureEventArgs>;
-            eventDelegate?.Invoke(args);
-        }
-    }
-
-    [PaintProperty]
-    public new Color Background
-    {
-        get => base.Background.PrimaryColor;
-        set
-        {
-            if (!base.Background.PrimaryColor.Equals(value))
-            {
-                base.Background = value;
-                UpdatePressedBackground(value);
-            }
-        }
-    }
-
-    private void UpdatePressedBackground(Color baseColor)
-    {
-        PressedBackground = new Color(
-            baseColor.R * 0.8f,
-            baseColor.G * 0.8f,
-            baseColor.B * 0.8f,
-            baseColor.A);
-        MarkNeedsPaint();
-    }
-
-    protected override void Arrange(float x, float y, float width, float height)
-    {
-        base.Arrange(x, y, width, height);
-    }
-
-    public override void Render(IRenderer renderer)
-    {
-        // Let Button render background and text
-        base.Render(renderer);
-
-        // Determine whether this tab is selected
-        bool isSelected = _owner.SelectedIndex == _tabIndex;
-
-        // Accent bar at top edge for active tab or while dragging.
-        if (isSelected || IsDragging)
-        {
-            float accentHeight = 2;
-            renderer.DrawRect(
-                ComputedX,
-                ComputedY,
-                ComputedWidth,
-                accentHeight,
-                _owner.TabAccentColor
-            );
-        }
-
-        // Border if it is an active drop target
-        if (IsDropTargetActive)
-        {
-            renderer.DrawRectOutline(ComputedX, ComputedY, ComputedWidth, ComputedHeight,
-            2, _owner.TabDropIndicatorColor);
-        }
-
-        if (_owner.ShowTabCloseButtons)
-        {
-            var bounds = GetCloseButtonBounds();
-            var color = IsHovered ? _owner.TabCloseButtonHoverColor : _owner.TabCloseButtonColor;
-            float iconSize = Math.Min(_owner.TabCloseButtonSize, bounds.size);
-            float iconX = bounds.x + (bounds.size - iconSize) / 2;
-            float iconY = bounds.y + (bounds.size - iconSize) / 2;
-            RenderCloseIcon(renderer, iconX, iconY, iconSize, color);
-        }
-
-        // TODO: Button doesn't have Children - needs architectural refactoring
-        /*
-        foreach (var child in Children.ToArray())
-        {
-            if (child.IsVisible)
-                child.Render(renderer);
-        }
-        */
-    }
-
-    private (float x, float y, float size) GetCloseButtonBounds()
-    {
-        float size = _owner.TabCloseButtonHitSize;
-        float x = ComputedX + ComputedWidth - size - CloseButtonOffset;
-        float y = ComputedY + (ComputedHeight - size) / 2;
-        return (x, y, size);
-    }
-
-    private bool IsCloseButtonHit(System.Numerics.Vector2 position)
-    {
-        if (!_owner.ShowTabCloseButtons)
-            return false;
-
-        var bounds = GetCloseButtonBounds();
-        return position.X >= bounds.x && position.X <= bounds.x + bounds.size &&
-               position.Y >= bounds.y && position.Y <= bounds.y + bounds.size;
-    }
-
-    private static void RenderCloseIcon(IRenderer renderer, float x, float y, float size, Color color)
-    {
-        float scaleX = size / CloseIcon.ViewBoxWidth;
-        float scaleY = size / CloseIcon.ViewBoxHeight;
-        float scale = Math.Min(scaleX, scaleY);
-
-        float offsetX = (size - (CloseIcon.ViewBoxWidth * scale)) / 2;
-        float offsetY = (size - (CloseIcon.ViewBoxHeight * scale)) / 2;
-
-        float renderX = x + offsetX;
-        float renderY = y + offsetY;
-
-        foreach (var command in CloseIcon.Commands)
-        {
-            command.Draw(renderer, renderX, renderY, scale, color);
-        }
-    }
-
-    // IDraggable
-    public DragData? OnDragStart(float mouseX, float mouseY)
-    {
-        if (!_owner.EnableTabReorder)
-            return null;
-
-        return new DragData("tab", _tabIndex, this)
-            .WithAllowedEffects(DragDropEffect.Move)
-            .WithMetadata("title", _tabTitle);
-    }
-
-    public void OnDragging(float mouseX, float mouseY)
-    {
-        if (!_owner.EnableTabReorder)
-            return;
-
-        if (IsDragging)
-        {
-            _owner.HandleDragScroll(mouseX, mouseY);
-            MarkNeedsPaint();
-        }
-    }
-
-    public void OnDragEnd(bool wasDropped)
-    {
-        if (!_owner.EnableTabReorder)
-            return;
-
-        MarkNeedsPaint();
-    }
-
-    // IDropTarget
-    public bool CanAcceptDataType(string dataType)
-        => _owner.EnableTabReorder && dataType == "tab";
-
-    public DropConstraints? Constraints => _owner.EnableTabReorder ? _constraints : null;
-
-    public DragDropEffect? AllowedEffects => _owner.EnableTabReorder ? DragDropEffect.Move : (DragDropEffect?)null;
-
-    public bool OnDragEnter(DragData dragData)
-    {
-        if (!_owner.EnableTabReorder)
-            return false;
-
-        var draggedIndexObj = dragData.Data;
-        if (draggedIndexObj is not int draggedIndex || draggedIndex == _tabIndex)
-            return false;
-
-        IsDropTargetActive = true;
-        UpdateDragHighlight(true);
-        MarkNeedsPaint();
-        return true;
-    }
-
-    public void OnDragOver(DragData dragData, float mouseX, float mouseY)
-    {
-        if (!_owner.EnableTabReorder)
-            return;
-
-        _owner.HandleDragScroll(mouseX, mouseY);
-    }
-
-    public void OnDragLeave(DragData dragData)
-    {
-        if (!_owner.EnableTabReorder)
-            return;
-
-        IsDropTargetActive = false;
-        UpdateDragHighlight(false);
-        MarkNeedsPaint();
-    }
-
-    public bool OnDrop(DragData dragData, float mouseX, float mouseY)
-    {
-        if (!_owner.EnableTabReorder)
-            return false;
-
-        IsDropTargetActive = false;
-        UpdateDragHighlight(false);
-        MarkNeedsPaint();
-
-        var draggedIndexObj = dragData.Data;
-        if (draggedIndexObj is not int draggedIndex || draggedIndex == _tabIndex)
-            return false;
-
-        float relativeX = mouseX - ComputedX;
-        int targetIndex = relativeX < (ComputedWidth / 2) ? _tabIndex : _tabIndex + 1;
-
-        if (draggedIndex < targetIndex)
-            targetIndex--;
-
-        _owner.ReorderTab(draggedIndex, targetIndex);
-        return true;
-    }
-
-    private void UpdateDragHighlight(bool isActive)
-    {
-        if (isActive && _owner.SelectedIndex != _tabIndex)
-        {
-            base.Background = _owner.TabHoverBackground;
-            return;
-        }
-
-        bool isSelected = _owner.SelectedIndex == _tabIndex;
-        base.Background = isSelected ? _owner.TabActiveBackground : _owner.TabBackground;
+        Tapped += _ => onTap();
     }
 }
-
