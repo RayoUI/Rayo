@@ -197,8 +197,9 @@ public class ListView<T> : Rayo.Core.CompositeView<ListView<T>>, IInputHandler, 
         get => field;
         set
         {
-            if (this.SetProperty(ref field, value, RebuildItems))
+            if (this.SetProperty(ref field, value))
             {
+                _itemsPanel?.RefreshVisibleItems();
                 EnsureSelectedItemVisible();
                 if (SelectedItem is T selectedItem)
                     ItemSelected?.Invoke(selectedItem, value);
@@ -473,6 +474,22 @@ internal sealed class VirtualizedListPanel<T> : CompositeView<VirtualizedListPan
             InvalidateMeasure();
         else
             InvalidateArrange();
+    }
+
+    public void RefreshVisibleItems()
+    {
+        if (_itemBinder == null || _activeChildren.Count == 0)
+            return;
+
+        foreach (var active in _activeChildren)
+        {
+            if ((uint)active.Key >= (uint)_items.Count)
+                continue;
+
+            _itemBinder(active.Value, active.Key);
+        }
+
+        InvalidateArrange();
     }
 
     protected override void Measure(float availableWidth, float availableHeight)

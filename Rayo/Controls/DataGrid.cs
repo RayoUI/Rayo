@@ -71,7 +71,7 @@ public class DataGrid : CompositeView<DataGrid>
         get => field;
         set => this.SetProperty(ref field, value, () =>
         {
-            Rebuild();
+            _rowsPanel?.RefreshVisibleRows();
             EnsureSelectedRowVisible();
             SelectionChanged?.Invoke(value);
         });
@@ -579,6 +579,22 @@ internal sealed class VirtualizedDataGridRowsPanel : CompositeView<VirtualizedDa
             InvalidateMeasure();
         else
             InvalidateArrange();
+    }
+
+    public void RefreshVisibleRows()
+    {
+        if (_rowBinder == null || _activeRows.Count == 0)
+            return;
+
+        foreach (var active in _activeRows)
+        {
+            if ((uint)active.Key >= (uint)_items.Count)
+                continue;
+
+            _rowBinder(active.Value, active.Key);
+        }
+
+        InvalidateArrange();
     }
 
     protected override void Measure(float availableWidth, float availableHeight)

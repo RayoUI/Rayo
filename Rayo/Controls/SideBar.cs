@@ -463,22 +463,23 @@ public class SideBar : Rayo.Core.CompositeView<SideBar>
                 .Text(item.Icon)
                 .Foreground(iconColor.PrimaryColor)
                 .FontSize(IconSize)
+                .Width(CollapsedWidth)
+                .Height(ItemHeight)
+                .TextVerticalAlignment(VerticalAlignment.Center)
+                .HorizontalAlignment(HorizontalAlignment.Stretch)
+                .VerticalAlignment(VerticalAlignment.Stretch)
                 .SetInputTransparent(true);
-
-            HStack iconStack = new HStack();
-            iconStack.Alignment(Alignment.Center);
-            iconStack.HorizontalAlignment(HorizontalAlignment.Stretch);
-            iconStack.VerticalAlignment(VerticalAlignment.Stretch);
-            iconStack.SetInputTransparent(true);
-            iconStack.AddChild(iconText);
+            iconText.TextHorizontalAlignment = HorizontalAlignment.Center;
 
             var button = new Frame()
                 .Background(bgColor)
                 .Height(ItemHeight)
+                .Padding(new Thickness(0))
                 .HorizontalAlignment(HorizontalAlignment.Stretch)
+                .VerticalAlignment(VerticalAlignment.Stretch)
                 .SetInputTransparent(true)
                 .BorderRadius(ItemBorderRadius)
-                .Content(iconStack);
+                .Content(iconText);
 
             return new SideBarItemButton(this, item, bgColor, ItemHoverColor.PrimaryColor)
                 .Height(ItemHeight)

@@ -251,8 +251,8 @@ internal class TreeNodeView : CompositeView<TreeNodeView>
 
     private void UpdateExpandedState()
     {
-        if (_layout == null || _childrenContainer == null) return;
-        if (!_includeChildren)
+        if (_layout == null) return;
+        if (!_includeChildren || _childrenContainer == null)
         {
             _headerButton?.RefreshContent();
             MarkNeedsPaint();
@@ -362,6 +362,8 @@ internal class TreeNodeView : CompositeView<TreeNodeView>
             _owner = owner;
             Padding = new Thickness(0);
             HorizontalAlignment = HorizontalAlignment.Stretch;
+            IsInputTransparent = false;
+            Background = Color.Transparent;
 
             _tapRecognizer = new TapRecognizer(
                 maxMovementThreshold: 15f,
@@ -381,6 +383,7 @@ internal class TreeNodeView : CompositeView<TreeNodeView>
                 _owner.UpdateExpandedState();
                 _owner._treeView.NotifyNodeExpanded(_owner._node, _owner._node.IsExpanded);
                 _owner._treeView.RequestTreeRefresh();
+                return;
             }
 
             Tapped?.Invoke(e);
@@ -402,6 +405,8 @@ internal class TreeNodeView : CompositeView<TreeNodeView>
                 _isHovered = false;
                 MarkNeedsPaint();
             }
+
+            _tapRecognizer.Reset();
         }
 
         public void OnPointerPressed(PointerEventArgs e)
@@ -1029,7 +1034,20 @@ public class TreeView : CompositeView<TreeView>
             () => new TreeNodeView(new TreeNode(string.Empty), this, includeChildren: false),
             BindVirtualizedNodeView);
 
+        _treeContainer.InvalidateMeasure();
+        _treeContainer.InvalidateArrange();
+        _scrollView?.InvalidateMeasure();
+        _scrollView?.InvalidateArrange();
         InvalidateMeasure();
+        MarkNeedsPaint();
+
+        // If the control is already on-screen, force an immediate relayout so
+        // expand/collapse updates the visible node list in the same frame.
+        if (_rootFrame != null && ComputedWidth > 0 && ComputedHeight > 0)
+        {
+            _rootFrame.MeasureUpdate(ComputedWidth, ComputedHeight);
+            _rootFrame.ForceArrange(ComputedX, ComputedY, ComputedWidth, ComputedHeight);
+        }
     }
 
     private void BindVirtualizedNodeView(VisualElement element, TreeNode node)
