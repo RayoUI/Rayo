@@ -9,6 +9,7 @@ using Rayo.Reactivity;
 using Rayo.Rendering;
 using Rayo.Rendering.Brushes;
 using Rayo.Rendering.Graphics.VectorGraphics;
+using System.Numerics;
 using IRenderer = Rayo.Rendering.IRenderer;
 
 /// <summary>
@@ -177,7 +178,7 @@ public class TabControl : CompositeView<TabControl>
     {
         get => field;
         set => this.SetProperty(ref field, value, RebuildLayout);
-    } = 20f;
+    } = 28f;
     #endregion
 
     #region Position
@@ -444,10 +445,14 @@ public class TabControl : CompositeView<TabControl>
 
         _scrollBackwardButton = new TabScrollButton(
             isHorizontal ? Icons.ChevronLeft : Icons.ChevronUp,
-            ScrollBackward);
+            ScrollBackward,
+            this,
+            isBackward: true);
         _scrollForwardButton = new TabScrollButton(
             isHorizontal ? Icons.ChevronRight : Icons.ChevronDown,
-            ScrollForward);
+            ScrollForward,
+            this,
+            isBackward: false);
 
         if (isHorizontal)
         {
@@ -612,6 +617,8 @@ public class TabControl : CompositeView<TabControl>
             AddHeaderStripChild(header);
         }
 
+        _scrollBackwardButton?.RefreshStyle();
+        _scrollForwardButton?.RefreshStyle();
         UpdateScrollButtons();
         InvalidateMeasure();
     }
@@ -1011,7 +1018,7 @@ public class TabControl : CompositeView<TabControl>
     private sealed class TabHeaderHost : Frame, IPointerHandler, ITappable, IGestureRecognizerHost, IDraggable, IDropTarget
     {
         private const float AccentThickness = 2f;
-        private const float CloseButtonOffset = 6f;
+        private const float CloseButtonReservePadding = 8f;
         private static readonly IconData CloseIcon = Icons.Close;
         private readonly DropConstraints _constraints = new DropConstraints()
             .AcceptType("tab")
@@ -1021,6 +1028,7 @@ public class TabControl : CompositeView<TabControl>
         private readonly int _index;
         private readonly TabItem _tab;
         private readonly TapRecognizer _tapRecognizer;
+        private readonly VisualElement _contentRoot;
 
         public bool IsDragging { get; set; }
 
@@ -1040,8 +1048,10 @@ public class TabControl : CompositeView<TabControl>
             HorizontalAlignment = HorizontalAlignment.Left;
             VerticalAlignment = VerticalAlignment.Top;
             IsEnabled = tab.IsEnabled;
-            Content = content;
             IsInputTransparent = false;
+
+            _contentRoot = BuildContentRoot(content);
+            Content = _contentRoot;
 
             _tapRecognizer = new TapRecognizer(
                 maxMovementThreshold: 15f,
@@ -1051,6 +1061,43 @@ public class TabControl : CompositeView<TabControl>
             GestureRecognizers.Add(_tapRecognizer);
 
             RefreshVisualState();
+        }
+
+        private VisualElement BuildContentRoot(VisualElement content)
+        {
+            if (!_owner.ShowTabCloseButtons)
+                return content;
+
+            float closeSize = _owner.TabCloseButtonHitSize;
+            float reserve = closeSize + CloseButtonReservePadding;
+
+            var contentHost = new Frame
+            {
+                Background = Color.Transparent,
+                BorderWidth = 0,
+                Padding = new Thickness(0, 0, reserve, 0),
+                HorizontalAlignment = HorizontalAlignment.Stretch,
+                VerticalAlignment = VerticalAlignment.Stretch,
+                Content = content
+            };
+
+            var closeButton = new TabHeaderCloseButton(CloseIcon, _owner)
+            {
+                Width = closeSize,
+                Height = closeSize,
+                HorizontalAlignment = HorizontalAlignment.Right,
+                VerticalAlignment = VerticalAlignment.Center,
+                IsInputTransparent = true
+            };
+
+            var overlay = new OverlayPanel
+            {
+                HorizontalAlignment = HorizontalAlignment.Stretch,
+                VerticalAlignment = VerticalAlignment.Stretch
+            };
+            overlay.AddChild(contentHost);
+            overlay.AddChild(closeButton);
+            return overlay;
         }
 
         protected internal override bool RendersChildrenManually => true;
@@ -1124,8 +1171,6 @@ public class TabControl : CompositeView<TabControl>
             if (IsDropTargetActive)
                 renderer.DrawRectOutline(ComputedX, ComputedY, ComputedWidth, ComputedHeight, 2f, _owner.TabDropIndicatorColor);
 
-            if (_owner.ShowTabCloseButtons)
-                DrawCloseIcon(renderer);
         }
 
         public DragData? OnDragStart(float mouseX, float mouseY)
@@ -1241,27 +1286,6 @@ public class TabControl : CompositeView<TabControl>
             }
         }
 
-        private void DrawCloseIcon(IRenderer renderer)
-        {
-            var bounds = GetCloseButtonBounds();
-            var color = (IsHovered || _owner.SelectedIndex == _index)
-                ? _owner.TabCloseButtonHoverColor
-                : _owner.TabCloseButtonColor;
-
-            float iconSize = Math.Min(_owner.TabCloseButtonSize, Math.Min(bounds.size, bounds.size));
-            float iconX = bounds.x + (bounds.size - iconSize) / 2f;
-            float iconY = bounds.y + (bounds.size - iconSize) / 2f;
-
-            float scaleX = iconSize / CloseIcon.ViewBoxWidth;
-            float scaleY = iconSize / CloseIcon.ViewBoxHeight;
-            float scale = Math.Min(scaleX, scaleY);
-
-            foreach (var command in CloseIcon.Commands)
-            {
-                command.Draw(renderer, iconX, iconY, scale, color);
-            }
-        }
-
         private bool IsCloseButtonHit(System.Numerics.Vector2 position)
         {
             var bounds = GetCloseButtonBounds();
@@ -1272,7 +1296,7 @@ public class TabControl : CompositeView<TabControl>
         private (float x, float y, float size) GetCloseButtonBounds()
         {
             float size = _owner.TabCloseButtonHitSize;
-            float x = ComputedX + ComputedWidth - size - CloseButtonOffset;
+            float x = ComputedX + ComputedWidth - size;
             float y = ComputedY + (ComputedHeight - size) / 2f;
             return (x, y, size);
         }
@@ -1366,15 +1390,95 @@ internal class TabHeadersScrollView : ScrollView, IInputHandler
 
 internal class TabScrollButton : IconButton
 {
-    public TabScrollButton(IconData iconData, Action onTap)
+    private readonly TabControl _owner;
+    private readonly bool _isBackward;
+
+    public TabScrollButton(IconData iconData, Action onTap, TabControl owner, bool isBackward)
     {
+        _owner = owner;
+        _isBackward = isBackward;
         IconData = iconData;
         IconSize = 14f;
-        Background = new Color(37, 37, 38, 0.95f);
-        HoverBackground = new Color(60, 60, 60, 0.95f);
-        PressedBackground = new Color(25, 25, 25, 0.95f);
+        IconColor = new Color(240, 240, 240, 0.98f);
+        BorderWidth = 0;
+        BorderColor = Color.Transparent;
         BorderRadius = new CornerRadius(0);
         Padding = new Thickness(0);
+        RefreshStyle();
         Tapped += _ => onTap();
+    }
+
+    public void RefreshStyle()
+    {
+        var baseColor = _owner.TabBackground.PrimaryColor;
+        var outer = new Color(baseColor.R, baseColor.G, baseColor.B, 0.10f);
+        var mid = new Color(baseColor.R, baseColor.G, baseColor.B, 0.52f);
+        var inner = new Color(baseColor.R, baseColor.G, baseColor.B, 0.92f);
+
+        Background = CreateGradientBrush(outer, mid, inner);
+        HoverBackground = CreateGradientBrush(
+            outer.WithAlpha(0.18f),
+            mid.WithAlpha(0.68f),
+            inner.WithAlpha(0.98f));
+        PressedBackground = CreateGradientBrush(
+            outer.WithAlpha(0.24f),
+            mid.WithAlpha(0.78f),
+            inner.WithAlpha(1f));
+    }
+
+    private Brush CreateGradientBrush(Color outer, Color mid, Color inner)
+    {
+        bool horizontal = _owner.Position is TabPosition.Top or TabPosition.Bottom;
+        bool outerFirst = _isBackward;
+
+        var brush = new LinearGradientBrush(
+            Rayo.Rendering.Brushes.GradientStop.At(0f, outerFirst ? outer : inner),
+            Rayo.Rendering.Brushes.GradientStop.At(0.45f, mid),
+            Rayo.Rendering.Brushes.GradientStop.At(1f, outerFirst ? inner : outer));
+
+        if (horizontal)
+        {
+            brush.StartPoint = new Vector2(0, 0.5f);
+            brush.EndPoint = new Vector2(1, 0.5f);
+        }
+        else
+        {
+            brush.StartPoint = new Vector2(0.5f, 0);
+            brush.EndPoint = new Vector2(0.5f, 1);
+        }
+
+        return brush;
+    }
+}
+
+internal sealed class TabHeaderCloseButton : IconButton
+{
+    private readonly TabControl _owner;
+
+    public TabHeaderCloseButton(IconData iconData, TabControl owner)
+    {
+        _owner = owner;
+        IconData = iconData;
+        IconSize = owner.TabCloseButtonSize;
+        Background = Color.Transparent;
+        HoverBackground = new Color(255, 255, 255, 0.08f);
+        PressedBackground = new Color(255, 255, 255, 0.14f);
+        BorderWidth = 0;
+        BorderRadius = new CornerRadius(4);
+        Padding = new Thickness(0);
+        UpdateIconColor();
+    }
+
+    public override void Render(IRenderer renderer)
+    {
+        UpdateIconColor();
+        base.Render(renderer);
+    }
+
+    private void UpdateIconColor()
+    {
+        IconColor = IsHovered || IsPressed
+            ? _owner.TabCloseButtonHoverColor
+            : _owner.TabCloseButtonColor;
     }
 }
