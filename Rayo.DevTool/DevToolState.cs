@@ -14,6 +14,7 @@ public class DevToolState : System.IDisposable
     public Signal<List<ElementNode>> OverlayNodes { get; } = new(new List<ElementNode>());
     public Signal<string?> SelectedElementId { get; } = new(null);
     public Signal<List<PropertyInfo>> Properties { get; } = new(new List<PropertyInfo>());
+    public Signal<bool> ShowComputedProperties { get; } = new(false);
     public Signal<bool> IsConnected { get; } = new(false);
     public Signal<string> ConnectionStatus { get; } = new("Disconnected");
     public Signal<string> Host { get; } = new("localhost");
@@ -122,6 +123,15 @@ public class DevToolState : System.IDisposable
             }
         });
 
+        ShowComputedProperties.Subscribe(showComputed =>
+        {
+            var selectedElementId = SelectedElementId.Value;
+            if (selectedElementId != null && Client.IsConnected)
+            {
+                _ = LoadPropertiesAsync(selectedElementId);
+            }
+        });
+
         IsDirtyHeatmapEnabled.Subscribe(enabled =>
         {
             if (Client.IsConnected)
@@ -217,7 +227,11 @@ public class DevToolState : System.IDisposable
     {
         if (!Client.IsConnected) return;
 
-        await Client.SendAsync(new GetPropertiesRequest { ElementId = elementId });
+        await Client.SendAsync(new GetPropertiesRequest
+        {
+            ElementId = elementId,
+            IncludeComputed = ShowComputedProperties.Value
+        });
     }
 
     /// <summary>

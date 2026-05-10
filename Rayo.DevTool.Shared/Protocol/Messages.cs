@@ -46,6 +46,9 @@ public class GetPropertiesRequest : DevToolMessage
 
     [JsonPropertyName("elementId")]
     public string ElementId { get; set; } = "";
+
+    [JsonPropertyName("includeComputed")]
+    public bool IncludeComputed { get; set; }
 }
 
 /// <summary>

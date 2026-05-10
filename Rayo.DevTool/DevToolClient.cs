@@ -259,7 +259,7 @@ public class DevToolClient : IDisposable
         return await tcs.Task;
     }
 
-    public async Task<PropertiesResponse?> GetPropertiesAsync(string elementId)
+    public async Task<PropertiesResponse?> GetPropertiesAsync(string elementId, bool includeComputed = false)
     {
         var tcs = new TaskCompletionSource<PropertiesResponse?>();
 
@@ -273,7 +273,7 @@ public class DevToolClient : IDisposable
         }
 
         MessageReceived += Handler;
-        await SendAsync(new GetPropertiesRequest { ElementId = elementId });
+        await SendAsync(new GetPropertiesRequest { ElementId = elementId, IncludeComputed = includeComputed });
 
         var timeoutTask = Task.Delay(5000);
         var completedTask = await Task.WhenAny(tcs.Task, timeoutTask);

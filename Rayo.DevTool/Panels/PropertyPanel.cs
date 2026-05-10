@@ -25,15 +25,46 @@ public class PropertyFrame : UserControl
 
     public override VisualElement Build()
     {
+        var header = new Frame()
+            .Background(new Color(40, 40, 45))
+            .Padding(new Thickness(6, 4))
+            .HorizontalAlignment(HorizontalAlignment.Stretch)
+            .Content(
+                new HStack()
+                    .Spacing(8)
+                    .Alignment(Alignment.Center)
+                    .VerticalAlignment(VerticalAlignment.Center)
+                    .JustifyContent(JustifyContent.SpaceBetween)
+                    .HorizontalAlignment(HorizontalAlignment.Stretch)
+                    .Children(
+                        new Label("Properties")
+                            .FontSize(14)
+                            .Foreground(Color.White),
+                        new Button()
+                            .Text(_state.ShowComputedProperties.Map(show => show ? "Computed: ON" : "Computed: OFF"))
+                            .FontSize(10)
+                            .Height(24)
+                            .Background(_state.ShowComputedProperties.Map(show =>
+                                show ? new Color(34, 197, 94) : new Color(55, 55, 70)))
+                            .OnTapped(() => _state.ShowComputedProperties.Value = !_state.ShowComputedProperties.Value)
+                    )
+            );
+
         return new Frame()
             .Background(new Color(28, 28, 32))
             .HorizontalAlignment(HorizontalAlignment.Stretch)
             .VerticalAlignment(VerticalAlignment.Stretch)
             .Content(
-                new ScrollView()
-                    .VerticalAlignment(VerticalAlignment.Stretch)
-                    .HorizontalAlignment(HorizontalAlignment.Stretch)
-                    .Content(BuildPropertyList())
+                new Grid()
+                    .Rows(GridLength.Auto, GridLength.Star)
+                    .Columns(GridLength.Star)
+                    .AddChild(header, 0, 0)
+                    .AddChild(
+                        new ScrollView()
+                            .VerticalAlignment(VerticalAlignment.Stretch)
+                            .HorizontalAlignment(HorizontalAlignment.Stretch)
+                            .Content(BuildPropertyList()),
+                        1, 0)
             );
     }
 

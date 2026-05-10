@@ -29,6 +29,7 @@ public class UIApplication : IDisposable
     // where the Silk.NET Resize event may not fire for state-based size changes.
     private Vector2D<int> _lastPolledSize;
     private Silk.NET.Windowing.WindowState _lastPolledWindowState;
+    private int _pendingWindowStateRelayoutFrames;
     
     public static UIApplication? Current { get; private set; }
 
@@ -613,21 +614,41 @@ public class UIApplication : IDisposable
     {
         if (_window == null) return;
 
+        bool needsApply = false;
+        Vector2D<int> sizeToApply = _lastPolledSize;
+
         var currentState = _window.WindowState;
         if (currentState != _lastPolledWindowState)
         {
             _lastPolledWindowState = currentState;
-            var stateSize = _window.Size;
-            _lastPolledSize = stateSize;
-            ApplyWindowSize(stateSize);
-            return;
+            sizeToApply = _window.Size;
+            _lastPolledSize = sizeToApply;
+            needsApply = true;
+            // Maximized/restored transitions can report an intermediate size before
+            // the native client area fully settles. Manual border resize naturally
+            // gets multiple updates; state transitions often do not, so keep
+            // revalidating for a few frames.
+            _pendingWindowStateRelayoutFrames = 3;
         }
 
         var currentSize = _window.Size;
         if (currentSize != _lastPolledSize)
         {
             _lastPolledSize = currentSize;
-            ApplyWindowSize(currentSize);
+            sizeToApply = currentSize;
+            needsApply = true;
+        }
+
+        if (_pendingWindowStateRelayoutFrames > 0)
+        {
+            sizeToApply = currentSize;
+            needsApply = true;
+            _pendingWindowStateRelayoutFrames--;
+        }
+
+        if (needsApply)
+        {
+            ApplyWindowSize(sizeToApply);
         }
     }
 

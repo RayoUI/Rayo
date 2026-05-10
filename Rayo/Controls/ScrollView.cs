@@ -377,7 +377,9 @@ public class ScrollView : CompositeView<ScrollView>, IInputHandler, IScrollable,
 
         foreach (var child in Children.ToArray())
         {
-            child.MeasureUpdate(measureWidth, measureHeight);
+            // ScrollView owns the viewport constraint. Reusing a cached child measure here
+            // can keep stale subtree sizes after a maximize/restore cycle.
+            child.ForceMeasure(measureWidth, measureHeight);
 
             float childWidth = child.DesiredWidth > 0 ? child.DesiredWidth : child.Width;
             float childHeight = child.DesiredHeight > 0 ? child.DesiredHeight : child.Height;
@@ -434,7 +436,7 @@ public class ScrollView : CompositeView<ScrollView>, IInputHandler, IScrollable,
 
     protected override void Arrange(float x, float y, float width, float height)
     {
-        // ✅ FIX: Detect size change and force re-measure
+        // Detect size changes before base.Arrange updates ComputedWidth/Height.
         bool sizeChanged = ComputedWidth != width || ComputedHeight != height;
         bool canScrollVertically = Orientation == ScrollOrientation.Vertical || Orientation == ScrollOrientation.Both;
         bool canScrollHorizontally = Orientation == ScrollOrientation.Horizontal || Orientation == ScrollOrientation.Both;
@@ -456,8 +458,9 @@ public class ScrollView : CompositeView<ScrollView>, IInputHandler, IScrollable,
         // ✅ If the size changed, re-measure the content to recalculate scrollbars
         if (sizeChanged)
         {
-            // Re-measure with the new size to recalculate _contentWidth and _contentHeight
-            MeasureUpdate(width, height);
+            // Bypass cache: restore can return to a previously measured viewport size
+            // while descendants still hold dimensions from the maximized layout.
+            ForceMeasure(width, height);
 
             // ✅ Adjust offsets if they are now greater than the maximum allowed (again, after re-measure)
             if (_verticalScrollOffset > MaxVerticalScroll)

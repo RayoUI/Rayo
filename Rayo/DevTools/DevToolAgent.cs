@@ -372,7 +372,7 @@ public class DevToolAgent : IDisposable
         var type = element.GetType();
         var properties = type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
             .Where(p => p.CanRead && 
-                        IsInspectableProperty(p) && 
+                        IsInspectableProperty(p, request.IncludeComputed) && 
                         !typeof(Delegate).IsAssignableFrom(p.PropertyType));
 
         foreach (var prop in properties)
@@ -401,7 +401,7 @@ public class DevToolAgent : IDisposable
         return response;
     }
 
-    private bool IsInspectableProperty(System.Reflection.PropertyInfo prop)
+    private bool IsInspectableProperty(System.Reflection.PropertyInfo prop, bool includeComputed)
     {
         var type = prop.PropertyType;
 
@@ -412,7 +412,8 @@ public class DevToolAgent : IDisposable
             return false;
         if (prop.Name == "Children" || prop.Name == "Parent")
             return false;
-        if (prop.Name is "ComputedX" or "ComputedY" or "ComputedWidth" or "ComputedHeight" or "DesiredWidth" or "DesiredHeight")
+        if (!includeComputed &&
+            prop.Name is "ComputedX" or "ComputedY" or "ComputedWidth" or "ComputedHeight" or "DesiredWidth" or "DesiredHeight")
             return false;
 
         return true;

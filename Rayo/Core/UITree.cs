@@ -217,6 +217,7 @@ public class UITree
             _lastHeight = height;
             _dirtyRegions.MarkFullScreenDirty();
             MarkAllCachedLayersDirty();
+            MarkViewportSubtreeNeedsLayout();
             MarkNeedsMeasure();
         }
 
@@ -279,6 +280,25 @@ public class UITree
         {
             ClearDirtyFlags(child);
         }
+    }
+
+    private void MarkViewportSubtreeNeedsLayout()
+    {
+        if (Root != null)
+            MarkSubtreeNeedsLayout(Root);
+
+        foreach (var overlay in _overlays.ToArray())
+            MarkSubtreeNeedsLayout(overlay);
+    }
+
+    private static void MarkSubtreeNeedsLayout(VisualElement element)
+    {
+        element.NeedsMeasure = true;
+        element.NeedsArrange = true;
+        element.NeedsPaint = true;
+
+        foreach (var child in element.GetChildren().ToArray())
+            MarkSubtreeNeedsLayout(child);
     }
 
     private void LayoutOverlay(VisualElement overlay, float width, float height, bool includeMeasure = true)
