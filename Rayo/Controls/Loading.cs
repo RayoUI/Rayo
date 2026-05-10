@@ -23,10 +23,9 @@ public enum SpinnerType
 /// <summary>
 /// Loading spinner component - Animated loading indicator
 /// </summary>
-public class Loading : Rayo.Core.View<Loading>, IFrameAnimation
+public class Loading : Rayo.Core.View<Loading>, IFrameAnimation, IFrameAnimationThrottle
 {
     private float _animationTime = 0;
-    private float _frameAccumulator = 0;
     private bool _isAnimationRegistered;
     private string? _cachedText;
     private float _cachedTextSize = -1;
@@ -117,19 +116,6 @@ public class Loading : Rayo.Core.View<Loading>, IFrameAnimation
             return; // Skip invalidation when the spinner is hidden to avoid unnecessary redraws
         }
 
-        if (TargetFps <= 0)
-        {
-            return;
-        }
-
-        _frameAccumulator += deltaTime;
-        float targetFrameTime = 1f / TargetFps;
-        if (_frameAccumulator < targetFrameTime)
-        {
-            return;
-        }
-
-        _frameAccumulator = 0;
         MarkNeedsPaint();
     }
 

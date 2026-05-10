@@ -16,7 +16,7 @@ public enum ToastType
     Error
 }
 
-internal sealed class HeadlessToastManager : Rayo.Animation.IFrameAnimation
+internal sealed class HeadlessToastManager : Rayo.Animation.IFrameAnimation, Rayo.Animation.IFrameAnimationThrottle
 {
     private readonly List<ToastNotification> _toasts = new();
     private VStack? _toastContainer;
@@ -24,6 +24,7 @@ internal sealed class HeadlessToastManager : Rayo.Animation.IFrameAnimation
     private float _spacing = 12;
     private float _marginFromEdge = 20;
     private bool _isRegistered;
+    float Rayo.Animation.IFrameAnimationThrottle.TargetFps => 10f;
 
     public ToastPosition Position
     {
@@ -310,11 +311,13 @@ internal class ToastNotification : Frame
 /// <summary>
 /// Toast notification manager - handles displaying and managing toast notifications
 /// </summary>
-public class ToastManager
+public class ToastManager : Rayo.Animation.IFrameAnimation, Rayo.Animation.IFrameAnimationThrottle
 {
     private readonly UIApplication _app;
     private readonly List<ToastNotification> _toasts = new();
     private VStack? _toastContainer;
+    private bool _isTickerRegistered;
+    float Rayo.Animation.IFrameAnimationThrottle.TargetFps => 10f;
     private ToastPosition _position = ToastPosition.TopRight;
     public ToastPosition Position
     {
@@ -336,7 +339,6 @@ public class ToastManager
     public ToastManager(UIApplication app)
     {
         _app = app;
-        _app.Updated += Update;
         CreateContainer();
     }
 
@@ -366,6 +368,8 @@ public class ToastManager
                 _app.AddOverlay(_toastContainer);
             }
         }
+
+        RegisterTicker();
     }
 
     public void Info(string message, float duration = 3f)
@@ -402,6 +406,33 @@ public class ToastManager
         }
     }
 
+    void Rayo.Animation.IFrameAnimation.Tick(float deltaTime)
+    {
+        Update(deltaTime);
+    }
+
+    private void RegisterTicker()
+    {
+        if (_isTickerRegistered)
+        {
+            return;
+        }
+
+        Rayo.Animation.FrameAnimationTicker.Register(this);
+        _isTickerRegistered = true;
+    }
+
+    private void UnregisterTicker()
+    {
+        if (!_isTickerRegistered)
+        {
+            return;
+        }
+
+        Rayo.Animation.FrameAnimationTicker.Unregister(this);
+        _isTickerRegistered = false;
+    }
+
     private void RemoveToast(ToastNotification toast)
     {
         _toasts.Remove(toast);
@@ -414,6 +445,7 @@ public class ToastManager
             if (_toasts.Count == 0)
             {
                 _app.RemoveOverlay(_toastContainer);
+                UnregisterTicker();
             }
             else
             {
@@ -478,6 +510,7 @@ public class ToastManager
     {
         _toasts.Clear();
         _toastContainer?.ClearChildren();
+        UnregisterTicker();
 
         if (_toastContainer != null)
         {

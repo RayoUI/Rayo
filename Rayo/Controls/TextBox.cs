@@ -12,7 +12,7 @@ using IRenderer = Rayo.Rendering.IRenderer;
 /// <summary>
 /// Text input field with support for single-line and multi-line text editing.
 /// </summary>
-public abstract class TextBox<T> : Rayo.Core.View<T>, IInputHandler, IFocusable, IFrameAnimation, Rayo.Core.Platform.IVirtualKeyboardOptions where T : Rayo.Core.View<T>
+public abstract class TextBox<T> : Rayo.Core.View<T>, IInputHandler, IFocusable, IFrameAnimation, IFrameAnimationThrottle, Rayo.Core.Platform.IVirtualKeyboardOptions where T : Rayo.Core.View<T>
 {
     // =========================================================================
     // INTERFACE IMPLEMENTATIONS
@@ -259,6 +259,7 @@ public abstract class TextBox<T> : Rayo.Core.View<T>, IInputHandler, IFocusable,
     private DateTime _lastCursorActivityTime = DateTime.UtcNow;
     protected bool _cursorVisible = true;
     private const double CursorBlinkIntervalMs = 530;  // Standard Windows caret blink rate
+    float IFrameAnimationThrottle.TargetFps => 8f;
     private readonly List<TextLineInfo> _multilineLines = new();
     private bool _multilineLinesDirty = true;
     private string _lastMultilineText = string.Empty;

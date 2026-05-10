@@ -116,4 +116,9 @@ public class AnimationManager
             }
         }
     }
+
+    /// <summary>
+    /// Returns true when at least one timeline animation still needs per-frame updates.
+    /// </summary>
+    public bool HasActiveAnimations => ActiveAnimationCount > 0;
 }

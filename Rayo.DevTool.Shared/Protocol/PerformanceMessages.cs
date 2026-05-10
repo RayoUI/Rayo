@@ -46,6 +46,11 @@ public class PerformanceStatsResponse : DevToolMessage
     // Latest frame snapshot
     [JsonPropertyName("fps")]            public float Fps            { get; set; }
     [JsonPropertyName("frameTimeMs")]    public float FrameTimeMs    { get; set; }
+    [JsonPropertyName("updateRate")]     public float UpdateRate     { get; set; }
+    [JsonPropertyName("renderRate")]     public float RenderRate     { get; set; }
+    [JsonPropertyName("presentRate")]    public float PresentRate    { get; set; }
+    [JsonPropertyName("tickerFps")]      public float TickerFps      { get; set; }
+    [JsonPropertyName("idleMode")]       public bool  IdleMode       { get; set; }
     [JsonPropertyName("measureTimeMs")]  public float MeasureTimeMs  { get; set; }
     [JsonPropertyName("renderTimeMs")]   public float RenderTimeMs   { get; set; }
     [JsonPropertyName("eventTimeMs")]    public float EventTimeMs    { get; set; }
@@ -85,6 +90,11 @@ public class FrameStatsDto
 {
     [JsonPropertyName("fps")]      public float Fps      { get; set; }
     [JsonPropertyName("frameMs")] public float FrameMs  { get; set; }
+    [JsonPropertyName("updRate")] public float UpdRate  { get; set; }
+    [JsonPropertyName("rendRate")] public float RendRate { get; set; }
+    [JsonPropertyName("presRate")] public float PresRate { get; set; }
+    [JsonPropertyName("tickerFps")] public float TickerFps { get; set; }
+    [JsonPropertyName("idleMode")] public bool IdleMode { get; set; }
     [JsonPropertyName("measMs")]  public float MeasMs   { get; set; }
     [JsonPropertyName("measSkip")] public int MeasSkip  { get; set; }
     [JsonPropertyName("measCacheHit")] public int MeasCacheHit { get; set; }

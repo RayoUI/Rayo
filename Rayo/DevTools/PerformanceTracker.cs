@@ -21,6 +21,11 @@ public static class PerformanceTracker
     {
         public float FpsSnapshot;
         public float FrameTimeMs;
+        public float UpdateRate;
+        public float RenderRate;
+        public float PresentRate;
+        public float RecommendedTickerFps;
+        public bool IsIdleMode;
         public float MeasureTimeMs;
         public float ArrangeTimeMs;
         public float RenderTimeMs;
@@ -219,7 +224,8 @@ public static class PerformanceTracker
     // -----------------------------------------------------------------------
     internal static void CommitFrame(
         float fps, float frameTimeMs,
-        float measureMs, float arrangeMs, float renderMs, float eventMs)
+        float measureMs, float arrangeMs, float renderMs, float eventMs,
+        UIApplication.RuntimeLoopStats runtimeStats)
     {
         lock (_lock)
         {
@@ -227,6 +233,11 @@ public static class PerformanceTracker
             {
                 FpsSnapshot    = fps,
                 FrameTimeMs    = frameTimeMs,
+                UpdateRate     = runtimeStats.UpdatesPerSecond,
+                RenderRate     = runtimeStats.RendersPerSecond,
+                PresentRate    = runtimeStats.PresentsPerSecond,
+                RecommendedTickerFps = runtimeStats.RecommendedTickerFps,
+                IsIdleMode     = runtimeStats.IsInIdleMode,
                 MeasureTimeMs  = measureMs,
                 ArrangeTimeMs  = arrangeMs,
                 RenderTimeMs   = renderMs,

@@ -56,16 +56,20 @@ internal sealed class SkiaSharpGLPresenter : IDisposable
 
             _textureWidth = width;
             _textureHeight = height;
+
+            // Allocate the texture storage once for the current surface size.
+            _gl.TexImage2D(TextureTarget.Texture2D, 0, (int)InternalFormat.Rgba,
+                (uint)width, (uint)height, 0, PixelFormat.Rgba, PixelType.UnsignedByte,
+                null);
         }
         else
         {
             _gl.BindTexture(TextureTarget.Texture2D, _texture);
         }
 
-        // Upload pixels from SkiaSharp surface to the GPU texture.
-        _gl.TexImage2D(TextureTarget.Texture2D, 0, (int)InternalFormat.Rgba,
-            (uint)width, (uint)height, 0, PixelFormat.Rgba, PixelType.UnsignedByte,
-            (void*)pixels);
+        // Upload pixels from the SkiaSharp surface without reallocating texture storage every frame.
+        _gl.TexSubImage2D(TextureTarget.Texture2D, 0, 0, 0, (uint)width, (uint)height,
+            PixelFormat.Rgba, PixelType.UnsignedByte, (void*)pixels);
 
         // Draw fullscreen quad using the compiled shader.
         _gl.Disable(EnableCap.DepthTest);

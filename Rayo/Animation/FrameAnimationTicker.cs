@@ -8,7 +8,9 @@ using System.Collections.Generic;
 public static class FrameAnimationTicker
 {
     private static readonly HashSet<IFrameAnimation> _animations = new();
+    private static readonly Dictionary<IFrameAnimation, float> _accumulators = new();
     private static readonly object _syncLock = new();
+    private const float DefaultTargetFps = 60f;
 
     /// <summary>
     /// Returns true when at least one animation is registered.
@@ -20,6 +22,33 @@ public static class FrameAnimationTicker
             lock (_syncLock)
             {
                 return _animations.Count > 0;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Highest requested cadence among registered animations.
+    /// Used by the host render loop to avoid waking faster than necessary.
+    /// </summary>
+    public static float RecommendedFps
+    {
+        get
+        {
+            lock (_syncLock)
+            {
+                if (_animations.Count == 0)
+                {
+                    return 0f;
+                }
+
+                float maxFps = 1f;
+                foreach (var animation in _animations)
+                {
+                    float targetFps = GetTargetFps(animation);
+                    maxFps = Math.Max(maxFps, targetFps);
+                }
+
+                return maxFps;
             }
         }
     }
@@ -37,6 +66,7 @@ public static class FrameAnimationTicker
         lock (_syncLock)
         {
             _animations.Add(animation);
+            _accumulators.TryAdd(animation, 0f);
         }
     }
 
@@ -53,6 +83,7 @@ public static class FrameAnimationTicker
         lock (_syncLock)
         {
             _animations.Remove(animation);
+            _accumulators.Remove(animation);
         }
     }
 
@@ -81,7 +112,43 @@ public static class FrameAnimationTicker
 
         for (int i = 0; i < snapshot.Length; i++)
         {
-            snapshot[i].Tick(deltaTime);
+            var animation = snapshot[i];
+            float targetFps = GetTargetFps(animation);
+            float targetFrameTime = targetFps > 0f ? 1f / targetFps : 0f;
+            float elapsedForAnimation = deltaTime;
+
+            if (targetFrameTime > 0f)
+            {
+                lock (_syncLock)
+                {
+                    if (!_accumulators.TryGetValue(animation, out float accumulated))
+                    {
+                        continue;
+                    }
+
+                    accumulated += deltaTime;
+                    if (accumulated < targetFrameTime)
+                    {
+                        _accumulators[animation] = accumulated;
+                        continue;
+                    }
+
+                    elapsedForAnimation = accumulated;
+                    _accumulators[animation] = 0f;
+                }
+            }
+
+            animation.Tick(elapsedForAnimation);
         }
+    }
+
+    private static float GetTargetFps(IFrameAnimation animation)
+    {
+        if (animation is IFrameAnimationThrottle throttled && throttled.TargetFps > 0f)
+        {
+            return throttled.TargetFps;
+        }
+
+        return DefaultTargetFps;
     }
 }

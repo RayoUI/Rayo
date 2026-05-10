@@ -929,6 +929,11 @@ public class DevToolAgent : IDisposable
             {
                 Fps     = f.FpsSnapshot,
                 FrameMs = f.FrameTimeMs,
+                UpdRate = f.UpdateRate,
+                RendRate = f.RenderRate,
+                PresRate = f.PresentRate,
+                TickerFps = f.RecommendedTickerFps,
+                IdleMode = f.IsIdleMode,
                 MeasMs  = f.MeasureTimeMs,
                 MeasSkip = f.ElementsMeasureSkipped,
                 MeasCacheHit = f.MeasureCacheHits,
@@ -969,6 +974,11 @@ public class DevToolAgent : IDisposable
         {
             Fps           = latest.FpsSnapshot,
             FrameTimeMs   = latest.FrameTimeMs,
+            UpdateRate    = latest.UpdateRate,
+            RenderRate    = latest.RenderRate,
+            PresentRate   = latest.PresentRate,
+            TickerFps     = latest.RecommendedTickerFps,
+            IdleMode      = latest.IsIdleMode,
             MeasureTimeMs = latest.MeasureTimeMs,
             RenderTimeMs  = latest.RenderTimeMs,
             EventTimeMs   = latest.EventTimeMs,

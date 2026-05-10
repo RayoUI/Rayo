@@ -11,6 +11,7 @@ using Rayo.Reactivity;
 using Rayo.Rendering;
 using Rayo.Styling;
 using System.Collections.Concurrent;
+using System.Diagnostics;
 
 namespace Rayo.Core;
 
@@ -55,9 +56,12 @@ public class UIApplication : IDisposable
     // Rendering optimization
     private bool _enableVSync = true;
 
-    // Counts frames since the last color-scheme poll (polled every ~300 frames ≈ 5 s at 60 FPS).
-    private int _colorSchemePollCounter = 0;
-    private const int ColorSchemePollInterval = 300;
+    private const int ColorSchemePollIntervalMs = 5000;
+    private const double ActiveFrameMs = 1000.0 / 60.0;
+    private const double TimedSubscriberFrameMs = 100.0;
+    private const double IdlePollingFrameMs = 100.0;
+    private readonly AutoResetEvent _wakeSignal = new(false);
+    private long _nextColorSchemePollAtMs = Environment.TickCount64 + ColorSchemePollIntervalMs;
 
     private double _targetFrameTime = 1.0 / 60.0; // 60 FPS
     private double _accumulatedTime = 0;
@@ -72,6 +76,11 @@ public class UIApplication : IDisposable
     private double _fpsAccumulator = 0.0;
     private float _currentFps = 0f;
     private float _currentFrameTimeMs = 0f;
+    private long _runtimeStatsWindowStart = Stopwatch.GetTimestamp();
+    private int _runtimeUpdateCount = 0;
+    private int _runtimeRenderCount = 0;
+    private int _runtimePresentCount = 0;
+    private RuntimeLoopStats _runtimeLoopStats;
 
     // Per-frame phase timings (ms) fed into PerformanceTracker.
     private float _phaseEventMs = 0f;
@@ -122,6 +131,23 @@ public class UIApplication : IDisposable
         Width = _window?.Size.X ?? 800,
         Height = _window?.Size.Y ?? 600
     };
+
+    public readonly record struct RuntimeLoopStats(
+        float UpdatesPerSecond,
+        float RendersPerSecond,
+        float PresentsPerSecond,
+        float RecommendedTickerFps,
+        bool IsInIdleMode,
+        bool ContinuousRendering);
+
+    public RuntimeLoopStats CurrentRuntimeLoopStats
+    {
+        get
+        {
+            RefreshRuntimeLoopStats();
+            return _runtimeLoopStats;
+        }
+    }
 
     /// <summary>
     /// Current window width in logical pixels. Used by <see cref="Rayo.Styling.BreakpointHelper"/>
@@ -285,7 +311,16 @@ public class UIApplication : IDisposable
     public bool ContinuousRendering
     {
         get => _continuousRendering;
-        set => _continuousRendering = value;
+        set
+        {
+            if (_continuousRendering == value)
+            {
+                return;
+            }
+
+            _continuousRendering = value;
+            WakeRenderLoop();
+        }
     }
 
     /// <summary>
@@ -338,6 +373,112 @@ public class UIApplication : IDisposable
 
         _enableVSync = config.VSync;
         _targetFrameTime = 1.0 / config.TargetFPS;
+    }
+
+    private bool HasActiveAnimationWork =>
+        AnimationManager.Instance.HasActiveAnimations || FrameAnimationTicker.HasActiveAnimations;
+
+    private bool HasTimedSubscribers => Updated != null;
+
+    private void WakeRenderLoop()
+    {
+        _wakeSignal.Set();
+
+        if (_isInIdleMode)
+        {
+            _isInIdleMode = false;
+            _idleFrameCount = 0;
+        }
+    }
+
+    private void PollColorSchemeIfDue()
+    {
+        long nowMs = Environment.TickCount64;
+        if (nowMs < _nextColorSchemePollAtMs)
+        {
+            return;
+        }
+
+        _nextColorSchemePollAtMs = nowMs + ColorSchemePollIntervalMs;
+        Rayo.Styling.ColorSchemeHelper.NotifyIfChanged();
+    }
+
+    private double GetTargetFrameMilliseconds()
+    {
+        if (_continuousRendering || _tree.NeedsRender || AnimationManager.Instance.HasActiveAnimations || !_mainThreadActions.IsEmpty)
+        {
+            return ActiveFrameMs;
+        }
+
+        if (FrameAnimationTicker.HasActiveAnimations)
+        {
+            float tickerFps = Math.Clamp(FrameAnimationTicker.RecommendedFps, 1f, 60f);
+            return 1000.0 / tickerFps;
+        }
+
+        if (HasTimedSubscribers)
+        {
+            return TimedSubscriberFrameMs;
+        }
+
+        return IdlePollingFrameMs;
+    }
+
+    private void WaitForNextFrame(double remainingMs)
+    {
+        if (remainingMs <= 0)
+        {
+            return;
+        }
+
+        if (remainingMs > 1)
+        {
+            _wakeSignal.WaitOne((int)Math.Ceiling(remainingMs));
+            return;
+        }
+
+        Thread.SpinWait(100);
+    }
+
+    private void RecordUpdatePass()
+    {
+        _runtimeUpdateCount++;
+        RefreshRuntimeLoopStats();
+    }
+
+    private void RecordRenderPass()
+    {
+        _runtimeRenderCount++;
+        RefreshRuntimeLoopStats();
+    }
+
+    private void RecordPresentPass()
+    {
+        _runtimePresentCount++;
+        RefreshRuntimeLoopStats();
+    }
+
+    private void RefreshRuntimeLoopStats()
+    {
+        long now = Stopwatch.GetTimestamp();
+        double elapsedSeconds = (now - _runtimeStatsWindowStart) / (double)Stopwatch.Frequency;
+        if (elapsedSeconds < 1.0)
+        {
+            return;
+        }
+
+        _runtimeLoopStats = new RuntimeLoopStats(
+            UpdatesPerSecond: (float)(_runtimeUpdateCount / elapsedSeconds),
+            RendersPerSecond: (float)(_runtimeRenderCount / elapsedSeconds),
+            PresentsPerSecond: (float)(_runtimePresentCount / elapsedSeconds),
+            RecommendedTickerFps: FrameAnimationTicker.RecommendedFps,
+            IsInIdleMode: _isInIdleMode,
+            ContinuousRendering: _continuousRendering);
+
+        _runtimeStatsWindowStart = now;
+        _runtimeUpdateCount = 0;
+        _runtimeRenderCount = 0;
+        _runtimePresentCount = 0;
     }
 
     /// <summary>
@@ -654,12 +795,7 @@ public class UIApplication : IDisposable
 
     private void OnTreeNeedsRender()
     {
-        // When there are changes, exit idle mode IMMEDIATELY
-        if (_isInIdleMode)
-        {
-            _isInIdleMode = false;
-            _idleFrameCount = 0;
-        }
+        WakeRenderLoop();
     }
 
     // Stopwatch timestamp recorded at the start of each OnUpdate call (for event-phase timing).
@@ -669,17 +805,13 @@ public class UIApplication : IDisposable
     {
         if (_isExiting) return;
 
+        RecordUpdatePass();
         _updatePhaseStart = System.Diagnostics.Stopwatch.GetTimestamp();
 
         // Poll window size every frame to catch size/state changes that don't fire the Resize event.
         HandleWindowSizeOrStateChange();
 
-        // Poll OS color-scheme preference periodically.
-        if (++_colorSchemePollCounter >= ColorSchemePollInterval)
-        {
-            _colorSchemePollCounter = 0;
-            Rayo.Styling.ColorSchemeHelper.NotifyIfChanged();
-        }
+        PollColorSchemeIfDue();
 
         // Process actions on main thread (includes performance monitor callbacks)
         while (_mainThreadActions.TryDequeue(out var action))
@@ -764,7 +896,7 @@ public class UIApplication : IDisposable
 
         // CRITICAL: Do NOT enter idle mode if drag is active OR key repeat is active OR animations are running
         bool isDragActive = _eventManager.IsAnythingBeingDragged;
-        bool hasActiveAnimations = Rayo.Animation.FrameAnimationTicker.HasActiveAnimations;
+        bool hasActiveAnimations = HasActiveAnimationWork;
 
         // If no changes and not in continuous mode, increment idle counter
         if (!_tree.NeedsRender && !_continuousRendering && !isDragActive && !hasKeyRepeat && !hasActiveAnimations)
@@ -855,6 +987,7 @@ public class UIApplication : IDisposable
         // Only do render work if we are really going to render
         if (shouldRender || _idleFrameCount < MaxIdleFrames)
         {
+            RecordRenderPass();
             TrackFps(deltaTime);
 
             _tree.NotifyRenderStarted();
@@ -870,7 +1003,8 @@ public class UIApplication : IDisposable
             Rayo.DevTools.PerformanceTracker.CommitFrame(
                 _currentFps, _currentFrameTimeMs,
                 _phaseLayoutMs, 0f,          // arrange is included in layout pass
-                _phaseRenderMs, _phaseEventMs);
+                _phaseRenderMs, _phaseEventMs,
+                CurrentRuntimeLoopStats);
 
             // Render DevTool highlight overlay (if DevTools enabled)
             Rayo.DevTools.DevToolExtensions.RenderDevToolOverlay(_renderer);
@@ -880,12 +1014,14 @@ public class UIApplication : IDisposable
 
             // Present rendered content to the screen via the hosting layer's presenter
             WindowPresenter?.Invoke(_window!.Size.X, _window!.Size.Y);
+            RecordPresentPass();
         }
     }
 
     private void OnClosing()
     {
         _isExiting = true;
+        _wakeSignal.Set();
         _eventManager.Detach();
         _hotReload?.Dispose();
         _renderer?.Dispose();
@@ -918,12 +1054,8 @@ public class UIApplication : IDisposable
         window.Initialize();
 
         // Use Stopwatch for more precise timing than DateTime
-        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+        var stopwatch = Stopwatch.StartNew();
         long lastFrameTime = 0;
-
-        const double targetFPS = 60.0;
-        const double targetFrameMs = 1000.0 / targetFPS;  // 16.67ms
-        const double idleFrameMs = 33.0;  // 30 FPS idle - balance between efficiency and responsiveness
 
         //Console.WriteLine("[Manual Loop] Started - Full control of render loop");
         //Console.WriteLine("[Manual Loop] Window only renders when there are changes");
@@ -933,8 +1065,7 @@ public class UIApplication : IDisposable
             long currentTime = stopwatch.ElapsedMilliseconds;
             double elapsed = currentTime - lastFrameTime;
 
-            // Determine target time
-            double targetMs = _isInIdleMode ? idleFrameMs : targetFrameMs;
+            double targetMs = GetTargetFrameMilliseconds();
 
             // Frame pacing: Only process if enough time has passed
             if (elapsed >= targetMs)
@@ -942,16 +1073,12 @@ public class UIApplication : IDisposable
                 // === PHASE 1: EVENT PROCESSING ===
                 _window.DoEvents();
                 if (_isExiting || _window.IsClosing) break;
+                RecordUpdatePass();
 
                 // Poll window size/state to catch maximize/restore on Windows.
                 HandleWindowSizeOrStateChange();
 
-                // Poll OS color-scheme preference periodically (~5 s interval at 60 FPS).
-                if (++_colorSchemePollCounter >= ColorSchemePollInterval)
-                {
-                    _colorSchemePollCounter = 0;
-                    Rayo.Styling.ColorSchemeHelper.NotifyIfChanged();
-                }
+                PollColorSchemeIfDue();
 
                 // Process automatic key repeat
                 bool hasKeyRepeat = _eventManager.ProcessKeyRepeat();
@@ -1020,7 +1147,9 @@ public class UIApplication : IDisposable
                 // CRITICAL: Do NOT enter idle mode if drag is active OR key repeat is active
                 bool isDragActive = _eventManager.IsAnythingBeingDragged;
 
-                if (!_tree.NeedsRender && !_continuousRendering && !isDragActive && !hasKeyRepeat)
+                bool hasActiveAnimations = HasActiveAnimationWork;
+
+                if (!_tree.NeedsRender && !_continuousRendering && !isDragActive && !hasKeyRepeat && !hasActiveAnimations)
                 {
                     _idleFrameCount++;
                     if (_idleFrameCount > MaxIdleFrames && !_isInIdleMode)
@@ -1050,25 +1179,7 @@ public class UIApplication : IDisposable
             }
             else
             {
-                // Hybrid strategy for precise frame pacing
-                double remaining = targetMs - elapsed;
-
-                if (remaining > 5)
-                {
-                    // Sleep for long times (efficient but less precise)
-                    Thread.Sleep((int)(remaining / 2));
-                }
-                else if (remaining > 1)
-                {
-                    // Yield for medium times (balance between CPU and precision)
-                    Thread.Yield();
-                }
-                else if (remaining > 0.1)
-                {
-                    // SpinWait for maximum precision in the last milliseconds
-                    Thread.SpinWait(100);
-                }
-                // else: Loop continues immediately
+                WaitForNextFrame(targetMs - elapsed);
             }
         }
     }
@@ -1076,6 +1187,7 @@ public class UIApplication : IDisposable
     public void RunOnMainThread(Action action)
     {
         _mainThreadActions.Enqueue(action);
+        WakeRenderLoop();
     }
 
     /// <summary>
@@ -1103,6 +1215,7 @@ public class UIApplication : IDisposable
     {
         if (Current == this) Current = null;
         _window?.Dispose();
+        _wakeSignal.Dispose();
     }
 
     public void Exit()

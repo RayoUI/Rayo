@@ -1,5 +1,6 @@
 namespace Rayo.Controls;
 
+using Rayo.Animation;
 using Rayo.Core;
 using Rayo.Core.Input;
 using Rayo.Core.Input.Gestures;
@@ -48,7 +49,7 @@ public class TabItem
 /// <summary>
 /// Control de pestañas/tabs con soporte para drag & drop universal y navegación con scroll.
 /// </summary>
-public class TabControl : CompositeView<TabControl>
+public class TabControl : CompositeView<TabControl>, IFrameAnimation
 {
     private const float HeaderSpacing = 2f;
     private const float AutoScrollZone = 48f;
@@ -68,7 +69,7 @@ public class TabControl : CompositeView<TabControl>
     private float _dragPointerX;
     private float _dragPointerY;
     private bool _autoScrollActive;
-    private Action<float>? _autoScrollTick;
+    private bool _autoScrollRegistered;
 
     #region TabBackground
     public Brush TabBackground
@@ -360,40 +361,59 @@ public class TabControl : CompositeView<TabControl>
     protected override void OnMounted()
     {
         base.OnMounted();
-
-        var app = UIApplication.Current;
-        if (app == null)
-            return;
-
-        _autoScrollTick = _ =>
-        {
-            if (!_autoScrollActive)
-                return;
-
-            var dragDrop = app.EventManager.DragDrop;
-            var dragInfo = dragDrop.CurrentDragData?.Data as TabDragInfo;
-            if (!dragDrop.IsDragging || dragInfo?.Owner != this)
-            {
-                _autoScrollActive = false;
-                return;
-            }
-
-            HandleDragScroll(_dragPointerX, _dragPointerY);
-        };
-
-        app.Updated += _autoScrollTick;
     }
 
     protected override void OnUnmounted()
     {
-        var app = UIApplication.Current;
-        if (app != null && _autoScrollTick != null)
-            app.Updated -= _autoScrollTick;
-
-        _autoScrollTick = null;
-        _autoScrollActive = false;
-
+        StopAutoScroll();
         base.OnUnmounted();
+    }
+
+    private void RegisterAutoScrollTicker()
+    {
+        if (_autoScrollRegistered)
+        {
+            return;
+        }
+
+        FrameAnimationTicker.Register(this);
+        _autoScrollRegistered = true;
+    }
+
+    private void UnregisterAutoScrollTicker()
+    {
+        if (!_autoScrollRegistered)
+        {
+            return;
+        }
+
+        FrameAnimationTicker.Unregister(this);
+        _autoScrollRegistered = false;
+    }
+
+    void IFrameAnimation.Tick(float deltaTime)
+    {
+        if (!_autoScrollActive)
+        {
+            return;
+        }
+
+        var app = UIApplication.Current;
+        if (app == null)
+        {
+            StopAutoScroll();
+            return;
+        }
+
+        var dragDrop = app.EventManager.DragDrop;
+        var dragInfo = dragDrop.CurrentDragData?.Data as TabDragInfo;
+        if (!dragDrop.IsDragging || dragInfo?.Owner != this)
+        {
+            StopAutoScroll();
+            return;
+        }
+
+        HandleDragScroll(_dragPointerX, _dragPointerY);
     }
 
     protected override void Measure(float availableWidth, float availableHeight)
@@ -795,6 +815,7 @@ public class TabControl : CompositeView<TabControl>
         _dragPointerX = pointerX;
         _dragPointerY = pointerY;
         _autoScrollActive = true;
+        RegisterAutoScrollTicker();
 
         if (IsHorizontalPosition())
         {
@@ -823,6 +844,7 @@ public class TabControl : CompositeView<TabControl>
     internal void StopAutoScroll()
     {
         _autoScrollActive = false;
+        UnregisterAutoScrollTicker();
     }
 
     internal Brush ResolveHeaderBackground(int index, bool isHovered)

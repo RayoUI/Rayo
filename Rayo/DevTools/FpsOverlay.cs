@@ -35,12 +35,14 @@ public static class FpsOverlay
         const float LineH   = 16f;
         const float CornerR = 6f;
         const float Margin  = 8f;
-        const float Width   = 220f;
+        const float Width   = 260f;
 
         var latest = PerformanceTracker.LatestFrame;
         string[] lines =
         [
             $"FPS: {fps:F0}   Frame: {frameTimeMs:F1} ms",
+            $"Upd: {latest.UpdateRate:F0}/s   Rend: {latest.RenderRate:F0}/s   Pres: {latest.PresentRate:F0}/s",
+            $"Ticker: {latest.RecommendedTickerFps:F0} Hz   Idle: {(latest.IsIdleMode ? "yes" : "no")}",
             $"Layout: {latest.MeasureTimeMs:F2} ms   Render: {latest.RenderTimeMs:F2} ms",
             $"Rendered: {latest.ElementsRendered}   Measured: {latest.ElementsMeasured}",
             $"L-Dirty: {latest.LayoutDirtyCount}   P-Dirty: {latest.PaintDirtyCount}",
