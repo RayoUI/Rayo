@@ -64,7 +64,7 @@ public class VStackPage : UserControl
                             new Label("Email Address").Foreground(Color.White),
                             new Entry().Placeholder("Enter email...").Width(250),
                             new Label("Password").Foreground(Color.White),
-                            new Entry().Placeholder("Enter password...").Width(250),
+                            new Entry().Placeholder("Enter password...").Password(true).Width(250),
                             new Button().Text("Login").Width(100).Background(new Color(59, 130, 246))
                         )
                 )
