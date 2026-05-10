@@ -58,6 +58,9 @@ public class TreeFrame : UserControl
         var treeScroll = new ScrollView()
             .VerticalAlignment(VerticalAlignment.Stretch)
             .HorizontalAlignment(HorizontalAlignment.Stretch)
+            .VerticalScrollBarVisibility(ScrollBarVisibility.Always)
+            .HorizontalScrollBarVisibility(ScrollBarVisibility.Disabled)
+            .ShowScrollbars(true)
             .Content(
                 BuildTreeView()
             );

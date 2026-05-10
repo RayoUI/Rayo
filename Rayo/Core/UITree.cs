@@ -448,22 +448,25 @@ public class UITree
     private List<VisualElement> CaptureTrackedDirtyElements(bool includeMeasure, bool includeArrange, bool includePaint)
     {
         var tracked = new HashSet<VisualElement>();
+        var dirtyMeasureElements = _scheduler.SnapshotDirtyMeasureElements();
+        var dirtyArrangeElements = _scheduler.SnapshotDirtyArrangeElements();
+        var dirtyPaintElements = _scheduler.SnapshotDirtyPaintElements();
 
         if (includeMeasure)
         {
-            foreach (var element in _scheduler.DirtyMeasureElements)
+            foreach (var element in dirtyMeasureElements)
                 tracked.Add(element);
         }
 
         if (includeArrange)
         {
-            foreach (var element in _scheduler.DirtyArrangeElements)
+            foreach (var element in dirtyArrangeElements)
                 tracked.Add(element);
         }
 
         if (includePaint)
         {
-            foreach (var element in _scheduler.DirtyPaintElements)
+            foreach (var element in dirtyPaintElements)
                 tracked.Add(element);
         }
 
@@ -493,15 +496,17 @@ public class UITree
             return Array.Empty<OverlayLayoutWorkItem>();
 
         var overlays = new Dictionary<VisualElement, bool>();
+        var dirtyMeasureElements = _scheduler.SnapshotDirtyMeasureElements();
+        var dirtyArrangeElements = _scheduler.SnapshotDirtyArrangeElements();
 
-        foreach (var element in _scheduler.DirtyMeasureElements)
+        foreach (var element in dirtyMeasureElements)
         {
             var owningOverlay = FindOwningOverlay(element);
             if (owningOverlay != null)
                 overlays[owningOverlay] = true;
         }
 
-        foreach (var element in _scheduler.DirtyArrangeElements)
+        foreach (var element in dirtyArrangeElements)
         {
             var owningOverlay = FindOwningOverlay(element);
             if (owningOverlay == null)
@@ -534,8 +539,9 @@ public class UITree
     private List<VisualElement> CollectMeasureRoots()
     {
         var roots = new HashSet<VisualElement>();
+        var dirtyMeasureElements = _scheduler.SnapshotDirtyMeasureElements();
 
-        foreach (var element in _scheduler.DirtyMeasureElements)
+        foreach (var element in dirtyMeasureElements)
         {
             if (FindOwningOverlay(element) != null)
                 continue;
@@ -571,8 +577,9 @@ public class UITree
     private List<VisualElement> CollectArrangeHosts()
     {
         var hosts = new HashSet<VisualElement>();
+        var dirtyArrangeElements = _scheduler.SnapshotDirtyArrangeElements();
 
-        foreach (var element in _scheduler.DirtyArrangeElements)
+        foreach (var element in dirtyArrangeElements)
         {
             if (FindOwningOverlay(element) != null)
                 continue;
@@ -622,7 +629,7 @@ public class UITree
         var current = element;
 
         while (current.Parent != null &&
-               _scheduler.DirtyArrangeElements.Contains(current.Parent) &&
+               _scheduler.ContainsDirtyArrangeElement(current.Parent) &&
                !current.CreatesMeasureBoundaryForParent() &&
                !current.Parent.AbsorbsDescendantArrangeChange())
         {

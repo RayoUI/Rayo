@@ -77,6 +77,9 @@ public class HStack : Layout<HStack>
 
     protected override void Measure(float availableWidth, float availableHeight)
     {
+        bool hadExplicitWidth = HasExplicitWidth;
+        bool hadExplicitHeight = HasExplicitHeight;
+
         float totalWidth = Padding.Horizontal;
         float maxHeight = Padding.Vertical;
 
@@ -187,6 +190,10 @@ public class HStack : Layout<HStack>
             }
         }
 
+        Width = measuredWidth;
+        Height = measuredHeight;
+        HasExplicitWidth = hadExplicitWidth;
+        HasExplicitHeight = hadExplicitHeight;
         DesiredWidth = measuredWidth;
         DesiredHeight = measuredHeight;
     }

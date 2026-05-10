@@ -419,9 +419,9 @@ public class ScrollView : CompositeView<ScrollView>, IInputHandler, IScrollable,
         if (base.AbsorbsDescendantMeasureChange())
             return true;
 
-        return HasValidMeasure &&
-               !float.IsInfinity(LastMeasuredAvailableWidth) &&
-               !float.IsInfinity(LastMeasuredAvailableHeight);
+        // Scroll ranges depend on descendant content size. If a child grows or shrinks,
+        // the ScrollView must re-measure itself to refresh _contentWidth/_contentHeight.
+        return false;
     }
 
     protected internal override bool AbsorbsDescendantArrangeChange()

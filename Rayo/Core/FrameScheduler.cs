@@ -6,6 +6,7 @@
 /// </summary>
 public class FrameScheduler
 {
+    private readonly object _sync = new();
     private bool _measureScheduled = false;
     private bool _arrangeScheduled = false;
     private bool _paintScheduled = false;
@@ -29,13 +30,17 @@ public class FrameScheduler
     /// </summary>
     public void ScheduleMeasure(VisualElement element)
     {
-        bool wasEmpty = _dirtyMeasureElements.Count == 0 &&
-            _dirtyArrangeElements.Count == 0 &&
-            _dirtyPaintElements.Count == 0;
+        bool wasEmpty;
+        lock (_sync)
+        {
+            wasEmpty = _dirtyMeasureElements.Count == 0 &&
+                _dirtyArrangeElements.Count == 0 &&
+                _dirtyPaintElements.Count == 0;
 
-        _dirtyMeasureElements.Add(element);
-        _measureScheduled = true;
-        _arrangeScheduled = true;
+            _dirtyMeasureElements.Add(element);
+            _measureScheduled = true;
+            _arrangeScheduled = true;
+        }
 
         if (wasEmpty)
         {
@@ -45,12 +50,16 @@ public class FrameScheduler
 
     public void ScheduleArrange(VisualElement element)
     {
-        bool wasEmpty = _dirtyMeasureElements.Count == 0 &&
-            _dirtyArrangeElements.Count == 0 &&
-            _dirtyPaintElements.Count == 0;
+        bool wasEmpty;
+        lock (_sync)
+        {
+            wasEmpty = _dirtyMeasureElements.Count == 0 &&
+                _dirtyArrangeElements.Count == 0 &&
+                _dirtyPaintElements.Count == 0;
 
-        _dirtyArrangeElements.Add(element);
-        _arrangeScheduled = true;
+            _dirtyArrangeElements.Add(element);
+            _arrangeScheduled = true;
+        }
 
         if (wasEmpty)
         {
@@ -64,12 +73,16 @@ public class FrameScheduler
     /// </summary>
     public void SchedulePaint(VisualElement element)
     {
-        bool wasEmpty = _dirtyMeasureElements.Count == 0 &&
-            _dirtyArrangeElements.Count == 0 &&
-            _dirtyPaintElements.Count == 0;
+        bool wasEmpty;
+        lock (_sync)
+        {
+            wasEmpty = _dirtyMeasureElements.Count == 0 &&
+                _dirtyArrangeElements.Count == 0 &&
+                _dirtyPaintElements.Count == 0;
 
-        _dirtyPaintElements.Add(element);
-        _paintScheduled = true;
+            _dirtyPaintElements.Add(element);
+            _paintScheduled = true;
+        }
 
         if (wasEmpty)
         {
@@ -80,31 +93,83 @@ public class FrameScheduler
     /// <summary>
     /// Verifica si hay trabajo programado para este frame
     /// </summary>
-    public bool HasScheduledWork => _measureScheduled || _arrangeScheduled || _paintScheduled;
+    public bool HasScheduledWork
+    {
+        get
+        {
+            lock (_sync)
+                return _measureScheduled || _arrangeScheduled || _paintScheduled;
+        }
+    }
 
     /// <summary>
     /// Verifica si hay layout programado
     /// </summary>
-    public bool NeedsMeasure => _measureScheduled;
+    public bool NeedsMeasure
+    {
+        get
+        {
+            lock (_sync)
+                return _measureScheduled;
+        }
+    }
 
-    public bool NeedsArrange => _arrangeScheduled;
+    public bool NeedsArrange
+    {
+        get
+        {
+            lock (_sync)
+                return _arrangeScheduled;
+        }
+    }
 
     /// <summary>
     /// Verifica si hay paint programado
     /// </summary>
-    public bool NeedsPaint => _paintScheduled;
+    public bool NeedsPaint
+    {
+        get
+        {
+            lock (_sync)
+                return _paintScheduled;
+        }
+    }
 
     /// <summary>
     /// Obtiene los elementos que necesitan layout
     /// </summary>
-    public IReadOnlyCollection<VisualElement> DirtyMeasureElements => _dirtyMeasureElements;
+    public IReadOnlyCollection<VisualElement> DirtyMeasureElements => SnapshotDirtyMeasureElements();
 
-    public IReadOnlyCollection<VisualElement> DirtyArrangeElements => _dirtyArrangeElements;
+    public IReadOnlyCollection<VisualElement> DirtyArrangeElements => SnapshotDirtyArrangeElements();
 
     /// <summary>
     /// Obtiene los elementos que necesitan paint
     /// </summary>
-    public IReadOnlyCollection<VisualElement> DirtyPaintElements => _dirtyPaintElements;
+    public IReadOnlyCollection<VisualElement> DirtyPaintElements => SnapshotDirtyPaintElements();
+
+    public VisualElement[] SnapshotDirtyMeasureElements()
+    {
+        lock (_sync)
+            return _dirtyMeasureElements.ToArray();
+    }
+
+    public VisualElement[] SnapshotDirtyArrangeElements()
+    {
+        lock (_sync)
+            return _dirtyArrangeElements.ToArray();
+    }
+
+    public VisualElement[] SnapshotDirtyPaintElements()
+    {
+        lock (_sync)
+            return _dirtyPaintElements.ToArray();
+    }
+
+    public bool ContainsDirtyArrangeElement(VisualElement element)
+    {
+        lock (_sync)
+            return _dirtyArrangeElements.Contains(element);
+    }
 
     /// <summary>
     /// Limpia el estado después de procesar el frame
@@ -112,12 +177,15 @@ public class FrameScheduler
     /// </summary>
     public void FrameComplete()
     {
-        _measureScheduled = false;
-        _arrangeScheduled = false;
-        _paintScheduled = false;
-        _dirtyMeasureElements.Clear();
-        _dirtyArrangeElements.Clear();
-        _dirtyPaintElements.Clear();
+        lock (_sync)
+        {
+            _measureScheduled = false;
+            _arrangeScheduled = false;
+            _paintScheduled = false;
+            _dirtyMeasureElements.Clear();
+            _dirtyArrangeElements.Clear();
+            _dirtyPaintElements.Clear();
+        }
     }
 
     /// <summary>
@@ -125,11 +193,14 @@ public class FrameScheduler
     /// </summary>
     public void Reset()
     {
-        _measureScheduled = false;
-        _arrangeScheduled = false;
-        _paintScheduled = false;
-        _dirtyMeasureElements.Clear();
-        _dirtyArrangeElements.Clear();
-        _dirtyPaintElements.Clear();
+        lock (_sync)
+        {
+            _measureScheduled = false;
+            _arrangeScheduled = false;
+            _paintScheduled = false;
+            _dirtyMeasureElements.Clear();
+            _dirtyArrangeElements.Clear();
+            _dirtyPaintElements.Clear();
+        }
     }
 }
