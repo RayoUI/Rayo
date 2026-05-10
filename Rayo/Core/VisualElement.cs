@@ -742,11 +742,6 @@ public abstract class VisualElement : BindableObject, IDisposable, IInputTranspa
 
             // Record in performance tracker (dirty heatmap + dirty log).
             Rayo.DevTools.PerformanceTracker.RecordPaintDirty(this);
-
-            if (Parent != null && !Parent.NeedsPaint)
-            {
-                Parent.MarkNeedsPaint();
-            }
         }
 
         // Always notify UITree to trigger a render (works on Desktop and Android)

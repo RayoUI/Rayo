@@ -7,6 +7,7 @@ using Rayo.Layout;
 using Rayo.Reactivity;
 using Rayo.Rendering;
 using Rayo.Rendering.Brushes;
+using System.Numerics;
 
 /// <summary>
 /// Loading spinner type
@@ -25,7 +26,11 @@ public enum SpinnerType
 public class Loading : Rayo.Core.View<Loading>, IFrameAnimation
 {
     private float _animationTime = 0;
+    private float _frameAccumulator = 0;
     private bool _isAnimationRegistered;
+    private string? _cachedText;
+    private float _cachedTextSize = -1;
+    private Vector2 _cachedMeasuredText;
 
     #region Type
     public SpinnerType Type
@@ -57,6 +62,18 @@ public class Loading : Rayo.Core.View<Loading>, IFrameAnimation
         get => field;
         set => this.SetProperty(ref field, value);
     } = 2f;
+    #endregion
+
+    #region TargetFps
+    /// <summary>
+    /// Maximum repaint frequency for the loading indicator.
+    /// Keeping this below the app render loop reduces GPU usage while preserving smooth motion.
+    /// </summary>
+    public float TargetFps
+    {
+        get => field;
+        set => this.SetProperty(ref field, value);
+    } = 30f;
     #endregion
 
     #region Text
@@ -100,8 +117,20 @@ public class Loading : Rayo.Core.View<Loading>, IFrameAnimation
             return; // Skip invalidation when the spinner is hidden to avoid unnecessary redraws
         }
 
+        if (TargetFps <= 0)
+        {
+            return;
+        }
+
+        _frameAccumulator += deltaTime;
+        float targetFrameTime = 1f / TargetFps;
+        if (_frameAccumulator < targetFrameTime)
+        {
+            return;
+        }
+
+        _frameAccumulator = 0;
         MarkNeedsPaint();
-        UIApplication.Current?.Tree.MarkNeedsRender();
     }
 
     protected override void OnMounted()
@@ -192,7 +221,7 @@ public class Loading : Rayo.Core.View<Loading>, IFrameAnimation
         // Render text if present
         if (!string.IsNullOrEmpty(Text))
         {
-            var textSize = renderer.MeasureText(Text, TextSize);
+            var textSize = GetMeasuredText(renderer);
             float textX = centerX - textSize.X / 2f;
             float textY = y + Width + TextSpacing;
             renderer.DrawText(Text, textX, textY, TextColor, TextSize);
@@ -226,6 +255,24 @@ public class Loading : Rayo.Core.View<Loading>, IFrameAnimation
         }
 
         return width;
+    }
+
+    private Vector2 GetMeasuredText(IRenderer renderer)
+    {
+        if (string.IsNullOrEmpty(Text))
+        {
+            return default;
+        }
+
+        if (_cachedText == Text && Math.Abs(_cachedTextSize - TextSize) < 0.01f)
+        {
+            return _cachedMeasuredText;
+        }
+
+        _cachedText = Text;
+        _cachedTextSize = TextSize;
+        _cachedMeasuredText = renderer.MeasureText(Text, TextSize);
+        return _cachedMeasuredText;
     }
 
     private void RenderCircleSpinner(IRenderer renderer, float centerX, float centerY)
