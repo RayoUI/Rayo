@@ -430,7 +430,7 @@ public class SideBar : Rayo.Core.CompositeView<SideBar>
     private void UpdateWidth()
     {
         Width = IsCollapsed ? CollapsedWidth : ExpandedWidth;
-        MarkNeedsLayout();
+        InvalidateMeasure();
     }
 
     private void RebuildItems()
@@ -445,7 +445,7 @@ public class SideBar : Rayo.Core.CompositeView<SideBar>
             _itemsContainer.AddChild(itemButton);
         }
 
-        MarkNeedsLayout();
+        InvalidateMeasure();
     }
 
     private VisualElement CreateItemButton(SideBarItem item)

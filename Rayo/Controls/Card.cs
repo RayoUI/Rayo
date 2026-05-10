@@ -248,7 +248,7 @@ public class Card : Rayo.Core.CompositeView<Card>
 
         RebuildLayout();
         UpdateSectionCornerRadii();
-        MarkNeedsLayout();
+        InvalidateMeasure();
     }
 
     private void UpdateSectionCornerRadii()

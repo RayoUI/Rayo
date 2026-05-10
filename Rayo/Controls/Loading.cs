@@ -340,7 +340,7 @@ public class LoadingOverlay : Frame
             .Children(_spinner);
 
         this.Content(container);
-        MarkNeedsLayout();
+        InvalidateMeasure();
         return this;
     }
 
@@ -348,7 +348,7 @@ public class LoadingOverlay : Frame
     {
         IsLoading = false;
         ClearContent();
-        MarkNeedsLayout();
+        InvalidateMeasure();
         return this;
     }
 

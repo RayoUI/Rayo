@@ -272,7 +272,7 @@ public class Expander : CompositeView<Expander>
         {
             _contentAnimationProgress = IsExpanded ? 1f : 0f;
             _contentFrame.IsVisible(_contentAnimationProgress > 0f);
-            MarkNeedsLayout();
+            InvalidateMeasure();
             MarkNeedsPaint();
             return;
         }
@@ -284,7 +284,7 @@ public class Expander : CompositeView<Expander>
         {
             _contentAnimationProgress = target;
             _contentFrame.IsVisible(target > 0f);
-            MarkNeedsLayout();
+            InvalidateMeasure();
             MarkNeedsPaint();
             return;
         }
@@ -293,7 +293,7 @@ public class Expander : CompositeView<Expander>
         {
             _contentAnimationProgress = value;
             _contentFrame.IsVisible(value > 0.001f);
-            MarkNeedsLayout();
+            InvalidateMeasure();
             MarkNeedsPaint();
         })
         {
@@ -306,7 +306,7 @@ public class Expander : CompositeView<Expander>
         {
             _contentAnimationProgress = target;
             _contentFrame.IsVisible(target > 0.001f);
-            MarkNeedsLayout();
+            InvalidateMeasure();
             MarkNeedsPaint();
         };
 
@@ -564,7 +564,7 @@ public class Accordion : CompositeView<Accordion>
 
         _expanders.Add(expander);
         _layout?.AddChild(expander);
-        MarkNeedsLayout();
+        InvalidateMeasure();
         return this;
     }
 
@@ -591,7 +591,7 @@ public class Accordion : CompositeView<Accordion>
 
         _expanders.Add(expander);
         _layout?.AddChild(expander);
-        MarkNeedsLayout();
+        InvalidateMeasure();
         return this;
     }
 

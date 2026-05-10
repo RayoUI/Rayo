@@ -68,8 +68,6 @@ public class Frame : ContentView<Frame>, IPointerHandler
         // STEP 1: Determine Frame's dimensions independently for width and height
         float frameWidth;
         float frameHeight;
-        bool hadExplicitWidth = HasExplicitWidth;
-        bool hadExplicitHeight = HasExplicitHeight;
 
         // =========================================================================
         // WIDTH CALCULATION (independent of height)
@@ -195,14 +193,11 @@ public class Frame : ContentView<Frame>, IPointerHandler
         }
 
         // =========================================================================
-        // STEP 5: Set final size properties
+        // STEP 5: Set final desired size only
         // =========================================================================
-        // IMPORTANT: Set Width/Height (used by layout system) but preserve HasExplicitWidth/Height
-        // so we don't accidentally mark as explicit when it wasn't
-        Width = frameWidth;
-        Height = frameHeight;
-        HasExplicitWidth = hadExplicitWidth;
-        HasExplicitHeight = hadExplicitHeight;
+        // Never write the measured size back into Width/Height here.
+        // Doing so makes a stretch Frame retain the previous arranged size
+        // (for example after maximize), which then leaks into later layouts.
         DesiredWidth = frameWidth;
         DesiredHeight = frameHeight;
     }

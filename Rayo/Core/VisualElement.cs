@@ -505,6 +505,12 @@ public abstract class VisualElement : BindableObject, IDisposable, IInputTranspa
     [NotFluent]
     internal bool HasValidMeasure { get; private set; }
 
+    private const int MeasureCacheCapacity = 4;
+    private const float MeasureCacheQuantizationStep = 0.25f;
+    private readonly MeasureCacheEntry[] _measureCacheEntries = new MeasureCacheEntry[MeasureCacheCapacity];
+    private int _measureCacheCount;
+    private int _measureCacheNextIndex;
+
     [NotFluent]
     internal float LastArrangedX { get; private set; } = float.NaN;
 
@@ -688,12 +694,15 @@ public abstract class VisualElement : BindableObject, IDisposable, IInputTranspa
         }
 
         HasValidMeasure = false;
+        ClearMeasureCache();
 
         if (!wasDirty)
-            Rayo.DevTools.PerformanceTracker.RecordLayoutDirty(this);
+            Rayo.DevTools.PerformanceTracker.RecordMeasureDirty(this);
 
         var current = this;
-        while (current.Parent != null && !current.CreatesMeasureBoundaryForParent())
+        while (current.Parent != null &&
+               !current.CreatesMeasureBoundaryForParent() &&
+               !current.Parent.AbsorbsDescendantMeasureChange())
         {
             current = current.Parent;
             if (current.NeedsMeasure)
@@ -713,7 +722,7 @@ public abstract class VisualElement : BindableObject, IDisposable, IInputTranspa
         {
             NeedsArrange = true;
             NeedsPaint = true;
-            Rayo.DevTools.PerformanceTracker.RecordLayoutDirty(this);
+            Rayo.DevTools.PerformanceTracker.RecordArrangeDirty(this);
         }
 
         if (Parent != null && !Parent.NeedsArrange)
@@ -935,20 +944,31 @@ public abstract class VisualElement : BindableObject, IDisposable, IInputTranspa
     /// </summary>
     protected internal virtual bool RendersChildrenManually => false;
 
-    internal bool CreatesMeasureBoundaryForParent()
+    protected internal virtual bool CreatesMeasureBoundaryForParent()
+    {
+        return HasExplicitWidth && HasExplicitHeight;
+    }
+
+    protected internal virtual bool AbsorbsDescendantMeasureChange()
+    {
+        return HasExplicitWidth && HasExplicitHeight;
+    }
+
+    protected internal virtual bool AbsorbsDescendantArrangeChange()
     {
         return HasExplicitWidth && HasExplicitHeight;
     }
 
     private void ExecuteMeasure(float availableWidth, float availableHeight, bool force)
     {
-        if (!force && !NeedsMeasure && IsMeasureValidFor(availableWidth, availableHeight))
+        if (!force && !NeedsMeasure && TryApplyCachedMeasure(availableWidth, availableHeight))
             return;
 
         Measure(availableWidth, availableHeight);
         LastMeasuredAvailableWidth = availableWidth;
         LastMeasuredAvailableHeight = availableHeight;
         HasValidMeasure = true;
+        StoreMeasureCache(availableWidth, availableHeight, DesiredWidth, DesiredHeight);
         NeedsMeasure = false;
         NeedsArrange = true;
         NeedsPaint = true;
@@ -979,15 +999,22 @@ public abstract class VisualElement : BindableObject, IDisposable, IInputTranspa
 
     public bool IsMeasureValidFor(float availableWidth, float availableHeight)
     {
-        return HasValidMeasure &&
-               LastMeasuredAvailableWidth == availableWidth &&
-               LastMeasuredAvailableHeight == availableHeight;
+        return TryFindMeasureCacheEntry(availableWidth, availableHeight, out _);
     }
 
     public void MeasureUpdate(float availableWidth, float availableHeight)
     {
-        if (!NeedsMeasure && IsMeasureValidFor(availableWidth, availableHeight))
-            return;
+        if (!NeedsMeasure)
+        {
+            if (TryApplyCachedMeasure(availableWidth, availableHeight))
+            {
+                Rayo.DevTools.PerformanceTracker.RecordMeasureCacheHit();
+                Rayo.DevTools.PerformanceTracker.RecordMeasureSkipped();
+                return;
+            }
+
+            Rayo.DevTools.PerformanceTracker.RecordMeasureCacheMiss();
+        }
 
         ExecuteMeasure(availableWidth, availableHeight, force: false);
     }
@@ -1006,7 +1033,10 @@ public abstract class VisualElement : BindableObject, IDisposable, IInputTranspa
             LastArrangedHeight != height;
 
         if (!NeedsArrange && !rectChanged)
+        {
+            Rayo.DevTools.PerformanceTracker.RecordArrangeSkipped();
             return;
+        }
 
         ExecuteArrange(x, y, width, height, force: false);
     }
@@ -1024,6 +1054,106 @@ public abstract class VisualElement : BindableObject, IDisposable, IInputTranspa
         }
     }
 
+    private bool TryApplyCachedMeasure(float availableWidth, float availableHeight)
+    {
+        if (!TryFindMeasureCacheEntry(availableWidth, availableHeight, out var cacheEntry))
+        {
+            return false;
+        }
+
+        var normalizedConstraints = NormalizeMeasureConstraints(availableWidth, availableHeight);
+        var activeNormalizedConstraints = NormalizeMeasureConstraints(LastMeasuredAvailableWidth, LastMeasuredAvailableHeight);
+        bool isActiveMeasure =
+            HasValidMeasure &&
+            activeNormalizedConstraints.Width == normalizedConstraints.Width &&
+            activeNormalizedConstraints.Height == normalizedConstraints.Height;
+
+        if (isActiveMeasure)
+        {
+            return true;
+        }
+
+        bool desiredChanged = DesiredWidth != cacheEntry.DesiredWidth || DesiredHeight != cacheEntry.DesiredHeight;
+        DesiredWidth = cacheEntry.DesiredWidth;
+        DesiredHeight = cacheEntry.DesiredHeight;
+        LastMeasuredAvailableWidth = availableWidth;
+        LastMeasuredAvailableHeight = availableHeight;
+        HasValidMeasure = true;
+        NeedsMeasure = false;
+        NeedsArrange = true;
+        if (desiredChanged)
+        {
+            NeedsPaint = true;
+        }
+
+        return true;
+    }
+
+    private bool TryFindMeasureCacheEntry(float availableWidth, float availableHeight, out MeasureCacheEntry cacheEntry)
+    {
+        var normalizedConstraints = NormalizeMeasureConstraints(availableWidth, availableHeight);
+        for (int i = 0; i < _measureCacheCount; i++)
+        {
+            if (_measureCacheEntries[i].AvailableWidth == normalizedConstraints.Width &&
+                _measureCacheEntries[i].AvailableHeight == normalizedConstraints.Height)
+            {
+                cacheEntry = _measureCacheEntries[i];
+                return true;
+            }
+        }
+
+        cacheEntry = default;
+        return false;
+    }
+
+    private void StoreMeasureCache(float availableWidth, float availableHeight, float desiredWidth, float desiredHeight)
+    {
+        var normalizedConstraints = NormalizeMeasureConstraints(availableWidth, availableHeight);
+        var cacheEntry = new MeasureCacheEntry(normalizedConstraints.Width, normalizedConstraints.Height, desiredWidth, desiredHeight);
+
+        for (int i = 0; i < _measureCacheCount; i++)
+        {
+            if (_measureCacheEntries[i].AvailableWidth == normalizedConstraints.Width &&
+                _measureCacheEntries[i].AvailableHeight == normalizedConstraints.Height)
+            {
+                _measureCacheEntries[i] = cacheEntry;
+                return;
+            }
+        }
+
+        if (_measureCacheCount < MeasureCacheCapacity)
+        {
+            _measureCacheEntries[_measureCacheCount++] = cacheEntry;
+            return;
+        }
+
+        _measureCacheEntries[_measureCacheNextIndex] = cacheEntry;
+        _measureCacheNextIndex = (_measureCacheNextIndex + 1) % MeasureCacheCapacity;
+    }
+
+    private void ClearMeasureCache()
+    {
+        _measureCacheCount = 0;
+        _measureCacheNextIndex = 0;
+    }
+
+    private (float Width, float Height) NormalizeMeasureConstraints(float availableWidth, float availableHeight)
+    {
+        float normalizedWidth = HasExplicitWidth ? Width : availableWidth;
+        float normalizedHeight = HasExplicitHeight ? Height : availableHeight;
+        return (QuantizeMeasureConstraint(normalizedWidth), QuantizeMeasureConstraint(normalizedHeight));
+    }
+
+    private static float QuantizeMeasureConstraint(float value)
+    {
+        if (!float.IsFinite(value))
+        {
+            return value;
+        }
+
+        return MathF.Round(value / MeasureCacheQuantizationStep) * MeasureCacheQuantizationStep;
+    }
+
     protected virtual void Arrange(float x, float y, float width, float height)
     {
         ComputedX = x;
@@ -1034,6 +1164,8 @@ public abstract class VisualElement : BindableObject, IDisposable, IInputTranspa
 
     public abstract void Render(IRenderer renderer);
     #endregion
+
+    private readonly record struct MeasureCacheEntry(float AvailableWidth, float AvailableHeight, float DesiredWidth, float DesiredHeight);
 
     #region Lifecycle Hooks
     protected virtual void OnMounted() { }

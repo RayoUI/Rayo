@@ -4,6 +4,7 @@ using Rayo.Core;
 using Rayo.Core.Input;
 using Rayo.Core.Input.Gestures;
 using Rayo.Core.Interfaces;
+using Rayo.DevTools;
 using Rayo.Layout;
 using Rayo.Rendering;
 using Rayo.Rendering.Brushes;
@@ -230,7 +231,7 @@ internal class TreeNodeView : CompositeView<TreeNodeView>
             _layout.AddChild(_headerButton);
         }
 
-        MarkNeedsLayout();
+        InvalidateMeasure();
     }
 
     private void OnNodeClicked()
@@ -254,7 +255,7 @@ internal class TreeNodeView : CompositeView<TreeNodeView>
         if (!_includeChildren)
         {
             _headerButton?.RefreshContent();
-            MarkNeedsLayout();
+            MarkNeedsPaint();
             return;
         }
 
@@ -272,7 +273,7 @@ internal class TreeNodeView : CompositeView<TreeNodeView>
         }
 
         _headerButton?.RefreshContent();
-        MarkNeedsLayout();
+        InvalidateMeasure();
     }
 
     private void RebuildChildren()
@@ -1028,7 +1029,7 @@ public class TreeView : CompositeView<TreeView>
             () => new TreeNodeView(new TreeNode(string.Empty), this, includeChildren: false),
             BindVirtualizedNodeView);
 
-        MarkNeedsLayout();
+        InvalidateMeasure();
     }
 
     private void BindVirtualizedNodeView(VisualElement element, TreeNode node)
@@ -1119,6 +1120,7 @@ internal sealed class VirtualizedTreePanel : CompositeView<VirtualizedTreePanel>
     private Action<VisualElement, TreeNode>? _itemBinder;
     private readonly Dictionary<int, VisualElement> _activeChildren = new();
     private readonly Stack<VisualElement> _recycledChildren = new();
+    private readonly List<VisualElement> _orderedChildrenBuffer = new();
     private int _firstMaterializedIndex = -1;
     private int _lastMaterializedIndex = -1;
     private int _version;
@@ -1139,6 +1141,7 @@ internal sealed class VirtualizedTreePanel : CompositeView<VirtualizedTreePanel>
         Func<VisualElement> itemFactory,
         Action<VisualElement, TreeNode> itemBinder)
     {
+        float previousDesiredHeight = _visibleNodes.Count * Math.Max(1, _itemHeight);
         _visibleNodes = visibleNodes ?? Array.Empty<TreeNode>();
         _itemHeight = itemHeight;
         _itemFactory = itemFactory;
@@ -1146,7 +1149,12 @@ internal sealed class VirtualizedTreePanel : CompositeView<VirtualizedTreePanel>
         _version++;
         _firstMaterializedIndex = -1;
         _lastMaterializedIndex = -1;
-        MarkNeedsLayout();
+
+        float nextDesiredHeight = _visibleNodes.Count * Math.Max(1, _itemHeight);
+        if (previousDesiredHeight != nextDesiredHeight)
+            InvalidateMeasure();
+        else
+            InvalidateArrange();
     }
 
     protected override void Measure(float availableWidth, float availableHeight)
@@ -1180,12 +1188,13 @@ internal sealed class VirtualizedTreePanel : CompositeView<VirtualizedTreePanel>
             MaterializeRange(firstVisible, lastVisible);
         }
 
-        foreach (var pair in Children.Select((child, localIndex) => (child, localIndex)))
+        for (int localIndex = 0; localIndex < Children.Count; localIndex++)
         {
-            int itemIndex = _firstMaterializedIndex + pair.localIndex;
+            var child = Children[localIndex];
+            int itemIndex = _firstMaterializedIndex + localIndex;
             float itemY = y + itemIndex * itemExtent;
-            pair.child.MeasureUpdate(width, itemExtent);
-            pair.child.ArrangeUpdate(x, itemY, width, itemExtent);
+            child.MeasureUpdate(width, itemExtent);
+            child.ArrangeUpdate(x, itemY, width, itemExtent);
         }
     }
 
@@ -1195,36 +1204,59 @@ internal sealed class VirtualizedTreePanel : CompositeView<VirtualizedTreePanel>
 
     private void MaterializeRange(int firstIndex, int lastIndex)
     {
-        var requiredIndices = new HashSet<int>();
-        for (int index = firstIndex; index <= lastIndex; index++)
+        bool requiresRebind = _materializedVersion != _version;
+        bool rangeUnchanged = firstIndex == _firstMaterializedIndex && lastIndex == _lastMaterializedIndex;
+
+        if (!requiresRebind &&
+            !rangeUnchanged &&
+            _firstMaterializedIndex != -1 &&
+            TryUpdateRangeInPlace(firstIndex, lastIndex))
         {
-            requiredIndices.Add(index);
+            _firstMaterializedIndex = firstIndex;
+            _lastMaterializedIndex = lastIndex;
+            _materializedVersion = _version;
+            _ownerTreeView.ReplaceVisibleNodeViews(CaptureVisibleNodeViews(firstIndex));
+            return;
         }
 
-        var orderedChildren = new List<VisualElement>(requiredIndices.Count);
+        _orderedChildrenBuffer.Clear();
         var visibleViews = new Dictionary<TreeNode, TreeNodeView>();
 
         foreach (var active in _activeChildren.ToArray())
         {
-            if (requiredIndices.Contains(active.Key))
+            if (active.Key >= firstIndex && active.Key <= lastIndex)
                 continue;
 
             active.Value.Parent = null;
             _activeChildren.Remove(active.Key);
             _recycledChildren.Push(active.Value);
+            PerformanceTracker.RecordVirtualizedRecycled();
         }
 
         for (int index = firstIndex; index <= lastIndex; index++)
         {
             var node = _visibleNodes[index];
+            bool isNewChild = false;
+
             if (!_activeChildren.TryGetValue(index, out var child))
             {
-                child = _recycledChildren.Count > 0 ? _recycledChildren.Pop() : _itemFactory!();
+                bool reused = _recycledChildren.Count > 0;
+                child = reused ? _recycledChildren.Pop() : _itemFactory!();
                 _activeChildren[index] = child;
+                isNewChild = true;
+                if (reused)
+                    PerformanceTracker.RecordVirtualizedReused();
+                else
+                    PerformanceTracker.RecordVirtualizedCreated();
             }
 
-            _itemBinder!(child, node);
-            orderedChildren.Add(child);
+            if (isNewChild || requiresRebind)
+            {
+                _itemBinder!(child, node);
+                PerformanceTracker.RecordVirtualizedRebound();
+            }
+
+            _orderedChildrenBuffer.Add(child);
 
             if (child is TreeNodeView nodeView)
             {
@@ -1232,12 +1264,114 @@ internal sealed class VirtualizedTreePanel : CompositeView<VirtualizedTreePanel>
             }
         }
 
-        Children = orderedChildren;
+        if (!rangeUnchanged)
+            Children = [.. _orderedChildrenBuffer];
+
         _firstMaterializedIndex = firstIndex;
         _lastMaterializedIndex = lastIndex;
         _materializedVersion = _version;
 
         _ownerTreeView.ReplaceVisibleNodeViews(visibleViews);
+    }
+
+    private bool TryUpdateRangeInPlace(int firstIndex, int lastIndex)
+    {
+        if (Children.Count == 0)
+            return false;
+
+        int oldFirst = _firstMaterializedIndex;
+        int oldLast = _lastMaterializedIndex;
+        if (oldFirst == -1 || oldLast == -1)
+            return false;
+
+        int overlapFirst = Math.Max(firstIndex, oldFirst);
+        int overlapLast = Math.Min(lastIndex, oldLast);
+        if (overlapFirst > overlapLast)
+            return false;
+
+        bool structureChanged = false;
+
+        while (_firstMaterializedIndex < firstIndex && Children.Count > 0)
+        {
+            var removed = Children[0];
+            Children.RemoveAt(0);
+            removed.Parent = null;
+            _activeChildren.Remove(_firstMaterializedIndex);
+            _recycledChildren.Push(removed);
+            PerformanceTracker.RecordVirtualizedRecycled();
+            _firstMaterializedIndex++;
+            structureChanged = true;
+        }
+
+        while (_lastMaterializedIndex > lastIndex && Children.Count > 0)
+        {
+            var removed = Children[^1];
+            Children.RemoveAt(Children.Count - 1);
+            removed.Parent = null;
+            _activeChildren.Remove(_lastMaterializedIndex);
+            _recycledChildren.Push(removed);
+            PerformanceTracker.RecordVirtualizedRecycled();
+            _lastMaterializedIndex--;
+            structureChanged = true;
+        }
+
+        for (int index = oldFirst - 1; index >= firstIndex; index--)
+        {
+            bool reused = _recycledChildren.Count > 0;
+            var child = reused ? _recycledChildren.Pop() : _itemFactory!();
+            _activeChildren[index] = child;
+            if (child.Parent != this)
+                child.Parent = this;
+            _itemBinder!(child, _visibleNodes[index]);
+            if (reused)
+                PerformanceTracker.RecordVirtualizedReused();
+            else
+                PerformanceTracker.RecordVirtualizedCreated();
+            PerformanceTracker.RecordVirtualizedRebound();
+            Children.Insert(0, child);
+            structureChanged = true;
+        }
+
+        for (int index = oldLast + 1; index <= lastIndex; index++)
+        {
+            bool reused = _recycledChildren.Count > 0;
+            var child = reused ? _recycledChildren.Pop() : _itemFactory!();
+            _activeChildren[index] = child;
+            if (child.Parent != this)
+                child.Parent = this;
+            _itemBinder!(child, _visibleNodes[index]);
+            if (reused)
+                PerformanceTracker.RecordVirtualizedReused();
+            else
+                PerformanceTracker.RecordVirtualizedCreated();
+            PerformanceTracker.RecordVirtualizedRebound();
+            Children.Add(child);
+            structureChanged = true;
+        }
+
+        if (structureChanged)
+            RaiseTreeStructureChanged(this);
+
+        return true;
+    }
+
+    private Dictionary<TreeNode, TreeNodeView> CaptureVisibleNodeViews(int firstIndex)
+    {
+        var visibleViews = new Dictionary<TreeNode, TreeNodeView>(Children.Count);
+
+        for (int localIndex = 0; localIndex < Children.Count; localIndex++)
+        {
+            if (Children[localIndex] is not TreeNodeView nodeView)
+                continue;
+
+            int itemIndex = firstIndex + localIndex;
+            if ((uint)itemIndex >= (uint)_visibleNodes.Count)
+                continue;
+
+            visibleViews[_visibleNodes[itemIndex]] = nodeView;
+        }
+
+        return visibleViews;
     }
 
     private void ClearMaterializedChildren()

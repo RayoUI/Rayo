@@ -177,6 +177,7 @@ Platform-specific behavior is also represented in `PlatformOptions` and `Platfor
 For more detail, see:
 
 - [DIRTY_ATTRIBUTES.md](/C:/DEV/PROJECTS/RayoUI/Rayo/Help/DIRTY_ATTRIBUTES.md)
+- [AVALONIA_OPTIMIZATION_CHECKLIST.md](/C:/DEV/PROJECTS/RayoUI/Rayo/Help/AVALONIA_OPTIMIZATION_CHECKLIST.md)
 - [STYLE_ENGINE.md](/C:/DEV/PROJECTS/RayoUI/Rayo/Help/STYLE_ENGINE.md)
 - [FLUENT_EXTENSIONS.md](/C:/DEV/PROJECTS/RayoUI/Rayo/Help/FLUENT_EXTENSIONS.md)
 - [SIGNALS_GUIDE.md](/C:/DEV/PROJECTS/RayoUI/Rayo/Help/SIGNALS_GUIDE.md)

@@ -235,7 +235,7 @@ public class ScrollView : CompositeView<ScrollView>, IInputHandler, IScrollable,
         }
         else
         {
-            MarkNeedsLayout();
+            InvalidateArrange();
         }
     }
 
@@ -412,6 +412,24 @@ public class ScrollView : CompositeView<ScrollView>, IInputHandler, IScrollable,
         // =========================================================================
         DesiredWidth = scrollViewWidth;
         DesiredHeight = scrollViewHeight;
+    }
+
+    protected internal override bool AbsorbsDescendantMeasureChange()
+    {
+        if (base.AbsorbsDescendantMeasureChange())
+            return true;
+
+        return HasValidMeasure &&
+               !float.IsInfinity(LastMeasuredAvailableWidth) &&
+               !float.IsInfinity(LastMeasuredAvailableHeight);
+    }
+
+    protected internal override bool AbsorbsDescendantArrangeChange()
+    {
+        if (base.AbsorbsDescendantArrangeChange())
+            return true;
+
+        return HasValidArrange;
     }
 
     protected override void Arrange(float x, float y, float width, float height)

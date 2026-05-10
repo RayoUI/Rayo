@@ -112,7 +112,7 @@ public class Checkbox : Rayo.Core.View<Checkbox>,
             if (Math.Abs(field - value) > 0.01f)
             {
                 field = value;
-                MarkNeedsLayout();
+                InvalidateMeasure();
             }
         }
     } = 2f;
@@ -128,7 +128,7 @@ public class Checkbox : Rayo.Core.View<Checkbox>,
             if (Math.Abs(field - value) > 0.01f)
             {
                 field = value;
-                MarkNeedsLayout();
+                InvalidateMeasure();
             }
         }
     } = 14f;

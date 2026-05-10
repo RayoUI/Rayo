@@ -64,6 +64,13 @@ public class Label : Rayo.Core.View<Label>
     private IFont? _cachedBoldItalicFont;
     private IRenderer? _lastRenderer;
     private float _cachedFontSize;
+    private string? _measureCacheText;
+    private float _measureCacheFontSize;
+    private float _measureCacheLineHeight;
+    private Thickness _measureCachePadding;
+    private string[] _cachedMeasureLines = Array.Empty<string>();
+    private float _cachedIntrinsicTextWidth;
+    private float _cachedIntrinsicTextHeight;
 
     /// <summary>
     /// Font family name (alias registered in AssetManager).
@@ -190,39 +197,11 @@ public class Label : Rayo.Core.View<Label>
             return;
         }
 
-        // Split by newlines to support multiline text
-        var lines = Text.Split('\n');
-        var lineSpacing = FontSize * LineHeight;
-
-        // Find the longest line for width calculation
-        float maxLineWidth = 0;
-        foreach (var line in lines)
-        {
-            // Replace tabs with 4 spaces for width calculation
-            var processedLine = line.Replace("\t", "    ");
-            float lineWidth = EstimateLineWidth(processedLine);
-            if (lineWidth > maxLineWidth)
-                maxLineWidth = lineWidth;
-        }
-
-        float estimatedWidth = maxLineWidth + Padding.Horizontal;
-
-        // A single text line spans ascenders (≈75% of em) + descenders (≈25% of em).
-        // FontSize * 1.35 gives enough headroom for letters like p, q, g, y without
-        // relying on actual font metrics (which are not available at measure time).
-        float lineHeight = FontSize * 1.35f;
-        float textHeight = lines.Length switch
-        {
-            0 => 0,
-            1 => lineHeight,
-            _ => lineHeight + (lines.Length - 1) * lineSpacing
-        };
-
-        float estimatedHeight = textHeight + Padding.Vertical;
+        EnsureMeasureCache();
 
         // If user set explicit size, use it. Otherwise use estimated.
-        DesiredWidth = Width > 0 ? Width : estimatedWidth;
-        DesiredHeight = Height > 0 ? Height : estimatedHeight;
+        DesiredWidth = Width > 0 ? Width : _cachedIntrinsicTextWidth + Padding.Horizontal;
+        DesiredHeight = Height > 0 ? Height : _cachedIntrinsicTextHeight + Padding.Vertical;
     }
 
     protected override void Arrange(float x, float y, float width, float height)
@@ -269,8 +248,8 @@ public class Label : Rayo.Core.View<Label>
             // Resolve font variant: prefer registered variant, fall back to regular + simulation
             IFont? activeFont = ResolveFont(renderer, isBold, isItalic);
 
-            // Split text by newlines to support multiline
-            var lines = Text.Split('\n');
+            EnsureMeasureCache();
+            var lines = _cachedMeasureLines;
             var lineSpacing = FontSize * LineHeight;
 
             // Must match the lineHeight used in Measure() so vertical alignment is consistent.
@@ -466,6 +445,53 @@ public class Label : Rayo.Core.View<Label>
     private bool HasItalicFont(IRenderer renderer) =>
         !string.IsNullOrEmpty(FontFamily) &&
         AssetManager.Instance.GetFont($"{FontFamily}-Italic") != null;
+
+    private void EnsureMeasureCache()
+    {
+        if (_measureCacheText == Text &&
+            _measureCacheFontSize == FontSize &&
+            _measureCacheLineHeight == LineHeight &&
+            _measureCachePadding.Equals(Padding))
+        {
+            return;
+        }
+
+        _measureCacheText = Text;
+        _measureCacheFontSize = FontSize;
+        _measureCacheLineHeight = LineHeight;
+        _measureCachePadding = Padding;
+
+        if (string.IsNullOrEmpty(Text))
+        {
+            _cachedMeasureLines = Array.Empty<string>();
+            _cachedIntrinsicTextWidth = 0;
+            _cachedIntrinsicTextHeight = 0;
+            return;
+        }
+
+        _cachedMeasureLines = Text.Split('\n');
+        float maxLineWidth = 0;
+
+        foreach (var line in _cachedMeasureLines)
+        {
+            var processedLine = line.Replace("\t", "    ");
+            float lineWidth = EstimateLineWidth(processedLine);
+            if (lineWidth > maxLineWidth)
+                maxLineWidth = lineWidth;
+        }
+
+        float lineSpacing = FontSize * LineHeight;
+        float lineHeight = FontSize * 1.35f;
+        float textHeight = _cachedMeasureLines.Length switch
+        {
+            0 => 0,
+            1 => lineHeight,
+            _ => lineHeight + (_cachedMeasureLines.Length - 1) * lineSpacing
+        };
+
+        _cachedIntrinsicTextWidth = maxLineWidth;
+        _cachedIntrinsicTextHeight = textHeight;
+    }
 
     private IFont? TryLoadFont(IRenderer renderer, string name)
     {

@@ -3,6 +3,7 @@
 using Rayo.Core;
 using Rayo.Core.Input;
 using Rayo.Core.Interfaces;
+using Rayo.DevTools;
 using Rayo.Reactivity;
 using Rayo.Rendering;
 using Rayo.Rendering.Brushes;
@@ -334,7 +335,7 @@ public class ListView<T> : Rayo.Core.CompositeView<ListView<T>>, IInputHandler, 
             CreateListItem,
             BindListItem);
 
-        MarkNeedsLayout();
+        InvalidateMeasure();
     }
 
     private VisualElement CreateListItem()
@@ -436,6 +437,7 @@ internal sealed class VirtualizedListPanel<T> : CompositeView<VirtualizedListPan
     private Action<VisualElement, int>? _itemBinder;
     private readonly Dictionary<int, VisualElement> _activeChildren = new();
     private readonly Stack<VisualElement> _recycledChildren = new();
+    private readonly List<VisualElement> _orderedChildrenBuffer = new();
     private int _firstMaterializedIndex = -1;
     private int _lastMaterializedIndex = -1;
     private int _version;
@@ -456,6 +458,7 @@ internal sealed class VirtualizedListPanel<T> : CompositeView<VirtualizedListPan
         Func<VisualElement> itemFactory,
         Action<VisualElement, int> itemBinder)
     {
+        float previousContentHeight = GetTotalContentHeight();
         _items = items ?? Array.Empty<T>();
         _itemHeight = itemHeight;
         _itemSpacing = itemSpacing;
@@ -464,7 +467,12 @@ internal sealed class VirtualizedListPanel<T> : CompositeView<VirtualizedListPan
         _version++;
         _firstMaterializedIndex = -1;
         _lastMaterializedIndex = -1;
-        MarkNeedsLayout();
+
+        float nextContentHeight = GetTotalContentHeight();
+        if (previousContentHeight != nextContentHeight)
+            InvalidateMeasure();
+        else
+            InvalidateArrange();
     }
 
     protected override void Measure(float availableWidth, float availableHeight)
@@ -504,12 +512,13 @@ internal sealed class VirtualizedListPanel<T> : CompositeView<VirtualizedListPan
             MaterializeRange(firstVisible, lastVisible);
         }
 
-        foreach (var pair in Children.Select((child, localIndex) => (child, localIndex)))
+        for (int localIndex = 0; localIndex < Children.Count; localIndex++)
         {
-            int itemIndex = _firstMaterializedIndex + pair.localIndex;
+            var child = Children[localIndex];
+            int itemIndex = _firstMaterializedIndex + localIndex;
             float itemY = y + itemIndex * itemExtent;
             float childHeight = Math.Max(0, _itemHeight);
-            pair.child.ArrangeUpdate(x, itemY, width, childHeight);
+            child.ArrangeUpdate(x, itemY, width, childHeight);
         }
     }
 
@@ -519,40 +528,145 @@ internal sealed class VirtualizedListPanel<T> : CompositeView<VirtualizedListPan
 
     private void MaterializeRange(int firstIndex, int lastIndex)
     {
-        var requiredIndices = new HashSet<int>();
-        for (int index = firstIndex; index <= lastIndex; index++)
+        bool requiresRebind = _materializedVersion != _version;
+        bool rangeUnchanged = firstIndex == _firstMaterializedIndex && lastIndex == _lastMaterializedIndex;
+
+        if (!requiresRebind &&
+            !rangeUnchanged &&
+            _firstMaterializedIndex != -1 &&
+            TryUpdateRangeInPlace(firstIndex, lastIndex))
         {
-            requiredIndices.Add(index);
+            _firstMaterializedIndex = firstIndex;
+            _lastMaterializedIndex = lastIndex;
+            _materializedVersion = _version;
+            return;
         }
 
-        var orderedChildren = new List<VisualElement>(requiredIndices.Count);
+        _orderedChildrenBuffer.Clear();
 
         foreach (var active in _activeChildren.ToArray())
         {
-            if (requiredIndices.Contains(active.Key))
+            if (active.Key >= firstIndex && active.Key <= lastIndex)
                 continue;
 
             active.Value.Parent = null;
             _activeChildren.Remove(active.Key);
             _recycledChildren.Push(active.Value);
+            PerformanceTracker.RecordVirtualizedRecycled();
         }
 
         for (int index = firstIndex; index <= lastIndex; index++)
         {
+            bool isNewChild = false;
+
             if (!_activeChildren.TryGetValue(index, out var child))
             {
-                child = _recycledChildren.Count > 0 ? _recycledChildren.Pop() : _itemFactory!();
+                bool reused = _recycledChildren.Count > 0;
+                child = reused ? _recycledChildren.Pop() : _itemFactory!();
                 _activeChildren[index] = child;
+                isNewChild = true;
+                if (reused)
+                    PerformanceTracker.RecordVirtualizedReused();
+                else
+                    PerformanceTracker.RecordVirtualizedCreated();
             }
 
-            _itemBinder!(child, index);
-            orderedChildren.Add(child);
+            if (isNewChild || requiresRebind)
+            {
+                _itemBinder!(child, index);
+                PerformanceTracker.RecordVirtualizedRebound();
+            }
+
+            _orderedChildrenBuffer.Add(child);
         }
 
-        Children = orderedChildren;
+        if (!rangeUnchanged)
+            Children = [.. _orderedChildrenBuffer];
+
         _firstMaterializedIndex = firstIndex;
         _lastMaterializedIndex = lastIndex;
         _materializedVersion = _version;
+    }
+
+    private bool TryUpdateRangeInPlace(int firstIndex, int lastIndex)
+    {
+        if (Children.Count == 0)
+            return false;
+
+        int oldFirst = _firstMaterializedIndex;
+        int oldLast = _lastMaterializedIndex;
+        if (oldFirst == -1 || oldLast == -1)
+            return false;
+
+        int overlapFirst = Math.Max(firstIndex, oldFirst);
+        int overlapLast = Math.Min(lastIndex, oldLast);
+        if (overlapFirst > overlapLast)
+            return false;
+
+        bool structureChanged = false;
+
+        while (_firstMaterializedIndex < firstIndex && Children.Count > 0)
+        {
+            var removed = Children[0];
+            Children.RemoveAt(0);
+            removed.Parent = null;
+            _activeChildren.Remove(_firstMaterializedIndex);
+            _recycledChildren.Push(removed);
+            PerformanceTracker.RecordVirtualizedRecycled();
+            _firstMaterializedIndex++;
+            structureChanged = true;
+        }
+
+        while (_lastMaterializedIndex > lastIndex && Children.Count > 0)
+        {
+            var removed = Children[^1];
+            Children.RemoveAt(Children.Count - 1);
+            removed.Parent = null;
+            _activeChildren.Remove(_lastMaterializedIndex);
+            _recycledChildren.Push(removed);
+            PerformanceTracker.RecordVirtualizedRecycled();
+            _lastMaterializedIndex--;
+            structureChanged = true;
+        }
+
+        for (int index = oldFirst - 1; index >= firstIndex; index--)
+        {
+            bool reused = _recycledChildren.Count > 0;
+            var child = reused ? _recycledChildren.Pop() : _itemFactory!();
+            _activeChildren[index] = child;
+            if (child.Parent != this)
+                child.Parent = this;
+            _itemBinder!(child, index);
+            if (reused)
+                PerformanceTracker.RecordVirtualizedReused();
+            else
+                PerformanceTracker.RecordVirtualizedCreated();
+            PerformanceTracker.RecordVirtualizedRebound();
+            Children.Insert(0, child);
+            structureChanged = true;
+        }
+
+        for (int index = oldLast + 1; index <= lastIndex; index++)
+        {
+            bool reused = _recycledChildren.Count > 0;
+            var child = reused ? _recycledChildren.Pop() : _itemFactory!();
+            _activeChildren[index] = child;
+            if (child.Parent != this)
+                child.Parent = this;
+            _itemBinder!(child, index);
+            if (reused)
+                PerformanceTracker.RecordVirtualizedReused();
+            else
+                PerformanceTracker.RecordVirtualizedCreated();
+            PerformanceTracker.RecordVirtualizedRebound();
+            Children.Add(child);
+            structureChanged = true;
+        }
+
+        if (structureChanged)
+            RaiseTreeStructureChanged(this);
+
+        return true;
     }
 
     private void ClearMaterializedChildren()

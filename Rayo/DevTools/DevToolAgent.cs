@@ -579,9 +579,9 @@ public class DevToolAgent : IDisposable
             }
 
             // Force layout and render update after property change
-            element.MarkNeedsLayout();
+            element.InvalidateMeasure();
             element.MarkNeedsPaint();
-            _uiTree.MarkNeedsLayout();
+            _uiTree.MarkNeedsMeasure();
             _uiTree.MarkNeedsRender();
 
             return new ResultResponse
@@ -929,8 +929,21 @@ public class DevToolAgent : IDisposable
                 Fps     = f.FpsSnapshot,
                 FrameMs = f.FrameTimeMs,
                 MeasMs  = f.MeasureTimeMs,
+                MeasSkip = f.ElementsMeasureSkipped,
+                MeasCacheHit = f.MeasureCacheHits,
+                MeasCacheMiss = f.MeasureCacheMisses,
+                MeasCacheRate = f.MeasureCacheHitRate,
+                ArrMs   = f.ArrangeTimeMs,
+                ArrSkip = f.ElementsArrangeSkipped,
                 RendMs  = f.RenderTimeMs,
                 EvtMs   = f.EventTimeMs,
+                Roots   = f.RelayoutRoots,
+                VCreate = f.VirtualizedCreated,
+                VReuse  = f.VirtualizedReused,
+                VRebind = f.VirtualizedRebound,
+                VRecycle = f.VirtualizedRecycled,
+                MDirty  = f.MeasureDirtyCount,
+                ADirty  = f.ArrangeDirtyCount,
                 LDirty  = f.LayoutDirtyCount,
                 PDirty  = f.PaintDirtyCount,
                 Elems   = f.ElementsRendered,
@@ -946,6 +959,7 @@ public class DevToolAgent : IDisposable
                 ElementId   = e.ElementId,
                 Classes     = e.Classes,
                 IsLayout    = e.IsLayout,
+                Phase       = e.Phase,
                 Timestamp   = e.Timestamp,
             });
         }
@@ -959,6 +973,19 @@ public class DevToolAgent : IDisposable
             EventTimeMs   = latest.EventTimeMs,
             ElemRendered  = latest.ElementsRendered,
             ElemMeasured  = latest.ElementsMeasured,
+            ElemMeasureSkipped = latest.ElementsMeasureSkipped,
+            MeasureCacheHits = latest.MeasureCacheHits,
+            MeasureCacheMisses = latest.MeasureCacheMisses,
+            MeasureCacheHitRate = latest.MeasureCacheHitRate,
+            ElemArranged  = latest.ElementsArranged,
+            ElemArrangeSkipped = latest.ElementsArrangeSkipped,
+            RelayoutRoots = latest.RelayoutRoots,
+            VirtCreated   = latest.VirtualizedCreated,
+            VirtReused    = latest.VirtualizedReused,
+            VirtRebound   = latest.VirtualizedRebound,
+            VirtRecycled  = latest.VirtualizedRecycled,
+            MeasureDirty  = latest.MeasureDirtyCount,
+            ArrangeDirty  = latest.ArrangeDirtyCount,
             LayoutDirty   = latest.LayoutDirtyCount,
             PaintDirty    = latest.PaintDirtyCount,
             Frames        = frames,

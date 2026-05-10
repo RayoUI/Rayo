@@ -95,7 +95,7 @@ public abstract class UserControl : ContentView<UserControl>, IUIBuilder, IReact
         ClearContent();
         _isBuilt = false;
         _componentStyles = null;
-        MarkNeedsLayout();
+        InvalidateMeasure();
     }
 
     private void EnsureBuilt()

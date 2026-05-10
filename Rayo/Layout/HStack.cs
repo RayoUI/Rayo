@@ -77,10 +77,6 @@ public class HStack : Layout<HStack>
 
     protected override void Measure(float availableWidth, float availableHeight)
     {
-        // CRITICAL: Save explicit size flags before modifying Width/Height
-        bool hadExplicitWidth = HasExplicitWidth;
-        bool hadExplicitHeight = HasExplicitHeight;
-
         float totalWidth = Padding.Horizontal;
         float maxHeight = Padding.Vertical;
 
@@ -191,13 +187,6 @@ public class HStack : Layout<HStack>
             }
         }
 
-        // CRITICAL: Set both Width/Height AND DesiredWidth/DesiredHeight
-        // This matches Frame behavior and ensures proper rendering when used as root element
-        // IMPORTANT: Restore explicit size flags to preserve layout behavior
-        Width = measuredWidth;
-        Height = measuredHeight;
-        HasExplicitWidth = hadExplicitWidth;
-        HasExplicitHeight = hadExplicitHeight;
         DesiredWidth = measuredWidth;
         DesiredHeight = measuredHeight;
     }

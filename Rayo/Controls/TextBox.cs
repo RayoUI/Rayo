@@ -263,6 +263,19 @@ public abstract class TextBox<T> : Rayo.Core.View<T>, IInputHandler, IFocusable,
     private bool _multilineLinesDirty = true;
     private string _lastMultilineText = string.Empty;
     private bool _lastMultilinePasswordMode;
+    private float _multilineContentWidth;
+    private readonly float[] _emptyPrefixWidths = new float[] { 0 };
+    private float[] _singleLinePrefixWidths = new float[] { 0 };
+    private float _singleLineWidth;
+    private string _lastSingleLineText = string.Empty;
+    private bool _lastSingleLinePasswordMode;
+    private float _lastSingleLineFontSize = -1;
+    private IRenderer? _lastSingleLineRenderer;
+    private readonly Dictionary<string, float> _measureWidthCache = new(StringComparer.Ordinal);
+    private IRenderer? _measureWidthCacheRenderer;
+    private float _measureWidthCacheFontSize = -1;
+    private bool _measureWidthCachePasswordMode;
+    private const int MeasureWidthCacheLimit = 256;
 
     // =========================================================================
     // EVENTS
@@ -300,6 +313,8 @@ public abstract class TextBox<T> : Rayo.Core.View<T>, IInputHandler, IFocusable,
     {
         _multilineLinesDirty = true;
         _lastMultilineText = string.Empty;
+        _multilineContentWidth = 0;
+        _lastSingleLineText = string.Empty;
     }
 
     private void EnsureMultilineCache()
@@ -312,6 +327,7 @@ public abstract class TextBox<T> : Rayo.Core.View<T>, IInputHandler, IFocusable,
         }
 
         _multilineLines.Clear();
+        _multilineContentWidth = 0;
 
         var text = Text;
         int lineStart = 0;
@@ -338,19 +354,91 @@ public abstract class TextBox<T> : Rayo.Core.View<T>, IInputHandler, IFocusable,
                 displayLine = text.Substring(lineStart, lineLength).Replace("\t", "    ");
             }
 
-            _multilineLines.Add(new TextLineInfo(lineStart, lineLength, displayLine, lineIndex));
+            float[] prefixWidths = BuildPrefixWidths(text, lineStart, lineLength, IsPassword);
+            float lineWidth = prefixWidths[lineLength];
+            if (lineWidth > _multilineContentWidth)
+            {
+                _multilineContentWidth = lineWidth;
+            }
+
+            _multilineLines.Add(new TextLineInfo(lineStart, lineLength, displayLine, lineIndex, prefixWidths, lineWidth));
             lineStart = i + 1;
             lineIndex++;
         }
 
         if (_multilineLines.Count == 0)
         {
-            _multilineLines.Add(new TextLineInfo(0, 0, string.Empty, 0));
+            _multilineLines.Add(new TextLineInfo(0, 0, string.Empty, 0, _emptyPrefixWidths, 0));
         }
 
         _multilineLinesDirty = false;
         _lastMultilineText = text;
         _lastMultilinePasswordMode = IsPassword;
+    }
+
+    private void EnsureSingleLinePrefixCache()
+    {
+        if (ReferenceEquals(_lastSingleLineText, Text) &&
+            _lastSingleLinePasswordMode == IsPassword &&
+            Math.Abs(_lastSingleLineFontSize - FontSize) < 0.01f &&
+            ReferenceEquals(_lastSingleLineRenderer, _cachedRenderer))
+        {
+            return;
+        }
+
+        _singleLinePrefixWidths = BuildPrefixWidths(Text, 0, Text.Length, IsPassword);
+        _singleLineWidth = _singleLinePrefixWidths[Text.Length];
+        _lastSingleLineText = Text;
+        _lastSingleLinePasswordMode = IsPassword;
+        _lastSingleLineFontSize = FontSize;
+        _lastSingleLineRenderer = _cachedRenderer;
+    }
+
+    private float[] BuildPrefixWidths(string sourceText, int start, int length, bool passwordMode)
+    {
+        float[] prefixWidths = new float[length + 1];
+
+        for (int i = 1; i <= length; i++)
+        {
+            string prefixText = passwordMode
+                ? new string('*', i)
+                : sourceText.Substring(start, i).Replace("\t", "    ");
+            prefixWidths[i] = MeasureTextWidth(prefixText);
+        }
+
+        return prefixWidths;
+    }
+
+    private static float GetPrefixWidth(in TextLineInfo lineInfo, int charOffset)
+    {
+        if (charOffset <= 0)
+        {
+            return 0;
+        }
+
+        if (charOffset >= lineInfo.PrefixWidths.Length)
+        {
+            return lineInfo.Width;
+        }
+
+        return lineInfo.PrefixWidths[charOffset];
+    }
+
+    private float GetSingleLinePrefixWidth(int charOffset)
+    {
+        EnsureSingleLinePrefixCache();
+
+        if (charOffset <= 0)
+        {
+            return 0;
+        }
+
+        if (charOffset >= _singleLinePrefixWidths.Length)
+        {
+            return _singleLineWidth;
+        }
+
+        return _singleLinePrefixWidths[charOffset];
     }
 
     private TextLineInfo GetLineInfoForCursorPosition(int cursorPosition)
@@ -366,6 +454,26 @@ public abstract class TextBox<T> : Rayo.Core.View<T>, IInputHandler, IFocusable,
         }
 
         return _multilineLines[_multilineLines.Count - 1];
+    }
+
+    protected float GetMultilineContentWidth()
+    {
+        EnsureMultilineCache();
+        return _multilineContentWidth;
+    }
+
+    protected float GetCursorOffsetWithinLine(int cursorPosition)
+    {
+        int safeCursorPos = Math.Clamp(cursorPosition, 0, Text.Length);
+
+        if (IsMultiline)
+        {
+            var lineInfo = GetLineInfoForCursorPosition(safeCursorPos);
+            int cursorIndexInLine = Math.Clamp(safeCursorPos - lineInfo.Start, 0, lineInfo.Length);
+            return GetPrefixWidth(lineInfo, cursorIndexInLine);
+        }
+
+        return GetSingleLinePrefixWidth(safeCursorPos);
     }
 
     /// <summary>
@@ -1090,23 +1198,12 @@ public abstract class TextBox<T> : Rayo.Core.View<T>, IInputHandler, IFocusable,
 
                         // Measure text before selection start in this line
                         int selectionStartOffset = selStartInLine - lineStart;
-                        int selectionLength = selEndInLine - selStartInLine;
-                        string textBeforeSelInLine = selectionStartOffset > 0
-                            ? lineInfo.DisplayText.Substring(0, Math.Min(selectionStartOffset, lineInfo.DisplayText.Length))
-                            : string.Empty;
-                        var sizeBeforeSel = renderer.MeasureText(textBeforeSelInLine, FontSize);
+                        int selectionEndOffset = selEndInLine - lineStart;
+                        float selStartX = GetPrefixWidth(lineInfo, selectionStartOffset);
+                        float selWidth = GetPrefixWidth(lineInfo, selectionEndOffset) - selStartX;
 
-                        // Measure selected text in this line
-                        string selectedTextInLine = selectionLength > 0 && selectionStartOffset < lineInfo.DisplayText.Length
-                            ? lineInfo.DisplayText.Substring(
-                                Math.Min(selectionStartOffset, lineInfo.DisplayText.Length),
-                                Math.Min(selectionLength, lineInfo.DisplayText.Length - Math.Min(selectionStartOffset, lineInfo.DisplayText.Length)))
-                            : string.Empty;
-                        var selSize = renderer.MeasureText(selectedTextInLine, FontSize);
-
-                        float selX = contentX + sizeBeforeSel.X - _scrollOffsetX;
+                        float selX = contentX + selStartX - _scrollOffsetX;
                         float selY = contentY + (lineIdx * lineHeight) - _scrollOffsetY;
-                        float selWidth = selSize.X;
                         float selHeight = lineHeight;
 
                         // Draw selection rectangle for this line
@@ -1116,24 +1213,10 @@ public abstract class TextBox<T> : Rayo.Core.View<T>, IInputHandler, IFocusable,
                 else
                 {
                     // Single-line selection rendering (original logic)
-                    string textBeforeSelection = Text.Substring(0, selStart);
-                    if (IsPassword && !string.IsNullOrEmpty(Text))
-                    {
-                        textBeforeSelection = new string('*', selStart);
-                    }
-
-                    string selectedText = Text.Substring(selStart, selEnd - selStart);
-                    if (IsPassword && !string.IsNullOrEmpty(Text))
-                    {
-                        selectedText = new string('*', selEnd - selStart);
-                    }
-
-                    var sizeBeforeSelection = renderer.MeasureText(textBeforeSelection, FontSize);
-                    var selectionSize = renderer.MeasureText(selectedText, FontSize);
-
-                    float selectionX = contentX + sizeBeforeSelection.X - _scrollOffsetX;
+                    float selectionStartX = GetSingleLinePrefixWidth(selStart);
+                    float selectionWidth = GetSingleLinePrefixWidth(selEnd) - selectionStartX;
+                    float selectionX = contentX + selectionStartX - _scrollOffsetX;
                     float selectionY = contentY;
-                    float selectionWidth = selectionSize.X;
                     float selectionHeight = contentHeight;
 
                     renderer.DrawRect(selectionX, selectionY, selectionWidth, selectionHeight, SelectionBackground);
@@ -1141,8 +1224,13 @@ public abstract class TextBox<T> : Rayo.Core.View<T>, IInputHandler, IFocusable,
             }
 
             // Texto o placeholder
-            string displayText = string.IsNullOrEmpty(Text) ? Placeholder : Text;
-            Brush textColor = string.IsNullOrEmpty(Text) ? PlaceholderColor : TextColor;
+            bool showPlaceholder = string.IsNullOrEmpty(Text);
+            string displayText = showPlaceholder
+                ? Placeholder
+                : IsPassword
+                    ? new string('*', Text.Length)
+                    : Text;
+            Brush textColor = showPlaceholder ? PlaceholderColor : TextColor;
 
             if (!string.IsNullOrEmpty(displayText))
             {
@@ -1188,35 +1276,20 @@ public abstract class TextBox<T> : Rayo.Core.View<T>, IInputHandler, IFocusable,
             if (IsFocused && IsCursorVisible())
             {
                 // Calcular posición del cursor
-                string textBeforeCursor = Text.Substring(0, _cursorPosition);
-
                 float cursorX, cursorY, cursorHeight;
 
                 if (IsMultiline)
                 {
                     var currentLine = GetLineInfoForCursorPosition(_cursorPosition);
                     int lineIndex = currentLine.LineIndex;
-                    int cursorIndexInLine = Math.Clamp(_cursorPosition - currentLine.Start, 0, currentLine.DisplayText.Length);
-                    string currentLineText = cursorIndexInLine > 0
-                        ? currentLine.DisplayText.Substring(0, cursorIndexInLine)
-                        : string.Empty;
                     float lineHeight = FontSize * 1.2f;
-                    var textSize = renderer.MeasureText(currentLineText, FontSize);
-
-                    cursorX = contentX + textSize.X - _scrollOffsetX;
+                    cursorX = contentX + GetCursorOffsetWithinLine(_cursorPosition) - _scrollOffsetX;
                     cursorY = contentY + (lineIndex * lineHeight) - _scrollOffsetY;
                     cursorHeight = lineHeight;
                 }
                 else
                 {
-                    // Single line cursor calculation (existing logic)
-                    if (IsPassword && !string.IsNullOrEmpty(Text))
-                    {
-                        textBeforeCursor = new string('*', _cursorPosition);
-                    }
-
-                    var textSize = renderer.MeasureText(textBeforeCursor, FontSize);
-                    cursorX = contentX + textSize.X - _scrollOffsetX;
+                    cursorX = contentX + GetCursorOffsetWithinLine(_cursorPosition) - _scrollOffsetX;
                     cursorY = contentY;
                     cursorHeight = contentHeight;
                 }
@@ -1588,8 +1661,6 @@ public abstract class TextBox<T> : Rayo.Core.View<T>, IInputHandler, IFocusable,
             clickedLine = Math.Min(clickedLine, _multilineLines.Count - 1);
             var lineInfo = _multilineLines[clickedLine];
             int lineStartPos = lineInfo.Start;
-            string lineText = lineInfo.DisplayText;
-
             // Calcular posición X local dentro de la línea
             float localX = mouseX - contentX + _scrollOffsetX;
 
@@ -1600,23 +1671,22 @@ public abstract class TextBox<T> : Rayo.Core.View<T>, IInputHandler, IFocusable,
             }
 
             // Si está después del texto de la línea, cursor al final de la línea
-            float lineWidth = MeasureTextWidth(lineText);
-            if (localX >= lineWidth)
+            if (localX >= lineInfo.Width)
             {
                 return lineStartPos + lineInfo.Length;
             }
 
             // Buscar posición dentro de la línea
-            for (int i = 0; i <= lineText.Length; i++)
+            for (int i = 0; i <= lineInfo.Length; i++)
             {
-                float widthUpTo = MeasureTextWidth(lineText.Substring(0, i));
+                float widthUpTo = GetPrefixWidth(lineInfo, i);
 
-                if (i == lineText.Length)
+                if (i == lineInfo.Length)
                 {
                     return lineStartPos + i;
                 }
 
-                float widthUpToNext = MeasureTextWidth(lineText.Substring(0, i + 1));
+                float widthUpToNext = GetPrefixWidth(lineInfo, i + 1);
 
                 if (localX >= widthUpTo && localX < widthUpToNext)
                 {
@@ -1637,8 +1707,8 @@ public abstract class TextBox<T> : Rayo.Core.View<T>, IInputHandler, IFocusable,
                 return 0;
             }
 
-            float totalWidth = MeasureTextWidth(Text);
-            if (localX >= totalWidth)
+            EnsureSingleLinePrefixCache();
+            if (localX >= _singleLineWidth)
             {
                 return Text.Length;
             }
@@ -1649,14 +1719,14 @@ public abstract class TextBox<T> : Rayo.Core.View<T>, IInputHandler, IFocusable,
                 if (i < 0 || i > textLength)
                     continue;
 
-                float widthUpTo = MeasureTextWidth(Text.Substring(0, i));
+                float widthUpTo = GetSingleLinePrefixWidth(i);
 
                 if (i == textLength)
                 {
                     return i;
                 }
 
-                float widthUpToNext = MeasureTextWidth(Text.Substring(0, i + 1));
+                float widthUpToNext = GetSingleLinePrefixWidth(i + 1);
 
                 if (localX >= widthUpTo && localX < widthUpToNext)
                 {
@@ -1679,7 +1749,21 @@ public abstract class TextBox<T> : Rayo.Core.View<T>, IInputHandler, IFocusable,
             return 0;
         }
 
+        if (_measureWidthCacheRenderer != _cachedRenderer ||
+            Math.Abs(_measureWidthCacheFontSize - FontSize) >= 0.01f ||
+            _measureWidthCachePasswordMode != IsPassword)
+        {
+            _measureWidthCache.Clear();
+            _measureWidthCacheRenderer = _cachedRenderer;
+            _measureWidthCacheFontSize = FontSize;
+            _measureWidthCachePasswordMode = IsPassword;
+        }
+
+        if (_measureWidthCache.TryGetValue(text, out float cachedWidth))
+            return cachedWidth;
+
         // Si tenemos renderer cacheado, usar medición precisa
+        float measuredWidth;
         if (_cachedRenderer != null)
         {
             string displayText = text;
@@ -1689,12 +1773,20 @@ public abstract class TextBox<T> : Rayo.Core.View<T>, IInputHandler, IFocusable,
             }
 
             var size = _cachedRenderer.MeasureText(displayText, FontSize);
-            return size.X;
+            measuredWidth = size.X;
+        }
+        else
+        {
+            // Fallback: aproximación con ancho promedio de carácter
+            // Usar 8 pixels por carácter como estimación
+            measuredWidth = text.Length * (FontSize * 0.6f);
         }
 
-        // Fallback: aproximación con ancho promedio de carácter
-        // Usar 8 pixels por carácter como estimación
-        return text.Length * (FontSize * 0.6f);
+        if (_measureWidthCache.Count >= MeasureWidthCacheLimit)
+            _measureWidthCache.Clear();
+
+        _measureWidthCache[text] = measuredWidth;
+        return measuredWidth;
     }
 
     /// <summary>
@@ -1704,34 +1796,20 @@ public abstract class TextBox<T> : Rayo.Core.View<T>, IInputHandler, IFocusable,
     {
         int safeCursorPos = Math.Clamp(_cursorPosition, 0, Text.Length);
 
-        string textBeforeCursor;
-        if (IsMultiline)
-        {
-            var lineInfo = GetLineInfoForCursorPosition(safeCursorPos);
-            int cursorIndexInLine = Math.Clamp(safeCursorPos - lineInfo.Start, 0, lineInfo.DisplayText.Length);
-            textBeforeCursor = lineInfo.DisplayText.Substring(0, cursorIndexInLine);
-        }
-        else
-        {
-            textBeforeCursor = Text.Substring(0, safeCursorPos);
-            if (IsPassword && !string.IsNullOrEmpty(Text))
-                textBeforeCursor = new string('*', safeCursorPos);
-        }
-
-        var textSize = renderer.MeasureText(textBeforeCursor, FontSize);
-        float cursorLocalX = textSize.X - _scrollOffsetX;
+        float cursorX = GetCursorOffsetWithinLine(safeCursorPos);
+        float cursorLocalX = cursorX - _scrollOffsetX;
 
         // Cursor is right of the visible area — scroll right
         if (cursorLocalX > visibleWidth - 10)
         {
-            _scrollOffsetX = textSize.X - visibleWidth + 10;
+            _scrollOffsetX = cursorX - visibleWidth + 10;
         }
         // Cursor is left of the visible area — scroll left
         else if (cursorLocalX < 10)
         {
-            _scrollOffsetX = Math.Max(0, textSize.X - 10);
+            _scrollOffsetX = Math.Max(0, cursorX - 10);
         }
     }
 
-    private readonly record struct TextLineInfo(int Start, int Length, string DisplayText, int LineIndex);
+    private readonly record struct TextLineInfo(int Start, int Length, string DisplayText, int LineIndex, float[] PrefixWidths, float Width);
 }

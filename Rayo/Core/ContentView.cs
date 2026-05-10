@@ -35,7 +35,7 @@ public abstract class ContentView<T> : VisualElement<T> where T : ContentView<T>
                     _content.Parent = this;
                 }
 
-                MarkNeedsLayout();
+                InvalidateMeasure();
                 RaiseTreeStructureChanged(this);
             }
         }

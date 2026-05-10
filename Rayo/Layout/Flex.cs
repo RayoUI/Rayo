@@ -124,7 +124,7 @@ public class Flex : Layout<Flex>
     public Flex Order(VisualElement child, int order)
     {
         GetItemProperties(child).Order = order;
-        MarkNeedsLayout();
+        InvalidateMeasure();
         return this;
     }
 
@@ -134,7 +134,7 @@ public class Flex : Layout<Flex>
     public Flex Grow(VisualElement child, float grow)
     {
         GetItemProperties(child).Grow = Math.Max(0, grow);
-        MarkNeedsLayout();
+        InvalidateMeasure();
         return this;
     }
 
@@ -144,7 +144,7 @@ public class Flex : Layout<Flex>
     public Flex Shrink(VisualElement child, float shrink)
     {
         GetItemProperties(child).Shrink = Math.Max(0, shrink);
-        MarkNeedsLayout();
+        InvalidateMeasure();
         return this;
     }
 
@@ -154,7 +154,7 @@ public class Flex : Layout<Flex>
     public Flex Basis(VisualElement child, float basis)
     {
         GetItemProperties(child).Basis = basis;
-        MarkNeedsLayout();
+        InvalidateMeasure();
         return this;
     }
 
@@ -164,7 +164,7 @@ public class Flex : Layout<Flex>
     public Flex AlignSelf(VisualElement child, Alignment alignSelf)
     {
         GetItemProperties(child).AlignSelf = alignSelf;
-        MarkNeedsLayout();
+        InvalidateMeasure();
         return this;
     }
 

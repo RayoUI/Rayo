@@ -2,6 +2,7 @@
 
 using Rayo;
 using Rayo.Core;
+using Rayo.DevTools;
 using Rayo.Layout;
 using Rayo.Reactivity;
 using Rayo.Rendering;
@@ -274,7 +275,7 @@ public class DataGrid : CompositeView<DataGrid>
             _scrollView.VerticalScrollOffset = savedScrollOffset;
         }
 
-        MarkNeedsLayout();
+        InvalidateMeasure();
     }
 
     private void BuildHeaderRow()
@@ -536,6 +537,7 @@ internal sealed class VirtualizedDataGridRowsPanel : CompositeView<VirtualizedDa
     private Action<VisualElement, int>? _rowBinder;
     private readonly Dictionary<int, VisualElement> _activeRows = new();
     private readonly Stack<VisualElement> _recycledRows = new();
+    private readonly List<VisualElement> _orderedRowsBuffer = new();
     private int _firstMaterializedRow = -1;
     private int _lastMaterializedRow = -1;
     private int _version;
@@ -559,6 +561,7 @@ internal sealed class VirtualizedDataGridRowsPanel : CompositeView<VirtualizedDa
         Func<VisualElement> rowFactory,
         Action<VisualElement, int> rowBinder)
     {
+        float previousDesiredHeight = _items.Count * Math.Max(1, _rowHeight);
         _items = items ?? Array.Empty<object>();
         _columns = columns ?? Array.Empty<DataGridColumn>();
         _columnWeights = columnWeights ?? Array.Empty<float>();
@@ -570,7 +573,12 @@ internal sealed class VirtualizedDataGridRowsPanel : CompositeView<VirtualizedDa
         _version++;
         _firstMaterializedRow = -1;
         _lastMaterializedRow = -1;
-        MarkNeedsLayout();
+
+        float nextDesiredHeight = _items.Count * Math.Max(1, _rowHeight);
+        if (previousDesiredHeight != nextDesiredHeight)
+            InvalidateMeasure();
+        else
+            InvalidateArrange();
     }
 
     protected override void Measure(float availableWidth, float availableHeight)
@@ -604,11 +612,12 @@ internal sealed class VirtualizedDataGridRowsPanel : CompositeView<VirtualizedDa
             MaterializeRange(firstVisible, lastVisible);
         }
 
-        foreach (var pair in Children.Select((child, localIndex) => (child, localIndex)))
+        for (int localIndex = 0; localIndex < Children.Count; localIndex++)
         {
-            int rowIndex = _firstMaterializedRow + pair.localIndex;
+            var child = Children[localIndex];
+            int rowIndex = _firstMaterializedRow + localIndex;
             float rowY = y + rowIndex * rowExtent;
-            pair.child.ArrangeUpdate(x, rowY, width, rowExtent);
+            child.ArrangeUpdate(x, rowY, width, rowExtent);
         }
     }
 
@@ -618,40 +627,145 @@ internal sealed class VirtualizedDataGridRowsPanel : CompositeView<VirtualizedDa
 
     private void MaterializeRange(int firstRow, int lastRow)
     {
-        var requiredRows = new HashSet<int>();
-        for (int row = firstRow; row <= lastRow; row++)
+        bool requiresRebind = _materializedVersion != _version;
+        bool rangeUnchanged = firstRow == _firstMaterializedRow && lastRow == _lastMaterializedRow;
+
+        if (!requiresRebind &&
+            !rangeUnchanged &&
+            _firstMaterializedRow != -1 &&
+            TryUpdateRangeInPlace(firstRow, lastRow))
         {
-            requiredRows.Add(row);
+            _firstMaterializedRow = firstRow;
+            _lastMaterializedRow = lastRow;
+            _materializedVersion = _version;
+            return;
         }
 
-        var orderedRows = new List<VisualElement>(requiredRows.Count);
+        _orderedRowsBuffer.Clear();
 
         foreach (var active in _activeRows.ToArray())
         {
-            if (requiredRows.Contains(active.Key))
+            if (active.Key >= firstRow && active.Key <= lastRow)
                 continue;
 
             active.Value.Parent = null;
             _activeRows.Remove(active.Key);
             _recycledRows.Push(active.Value);
+            PerformanceTracker.RecordVirtualizedRecycled();
         }
 
         for (int row = firstRow; row <= lastRow; row++)
         {
+            bool isNewRow = false;
+
             if (!_activeRows.TryGetValue(row, out var rowElement))
             {
-                rowElement = _recycledRows.Count > 0 ? _recycledRows.Pop() : _rowFactory!();
+                bool reused = _recycledRows.Count > 0;
+                rowElement = reused ? _recycledRows.Pop() : _rowFactory!();
                 _activeRows[row] = rowElement;
+                isNewRow = true;
+                if (reused)
+                    PerformanceTracker.RecordVirtualizedReused();
+                else
+                    PerformanceTracker.RecordVirtualizedCreated();
             }
 
-            _rowBinder!(rowElement, row);
-            orderedRows.Add(rowElement);
+            if (isNewRow || requiresRebind)
+            {
+                _rowBinder!(rowElement, row);
+                PerformanceTracker.RecordVirtualizedRebound();
+            }
+
+            _orderedRowsBuffer.Add(rowElement);
         }
 
-        Children = orderedRows;
+        if (!rangeUnchanged)
+            Children = [.. _orderedRowsBuffer];
+
         _firstMaterializedRow = firstRow;
         _lastMaterializedRow = lastRow;
         _materializedVersion = _version;
+    }
+
+    private bool TryUpdateRangeInPlace(int firstRow, int lastRow)
+    {
+        if (Children.Count == 0)
+            return false;
+
+        int oldFirst = _firstMaterializedRow;
+        int oldLast = _lastMaterializedRow;
+        if (oldFirst == -1 || oldLast == -1)
+            return false;
+
+        int overlapFirst = Math.Max(firstRow, oldFirst);
+        int overlapLast = Math.Min(lastRow, oldLast);
+        if (overlapFirst > overlapLast)
+            return false;
+
+        bool structureChanged = false;
+
+        while (_firstMaterializedRow < firstRow && Children.Count > 0)
+        {
+            var removed = Children[0];
+            Children.RemoveAt(0);
+            removed.Parent = null;
+            _activeRows.Remove(_firstMaterializedRow);
+            _recycledRows.Push(removed);
+            PerformanceTracker.RecordVirtualizedRecycled();
+            _firstMaterializedRow++;
+            structureChanged = true;
+        }
+
+        while (_lastMaterializedRow > lastRow && Children.Count > 0)
+        {
+            var removed = Children[^1];
+            Children.RemoveAt(Children.Count - 1);
+            removed.Parent = null;
+            _activeRows.Remove(_lastMaterializedRow);
+            _recycledRows.Push(removed);
+            PerformanceTracker.RecordVirtualizedRecycled();
+            _lastMaterializedRow--;
+            structureChanged = true;
+        }
+
+        for (int row = oldFirst - 1; row >= firstRow; row--)
+        {
+            bool reused = _recycledRows.Count > 0;
+            var rowElement = reused ? _recycledRows.Pop() : _rowFactory!();
+            _activeRows[row] = rowElement;
+            if (rowElement.Parent != this)
+                rowElement.Parent = this;
+            _rowBinder!(rowElement, row);
+            if (reused)
+                PerformanceTracker.RecordVirtualizedReused();
+            else
+                PerformanceTracker.RecordVirtualizedCreated();
+            PerformanceTracker.RecordVirtualizedRebound();
+            Children.Insert(0, rowElement);
+            structureChanged = true;
+        }
+
+        for (int row = oldLast + 1; row <= lastRow; row++)
+        {
+            bool reused = _recycledRows.Count > 0;
+            var rowElement = reused ? _recycledRows.Pop() : _rowFactory!();
+            _activeRows[row] = rowElement;
+            if (rowElement.Parent != this)
+                rowElement.Parent = this;
+            _rowBinder!(rowElement, row);
+            if (reused)
+                PerformanceTracker.RecordVirtualizedReused();
+            else
+                PerformanceTracker.RecordVirtualizedCreated();
+            PerformanceTracker.RecordVirtualizedRebound();
+            Children.Add(rowElement);
+            structureChanged = true;
+        }
+
+        if (structureChanged)
+            RaiseTreeStructureChanged(this);
+
+        return true;
     }
 
     private void ClearMaterializedRows()

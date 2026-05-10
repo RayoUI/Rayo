@@ -69,7 +69,7 @@ public abstract class CompositeView<T> : VisualElement<T> where T : CompositeVie
         if (child == null) return;
         child.Parent = this;
         Children.Add(child);
-        MarkNeedsLayout();
+        InvalidateMeasure();
         RaiseTreeStructureChanged(this);
     }
 
@@ -82,7 +82,7 @@ public abstract class CompositeView<T> : VisualElement<T> where T : CompositeVie
         if (child == null) return;
         child.Parent = null;
         Children.Remove(child);
-        MarkNeedsLayout();
+        InvalidateMeasure();
         RaiseTreeStructureChanged(this);
     }
 
@@ -97,7 +97,7 @@ public abstract class CompositeView<T> : VisualElement<T> where T : CompositeVie
             child.Parent = null;
         }
         Children.Clear();
-        MarkNeedsLayout();
+        InvalidateMeasure();
         RaiseTreeStructureChanged(this);
     }
 

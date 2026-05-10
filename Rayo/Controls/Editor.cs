@@ -92,11 +92,14 @@ public class Editor : TextBox<Editor>, IScrollable
     private bool _wrappedLinesDirty = true;
     private string _lastWrappedText = string.Empty;
     private float _lastWrappedWidth = -1;
+    private float _lastWrappedFontSize = -1;
+    private bool _lastWrappedPasswordMode;
+    private IRenderer? _lastWrappedRenderer;
 
     private void InvalidateWrappedLines()
     {
         _wrappedLinesDirty = true;
-        MarkNeedsLayout();
+        InvalidateMeasure();
     }
 
     private void EnsureWrappedLines()
@@ -106,7 +109,10 @@ public class Editor : TextBox<Editor>, IScrollable
         // Check if cache is still valid
         if (!_wrappedLinesDirty &&
             ReferenceEquals(_lastWrappedText, Text) &&
-            Math.Abs(_lastWrappedWidth - availableWidth) < 0.5f)
+            Math.Abs(_lastWrappedWidth - availableWidth) < 0.5f &&
+            Math.Abs(_lastWrappedFontSize - FontSize) < 0.01f &&
+            _lastWrappedPasswordMode == IsPassword &&
+            ReferenceEquals(_lastWrappedRenderer, _cachedRenderer))
         {
             return;
         }
@@ -115,6 +121,9 @@ public class Editor : TextBox<Editor>, IScrollable
         _wrappedLinesDirty = false;
         _lastWrappedText = Text;
         _lastWrappedWidth = availableWidth;
+        _lastWrappedFontSize = FontSize;
+        _lastWrappedPasswordMode = IsPassword;
+        _lastWrappedRenderer = _cachedRenderer;
     }
 
     private float GetTextAreaWidth()
@@ -133,7 +142,7 @@ public class Editor : TextBox<Editor>, IScrollable
 
         if (string.IsNullOrEmpty(Text))
         {
-            _wrappedLines.Add(new WrappedLineInfo(0, 0, string.Empty));
+            _wrappedLines.Add(new WrappedLineInfo(0, 0, string.Empty, new float[] { 0 }, 0));
             return;
         }
 
@@ -153,7 +162,7 @@ public class Editor : TextBox<Editor>, IScrollable
     {
         if (length == 0)
         {
-            _wrappedLines.Add(new WrappedLineInfo(start, 0, string.Empty));
+            _wrappedLines.Add(new WrappedLineInfo(start, 0, string.Empty, new float[] { 0 }, 0));
             return;
         }
 
@@ -205,7 +214,8 @@ public class Editor : TextBox<Editor>, IScrollable
         string displayText = length > 0
             ? Text.Substring(start, length).Replace("\t", "    ")
             : string.Empty;
-        _wrappedLines.Add(new WrappedLineInfo(start, length, displayText));
+        float[] prefixWidths = BuildPrefixWidths(start, length);
+        _wrappedLines.Add(new WrappedLineInfo(start, length, displayText, prefixWidths, prefixWidths[length]));
     }
 
     private int FindFitCount(int start, int length, float availableWidth)
@@ -231,7 +241,35 @@ public class Editor : TextBox<Editor>, IScrollable
         return lo;
     }
 
-    private readonly record struct WrappedLineInfo(int Start, int Length, string DisplayText);
+    private float[] BuildPrefixWidths(int start, int length)
+    {
+        float[] prefixWidths = new float[length + 1];
+
+        for (int i = 1; i <= length; i++)
+        {
+            string prefixText = Text.Substring(start, i).Replace("\t", "    ");
+            prefixWidths[i] = MeasureTextWidth(prefixText);
+        }
+
+        return prefixWidths;
+    }
+
+    private static float GetPrefixWidth(in WrappedLineInfo lineInfo, int charOffset)
+    {
+        if (charOffset <= 0)
+        {
+            return 0;
+        }
+
+        if (charOffset >= lineInfo.PrefixWidths.Length)
+        {
+            return lineInfo.Width;
+        }
+
+        return lineInfo.PrefixWidths[charOffset];
+    }
+
+    private readonly record struct WrappedLineInfo(int Start, int Length, string DisplayText, float[] PrefixWidths, float Width);
 
     // =========================================================================
     // SCROLLBAR PROPERTIES
@@ -302,6 +340,9 @@ public class Editor : TextBox<Editor>, IScrollable
     // Cache for the maximum line width (avoids re-measuring every frame)
     private float _cachedMaxLineWidth = -1;
     private string _lastMaxLineText = string.Empty;
+    private float _lastMaxLineFontSize = -1;
+    private bool _lastMaxLinePasswordMode;
+    private IRenderer? _lastMaxLineRenderer;
 
     /// <summary>
     /// Gets the total width of the content (longest line, measured in pixels).
@@ -314,38 +355,24 @@ public class Editor : TextBox<Editor>, IScrollable
             if (WordWrap)
                 return ComputedWidth - Padding.Horizontal - BorderWidth * 2;
 
-            // Re-measure when text changes
-            if (!ReferenceEquals(Text, _lastMaxLineText))
+            // Re-measure when text shaping inputs change.
+            if (!ReferenceEquals(Text, _lastMaxLineText) ||
+                Math.Abs(_lastMaxLineFontSize - FontSize) >= 0.01f ||
+                _lastMaxLinePasswordMode != IsPassword ||
+                !ReferenceEquals(_lastMaxLineRenderer, _cachedRenderer))
             {
                 _cachedMaxLineWidth = -1;
                 _lastMaxLineText = Text;
+                _lastMaxLineFontSize = FontSize;
+                _lastMaxLinePasswordMode = IsPassword;
+                _lastMaxLineRenderer = _cachedRenderer;
             }
 
-            if (_cachedMaxLineWidth >= 0)
-                return _cachedMaxLineWidth;
-
-            if (_cachedRenderer == null || string.IsNullOrEmpty(Text))
+            if (_cachedMaxLineWidth < 0)
             {
-                _cachedMaxLineWidth = 0;
-                return _cachedMaxLineWidth;
+                _cachedMaxLineWidth = GetMultilineContentWidth() + 20; // right padding so cursor isn't clipped at end
             }
 
-            float max = 0;
-            int lineStart = 0;
-            for (int i = 0; i <= Text.Length; i++)
-            {
-                if (i == Text.Length || Text[i] == '\n')
-                {
-                    if (i > lineStart)
-                    {
-                        float w = _cachedRenderer.MeasureText(Text.Substring(lineStart, i - lineStart), FontSize).X;
-                        if (w > max) max = w;
-                    }
-                    lineStart = i + 1;
-                }
-            }
-
-            _cachedMaxLineWidth = max + 20; // 20px right padding so cursor isn't clipped at end
             return _cachedMaxLineWidth;
         }
     }
@@ -474,13 +501,7 @@ public class Editor : TextBox<Editor>, IScrollable
         if (!WordWrap && _cachedRenderer != null)
         {
             int safeCursorPos = Math.Clamp(_cursorPosition, 0, Text.Length);
-            int lineStart = 0;
-            for (int i = 0; i < safeCursorPos; i++)
-            {
-                if (Text[i] == '\n') lineStart = i + 1;
-            }
-            string textBeforeCursorInLine = Text.Substring(lineStart, safeCursorPos - lineStart);
-            float cursorX = _cachedRenderer.MeasureText(textBeforeCursorInLine, FontSize).X;
+            float cursorX = GetCursorOffsetWithinLine(safeCursorPos);
 
             const float margin = 10;
             if (cursorX - _scrollOffsetX > viewportWidth - margin)
@@ -672,24 +693,14 @@ public class Editor : TextBox<Editor>, IScrollable
 
                     // Measure text before selection in this line
                     int selectionStartOffset = lineSelStart - start;
-                    int selectionLength = lineSelEnd - lineSelStart;
-                    string textBefore = selectionStartOffset > 0
-                        ? lineInfo.DisplayText.Substring(0, Math.Min(selectionStartOffset, lineInfo.DisplayText.Length))
-                        : string.Empty;
-                    var sizeBefore = renderer.MeasureText(textBefore, FontSize);
-
-                    // Measure selected text in this line
-                    string selectedText = selectionLength > 0 && selectionStartOffset < lineInfo.DisplayText.Length
-                        ? lineInfo.DisplayText.Substring(
-                            Math.Min(selectionStartOffset, lineInfo.DisplayText.Length),
-                            Math.Min(selectionLength, lineInfo.DisplayText.Length - Math.Min(selectionStartOffset, lineInfo.DisplayText.Length)))
-                        : string.Empty;
-                    var selSize = renderer.MeasureText(selectedText, FontSize);
+                    int selectionEndOffset = lineSelEnd - start;
+                    float selectionX = GetPrefixWidth(lineInfo, selectionStartOffset);
+                    float selectionWidth = GetPrefixWidth(lineInfo, selectionEndOffset) - selectionX;
 
                     renderer.DrawRect(
-                        contentX + sizeBefore.X,
+                        contentX + selectionX,
                         lineY,
-                        selSize.X,
+                        selectionWidth,
                         lineHeight,
                         SelectionBackground
                     );
@@ -739,12 +750,7 @@ public class Editor : TextBox<Editor>, IScrollable
                 int cStart = cursorLineInfo.Start;
                 int cursorOffsetInLine = _cursorPosition - cStart;
 
-                string textBeforeCursor = cursorOffsetInLine > 0
-                    ? cursorLineInfo.DisplayText.Substring(0, Math.Min(cursorOffsetInLine, cursorLineInfo.DisplayText.Length))
-                    : string.Empty;
-                var cursorSize = renderer.MeasureText(textBeforeCursor, FontSize);
-
-                float cursorX = contentX + cursorSize.X;
+                float cursorX = contentX + GetPrefixWidth(cursorLineInfo, cursorOffsetInLine);
                 float cursorY = contentY + (cursorLine * lineHeight) - _scrollOffsetY;
 
                 renderer.DrawRect(cursorX, cursorY, 2, lineHeight, TextColor);
@@ -919,26 +925,23 @@ public class Editor : TextBox<Editor>, IScrollable
         var lineInfo = _wrappedLines[clickedLine];
         int start = lineInfo.Start;
         int length = lineInfo.Length;
-        string lineText = lineInfo.DisplayText;
-
         float localX = mouseX - contentX;
 
         if (localX <= 0)
             return start;
 
-        float lineWidth = MeasureTextWidth(lineText);
-        if (localX >= lineWidth)
+        if (localX >= lineInfo.Width)
             return start + length;
 
-        // Binary search for character position
+        // Walk cached source-character prefix widths instead of remeasuring substrings.
         for (int i = 0; i <= length; i++)
         {
-            float widthUpTo = MeasureTextWidth(lineText.Substring(0, i));
+            float widthUpTo = GetPrefixWidth(lineInfo, i);
 
             if (i == length)
                 return start + i;
 
-            float widthUpToNext = MeasureTextWidth(lineText.Substring(0, i + 1));
+            float widthUpToNext = GetPrefixWidth(lineInfo, i + 1);
 
             if (localX >= widthUpTo && localX < widthUpToNext)
             {

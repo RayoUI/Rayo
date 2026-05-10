@@ -102,7 +102,7 @@ public class Grid : Layout<Grid>
     {
         RowDefinitions.Clear();
         RowDefinitions.AddRange(rows);
-        MarkNeedsLayout();
+        InvalidateMeasure();
         return this;
     }
 
@@ -113,7 +113,7 @@ public class Grid : Layout<Grid>
     {
         ColumnDefinitions.Clear();
         ColumnDefinitions.AddRange(columns);
-        MarkNeedsLayout();
+        InvalidateMeasure();
         return this;
     }
 

@@ -226,6 +226,7 @@ public class UITree
         if (fullRootMeasure)
         {
             _dirtyRegions.MarkFullScreenDirty();
+            Rayo.DevTools.PerformanceTracker.RecordRelayoutRoot();
             Rayo.DevTools.PerformanceTracker.RecordMeasured();
             Root.MeasureUpdate(width, height);
             Rayo.DevTools.PerformanceTracker.RecordArranged();
@@ -280,15 +281,20 @@ public class UITree
         }
     }
 
-    private void LayoutOverlay(VisualElement overlay, float width, float height)
+    private void LayoutOverlay(VisualElement overlay, float width, float height, bool includeMeasure = true)
     {
-        overlay.MeasureUpdate(width, height);
+        if (includeMeasure)
+        {
+            Rayo.DevTools.PerformanceTracker.RecordMeasured();
+            overlay.MeasureUpdate(width, height);
+        }
 
         float x = overlay.X;
         float y = overlay.Y;
         float w = overlay.HorizontalAlignment == HorizontalAlignment.Stretch ? width : overlay.DesiredWidth;
         float h = overlay.VerticalAlignment == VerticalAlignment.Stretch ? height : overlay.DesiredHeight;
 
+        Rayo.DevTools.PerformanceTracker.RecordArranged();
         overlay.ArrangeUpdate(x, y, w, h);
         ClearDirtyFlags(overlay);
     }
@@ -305,21 +311,26 @@ public class UITree
         if (roots.Count == 0)
             return false;
 
-        foreach (var root in roots)
+        foreach (var batch in GroupMeasureRootsByArrangeHost(roots))
         {
-            if (FindOwningOverlay(root) != null)
-                continue;
+            Rayo.DevTools.PerformanceTracker.RecordRelayoutRoot();
 
-            if (!root.HasValidMeasure)
+            foreach (var root in batch.Roots)
             {
-                _needsMeasure = true;
-                return ProcessIncrementalMeasureRootsFallback(width, height);
+                if (FindOwningOverlay(root) != null)
+                    continue;
+
+                if (!root.HasValidMeasure)
+                {
+                    _needsMeasure = true;
+                    return ProcessIncrementalMeasureRootsFallback(width, height);
+                }
+
+                Rayo.DevTools.PerformanceTracker.RecordMeasured();
+                root.ForceMeasure(root.LastMeasuredAvailableWidth, root.LastMeasuredAvailableHeight);
             }
 
-            Rayo.DevTools.PerformanceTracker.RecordMeasured();
-            root.ForceMeasure(root.LastMeasuredAvailableWidth, root.LastMeasuredAvailableHeight);
-
-            var arrangeHost = root.Parent ?? root;
+            var arrangeHost = batch.ArrangeHost;
             Rayo.DevTools.PerformanceTracker.RecordArranged();
             arrangeHost.ForceArrange(arrangeHost.ComputedX, arrangeHost.ComputedY, arrangeHost.ComputedWidth, arrangeHost.ComputedHeight);
             ClearDirtyFlags(arrangeHost);
@@ -334,6 +345,7 @@ public class UITree
         if (Root == null)
             return false;
 
+        Rayo.DevTools.PerformanceTracker.RecordRelayoutRoot();
         Rayo.DevTools.PerformanceTracker.RecordMeasured();
         Root.MeasureUpdate(width, height);
         Rayo.DevTools.PerformanceTracker.RecordArranged();
@@ -347,21 +359,21 @@ public class UITree
 
     private bool ProcessIncrementalArrangeRoots(float width, float height)
     {
-        var roots = CollectArrangeRoots();
-        if (roots.Count == 0)
+        var arrangeHosts = CollectArrangeHosts();
+        if (arrangeHosts.Count == 0)
             return false;
 
-        foreach (var root in roots)
+        foreach (var arrangeHost in arrangeHosts)
         {
-            if (FindOwningOverlay(root) != null)
+            if (FindOwningOverlay(arrangeHost) != null)
                 continue;
 
-            var arrangeHost = root.Parent ?? root;
             float arrangeWidth = ReferenceEquals(arrangeHost, Root) ? width : arrangeHost.ComputedWidth;
             float arrangeHeight = ReferenceEquals(arrangeHost, Root) ? height : arrangeHost.ComputedHeight;
             float arrangeX = ReferenceEquals(arrangeHost, Root) ? 0 : arrangeHost.ComputedX;
             float arrangeY = ReferenceEquals(arrangeHost, Root) ? 0 : arrangeHost.ComputedY;
 
+            Rayo.DevTools.PerformanceTracker.RecordRelayoutRoot();
             Rayo.DevTools.PerformanceTracker.RecordArranged();
             arrangeHost.ForceArrange(arrangeX, arrangeY, arrangeWidth, arrangeHeight);
             ClearDirtyFlags(arrangeHost);
@@ -373,11 +385,24 @@ public class UITree
 
     private bool ProcessIncrementalOverlayLayout(float width, float height)
     {
-        var overlays = CaptureOverlaysNeedingLayout();
-        if (overlays.Count == 0)
+        var workItems = CaptureOverlayLayoutWorkItems();
+        if (workItems.Count == 0)
             return false;
 
-        LayoutOverlays(overlays, width, height);
+        for (int i = 0; i < workItems.Count; i++)
+            Rayo.DevTools.PerformanceTracker.RecordRelayoutRoot();
+
+        foreach (var item in workItems)
+        {
+            if (!item.RequiresMeasure && !item.Overlay.HasValidMeasure)
+            {
+                LayoutOverlay(item.Overlay, width, height, includeMeasure: true);
+                continue;
+            }
+
+            LayoutOverlay(item.Overlay, width, height, includeMeasure: item.RequiresMeasure);
+        }
+
         return true;
     }
 
@@ -462,34 +487,48 @@ public class UITree
         return _overlays.Any(static overlay => overlay.NeedsPaint);
     }
 
-    private IReadOnlyList<VisualElement> CaptureOverlaysNeedingLayout()
+    private IReadOnlyList<OverlayLayoutWorkItem> CaptureOverlayLayoutWorkItems()
     {
         if (_overlays.Count == 0)
-            return Array.Empty<VisualElement>();
+            return Array.Empty<OverlayLayoutWorkItem>();
 
-        var overlays = new HashSet<VisualElement>();
+        var overlays = new Dictionary<VisualElement, bool>();
 
         foreach (var element in _scheduler.DirtyMeasureElements)
         {
             var owningOverlay = FindOwningOverlay(element);
             if (owningOverlay != null)
-                overlays.Add(owningOverlay);
+                overlays[owningOverlay] = true;
         }
 
         foreach (var element in _scheduler.DirtyArrangeElements)
         {
             var owningOverlay = FindOwningOverlay(element);
-            if (owningOverlay != null)
-                overlays.Add(owningOverlay);
+            if (owningOverlay == null)
+                continue;
+
+            if (!overlays.ContainsKey(owningOverlay))
+                overlays[owningOverlay] = false;
         }
 
         foreach (var overlay in _overlays)
         {
-            if (overlay.NeedsMeasure || overlay.NeedsArrange)
-                overlays.Add(overlay);
+            if (overlay.NeedsMeasure)
+            {
+                overlays[overlay] = true;
+            }
+            else if (overlay.NeedsArrange && !overlays.ContainsKey(overlay))
+            {
+                overlays[overlay] = false;
+            }
         }
 
-        return overlays.Count == 0 ? Array.Empty<VisualElement>() : overlays.ToList();
+        if (overlays.Count == 0)
+            return Array.Empty<OverlayLayoutWorkItem>();
+
+        return overlays
+            .Select(static pair => new OverlayLayoutWorkItem(pair.Key, pair.Value))
+            .ToList();
     }
 
     private List<VisualElement> CollectMeasureRoots()
@@ -508,9 +547,30 @@ public class UITree
         return DeduplicateRoots(roots);
     }
 
-    private List<VisualElement> CollectArrangeRoots()
+    private List<MeasureArrangeBatch> GroupMeasureRootsByArrangeHost(IEnumerable<VisualElement> roots)
     {
-        var roots = new HashSet<VisualElement>();
+        var batches = new Dictionary<VisualElement, List<VisualElement>>();
+
+        foreach (var root in roots)
+        {
+            var arrangeHost = root.Parent ?? root;
+            if (!batches.TryGetValue(arrangeHost, out var batchRoots))
+            {
+                batchRoots = new List<VisualElement>();
+                batches[arrangeHost] = batchRoots;
+            }
+
+            batchRoots.Add(root);
+        }
+
+        return batches
+            .Select(static pair => new MeasureArrangeBatch(pair.Key, pair.Value))
+            .ToList();
+    }
+
+    private List<VisualElement> CollectArrangeHosts()
+    {
+        var hosts = new HashSet<VisualElement>();
 
         foreach (var element in _scheduler.DirtyArrangeElements)
         {
@@ -518,10 +578,11 @@ public class UITree
                 continue;
 
             var root = FindArrangeRelayoutRoot(element);
-            roots.Add(root);
+            var host = root.Parent ?? root;
+            hosts.Add(host);
         }
 
-        return DeduplicateRoots(roots);
+        return DeduplicateRoots(hosts);
     }
 
     private static List<VisualElement> DeduplicateRoots(IEnumerable<VisualElement> candidates)
@@ -547,7 +608,8 @@ public class UITree
 
         while (current.Parent != null &&
                current.Parent.NeedsMeasure &&
-               !current.CreatesMeasureBoundaryForParent())
+               !current.CreatesMeasureBoundaryForParent() &&
+               !current.Parent.AbsorbsDescendantMeasureChange())
         {
             current = current.Parent;
         }
@@ -555,9 +617,19 @@ public class UITree
         return current;
     }
 
-    private static VisualElement FindArrangeRelayoutRoot(VisualElement element)
+    private VisualElement FindArrangeRelayoutRoot(VisualElement element)
     {
-        return element.Parent ?? element;
+        var current = element;
+
+        while (current.Parent != null &&
+               _scheduler.DirtyArrangeElements.Contains(current.Parent) &&
+               !current.CreatesMeasureBoundaryForParent() &&
+               !current.Parent.AbsorbsDescendantArrangeChange())
+        {
+            current = current.Parent;
+        }
+
+        return current;
     }
 
     private static bool IsAncestorOrSelf(VisualElement ancestor, VisualElement element)
@@ -573,6 +645,9 @@ public class UITree
 
         return false;
     }
+
+    private sealed record MeasureArrangeBatch(VisualElement ArrangeHost, IReadOnlyList<VisualElement> Roots);
+    private sealed record OverlayLayoutWorkItem(VisualElement Overlay, bool RequiresMeasure);
 
     public void Render(IRenderer renderer, bool fullSurfaceCleared = true)
     {

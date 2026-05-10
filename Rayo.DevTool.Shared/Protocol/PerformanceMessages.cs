@@ -51,6 +51,19 @@ public class PerformanceStatsResponse : DevToolMessage
     [JsonPropertyName("eventTimeMs")]    public float EventTimeMs    { get; set; }
     [JsonPropertyName("elemRendered")]   public int   ElemRendered   { get; set; }
     [JsonPropertyName("elemMeasured")]   public int   ElemMeasured   { get; set; }
+    [JsonPropertyName("elemMeasureSkipped")] public int ElemMeasureSkipped { get; set; }
+    [JsonPropertyName("measureCacheHits")] public int MeasureCacheHits { get; set; }
+    [JsonPropertyName("measureCacheMisses")] public int MeasureCacheMisses { get; set; }
+    [JsonPropertyName("measureCacheHitRate")] public float MeasureCacheHitRate { get; set; }
+    [JsonPropertyName("elemArranged")]   public int   ElemArranged   { get; set; }
+    [JsonPropertyName("elemArrangeSkipped")] public int ElemArrangeSkipped { get; set; }
+    [JsonPropertyName("relayoutRoots")]  public int   RelayoutRoots  { get; set; }
+    [JsonPropertyName("virtCreated")]    public int   VirtCreated    { get; set; }
+    [JsonPropertyName("virtReused")]     public int   VirtReused     { get; set; }
+    [JsonPropertyName("virtRebound")]    public int   VirtRebound    { get; set; }
+    [JsonPropertyName("virtRecycled")]   public int   VirtRecycled   { get; set; }
+    [JsonPropertyName("measureDirty")]   public int   MeasureDirty   { get; set; }
+    [JsonPropertyName("arrangeDirty")]   public int   ArrangeDirty   { get; set; }
     [JsonPropertyName("layoutDirty")]    public int   LayoutDirty    { get; set; }
     [JsonPropertyName("paintDirty")]     public int   PaintDirty     { get; set; }
 
@@ -73,8 +86,21 @@ public class FrameStatsDto
     [JsonPropertyName("fps")]      public float Fps      { get; set; }
     [JsonPropertyName("frameMs")] public float FrameMs  { get; set; }
     [JsonPropertyName("measMs")]  public float MeasMs   { get; set; }
+    [JsonPropertyName("measSkip")] public int MeasSkip  { get; set; }
+    [JsonPropertyName("measCacheHit")] public int MeasCacheHit { get; set; }
+    [JsonPropertyName("measCacheMiss")] public int MeasCacheMiss { get; set; }
+    [JsonPropertyName("measCacheRate")] public float MeasCacheRate { get; set; }
+    [JsonPropertyName("arrMs")]   public float ArrMs    { get; set; }
+    [JsonPropertyName("arrSkip")] public int ArrSkip    { get; set; }
     [JsonPropertyName("rendMs")]  public float RendMs   { get; set; }
     [JsonPropertyName("evtMs")]   public float EvtMs    { get; set; }
+    [JsonPropertyName("roots")]   public int   Roots    { get; set; }
+    [JsonPropertyName("vCreate")] public int   VCreate  { get; set; }
+    [JsonPropertyName("vReuse")]  public int   VReuse   { get; set; }
+    [JsonPropertyName("vRebind")] public int   VRebind  { get; set; }
+    [JsonPropertyName("vRecycle")] public int  VRecycle { get; set; }
+    [JsonPropertyName("mDirty")]  public int   MDirty   { get; set; }
+    [JsonPropertyName("aDirty")]  public int   ADirty   { get; set; }
     [JsonPropertyName("lDirty")]  public int   LDirty   { get; set; }
     [JsonPropertyName("pDirty")]  public int   PDirty   { get; set; }
     [JsonPropertyName("elems")]   public int   Elems    { get; set; }
@@ -86,5 +112,6 @@ public class DirtyEntryDto
     [JsonPropertyName("id")]        public string? ElementId  { get; set; }
     [JsonPropertyName("classes")]   public string Classes     { get; set; } = "";
     [JsonPropertyName("isLayout")]  public bool   IsLayout    { get; set; }
+    [JsonPropertyName("phase")]     public string Phase       { get; set; } = "";
     [JsonPropertyName("ts")]        public string Timestamp   { get; set; } = "";
 }

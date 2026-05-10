@@ -32,7 +32,7 @@ public abstract class Layout<T> : CompositeView<T> where T : Layout<T>
 
         child.Parent = this;
         base.Children.Add(child);
-        MarkNeedsLayout();
+        InvalidateMeasure();
         RaiseTreeStructureChanged(this);
     }
 
@@ -49,7 +49,7 @@ public abstract class Layout<T> : CompositeView<T> where T : Layout<T>
 
         child.Parent = this;
         base.Children.Insert(index, child);
-        MarkNeedsLayout();
+        InvalidateMeasure();
         RaiseTreeStructureChanged(this);
     }
 
@@ -62,7 +62,7 @@ public abstract class Layout<T> : CompositeView<T> where T : Layout<T>
         if (removed && child.Parent == this)
         {
             child.Parent = null;
-            MarkNeedsLayout();
+            InvalidateMeasure();
             RaiseTreeStructureChanged(this);
         }
 
@@ -77,7 +77,7 @@ public abstract class Layout<T> : CompositeView<T> where T : Layout<T>
         var child = base.Children[index];
         base.Children.RemoveAt(index);
         child.Parent = null;
-        MarkNeedsLayout();
+        InvalidateMeasure();
         RaiseTreeStructureChanged(this);
     }
 
@@ -98,7 +98,7 @@ public abstract class Layout<T> : CompositeView<T> where T : Layout<T>
             child.Parent = null;
         }
         base.Children.Clear();
-        MarkNeedsLayout();
+        InvalidateMeasure();
         RaiseTreeStructureChanged(this);
     }
 

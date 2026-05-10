@@ -80,7 +80,7 @@ public class Splitter : Rayo.Core.Layout<Splitter>, IPointerHandler, IInputHandl
             if (_orientation != value)
             {
                 _orientation = value;
-                MarkNeedsLayout();
+                InvalidateMeasure();
             }
         }
     }
@@ -93,7 +93,7 @@ public class Splitter : Rayo.Core.Layout<Splitter>, IPointerHandler, IInputHandl
             if (_splitterSize != value)
             {
                 _splitterSize = value;
-                MarkNeedsLayout();
+                InvalidateMeasure();
             }
         }
     }
@@ -566,7 +566,5 @@ public class Splitter : Rayo.Core.Layout<Splitter>, IPointerHandler, IInputHandl
             else
                 visibleChildren[i].Height = size;
         }
-        
-        MarkNeedsLayout();
     }
 }

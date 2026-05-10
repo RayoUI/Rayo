@@ -304,7 +304,7 @@ public class Drawer : Rayo.Core.CompositeView<Drawer>, IFrameAnimation
         }
 
         var tree = _currentUITree ?? FindUITree();
-        tree?.MarkNeedsLayout();
+        tree?.MarkNeedsMeasure();
     }
 
     /// <summary>
@@ -382,7 +382,7 @@ public class Drawer : Rayo.Core.CompositeView<Drawer>, IFrameAnimation
             }
         }
 
-        _overlay?.MarkNeedsLayout();
+        _overlay?.InvalidateArrange();
 
         if (UIApplication.Current == null)
         {
@@ -430,8 +430,8 @@ public class Drawer : Rayo.Core.CompositeView<Drawer>, IFrameAnimation
 
     private void OnLayoutAffectingPropertyChanged()
     {
-        MarkNeedsLayout();
-        _overlay?.MarkNeedsLayout();
+        InvalidateMeasure();
+        _overlay?.InvalidateMeasure();
     }
 
     private void MarkOverlayNeedsPaint()

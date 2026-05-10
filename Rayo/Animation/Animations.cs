@@ -100,7 +100,6 @@ public class MoveAnimation : AnimationBase
 
         Target.X = FromX + (ToX - FromX) * progress;
         Target.Y = FromY + (ToY - FromY) * progress;
-        Target.MarkNeedsLayout();
     }
 }
 
@@ -128,7 +127,6 @@ public class ScaleAnimation : AnimationBase
 
         Target.Width = FromWidth + (ToWidth - FromWidth) * progress;
         Target.Height = FromHeight + (ToHeight - FromHeight) * progress;
-        Target.MarkNeedsLayout();
     }
 }
 

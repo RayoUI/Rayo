@@ -26,10 +26,26 @@ public static class PerformanceTracker
         public float RenderTimeMs;
         public float EventTimeMs;
         public int ElementsMeasured;
+        public int ElementsMeasureSkipped;
+        public int MeasureCacheHits;
+        public int MeasureCacheMisses;
         public int ElementsArranged;
+        public int ElementsArrangeSkipped;
         public int ElementsRendered;
+        public int RelayoutRoots;
+        public int VirtualizedCreated;
+        public int VirtualizedReused;
+        public int VirtualizedRebound;
+        public int VirtualizedRecycled;
+        public int MeasureDirtyCount;
+        public int ArrangeDirtyCount;
         public int LayoutDirtyCount;
         public int PaintDirtyCount;
+
+        public readonly float MeasureCacheHitRate =>
+            (MeasureCacheHits + MeasureCacheMisses) > 0
+                ? (float)MeasureCacheHits / (MeasureCacheHits + MeasureCacheMisses)
+                : 0;
     }
 
     // -----------------------------------------------------------------------
@@ -47,8 +63,20 @@ public static class PerformanceTracker
         float AvgRenderTimeMs,
         float AvgEventTimeMs,
         float AvgElementsMeasured,
+        float AvgElementsMeasureSkipped,
+        float AvgMeasureCacheHits,
+        float AvgMeasureCacheMisses,
+        float AvgMeasureCacheHitRate,
         float AvgElementsArranged,
+        float AvgElementsArrangeSkipped,
         float AvgElementsRendered,
+        float AvgRelayoutRoots,
+        float AvgVirtualizedCreated,
+        float AvgVirtualizedReused,
+        float AvgVirtualizedRebound,
+        float AvgVirtualizedRecycled,
+        float AvgMeasureDirty,
+        float AvgArrangeDirty,
         float AvgLayoutDirty,
         float AvgPaintDirty);
 
@@ -62,6 +90,7 @@ public static class PerformanceTracker
         public string? ElementId;
         public string Classes;
         public bool IsLayout;
+        public string Phase;
         public string Timestamp;
     }
 
@@ -77,8 +106,19 @@ public static class PerformanceTracker
 
     // Per-frame accumulators — reset by CommitFrame
     private static int _curMeasured;
+    private static int _curMeasureSkipped;
+    private static int _curMeasureCacheHits;
+    private static int _curMeasureCacheMisses;
     private static int _curArranged;
+    private static int _curArrangeSkipped;
     private static int _curRendered;
+    private static int _curRelayoutRoots;
+    private static int _curVirtualizedCreated;
+    private static int _curVirtualizedReused;
+    private static int _curVirtualizedRebound;
+    private static int _curVirtualizedRecycled;
+    private static int _curMeasureDirty;
+    private static int _curArrangeDirty;
     private static int _curLayoutDirty;
     private static int _curPaintDirty;
 
@@ -91,11 +131,22 @@ public static class PerformanceTracker
     // Hooks — called from VisualElement and UITree
     // -----------------------------------------------------------------------
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal static void RecordLayoutDirty(VisualElement element)
+    internal static void RecordMeasureDirty(VisualElement element)
     {
         if (!IsEnabled) return;
+        Interlocked.Increment(ref _curMeasureDirty);
         Interlocked.Increment(ref _curLayoutDirty);
-        AppendDirtyEntry(element, isLayout: true);
+        AppendDirtyEntry(element, isLayout: true, phase: "measure");
+        DirtyHeatmap.Increment(element, isLayout: true);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal static void RecordArrangeDirty(VisualElement element)
+    {
+        if (!IsEnabled) return;
+        Interlocked.Increment(ref _curArrangeDirty);
+        Interlocked.Increment(ref _curLayoutDirty);
+        AppendDirtyEntry(element, isLayout: true, phase: "arrange");
         DirtyHeatmap.Increment(element, isLayout: true);
     }
 
@@ -104,7 +155,7 @@ public static class PerformanceTracker
     {
         if (!IsEnabled) return;
         Interlocked.Increment(ref _curPaintDirty);
-        AppendDirtyEntry(element, isLayout: false);
+        AppendDirtyEntry(element, isLayout: false, phase: "paint");
         DirtyHeatmap.Increment(element, isLayout: false);
     }
 
@@ -112,12 +163,39 @@ public static class PerformanceTracker
     internal static void RecordMeasured() { if (IsEnabled) Interlocked.Increment(ref _curMeasured); }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal static void RecordMeasureSkipped() { if (IsEnabled) Interlocked.Increment(ref _curMeasureSkipped); }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal static void RecordMeasureCacheHit() { if (IsEnabled) Interlocked.Increment(ref _curMeasureCacheHits); }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal static void RecordMeasureCacheMiss() { if (IsEnabled) Interlocked.Increment(ref _curMeasureCacheMisses); }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal static void RecordArranged() { if (IsEnabled) Interlocked.Increment(ref _curArranged); }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal static void RecordArrangeSkipped() { if (IsEnabled) Interlocked.Increment(ref _curArrangeSkipped); }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal static void RecordRendered() { if (IsEnabled) Interlocked.Increment(ref _curRendered); }
 
-    private static void AppendDirtyEntry(VisualElement element, bool isLayout)
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal static void RecordRelayoutRoot() { if (IsEnabled) Interlocked.Increment(ref _curRelayoutRoots); }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal static void RecordVirtualizedCreated() { if (IsEnabled) Interlocked.Increment(ref _curVirtualizedCreated); }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal static void RecordVirtualizedReused() { if (IsEnabled) Interlocked.Increment(ref _curVirtualizedReused); }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal static void RecordVirtualizedRebound() { if (IsEnabled) Interlocked.Increment(ref _curVirtualizedRebound); }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal static void RecordVirtualizedRecycled() { if (IsEnabled) Interlocked.Increment(ref _curVirtualizedRecycled); }
+
+    private static void AppendDirtyEntry(VisualElement element, bool isLayout, string phase)
     {
         lock (_lock)
         {
@@ -128,6 +206,7 @@ public static class PerformanceTracker
                 ElementId = element.Id,
                 Classes = element.Classes ?? "",
                 IsLayout = isLayout,
+                Phase = phase,
                 Timestamp = DateTime.Now.ToString("HH:mm:ss.fff")
             };
             _dirtyLogHead = (_dirtyLogHead + 1) % MaxDirtyLog;
@@ -153,16 +232,29 @@ public static class PerformanceTracker
                 RenderTimeMs   = renderMs,
                 EventTimeMs    = eventMs,
                 ElementsMeasured  = _curMeasured,
+                ElementsMeasureSkipped = _curMeasureSkipped,
+                MeasureCacheHits = _curMeasureCacheHits,
+                MeasureCacheMisses = _curMeasureCacheMisses,
                 ElementsArranged  = _curArranged,
+                ElementsArrangeSkipped = _curArrangeSkipped,
                 ElementsRendered  = _curRendered,
+                RelayoutRoots     = _curRelayoutRoots,
+                VirtualizedCreated = _curVirtualizedCreated,
+                VirtualizedReused = _curVirtualizedReused,
+                VirtualizedRebound = _curVirtualizedRebound,
+                VirtualizedRecycled = _curVirtualizedRecycled,
+                MeasureDirtyCount = _curMeasureDirty,
+                ArrangeDirtyCount = _curArrangeDirty,
                 LayoutDirtyCount  = _curLayoutDirty,
                 PaintDirtyCount   = _curPaintDirty,
             };
             _frameHead = (_frameHead + 1) % MaxFrames;
             _frameNumber++;
 
-            _curMeasured = _curArranged = _curRendered =
-            _curLayoutDirty = _curPaintDirty = 0;
+            _curMeasured = _curMeasureSkipped = _curMeasureCacheHits = _curMeasureCacheMisses =
+            _curArranged = _curArrangeSkipped = _curRendered = _curRelayoutRoots =
+            _curVirtualizedCreated = _curVirtualizedReused = _curVirtualizedRebound = _curVirtualizedRecycled =
+            _curMeasureDirty = _curArrangeDirty = _curLayoutDirty = _curPaintDirty = 0;
         }
     }
 
@@ -210,8 +302,10 @@ public static class PerformanceTracker
             Array.Clear(_frames, 0, _frames.Length);
             _frameHead = 0;
             _frameNumber = 0;
-            _curMeasured = _curArranged = _curRendered = 0;
-            _curLayoutDirty = _curPaintDirty = 0;
+            _curMeasured = _curMeasureSkipped = _curMeasureCacheHits = _curMeasureCacheMisses =
+            _curArranged = _curArrangeSkipped = _curRendered = _curRelayoutRoots = 0;
+            _curVirtualizedCreated = _curVirtualizedReused = _curVirtualizedRebound = _curVirtualizedRecycled = 0;
+            _curMeasureDirty = _curArrangeDirty = _curLayoutDirty = _curPaintDirty = 0;
         }
     }
 
@@ -228,7 +322,7 @@ public static class PerformanceTracker
         if (history.Length == 0)
         {
             return new PerformanceSummary(
-                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
         }
 
         var orderedFrameTimes = history
@@ -250,8 +344,20 @@ public static class PerformanceTracker
             AvgRenderTimeMs: history.Average(f => f.RenderTimeMs),
             AvgEventTimeMs: history.Average(f => f.EventTimeMs),
             AvgElementsMeasured: (float)history.Average(f => f.ElementsMeasured),
+            AvgElementsMeasureSkipped: (float)history.Average(f => f.ElementsMeasureSkipped),
+            AvgMeasureCacheHits: (float)history.Average(f => f.MeasureCacheHits),
+            AvgMeasureCacheMisses: (float)history.Average(f => f.MeasureCacheMisses),
+            AvgMeasureCacheHitRate: (float)history.Average(f => f.MeasureCacheHitRate),
             AvgElementsArranged: (float)history.Average(f => f.ElementsArranged),
+            AvgElementsArrangeSkipped: (float)history.Average(f => f.ElementsArrangeSkipped),
             AvgElementsRendered: (float)history.Average(f => f.ElementsRendered),
+            AvgRelayoutRoots: (float)history.Average(f => f.RelayoutRoots),
+            AvgVirtualizedCreated: (float)history.Average(f => f.VirtualizedCreated),
+            AvgVirtualizedReused: (float)history.Average(f => f.VirtualizedReused),
+            AvgVirtualizedRebound: (float)history.Average(f => f.VirtualizedRebound),
+            AvgVirtualizedRecycled: (float)history.Average(f => f.VirtualizedRecycled),
+            AvgMeasureDirty: (float)history.Average(f => f.MeasureDirtyCount),
+            AvgArrangeDirty: (float)history.Average(f => f.ArrangeDirtyCount),
             AvgLayoutDirty: (float)history.Average(f => f.LayoutDirtyCount),
             AvgPaintDirty: (float)history.Average(f => f.PaintDirtyCount));
     }
@@ -271,8 +377,20 @@ public static class PerformanceTracker
             Avg Render: {summary.AvgRenderTimeMs:F2} ms
             Avg Event: {summary.AvgEventTimeMs:F2} ms
             Avg Elements Measured: {summary.AvgElementsMeasured:F2}
+            Avg Measure Skipped: {summary.AvgElementsMeasureSkipped:F2}
+            Avg Measure Cache Hits: {summary.AvgMeasureCacheHits:F2}
+            Avg Measure Cache Misses: {summary.AvgMeasureCacheMisses:F2}
+            Avg Measure Cache Hit Rate: {summary.AvgMeasureCacheHitRate:P1}
             Avg Elements Arranged: {summary.AvgElementsArranged:F2}
+            Avg Arrange Skipped: {summary.AvgElementsArrangeSkipped:F2}
             Avg Elements Rendered: {summary.AvgElementsRendered:F2}
+            Avg Relayout Roots: {summary.AvgRelayoutRoots:F2}
+            Avg Virtualized Created: {summary.AvgVirtualizedCreated:F2}
+            Avg Virtualized Reused: {summary.AvgVirtualizedReused:F2}
+            Avg Virtualized Rebound: {summary.AvgVirtualizedRebound:F2}
+            Avg Virtualized Recycled: {summary.AvgVirtualizedRecycled:F2}
+            Avg Measure Dirty: {summary.AvgMeasureDirty:F2}
+            Avg Arrange Dirty: {summary.AvgArrangeDirty:F2}
             Avg Layout Dirty: {summary.AvgLayoutDirty:F2}
             Avg Paint Dirty: {summary.AvgPaintDirty:F2}
             """;

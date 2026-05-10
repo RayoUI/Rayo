@@ -518,7 +518,7 @@ public class TabControl : CompositeView<TabControl>
         RebuildHeaders();
         if (_tabs.Count > 0)
             UpdateContent();
-        MarkNeedsLayout();
+        InvalidateMeasure();
     }
 
     public TabControl AddTab(string title, VisualElement content)
@@ -587,7 +587,6 @@ public class TabControl : CompositeView<TabControl>
         }
 
         UpdateScrollButtonStates();
-        MarkNeedsLayout();
     }
 
     private void ScrollRight()
@@ -613,7 +612,6 @@ public class TabControl : CompositeView<TabControl>
         }
 
         UpdateScrollButtonStates();
-        MarkNeedsLayout();
     }
 
     private void UpdateScrollButtonStates()
@@ -647,7 +645,6 @@ public class TabControl : CompositeView<TabControl>
                 _scrollRightButton.IsVisible = false;
                 _scrollLeftButton.MarkNeedsPaint();
                 _scrollRightButton.MarkNeedsPaint();
-                MarkNeedsLayout();
             }
             return;
         }
@@ -677,7 +674,6 @@ public class TabControl : CompositeView<TabControl>
 
         if (_scrollLeftButton.IsVisible || _scrollRightButton.IsVisible)
         {
-            MarkNeedsLayout();
             MarkNeedsPaint();
         }
     }
@@ -793,7 +789,7 @@ public class TabControl : CompositeView<TabControl>
         }
 
         UpdateScrollButtonStates();
-        MarkNeedsLayout();
+        InvalidateMeasure();
     }
 
     private void UpdateContent()
@@ -809,7 +805,7 @@ public class TabControl : CompositeView<TabControl>
             TrySetFocusOnContent(content);
         }
 
-        MarkNeedsLayout();
+        InvalidateMeasure();
     }
 
     private void QueueEnsureSelectedTabVisible()
@@ -916,7 +912,6 @@ public class TabControl : CompositeView<TabControl>
                 float newOffset = Math.Max(0, _tabHeadersScroll.HorizontalScrollOffset - ScrollSpeed);
                 _tabHeadersScroll.HorizontalScrollOffset = newOffset;
                 UpdateScrollButtonStates();
-                MarkNeedsLayout();
             }
             else if (mouseX > scrollViewRight - ScrollZone)
             {
@@ -929,7 +924,6 @@ public class TabControl : CompositeView<TabControl>
                     float newOffset = Math.Min(maxOffset, _tabHeadersScroll.HorizontalScrollOffset + ScrollSpeed);
                     _tabHeadersScroll.HorizontalScrollOffset = newOffset;
                     UpdateScrollButtonStates();
-                    MarkNeedsLayout();
                 }
             }
         }
@@ -944,7 +938,6 @@ public class TabControl : CompositeView<TabControl>
                 float newOffset = Math.Max(0, _tabHeadersScroll.VerticalScrollOffset - ScrollSpeed);
                 _tabHeadersScroll.VerticalScrollOffset = newOffset;
                 UpdateScrollButtonStates();
-                MarkNeedsLayout();
             }
             else if (mouseY > scrollViewBottom - ScrollZone)
             {
@@ -957,7 +950,6 @@ public class TabControl : CompositeView<TabControl>
                     float newOffset = Math.Min(maxOffset, _tabHeadersScroll.VerticalScrollOffset + ScrollSpeed);
                     _tabHeadersScroll.VerticalScrollOffset = newOffset;
                     UpdateScrollButtonStates();
-                    MarkNeedsLayout();
                 }
             }
         }
