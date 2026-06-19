@@ -57,10 +57,6 @@ public class UIApplication : IDisposable
     private bool _enableVSync = true;
 
     private const int ColorSchemePollIntervalMs = 5000;
-    private const double ActiveFrameMs = 1000.0 / 60.0;
-    private const double TimedSubscriberFrameMs = 100.0;
-    private const double IdlePollingFrameMs = 100.0;
-    private readonly AutoResetEvent _wakeSignal = new(false);
     private long _nextColorSchemePollAtMs = Environment.TickCount64 + ColorSchemePollIntervalMs;
 
     private double _targetFrameTime = 1.0 / 60.0; // 60 FPS
@@ -311,16 +307,7 @@ public class UIApplication : IDisposable
     public bool ContinuousRendering
     {
         get => _continuousRendering;
-        set
-        {
-            if (_continuousRendering == value)
-            {
-                return;
-            }
-
-            _continuousRendering = value;
-            WakeRenderLoop();
-        }
+        set => _continuousRendering = value;
     }
 
     /// <summary>
@@ -378,12 +365,8 @@ public class UIApplication : IDisposable
     private bool HasActiveAnimationWork =>
         AnimationManager.Instance.HasActiveAnimations || FrameAnimationTicker.HasActiveAnimations;
 
-    private bool HasTimedSubscribers => Updated != null;
-
     private void WakeRenderLoop()
     {
-        _wakeSignal.Set();
-
         if (_isInIdleMode)
         {
             _isInIdleMode = false;
@@ -403,27 +386,6 @@ public class UIApplication : IDisposable
         Rayo.Styling.ColorSchemeHelper.NotifyIfChanged();
     }
 
-    private double GetTargetFrameMilliseconds()
-    {
-        if (_continuousRendering || _tree.NeedsRender || AnimationManager.Instance.HasActiveAnimations || !_mainThreadActions.IsEmpty)
-        {
-            return ActiveFrameMs;
-        }
-
-        if (FrameAnimationTicker.HasActiveAnimations)
-        {
-            float tickerFps = Math.Clamp(FrameAnimationTicker.RecommendedFps, 1f, 60f);
-            return 1000.0 / tickerFps;
-        }
-
-        if (HasTimedSubscribers)
-        {
-            return TimedSubscriberFrameMs;
-        }
-
-        return IdlePollingFrameMs;
-    }
-
     private void WaitForNextFrame(double remainingMs)
     {
         if (remainingMs <= 0)
@@ -431,13 +393,27 @@ public class UIApplication : IDisposable
             return;
         }
 
-        if (remainingMs > 1)
+        if (remainingMs > 5)
         {
-            _wakeSignal.WaitOne((int)Math.Ceiling(remainingMs));
-            return;
+            Thread.Sleep((int)(remainingMs / 2));
         }
+        else if (remainingMs > 1)
+        {
+            Thread.Yield();
+        }
+        else if (remainingMs > 0.1)
+        {
+            Thread.SpinWait(100);
+        }
+    }
 
-        Thread.SpinWait(100);
+    private double GetTargetFrameMilliseconds()
+    {
+        const double targetFps = 60.0;
+        const double targetFrameMs = 1000.0 / targetFps;
+        const double idleFrameMs = 33.0;
+
+        return _isInIdleMode ? idleFrameMs : targetFrameMs;
     }
 
     private void RecordUpdatePass()
@@ -1021,7 +997,6 @@ public class UIApplication : IDisposable
     private void OnClosing()
     {
         _isExiting = true;
-        _wakeSignal.Set();
         _eventManager.Detach();
         _hotReload?.Dispose();
         _renderer?.Dispose();
@@ -1187,7 +1162,6 @@ public class UIApplication : IDisposable
     public void RunOnMainThread(Action action)
     {
         _mainThreadActions.Enqueue(action);
-        WakeRenderLoop();
     }
 
     /// <summary>
@@ -1215,7 +1189,6 @@ public class UIApplication : IDisposable
     {
         if (Current == this) Current = null;
         _window?.Dispose();
-        _wakeSignal.Dispose();
     }
 
     public void Exit()
