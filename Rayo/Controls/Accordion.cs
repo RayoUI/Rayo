@@ -28,6 +28,7 @@ public class Expander : CompositeView<Expander>
     private float _contentAnimationProgress;
     private bool _templateReady;
     private bool _suppressAnimation;
+    private bool _isHeaderHovered;
 
     #region HeaderBackground
     [PaintProperty]
@@ -272,6 +273,7 @@ public class Expander : CompositeView<Expander>
         {
             _contentAnimationProgress = IsExpanded ? 1f : 0f;
             _contentFrame.IsVisible(_contentAnimationProgress > 0f);
+            UpdateHeaderVisuals();
             InvalidateMeasure();
             MarkNeedsPaint();
             return;
@@ -284,6 +286,7 @@ public class Expander : CompositeView<Expander>
         {
             _contentAnimationProgress = target;
             _contentFrame.IsVisible(target > 0f);
+            UpdateHeaderVisuals();
             InvalidateMeasure();
             MarkNeedsPaint();
             return;
@@ -293,6 +296,7 @@ public class Expander : CompositeView<Expander>
         {
             _contentAnimationProgress = value;
             _contentFrame.IsVisible(value > 0.001f);
+            UpdateHeaderVisuals();
             InvalidateMeasure();
             MarkNeedsPaint();
         })
@@ -306,6 +310,7 @@ public class Expander : CompositeView<Expander>
         {
             _contentAnimationProgress = target;
             _contentFrame.IsVisible(target > 0.001f);
+            UpdateHeaderVisuals();
             InvalidateMeasure();
             MarkNeedsPaint();
         };
@@ -329,13 +334,27 @@ public class Expander : CompositeView<Expander>
         _headerLabel.Text(_headerTitle);
         _headerLabel.Foreground(TextColor);
 
+        bool contentAttached = IsHeaderAttachedToContent();
+
         // Update header Frame background
-        _headerFrame.Background(IsExpanded ? HeaderHoverColor : HeaderBackground);
-        _headerFrame.BorderRadius = IsExpanded
+        _headerFrame.Background(GetHeaderBackground(_isHeaderHovered));
+        _headerFrame.BorderRadius = contentAttached
             ? new CornerRadius(8, 8, 0, 0)
             : new CornerRadius(8, 8, 8, 8);
 
         MarkNeedsPaint();
+    }
+
+    private bool IsHeaderAttachedToContent()
+    {
+        return IsExpanded || _contentAnimationProgress > 0.001f;
+    }
+
+    private Brush GetHeaderBackground(bool isHovered)
+    {
+        return isHovered || IsHeaderAttachedToContent()
+            ? HeaderHoverColor
+            : HeaderBackground;
     }
 
     /// <summary>
@@ -388,7 +407,8 @@ public class Expander : CompositeView<Expander>
             if (e.PointerType == Rayo.Core.Input.PointerType.Mouse)
             {
                 _isHovered = true;
-                _headerFrame.Background(_owner.HeaderHoverColor);
+                _owner._isHeaderHovered = true;
+                _owner.UpdateHeaderVisuals();
             }
         }
 
@@ -397,7 +417,8 @@ public class Expander : CompositeView<Expander>
             if (e.PointerType == Rayo.Core.Input.PointerType.Mouse)
             {
                 _isHovered = false;
-                _headerFrame.Background(_owner.IsExpanded ? _owner.HeaderHoverColor : _owner.HeaderBackground);
+                _owner._isHeaderHovered = false;
+                _owner.UpdateHeaderVisuals();
             }
             
             // Cancel gesture on exit
@@ -406,7 +427,8 @@ public class Expander : CompositeView<Expander>
 
         public void OnPointerPressed(Rayo.Core.Input.PointerEventArgs e)
         {
-            _headerFrame.Background(_owner.HeaderHoverColor);
+            _owner._isHeaderHovered = true;
+            _owner.UpdateHeaderVisuals();
             
             // CRITICAL: Feed event to gesture recognizer
             _tapRecognizer.ProcessPointerEvent(e);
@@ -414,7 +436,8 @@ public class Expander : CompositeView<Expander>
 
         public void OnPointerReleased(Rayo.Core.Input.PointerEventArgs e)
         {
-            _headerFrame.Background(_isHovered || _owner.IsExpanded ? _owner.HeaderHoverColor : _owner.HeaderBackground);
+            _owner._isHeaderHovered = _isHovered;
+            _owner.UpdateHeaderVisuals();
 
             // CRITICAL: Feed event to gesture recognizer
             _tapRecognizer.ProcessPointerEvent(e);
@@ -428,7 +451,8 @@ public class Expander : CompositeView<Expander>
 
         public void OnPointerCanceled(Rayo.Core.Input.PointerEventArgs e)
         {
-            _headerFrame.Background(_owner.IsExpanded ? _owner.HeaderHoverColor : _owner.HeaderBackground);
+            _owner._isHeaderHovered = _isHovered;
+            _owner.UpdateHeaderVisuals();
             _tapRecognizer.Reset();
         }
     }
