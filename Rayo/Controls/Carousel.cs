@@ -9,8 +9,15 @@ using Rayo.Rendering.Brushes;
 /// <summary>
 /// Displays one slide at a time with previous/next navigation and optional indicators.
 /// </summary>
+public enum CarouselNavigationPlacement
+{
+    Bottom,
+    Overlay
+}
+
 public class Carousel : CompositeView<Carousel>
 {
+    private readonly CarouselViewport _viewport;
     private readonly Frame _contentFrame;
     private readonly IconButton _previousButton;
     private readonly IconButton _nextButton;
@@ -44,6 +51,15 @@ public class Carousel : CompositeView<Carousel>
         get => field;
         set => this.SetProperty(ref field, value, RefreshNavigationState);
     } = true;
+    #endregion
+
+    #region NavigationPlacement
+    [LayoutProperty]
+    public CarouselNavigationPlacement NavigationPlacement
+    {
+        get => field;
+        set => this.SetProperty(ref field, value, RebuildNavigation);
+    } = CarouselNavigationPlacement.Bottom;
     #endregion
 
     #region ShowNavigationButtons
@@ -172,6 +188,33 @@ public class Carousel : CompositeView<Carousel>
     } = 12f;
     #endregion
 
+    #region OverlayNavigationButtonSize
+    [LayoutProperty]
+    public float OverlayNavigationButtonSize
+    {
+        get => field;
+        set => this.SetProperty(ref field, value, RebuildNavigation);
+    } = 56f;
+    #endregion
+
+    #region OverlayNavigationInset
+    [LayoutProperty]
+    public float OverlayNavigationInset
+    {
+        get => field;
+        set => this.SetProperty(ref field, value, RebuildNavigation);
+    } = 14f;
+    #endregion
+
+    #region OverlayNavigationIconSize
+    [LayoutProperty]
+    public float OverlayNavigationIconSize
+    {
+        get => field;
+        set => this.SetProperty(ref field, value, RebuildNavigation);
+    } = 30f;
+    #endregion
+
     public int ItemCount => _items.Count;
 
     public VisualElement? SelectedItem => IsValidIndex(_selectedIndex) ? _items[_selectedIndex] : null;
@@ -184,6 +227,12 @@ public class Carousel : CompositeView<Carousel>
         Height = 260;
         Padding = new Thickness(0);
 
+        _viewport = new CarouselViewport
+        {
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch
+        };
+
         _contentFrame = new Frame
         {
             Background = SlideBackground,
@@ -193,6 +242,7 @@ public class Carousel : CompositeView<Carousel>
             HorizontalAlignment = HorizontalAlignment.Stretch,
             VerticalAlignment = VerticalAlignment.Stretch
         };
+        _viewport.Content = _contentFrame;
 
         _previousButton = CreateNavigationButton(Icons.ChevronLeft, Previous);
         _nextButton = CreateNavigationButton(Icons.ChevronRight, Next);
@@ -216,7 +266,7 @@ public class Carousel : CompositeView<Carousel>
             .Columns(GridLength.Star)
             .HorizontalAlignment(HorizontalAlignment.Stretch)
             .VerticalAlignment(VerticalAlignment.Stretch)
-            .AddChild(_contentFrame, 0, 0)
+            .AddChild(_viewport, 0, 0)
             .AddChild(_navigationRow, 1, 0);
 
         AddChild(_root);
@@ -425,10 +475,21 @@ public class Carousel : CompositeView<Carousel>
     {
         _navigationRow.ClearChildren();
         _navigationRow.Spacing = NavigationSpacing;
-        _navigationRow.IsVisible = ShowNavigationButtons || ShowIndicators;
+        _viewport.ClearOverlayButtons();
 
-        if (ShowNavigationButtons)
+        bool useOverlayNavigation = NavigationPlacement == CarouselNavigationPlacement.Overlay;
+        _navigationRow.IsVisible = ShowIndicators || (ShowNavigationButtons && !useOverlayNavigation);
+
+        if (ShowNavigationButtons && useOverlayNavigation)
         {
+            ConfigureOverlayButton(_previousButton, isPrevious: true);
+            ConfigureOverlayButton(_nextButton, isPrevious: false);
+            _viewport.SetOverlayButtons(_previousButton, _nextButton, OverlayNavigationInset);
+        }
+
+        if (ShowNavigationButtons && !useOverlayNavigation)
+        {
+            ConfigureBottomButton(_previousButton);
             _navigationRow.AddChild(_previousButton);
         }
 
@@ -437,8 +498,9 @@ public class Carousel : CompositeView<Carousel>
             _navigationRow.AddChild(_indicatorStack);
         }
 
-        if (ShowNavigationButtons)
+        if (ShowNavigationButtons && !useOverlayNavigation)
         {
+            ConfigureBottomButton(_nextButton);
             _navigationRow.AddChild(_nextButton);
         }
 
@@ -506,6 +568,30 @@ public class Carousel : CompositeView<Carousel>
         button.IconColor = isEnabled ? NavigationIconColor : NavigationIconDisabledColor;
     }
 
+    private void ConfigureBottomButton(IconButton button)
+    {
+        button.Width = 36;
+        button.Height = 36;
+        button.IconSize = 18;
+        button.BorderRadius = new CornerRadius(18);
+        button.Padding = new Thickness(0);
+        button.HorizontalAlignment = HorizontalAlignment.Left;
+        button.VerticalAlignment = VerticalAlignment.Top;
+        RefreshButtonStyle(button, button.IsEnabled);
+    }
+
+    private void ConfigureOverlayButton(IconButton button, bool isPrevious)
+    {
+        button.Width = OverlayNavigationButtonSize;
+        button.Height = OverlayNavigationButtonSize;
+        button.IconSize = OverlayNavigationIconSize;
+        button.BorderRadius = new CornerRadius(OverlayNavigationButtonSize / 2f);
+        button.Padding = new Thickness(0);
+        button.HorizontalAlignment = isPrevious ? HorizontalAlignment.Left : HorizontalAlignment.Right;
+        button.VerticalAlignment = VerticalAlignment.Center;
+        RefreshButtonStyle(button, button.IsEnabled);
+    }
+
     private bool CanMovePrevious()
     {
         return _items.Count > 1 && (Loop || _selectedIndex > 0);
@@ -535,5 +621,134 @@ public class Carousel : CompositeView<Carousel>
 
         button.Tapped += _ => action();
         return button;
+    }
+
+    private sealed class CarouselViewport : CompositeView<CarouselViewport>
+    {
+        private VisualElement? _content;
+        private IconButton? _previousButton;
+        private IconButton? _nextButton;
+        private float _buttonInset;
+
+        public VisualElement? Content
+        {
+            get => _content;
+            set
+            {
+                if (_content == value)
+                {
+                    return;
+                }
+
+                if (_content != null)
+                {
+                    RemoveChild(_content);
+                }
+
+                _content = value;
+
+                if (_content != null)
+                {
+                    AddChild(_content);
+                }
+            }
+        }
+
+        public void SetOverlayButtons(IconButton previousButton, IconButton nextButton, float inset)
+        {
+            _buttonInset = inset;
+            _previousButton = previousButton;
+            _nextButton = nextButton;
+
+            AddOverlayButton(previousButton);
+            AddOverlayButton(nextButton);
+            InvalidateMeasure();
+        }
+
+        public void ClearOverlayButtons()
+        {
+            if (_previousButton != null)
+            {
+                RemoveChild(_previousButton);
+            }
+
+            if (_nextButton != null)
+            {
+                RemoveChild(_nextButton);
+            }
+
+            _previousButton = null;
+            _nextButton = null;
+            InvalidateMeasure();
+        }
+
+        protected override void Measure(float availableWidth, float availableHeight)
+        {
+            _content?.MeasureUpdate(availableWidth, availableHeight);
+            _previousButton?.MeasureUpdate(availableWidth, availableHeight);
+            _nextButton?.MeasureUpdate(availableWidth, availableHeight);
+
+            DesiredWidth = ResolveLength(Width, HorizontalAlignment, availableWidth, _content?.DesiredWidth ?? 0);
+            DesiredHeight = ResolveLength(Height, VerticalAlignment, availableHeight, _content?.DesiredHeight ?? 0);
+        }
+
+        protected override void Arrange(float x, float y, float width, float height)
+        {
+            base.Arrange(x, y, width, height);
+
+            _content?.ArrangeUpdate(x, y, width, height);
+
+            ArrangeOverlayButton(_previousButton, x + _buttonInset, y, height);
+            if (_nextButton != null)
+            {
+                ArrangeOverlayButton(_nextButton, x + width - _buttonInset - _nextButton.DesiredWidth, y, height);
+            }
+        }
+
+        public override void Render(IRenderer renderer)
+        {
+        }
+
+        private void AddOverlayButton(IconButton button)
+        {
+            if (!Children.Contains(button))
+            {
+                AddChild(button);
+            }
+        }
+
+        private static void ArrangeOverlayButton(IconButton? button, float x, float y, float viewportHeight)
+        {
+            if (button == null)
+            {
+                return;
+            }
+
+            float width = button.DesiredWidth > 0 ? button.DesiredWidth : button.Width;
+            float height = button.DesiredHeight > 0 ? button.DesiredHeight : button.Height;
+            float buttonY = y + (viewportHeight - height) / 2f;
+            button.ArrangeUpdate(x, buttonY, width, height);
+        }
+
+        private static float ResolveLength(float explicitLength, Enum alignment, float availableLength, float desiredLength)
+        {
+            if (explicitLength > 0)
+            {
+                return explicitLength;
+            }
+
+            bool isStretch = alignment.Equals(HorizontalAlignment.Stretch) || alignment.Equals(VerticalAlignment.Stretch);
+            if (isStretch && !float.IsInfinity(availableLength))
+            {
+                return availableLength;
+            }
+
+            if (desiredLength > 0 && !float.IsNaN(desiredLength) && !float.IsInfinity(desiredLength))
+            {
+                return desiredLength;
+            }
+
+            return !float.IsInfinity(availableLength) && !float.IsNaN(availableLength) ? availableLength : 0;
+        }
     }
 }

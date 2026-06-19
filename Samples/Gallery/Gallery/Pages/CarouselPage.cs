@@ -41,6 +41,12 @@ public class CarouselPage : UserControl
                 Helper.CreateExampleSection("Image Carousel",
                     new Carousel()
                         .Size(new Size(520, 300))
+                        .NavigationPlacement(CarouselNavigationPlacement.Overlay)
+                        .OverlayNavigationButtonSize(58)
+                        .OverlayNavigationIconSize(32)
+                        .OverlayNavigationInset(16)
+                        .NavigationButtonBackground(new Color(0, 0, 0, 0.38f))
+                        .NavigationButtonHoverBackground(new Color(0, 0, 0, 0.58f))
                         .SlideBackground(new Color(24, 26, 32))
                         .BorderColor(new Color(76, 82, 96))
                         .IndicatorSelectedColor(new Color(34, 197, 94))
