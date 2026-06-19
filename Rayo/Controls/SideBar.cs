@@ -1,4 +1,4 @@
-﻿namespace Rayo.Controls;
+namespace Rayo.Controls;
 
 using Rayo.Core;
 using Rayo.Core.Interfaces;
@@ -404,7 +404,7 @@ public class SideBar : Rayo.Core.CompositeView<SideBar>
 
     public SideBar AddCollapseToggle()
     {
-        var toggleButton = new IconButton()
+        var toggleButton = new ButtonIcon()
             .IconData(IsCollapsed ? Icons.ChevronRight : Icons.ChevronLeft)
             .Background(Color.Transparent)
             .HoverBackground(ItemHoverColor.PrimaryColor)

@@ -1,4 +1,4 @@
-ï»¿using Rayo;
+using Rayo;
 using Rayo.Controls;
 using Rayo.Core;
 using Rayo.Layout;
@@ -132,14 +132,14 @@ public class ButtonPage : UserControl
                             new HStack()
                                 .Spacing(12)
                                 .Children(
-                                    CreateIconButton("\uEA1C", ColorDefault.Danger),      // Heart
-                                    CreateIconButton("\uEA1D", ColorDefault.Warning),     // Star
-                                    CreateIconButton("\uEA44", ColorDefault.Primary),     // Home
-                                    CreateIconButton("\uEA5E", ColorDefault.Success),     // Search
-                                    CreateIconButton("\uEA5F", ColorDefault.Info),        // Settings
-                                    CreateIconButton("\uEA54", new Color(168, 85, 247)),  // User
-                                    CreateIconButton("\uEBB3", new Color(34, 197, 94)),   // Atom
-                                    CreateIconButton("\uEAA4", new Color(239, 68, 68))    // Trash
+                                    CreateButtonIcon("\uEA1C", ColorDefault.Danger),      // Heart
+                                    CreateButtonIcon("\uEA1D", ColorDefault.Warning),     // Star
+                                    CreateButtonIcon("\uEA44", ColorDefault.Primary),     // Home
+                                    CreateButtonIcon("\uEA5E", ColorDefault.Success),     // Search
+                                    CreateButtonIcon("\uEA5F", ColorDefault.Info),        // Settings
+                                    CreateButtonIcon("\uEA54", new Color(168, 85, 247)),  // User
+                                    CreateButtonIcon("\uEBB3", new Color(34, 197, 94)),   // Atom
+                                    CreateButtonIcon("\uEAA4", new Color(239, 68, 68))    // Trash
                                 )
                         )
                 ),
@@ -155,10 +155,10 @@ public class ButtonPage : UserControl
                             new HStack()
                                 .Spacing(12)
                                 .Children(
-                                    CreateTextIconButton("\uEA1C", "Like", ColorDefault.Danger),
-                                    CreateTextIconButton("\uEA1D", "Favorite", ColorDefault.Warning),
-                                    CreateTextIconButton("\uEA5E", "Search", ColorDefault.Primary),
-                                    CreateTextIconButton("\uEBBA", "Done", ColorDefault.Success)
+                                    CreateTextButtonIcon("\uEA1C", "Like", ColorDefault.Danger),
+                                    CreateTextButtonIcon("\uEA1D", "Favorite", ColorDefault.Warning),
+                                    CreateTextButtonIcon("\uEA5E", "Search", ColorDefault.Primary),
+                                    CreateTextButtonIcon("\uEBBA", "Done", ColorDefault.Success)
                                 ),
 
                             new Label("Icon on right side")
@@ -168,9 +168,9 @@ public class ButtonPage : UserControl
                             new HStack()
                                 .Spacing(12)
                                 .Children(
-                                    CreateTextIconButtonRight("Next", "\uEAD4", ColorDefault.Primary),
-                                    CreateTextIconButtonRight("Download", "\uEA26", ColorDefault.Success),
-                                    CreateTextIconButtonRight("Share", "\uEB9B", ColorDefault.Info)
+                                    CreateTextButtonIconRight("Next", "\uEAD4", ColorDefault.Primary),
+                                    CreateTextButtonIconRight("Download", "\uEA26", ColorDefault.Success),
+                                    CreateTextButtonIconRight("Share", "\uEB9B", ColorDefault.Info)
                                 )
                         )
                 ),
@@ -260,7 +260,7 @@ public class ButtonPage : UserControl
             );
     }
 
-    private Frame CreateIconButton(string icon, Color bgColor)
+    private Frame CreateButtonIcon(string icon, Color bgColor)
     {
         var label = new Label(icon);
         label.FontFamily("Lineicons");
@@ -277,7 +277,7 @@ public class ButtonPage : UserControl
         return Frame;
     }
 
-    private Frame CreateTextIconButton(string icon, string text, Color bgColor)
+    private Frame CreateTextButtonIcon(string icon, string text, Color bgColor)
     {
         var iconLabel = new Label(icon);
         iconLabel.FontFamily("Lineicons");
@@ -301,7 +301,7 @@ public class ButtonPage : UserControl
         return Frame;
     }
 
-    private Frame CreateTextIconButtonRight(string text, string icon, Color bgColor)
+    private Frame CreateTextButtonIconRight(string text, string icon, Color bgColor)
     {
         var textLabel = new Label(text);
         textLabel.FontSize(14);
@@ -364,7 +364,7 @@ public class ButtonPage : UserControl
 
     private VisualElement CreateGradientButtonsSection()
     {
-        // Row 1: Linear gradients â€” horizontal direction
+        // Row 1: Linear gradients — horizontal direction
         var sunsetBtn = new Button()
             .Text("Sunset")
             .Width(120).Height(42)
@@ -401,7 +401,7 @@ public class ButtonPage : UserControl
                 new Color(56, 164, 71), new Color(10, 110, 50)))
             .BorderWidth(0);
 
-        // Row 2: Linear gradients â€” vertical direction
+        // Row 2: Linear gradients — vertical direction
         var skyBtn = new Button()
             .Text("Sky")
             .Width(120).Height(42)

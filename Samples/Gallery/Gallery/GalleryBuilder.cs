@@ -1,4 +1,4 @@
-﻿using Gallery;
+using Gallery;
 using Rayo.Controls;
 using Rayo.Core;
 using Rayo.Core.Input;
@@ -197,7 +197,7 @@ public class GalleryBuilder : UserControl
                     .Alignment(Alignment.Center)
                     .Children(
                         // Hamburger menu button
-                        new IconButton()
+                        new ButtonIcon()
                             .IconData(Icons.Menu)
                             .Width(44)
                             .Height(44)
@@ -265,7 +265,7 @@ public class GalleryBuilder : UserControl
             // Input Controls
             ("Button", "Input"),
             ("ButtonGroup", "Input"),
-            ("IconButton", "Input"),
+            ("ButtonIcon", "Input"),
             ("Checkbox", "Input"),
             ("RadioButton", "Input"),
             ("Entry", "Input"),
@@ -430,7 +430,7 @@ public class GalleryBuilder : UserControl
         {
             "Button" => (VisualElement)new ButtonPage(),
             "ButtonGroup" => new ButtonGroupPage(),
-            "IconButton" => new IconButtonPage(),
+            "ButtonIcon" => new ButtonIconPage(),
             "Badge" => new BadgePage(),
             "Menu" => new MenuPage(),
             "ProgressBar" => new ProgressBarPage(),

@@ -1414,7 +1414,7 @@ internal class TabHeadersScrollView : ScrollView, IInputHandler
     }
 }
 
-internal class TabScrollButton : IconButton
+internal class TabScrollButton : ButtonIcon
 {
     private readonly TabControl _owner;
     private readonly bool _isBackward;
@@ -1477,7 +1477,7 @@ internal class TabScrollButton : IconButton
     }
 }
 
-internal sealed class TabHeaderCloseButton : IconButton
+internal sealed class TabHeaderCloseButton : ButtonIcon
 {
     private readonly TabControl _owner;
 

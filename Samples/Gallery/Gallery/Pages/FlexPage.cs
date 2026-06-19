@@ -1,4 +1,4 @@
-﻿using Rayo;
+using Rayo;
 using Rayo.Controls;
 using Rayo.Core;
 using Rayo.Layout;
@@ -202,8 +202,8 @@ public class FlexPage : UserControl
         headerFlex.AddChild(new Label("Flex App").FontSize(18).Foreground(Color.White));
         headerFlex.AddChild(
             new HStack().Spacing(8).Children(
-                CreateIconButton("⚙", new Color(100, 100, 120)),
-                CreateIconButton("👤", new Color(100, 100, 120))
+                CreateButtonIcon("?", new Color(100, 100, 120)),
+                CreateButtonIcon("??", new Color(100, 100, 120))
             )
         );
 
@@ -273,7 +273,7 @@ public class FlexPage : UserControl
             );
     }
 
-    private VisualElement CreateIconButton(string icon, Color color)
+    private VisualElement CreateButtonIcon(string icon, Color color)
     {
         return new Frame()
             .Width(36)

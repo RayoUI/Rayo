@@ -1,4 +1,4 @@
-﻿using PaintApp.Controls;
+using PaintApp.Controls;
 using PaintApp.ViewModels;
 using Rayo;
 using Rayo.Controls;
@@ -16,7 +16,7 @@ public class ToolbarView : UserControl
     private readonly PaintViewState _vm;
     private readonly PaintCanvas    _canvas;
 
-    private readonly Dictionary<PaintTool, IconButton> _toolButtons = new();
+    private readonly Dictionary<PaintTool, ButtonIcon> _toolButtons = new();
     private readonly Dictionary<float, Button>         _sizeButtons = new();
 
     public ToolbarView(PaintViewState vm, PaintCanvas canvas)
@@ -117,11 +117,11 @@ public class ToolbarView : UserControl
             );
     }
 
-    // ── Button factories ──────────────────────────────────────────────────────
+    // -- Button factories ------------------------------------------------------
 
     private TooltipHost MakeActionButton(IconData icon, string label, Action onTap)
     {
-        var btn = new IconButton()
+        var btn = new ButtonIcon()
             .IconData(icon)
             .IconSize(18)
             .IconColor(new Color(60, 60, 60))
@@ -140,7 +140,7 @@ public class ToolbarView : UserControl
 
     private TooltipHost MakeToolButton(PaintTool tool, IconData icon, string label)
     {
-        var btn = new IconButton()
+        var btn = new ButtonIcon()
             .IconData(icon)
             .IconSize(18)
             .Width(34)
@@ -179,7 +179,7 @@ public class ToolbarView : UserControl
             .VerticalAlignment(VerticalAlignment.Center)
             .Margin(new Thickness(4, 0));
 
-    // ── Style helpers ─────────────────────────────────────────────────────────
+    // -- Style helpers ---------------------------------------------------------
 
     private void ApplyToolStyles(PaintTool activeTool)
     {
@@ -187,7 +187,7 @@ public class ToolbarView : UserControl
             ApplyToolButtonStyle(btn, tool == activeTool);
     }
 
-    private void ApplyToolButtonStyle(IconButton btn, bool isActive)
+    private void ApplyToolButtonStyle(ButtonIcon btn, bool isActive)
     {
         if (isActive)
         {
@@ -229,13 +229,13 @@ public class ToolbarView : UserControl
         btn.MarkNeedsPaint();
     }
 
-    // ── New Canvas dialog ─────────────────────────────────────────────────────
+    // -- New Canvas dialog -----------------------------------------------------
 
     private void ShowNewCanvasDialog()
     {
         VisualElement? overlay = null;
 
-        // Default to the current computed dimensions (or 800×600 before first layout).
+        // Default to the current computed dimensions (or 800�600 before first layout).
         int initW = Math.Max(100, (int)(_canvas.CanvasWidth  > 0 ? _canvas.CanvasWidth  : _canvas.ComputedWidth));
         int initH = Math.Max(100, (int)(_canvas.CanvasHeight > 0 ? _canvas.CanvasHeight : _canvas.ComputedHeight));
 
@@ -261,7 +261,7 @@ public class ToolbarView : UserControl
             heightEntry.Text = h.ToString();
         }
 
-        // ── Content ───────────────────────────────────────────────────────────
+        // -- Content -----------------------------------------------------------
 
         var dimensionsRow = new HStack()
             .Spacing(12)
@@ -271,7 +271,7 @@ public class ToolbarView : UserControl
                     new Label("Width").FontSize(12).Foreground(new Color(170, 170, 170)),
                     widthEntry
                 ),
-                new Label("×")
+                new Label("�")
                     .FontSize(18)
                     .Foreground(new Color(130, 130, 130))
                     .VerticalAlignment(VerticalAlignment.Bottom)
@@ -289,15 +289,15 @@ public class ToolbarView : UserControl
                 new HStack()
                     .Spacing(6)
                     .Children(
-                        MakePresetButton("800 × 600",   () => ApplyPreset(800,  600)),
-                        MakePresetButton("1280 × 720",  () => ApplyPreset(1280, 720)),
-                        MakePresetButton("1920 × 1080", () => ApplyPreset(1920, 1080))
+                        MakePresetButton("800 � 600",   () => ApplyPreset(800,  600)),
+                        MakePresetButton("1280 � 720",  () => ApplyPreset(1280, 720)),
+                        MakePresetButton("1920 � 1080", () => ApplyPreset(1920, 1080))
                     )
             );
 
         var content = new VStack().Spacing(20).Children(dimensionsRow, presetsRow);
 
-        // ── Buttons ───────────────────────────────────────────────────────────
+        // -- Buttons -----------------------------------------------------------
 
         var cancelButton = new Button()
             .Text("Cancel")
@@ -318,7 +318,7 @@ public class ToolbarView : UserControl
             .BorderWidth(0)
             .OnTapped(Create);
 
-        // ── Dialog shell — matches Dialog.cs visual style ─────────────────────
+        // -- Dialog shell � matches Dialog.cs visual style ---------------------
 
         var dialogBox = new Frame();
         dialogBox.Width(420);

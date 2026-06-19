@@ -1,4 +1,4 @@
-﻿namespace Rayo.Controls;
+namespace Rayo.Controls;
 
 using Rayo.Core;
 using Rayo.Core.Interfaces;
@@ -259,7 +259,7 @@ public class DatePicker : Rayo.Core.CompositeView<DatePicker>,
             HorizontalAlignment = HorizontalAlignment.Stretch
         };
 
-        var calendarIcon = new IconButton(Icons.Calendar)
+        var calendarIcon = new ButtonIcon(Icons.Calendar)
             .IconSize(18)
             .IconColor(MutedTextColor)
             .Background(new Color(45, 50, 67))
@@ -403,8 +403,8 @@ public class DatePicker : Rayo.Core.CompositeView<DatePicker>,
 
     private Frame BuildCalendar()
     {
-        // ── Month navigation header ──────────────────────────────────────────
-        var prevButton = new IconButton(Icons.ChevronLeft)
+        // -- Month navigation header ------------------------------------------
+        var prevButton = new ButtonIcon(Icons.ChevronLeft)
             .IconSize(14)
             .IconColor(HeaderTextColor)
             .Background(Color.Transparent)
@@ -421,7 +421,7 @@ public class DatePicker : Rayo.Core.CompositeView<DatePicker>,
             FontSize = 16
         };
 
-        var nextButton = new IconButton(Icons.ChevronRight)
+        var nextButton = new ButtonIcon(Icons.ChevronRight)
             .IconSize(14)
             .IconColor(HeaderTextColor)
             .Background(Color.Transparent)
@@ -443,7 +443,7 @@ public class DatePicker : Rayo.Core.CompositeView<DatePicker>,
         monthHeader.BorderRadius(new CornerRadius(12, 12, 0, 0));
         monthHeader.Content(headerContent);
 
-        // ── Day-of-week header row (S M T W T F S) ──────────────────────────
+        // -- Day-of-week header row (S M T W T F S) --------------------------
         var dayHeaders = new HStack
         {
             Spacing = 0,
@@ -460,10 +460,10 @@ public class DatePicker : Rayo.Core.CompositeView<DatePicker>,
             dayHeaders.AddChild(dayFrame);
         }
 
-        // ── Days grid ────────────────────────────────────────────────────────
+        // -- Days grid --------------------------------------------------------
         var daysGrid = BuildDaysGrid();
 
-        // ── Selection surface (same dark card as TimePicker) ─────────────────
+        // -- Selection surface (same dark card as TimePicker) -----------------
         var calendarContent = new VStack { Spacing = 0 };
         calendarContent.AddChild(monthHeader);
         calendarContent.AddChild(dayHeaders);
@@ -479,7 +479,7 @@ public class DatePicker : Rayo.Core.CompositeView<DatePicker>,
         selectionSurface.HorizontalAlignment(HorizontalAlignment.Left);
         selectionSurface.Content(calendarContent);
 
-        // ── Preview of selected date (mirrors TimePicker preview) ────────────
+        // -- Preview of selected date (mirrors TimePicker preview) ------------
         var previewLabel = new Label
         {
             Text = SelectedDate.ToString(DateFormat),
@@ -493,7 +493,7 @@ public class DatePicker : Rayo.Core.CompositeView<DatePicker>,
         previewFrame.HorizontalAlignment(HorizontalAlignment.Left);
         previewFrame.Content(previewLabel);
 
-        // ── Cancel button ────────────────────────────────────────────────────
+        // -- Cancel button ----------------------------------------------------
         var cancelButton = new Button
         {
             Text = "Cancel",
@@ -514,7 +514,7 @@ public class DatePicker : Rayo.Core.CompositeView<DatePicker>,
             .HorizontalAlignment(HorizontalAlignment.Right);
         buttons.AddChild(cancelButton);
 
-        // ── Main content VStack ──────────────────────────────────────────────
+        // -- Main content VStack ----------------------------------------------
         var content = new VStack { Spacing = 16 };
         content.HorizontalAlignment(HorizontalAlignment.Left);
         content.AddChild(new Label("Pick a date") { Foreground = Color.White, FontSize = 18 });
@@ -522,7 +522,7 @@ public class DatePicker : Rayo.Core.CompositeView<DatePicker>,
         content.AddChild(selectionSurface);
         content.AddChild(buttons);
 
-        // ── Outer picker frame (same style as TimePicker's outer frame) ──────
+        // -- Outer picker frame (same style as TimePicker's outer frame) ------
         var pickerFrame = new Frame()
             .Background(CalendarBackground)
             .BorderColor(CalendarBorderColor)
@@ -577,7 +577,7 @@ public class DatePicker : Rayo.Core.CompositeView<DatePicker>,
 
                 if (cellIndex < startDayOfWeek || currentDay > daysInMonth)
                 {
-                    // Empty / out-of-range cell — transparent placeholder keeps the row height.
+                    // Empty / out-of-range cell � transparent placeholder keeps the row height.
                     dayFrame = new Frame()
                         .Width(40)
                         .Height(40)
@@ -709,7 +709,7 @@ public class DatePicker : Rayo.Core.CompositeView<DatePicker>,
             _isPressed = false;
             MarkNeedsPaint();
 
-            // If a child element (e.g. the calendar IconButton) already handled this
+            // If a child element (e.g. the calendar ButtonIcon) already handled this
             // release via its TapRecognizer, do not toggle the calendar a second time.
             if (e.Handled) return;
 

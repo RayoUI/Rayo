@@ -1,4 +1,4 @@
-﻿using Rayo;
+using Rayo;
 using Rayo.Controls;
 using Rayo.Core;
 using Rayo.Layout;
@@ -92,10 +92,10 @@ public class IconPage : UserControl
                     new HStack()
                         .Spacing(12)
                         .Children(
-                            CreateIconButton(Icons.Add, "Add Item", new Color(59, 130, 246)),
-                            CreateIconButton(Icons.Edit, "Edit", new Color(234, 179, 8)),
-                            CreateIconButton(Icons.Delete, "Delete", new Color(239, 68, 68)),
-                            CreateIconButton(Icons.Save, "Save", new Color(34, 197, 94))
+                            CreateButtonIcon(Icons.Add, "Add Item", new Color(59, 130, 246)),
+                            CreateButtonIcon(Icons.Edit, "Edit", new Color(234, 179, 8)),
+                            CreateButtonIcon(Icons.Delete, "Delete", new Color(239, 68, 68)),
+                            CreateButtonIcon(Icons.Save, "Save", new Color(34, 197, 94))
                         )
                 ),
 
@@ -223,7 +223,7 @@ public class IconPage : UserControl
             );
     }
 
-    private VisualElement CreateIconButton(IconData iconData, string text, Color bgColor)
+    private VisualElement CreateButtonIcon(IconData iconData, string text, Color bgColor)
     {
         return new Frame()
             .Background(bgColor)

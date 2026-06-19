@@ -1,4 +1,4 @@
-﻿using Rayo;
+using Rayo;
 using Rayo.Controls;
 using Rayo.Core;
 using Rayo.Layout;
@@ -8,7 +8,7 @@ using GradientStop = Rayo.Rendering.Brushes.GradientStop;
 
 namespace Gallery.Pages;
 
-public class IconButtonPage : UserControl
+public class ButtonIconPage : UserControl
 {
     public override VisualElement Build()
     {
@@ -16,25 +16,25 @@ public class IconButtonPage : UserControl
             .Spacing(20)
             .Padding(new Thickness(20))
             .Children(
-                Helper.CreatePageHeader("IconButton", "Interactive icon button with unified pointer events and gesture support"),
+                Helper.CreatePageHeader("ButtonIcon", "Interactive icon button with unified pointer events and gesture support"),
 
                 Helper.CreateExampleSection("Basic Icon Buttons",
                     new HStack()
                         .Spacing(10)
                         .Children(
-                            new IconButton(Icons.Home)
+                            new ButtonIcon(Icons.Home)
                                 .IconColor(Color.White)
                                 .OnTapped(() => Console.WriteLine("Home clicked")),
 
-                            new IconButton(Icons.Settings)
+                            new ButtonIcon(Icons.Settings)
                                 .IconColor(Color.White)
                                 .OnTapped(() => Console.WriteLine("Settings clicked")),
 
-                            new IconButton(Icons.Search)
+                            new ButtonIcon(Icons.Search)
                                 .IconColor(Color.White)
                                 .OnTapped(() => Console.WriteLine("Search clicked")),
 
-                            new IconButton(Icons.Refresh)
+                            new ButtonIcon(Icons.Refresh)
                                 .IconColor(Color.White)
                                 .OnTapped(() => Console.WriteLine("Refresh clicked"))
                         )
@@ -44,28 +44,28 @@ public class IconButtonPage : UserControl
                     new HStack()
                         .Spacing(10)
                         .Children(
-                            new IconButton(Icons.Heart)
+                            new ButtonIcon(Icons.Heart)
                                 .IconColor(Color.White)
                                 .Background(new Color(220, 50, 80))
                                 .HoverBackground(new Color(240, 80, 100))
                                 .PressedBackground(new Color(180, 30, 60))
                                 .OnTapped(() => Console.WriteLine("Heart clicked")),
 
-                            new IconButton(Icons.Star)
+                            new ButtonIcon(Icons.Star)
                                 .IconColor(Color.White)
                                 .Background(new Color(255, 193, 7))
                                 .HoverBackground(new Color(255, 213, 79))
                                 .PressedBackground(new Color(255, 179, 0))
                                 .OnTapped(() => Console.WriteLine("Star clicked")),
 
-                            new IconButton(Icons.Warning)
+                            new ButtonIcon(Icons.Warning)
                                 .IconColor(Color.White)
                                 .Background(new Color(76, 175, 80))
                                 .HoverBackground(new Color(102, 187, 106))
                                 .PressedBackground(new Color(56, 142, 60))
                                 .OnTapped(() => Console.WriteLine("Warning clicked")),
 
-                            new IconButton(Icons.Notification)
+                            new ButtonIcon(Icons.Notification)
                                 .IconColor(Color.White)
                                 .Background(new Color(156, 39, 176))
                                 .HoverBackground(new Color(171, 71, 188))
@@ -79,20 +79,20 @@ public class IconButtonPage : UserControl
                         .Spacing(10)
                         .Alignment(Alignment.End)
                         .Children(
-                            new IconButton(Icons.Add)
+                            new ButtonIcon(Icons.Add)
                                 .IconSize(16)
                                 .IconColor(Color.White)
                                 .Size(36)
                                 .Background(new Color(70, 130, 180))
                                 .OnTapped(() => Console.WriteLine("Small add")),
 
-                            new IconButton(Icons.Add)
+                            new ButtonIcon(Icons.Add)
                                 .IconSize(24)
                                 .IconColor(Color.White)
                                 .Background(new Color(70, 130, 180))
                                 .OnTapped(() => Console.WriteLine("Medium add")),
 
-                            new IconButton(Icons.Add)
+                            new ButtonIcon(Icons.Add)
                                 .IconSize(32)
                                 .IconColor(Color.White)
                                 .Size(64)
@@ -105,7 +105,7 @@ public class IconButtonPage : UserControl
                     new HStack()
                         .Spacing(10)
                         .Children(
-                            new IconButton(Icons.Download)
+                            new ButtonIcon(Icons.Download)
                                 .IconColor(new Color(70, 130, 180))
                                 .Background(Color.Transparent)
                                 .HoverBackground(new Color(70, 130, 180, 0.1f))
@@ -114,7 +114,7 @@ public class IconButtonPage : UserControl
                                 .BorderColor(new Color(70, 130, 180))
                                 .OnTapped(() => Console.WriteLine("Download clicked")),
 
-                            new IconButton(Icons.Upload)
+                            new ButtonIcon(Icons.Upload)
                                 .IconColor(new Color(76, 175, 80))
                                 .Background(Color.Transparent)
                                 .HoverBackground(new Color(76, 175, 80, 0.1f))
@@ -123,7 +123,7 @@ public class IconButtonPage : UserControl
                                 .BorderColor(new Color(76, 175, 80))
                                 .OnTapped(() => Console.WriteLine("Upload clicked")),
 
-                            new IconButton(Icons.Delete)
+                            new ButtonIcon(Icons.Delete)
                                 .IconColor(new Color(244, 67, 54))
                                 .Background(Color.Transparent)
                                 .HoverBackground(new Color(244, 67, 54, 0.1f))
@@ -132,7 +132,7 @@ public class IconButtonPage : UserControl
                                 .BorderColor(new Color(244, 67, 54))
                                 .OnTapped(() => Console.WriteLine("Delete clicked")),
 
-                            new IconButton(Icons.Lock)
+                            new ButtonIcon(Icons.Lock)
                                 .IconColor(new Color(33, 150, 243))
                                 .Background(Color.Transparent)
                                 .HoverBackground(new Color(33, 150, 243, 0.1f))
@@ -156,7 +156,7 @@ public class IconButtonPage : UserControl
     private VisualElement CreateGradientButtonsSection()
     {
         // Linear gradient: horizontal sunset (fire icon)
-        var fireBtn = new IconButton(Icons.Star)
+        var fireBtn = new ButtonIcon(Icons.Star)
             .IconColor(Color.White)
             .Background(LinearGradientBrush.Horizontal(
                 new Color(255, 80, 0),
@@ -170,7 +170,7 @@ public class IconButtonPage : UserControl
             .OnTapped(() => Console.WriteLine("Fire gradient clicked"));
 
         // Linear gradient: vertical ocean (download icon)
-        var oceanBtn = new IconButton(Icons.Download)
+        var oceanBtn = new ButtonIcon(Icons.Download)
             .IconColor(Color.White)
             .Background(LinearGradientBrush.Vertical(
                 new Color(0, 180, 255),
@@ -184,7 +184,7 @@ public class IconButtonPage : UserControl
             .OnTapped(() => Console.WriteLine("Ocean gradient clicked"));
 
         // Linear gradient: diagonal purple-pink (heart icon)
-        var purpleBtn = new IconButton(Icons.Heart)
+        var purpleBtn = new ButtonIcon(Icons.Heart)
             .IconColor(Color.White)
             .Background(LinearGradientBrush.Diagonal(
                 new Color(150, 0, 255),
@@ -198,7 +198,7 @@ public class IconButtonPage : UserControl
             .OnTapped(() => Console.WriteLine("Purple gradient clicked"));
 
         // Multi-stop linear gradient: rainbow (notification icon)
-        var rainbowBtn = new IconButton(Icons.Notification)
+        var rainbowBtn = new ButtonIcon(Icons.Notification)
             .IconColor(Color.White)
             .Background(new LinearGradientBrush(
                 new GradientStop(new Color(255, 0, 0), 0f),
@@ -215,7 +215,7 @@ public class IconButtonPage : UserControl
             .OnTapped(() => Console.WriteLine("Rainbow gradient clicked"));
 
         // Radial gradient: glowing center (settings icon)
-        var glowBtn = new IconButton(Icons.Settings)
+        var glowBtn = new ButtonIcon(Icons.Settings)
             .IconColor(Color.White)
             .Background(new RadialGradientBrush(
                 new Color(255, 220, 80),
@@ -229,7 +229,7 @@ public class IconButtonPage : UserControl
             .OnTapped(() => Console.WriteLine("Glow gradient clicked"));
 
         // Radial gradient: spotlight off-center (lock icon)
-        var spotBtn = new IconButton(Icons.Lock)
+        var spotBtn = new ButtonIcon(Icons.Lock)
             .IconColor(Color.White)
             .Background(RadialGradientBrush.Spotlight(
                 new Color(120, 220, 255),
@@ -250,7 +250,7 @@ public class IconButtonPage : UserControl
 
     private VisualElement CreateCircularButtonsSection()
     {
-        var playButton = new IconButton(Icons.Play);
+        var playButton = new ButtonIcon(Icons.Play);
         playButton.IconColor(Color.White);
         playButton.Background(new Color(76, 175, 80));
         playButton.HoverBackground(new Color(102, 187, 106));
@@ -259,7 +259,7 @@ public class IconButtonPage : UserControl
         playButton.BorderRadius(new CornerRadius(25));
         playButton.OnTapped(() => Console.WriteLine("Play clicked"));
 
-        var pauseButton = new IconButton(Icons.Pause);
+        var pauseButton = new ButtonIcon(Icons.Pause);
         pauseButton.IconColor(Color.White);
         pauseButton.Background(new Color(255, 152, 0));
         pauseButton.HoverBackground(new Color(255, 167, 38));
@@ -268,7 +268,7 @@ public class IconButtonPage : UserControl
         pauseButton.BorderRadius(new CornerRadius(25));
         pauseButton.OnTapped(() => Console.WriteLine("Pause clicked"));
 
-        var stopButton = new IconButton(Icons.Stop);
+        var stopButton = new ButtonIcon(Icons.Stop);
         stopButton.IconColor(Color.White);
         stopButton.Background(new Color(244, 67, 54));
         stopButton.HoverBackground(new Color(239, 83, 80));
@@ -277,7 +277,7 @@ public class IconButtonPage : UserControl
         stopButton.BorderRadius(new CornerRadius(25));
         stopButton.OnTapped(() => Console.WriteLine("Stop clicked"));
 
-        var refreshButton = new IconButton(Icons.Refresh);
+        var refreshButton = new ButtonIcon(Icons.Refresh);
         refreshButton.IconColor(Color.White);
         refreshButton.Background(new Color(103, 58, 183));
         refreshButton.HoverBackground(new Color(126, 87, 194));
@@ -295,28 +295,28 @@ public class IconButtonPage : UserControl
 
     private VisualElement CreateActionButtonsSection()
     {
-        var saveButton = new IconButton(Icons.Save);
+        var saveButton = new ButtonIcon(Icons.Save);
         saveButton.IconColor(Color.White);
         saveButton.Background(new Color(76, 175, 80));
         saveButton.HoverBackground(new Color(102, 187, 106));
         saveButton.PressedBackground(new Color(56, 142, 60));
         saveButton.OnTapped(() => Console.WriteLine("Save clicked"));
 
-        var editButton = new IconButton(Icons.Edit);
+        var editButton = new ButtonIcon(Icons.Edit);
         editButton.IconColor(Color.White);
         editButton.Background(new Color(70, 130, 180));
         editButton.HoverBackground(new Color(100, 150, 200));
         editButton.PressedBackground(new Color(50, 100, 150));
         editButton.OnTapped(() => Console.WriteLine("Edit clicked"));
 
-        var deleteButton = new IconButton(Icons.Delete);
+        var deleteButton = new ButtonIcon(Icons.Delete);
         deleteButton.IconColor(Color.White);
         deleteButton.Background(new Color(244, 67, 54));
         deleteButton.HoverBackground(new Color(239, 83, 80));
         deleteButton.PressedBackground(new Color(211, 47, 47));
         deleteButton.OnTapped(() => Console.WriteLine("Delete clicked"));
 
-        var closeButton = new IconButton(Icons.Close);
+        var closeButton = new ButtonIcon(Icons.Close);
         closeButton.IconColor(Color.White);
         closeButton.Background(new Color(96, 125, 139));
         closeButton.HoverBackground(new Color(120, 144, 156));
@@ -332,7 +332,7 @@ public class IconButtonPage : UserControl
 
     private VisualElement CreateIconToolbarSection()
     {
-        var backButton = new IconButton(Icons.ArrowLeft);
+        var backButton = new ButtonIcon(Icons.ArrowLeft);
         backButton.IconColor(Color.White);
         backButton.Background(Color.Transparent);
         backButton.HoverBackground(new Color(255, 255, 255, 0.1f));
@@ -340,7 +340,7 @@ public class IconButtonPage : UserControl
         backButton.Size(36);
         backButton.OnTapped(() => Console.WriteLine("Back"));
 
-        var forwardButton = new IconButton(Icons.ArrowRight);
+        var forwardButton = new ButtonIcon(Icons.ArrowRight);
         forwardButton.IconColor(Color.White);
         forwardButton.Background(Color.Transparent);
         forwardButton.HoverBackground(new Color(255, 255, 255, 0.1f));
@@ -348,7 +348,7 @@ public class IconButtonPage : UserControl
         forwardButton.Size(36);
         forwardButton.OnTapped(() => Console.WriteLine("Forward"));
 
-        var refreshButton = new IconButton(Icons.Refresh);
+        var refreshButton = new ButtonIcon(Icons.Refresh);
         refreshButton.IconColor(Color.White);
         refreshButton.Background(Color.Transparent);
         refreshButton.HoverBackground(new Color(255, 255, 255, 0.1f));
@@ -362,7 +362,7 @@ public class IconButtonPage : UserControl
         divider.Background(new Color(255, 255, 255, 0.2f));
         divider.Margin(new Thickness(4, 0));
 
-        var volumeButton = new IconButton(Icons.VolumeUp);
+        var volumeButton = new ButtonIcon(Icons.VolumeUp);
         volumeButton.IconColor(Color.White);
         volumeButton.Background(Color.Transparent);
         volumeButton.HoverBackground(new Color(255, 255, 255, 0.1f));
@@ -370,7 +370,7 @@ public class IconButtonPage : UserControl
         volumeButton.Size(36);
         volumeButton.OnTapped(() => Console.WriteLine("Volume Up"));
 
-        var muteButton = new IconButton(Icons.VolumeMute);
+        var muteButton = new ButtonIcon(Icons.VolumeMute);
         muteButton.IconColor(Color.White);
         muteButton.Background(Color.Transparent);
         muteButton.HoverBackground(new Color(255, 255, 255, 0.1f));
@@ -378,7 +378,7 @@ public class IconButtonPage : UserControl
         muteButton.Size(36);
         muteButton.OnTapped(() => Console.WriteLine("Mute"));
 
-        var settingsButton = new IconButton(Icons.Settings);
+        var settingsButton = new ButtonIcon(Icons.Settings);
         settingsButton.IconColor(Color.White);
         settingsButton.Background(Color.Transparent);
         settingsButton.HoverBackground(new Color(255, 255, 255, 0.1f));

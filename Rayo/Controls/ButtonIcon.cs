@@ -1,4 +1,4 @@
-﻿namespace Rayo.Controls;
+namespace Rayo.Controls;
 
 using Rayo.Core;
 using Rayo.Core.Input;
@@ -25,7 +25,7 @@ using IRenderer = Rayo.Rendering.IRenderer;
 /// - ITappable for tap gesture support
 /// - IGestureRecognizerHost for gesture recognizers
 /// </summary>
-public class IconButton : Rayo.Core.View<IconButton>,
+public class ButtonIcon : Rayo.Core.View<ButtonIcon>,
     IPointerHandler,           // Modern unified pointer events
     ITappable,                 // Tap gesture support
     IGestureRecognizerHost     // Hosts gesture recognizers
@@ -151,7 +151,7 @@ public class IconButton : Rayo.Core.View<IconButton>,
     // INITIALIZATION
     // =========================================================================
 
-    public IconButton()
+    public ButtonIcon()
     {
         // Initialize reactive properties
         IconSize = 24;
@@ -179,7 +179,7 @@ public class IconButton : Rayo.Core.View<IconButton>,
         GestureRecognizers.Add(_tapRecognizer);
     }
 
-    public IconButton(IconData iconData) : this()
+    public ButtonIcon(IconData iconData) : this()
     {
         IconData = iconData;
     }
@@ -299,7 +299,7 @@ public class IconButton : Rayo.Core.View<IconButton>,
     {
         if (ComputedWidth <= 0 || ComputedHeight <= 0) return;
 
-        // Draw background — use DrawRoundedRect when corners are uniform so gradient
+        // Draw background � use DrawRoundedRect when corners are uniform so gradient
         // brushes render properly. Fall back to DrawPath for non-uniform corner radii.
         bool uniformRadius = BorderRadius.TopLeft == BorderRadius.TopRight
                           && BorderRadius.TopLeft == BorderRadius.BottomRight
@@ -370,49 +370,49 @@ public class IconButton : Rayo.Core.View<IconButton>,
     // FLUENT API EXTENSIONS
     // =========================================================================
 
-    //public IconButton IconData(IconData? iconData)
+    //public ButtonIcon IconData(IconData? iconData)
     //{
     //    IconData = iconData;
     //    return this;
     //}
 
-    //public IconButton IconColor(Brush color)
+    //public ButtonIcon IconColor(Brush color)
     //{
     //    IconColor = color;
     //    return this;
     //}
 
-    //public IconButton IconSize(float size)
+    //public ButtonIcon IconSize(float size)
     //{
     //    IconSize = size;
     //    return this;
     //}
 
-    //public IconButton Background(Brush color)
+    //public ButtonIcon Background(Brush color)
     //{
     //    Background = color;
     //    return this;
     //}
 
-    //public IconButton HoverBackground(Brush color)
+    //public ButtonIcon HoverBackground(Brush color)
     //{
     //    HoverBackground = color;
     //    return this;
     //}
 
-    //public IconButton PressedBackground(Brush color)
+    //public ButtonIcon PressedBackground(Brush color)
     //{
     //    PressedBackground = color;
     //    return this;
     //}
 
-    //public IconButton BorderWidth(float width)
+    //public ButtonIcon BorderWidth(float width)
     //{
     //    BorderWidth = width;
     //    return this;
     //}
 
-    //public IconButton BorderColor(Brush color)
+    //public ButtonIcon BorderColor(Brush color)
     //{
     //    BorderColor = color;
     //    return this;

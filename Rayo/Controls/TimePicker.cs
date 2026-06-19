@@ -1,4 +1,4 @@
-﻿namespace Rayo.Controls;
+namespace Rayo.Controls;
 
 using Rayo.Core;
 using Rayo.Layout;
@@ -203,7 +203,7 @@ public class TimePicker : CompositeView<TimePicker>,
             HorizontalAlignment = HorizontalAlignment.Stretch
         };
 
-        var clockIcon = new IconButton(Icons.Clock)
+        var clockIcon = new ButtonIcon(Icons.Clock)
             .IconSize(18)
             .IconColor(MutedTextColor)
             .Background(new Color(45, 50, 67))
@@ -586,7 +586,7 @@ public class TimePicker : CompositeView<TimePicker>,
         scroll.Content(numbers);
 
         // Scroll so the selected item is centred in the viewport.
-        // We set the offset directly on _verticalScrollOffset field equivalent — ScrollView.VerticalScrollOffset
+        // We set the offset directly on _verticalScrollOffset field equivalent � ScrollView.VerticalScrollOffset
         // clamps against MaxVerticalScroll, but at build time ComputedHeight is 0, so we compute the
         // raw pixel target and let VerticalScrollOffset clamp it on first Arrange.
         float selectedItemTop = selectedIndex * ItemStride;
@@ -742,7 +742,7 @@ public class TimePicker : CompositeView<TimePicker>,
             _isPressed = false;
             MarkNeedsPaint();
 
-            // If a child element (e.g. the clock IconButton) already handled this release
+            // If a child element (e.g. the clock ButtonIcon) already handled this release
             // via its TapRecognizer, do not toggle the picker a second time.
             if (e.Handled) return;
 

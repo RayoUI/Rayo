@@ -28,8 +28,8 @@ public class Carousel : CompositeView<Carousel>, IFrameAnimation
     private readonly CarouselViewport _viewport;
     private readonly Frame _contentFrame;
     private readonly CarouselTransitionHost _transitionHost;
-    private readonly IconButton _previousButton;
-    private readonly IconButton _nextButton;
+    private readonly ButtonIcon _previousButton;
+    private readonly ButtonIcon _nextButton;
     private readonly HStack _indicatorStack;
     private readonly HStack _navigationRow;
     private readonly Grid _root;
@@ -691,7 +691,7 @@ public class Carousel : CompositeView<Carousel>, IFrameAnimation
         RefreshButtonStyle(_nextButton, canMoveNext);
     }
 
-    private void RefreshButtonStyle(IconButton button, bool isEnabled)
+    private void RefreshButtonStyle(ButtonIcon button, bool isEnabled)
     {
         button.Background = isEnabled ? NavigationButtonBackground : NavigationButtonDisabledBackground;
         button.HoverBackground = isEnabled ? NavigationButtonHoverBackground : NavigationButtonDisabledBackground;
@@ -699,7 +699,7 @@ public class Carousel : CompositeView<Carousel>, IFrameAnimation
         button.IconColor = isEnabled ? NavigationIconColor : NavigationIconDisabledColor;
     }
 
-    private void ConfigureBottomButton(IconButton button)
+    private void ConfigureBottomButton(ButtonIcon button)
     {
         button.Width = 36;
         button.Height = 36;
@@ -711,7 +711,7 @@ public class Carousel : CompositeView<Carousel>, IFrameAnimation
         RefreshButtonStyle(button, button.IsEnabled);
     }
 
-    private void ConfigureOverlayButton(IconButton button, bool isPrevious)
+    private void ConfigureOverlayButton(ButtonIcon button, bool isPrevious)
     {
         button.Width = OverlayNavigationButtonSize;
         button.Height = OverlayNavigationButtonSize;
@@ -743,9 +743,9 @@ public class Carousel : CompositeView<Carousel>, IFrameAnimation
         return newIndex >= oldIndex ? 1 : -1;
     }
 
-    private static IconButton CreateNavigationButton(IconData icon, Action action)
+    private static ButtonIcon CreateNavigationButton(IconData icon, Action action)
     {
-        var button = new IconButton(icon)
+        var button = new ButtonIcon(icon)
         {
             Width = 36,
             Height = 36,
@@ -762,8 +762,8 @@ public class Carousel : CompositeView<Carousel>, IFrameAnimation
     private sealed class CarouselViewport : CompositeView<CarouselViewport>
     {
         private VisualElement? _content;
-        private IconButton? _previousButton;
-        private IconButton? _nextButton;
+        private ButtonIcon? _previousButton;
+        private ButtonIcon? _nextButton;
         private float _buttonInset;
 
         public VisualElement? Content
@@ -790,7 +790,7 @@ public class Carousel : CompositeView<Carousel>, IFrameAnimation
             }
         }
 
-        public void SetOverlayButtons(IconButton previousButton, IconButton nextButton, float inset)
+        public void SetOverlayButtons(ButtonIcon previousButton, ButtonIcon nextButton, float inset)
         {
             _buttonInset = inset;
             _previousButton = previousButton;
@@ -845,7 +845,7 @@ public class Carousel : CompositeView<Carousel>, IFrameAnimation
         {
         }
 
-        private void AddOverlayButton(IconButton button)
+        private void AddOverlayButton(ButtonIcon button)
         {
             if (!Children.Contains(button))
             {
@@ -853,7 +853,7 @@ public class Carousel : CompositeView<Carousel>, IFrameAnimation
             }
         }
 
-        private static void ArrangeOverlayButton(IconButton? button, float x, float y, float viewportHeight)
+        private static void ArrangeOverlayButton(ButtonIcon? button, float x, float y, float viewportHeight)
         {
             if (button == null)
             {
