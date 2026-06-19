@@ -807,6 +807,7 @@ internal sealed class RecyclableDataGridRow : CompositeView<RecyclableDataGridRo
 {
     private readonly List<Button> _cells = new();
     private IReadOnlyList<float> _columnWeights = Array.Empty<float>();
+    private Action? _onTap;
     private float _rowHeight;
 
     public RecyclableDataGridRow()
@@ -826,6 +827,7 @@ internal sealed class RecyclableDataGridRow : CompositeView<RecyclableDataGridRo
         float borderWidth,
         Action onTap)
     {
+        _onTap = onTap;
         EnsureCellCount(cellValues.Count);
         _columnWeights = columnWeights;
         _rowHeight = rowHeight;
@@ -847,7 +849,6 @@ internal sealed class RecyclableDataGridRow : CompositeView<RecyclableDataGridRo
             cell.HorizontalAlignment = HorizontalAlignment.Stretch;
             cell.VerticalAlignment = VerticalAlignment.Stretch;
             cell.TextAlignment = HorizontalAlignment.Left;
-            cell.OnTapped(onTap);
         }
     }
 
@@ -894,6 +895,7 @@ internal sealed class RecyclableDataGridRow : CompositeView<RecyclableDataGridRo
         while (_cells.Count < count)
         {
             var cell = new Button();
+            cell.Tapped += _ => _onTap?.Invoke();
             _cells.Add(cell);
             AddChild(cell);
         }
