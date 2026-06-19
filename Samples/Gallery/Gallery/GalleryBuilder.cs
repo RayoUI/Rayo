@@ -281,6 +281,7 @@ public class GalleryBuilder : UserControl
 
             // Display
             ("Label", "Display"),
+            ("Link", "Display"),
             ("Badge", "Display"),
             ("Image", "Display"),
             ("Icon", "Display"),
@@ -458,6 +459,7 @@ public class GalleryBuilder : UserControl
             "TreeView" => new TreeViewPage(),
             "Checkbox" => new CheckboxPage(),
             "Label" => new LabelPage(),
+            "Link" => new LinkPage(),
             "Entry" => new EntryPage(),
             "Editor" => new EditorPage(),
             "Frame" => new FramePage(),
