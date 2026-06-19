@@ -5,6 +5,7 @@ using Rayo.Core.Interfaces;
 using Rayo.Layout;
 using Rayo.Reactivity;
 using Rayo.Rendering;
+using Rayo.Rendering.Graphics.VectorGraphics;
 
 /// <summary>
 /// Tooltip positioning relative to target element
@@ -24,8 +25,15 @@ public enum TooltipPlacement
 /// </summary>
 internal class TooltipFrame : Frame
 {
+    private const float ArrowLength = 8f;
+    private const float ArrowWidth = 12f;
+    private const float HorizontalPadding = 10f;
+    private const float VerticalPadding = 6f;
+
     public string Text { get; set; } = "";
     private Label? _label;
+    private TooltipPlacement _actualPlacement = TooltipPlacement.Bottom;
+    private float _arrowOffset;
 
     public TooltipFrame(string text)
     {
@@ -33,8 +41,8 @@ internal class TooltipFrame : Frame
         VerticalAlignment = VerticalAlignment.Top;
         Text = text;
         this.Background(new Color(50, 50, 50))
-        .Padding(new Thickness(8, 4, 8, 4));
-        BorderRadius = new CornerRadius(4);
+            .Padding(new Thickness(HorizontalPadding, VerticalPadding + ArrowLength, HorizontalPadding, VerticalPadding));
+        BorderRadius = new CornerRadius(5);
 
         _label = new Label(text)
             .TextHorizontalAlignment(HorizontalAlignment.Center)
@@ -52,6 +60,109 @@ internal class TooltipFrame : Frame
         {
             _label.Text(text);
         }
+    }
+
+    public void ConfigureArrow(TooltipPlacement placement, float arrowOffset)
+    {
+        _actualPlacement = placement == TooltipPlacement.Auto ? TooltipPlacement.Bottom : placement;
+        _arrowOffset = arrowOffset;
+
+        Padding = _actualPlacement switch
+        {
+            TooltipPlacement.Top => new Thickness(HorizontalPadding, VerticalPadding, HorizontalPadding, VerticalPadding + ArrowLength),
+            TooltipPlacement.Bottom => new Thickness(HorizontalPadding, VerticalPadding + ArrowLength, HorizontalPadding, VerticalPadding),
+            TooltipPlacement.Left => new Thickness(HorizontalPadding, VerticalPadding, HorizontalPadding + ArrowLength, VerticalPadding),
+            TooltipPlacement.Right => new Thickness(HorizontalPadding + ArrowLength, VerticalPadding, HorizontalPadding, VerticalPadding),
+            _ => new Thickness(HorizontalPadding, VerticalPadding + ArrowLength, HorizontalPadding, VerticalPadding)
+        };
+    }
+
+    public override void Render(IRenderer renderer)
+    {
+        var (bubbleX, bubbleY, bubbleWidth, bubbleHeight) = GetBubbleBounds();
+        if (Background.PrimaryColor.A <= 0 || bubbleWidth <= 0 || bubbleHeight <= 0)
+        {
+            return;
+        }
+
+        float radius = Math.Max(0, BorderRadius.TopLeft);
+        if (radius > 0)
+        {
+            renderer.DrawRoundedRect(bubbleX, bubbleY, bubbleWidth, bubbleHeight, radius, Background);
+        }
+        else
+        {
+            renderer.DrawRect(bubbleX, bubbleY, bubbleWidth, bubbleHeight, Background);
+        }
+
+        renderer.DrawPath(CreateArrowPath(bubbleX, bubbleY, bubbleWidth, bubbleHeight), Background);
+    }
+
+    private (float x, float y, float width, float height) GetBubbleBounds()
+    {
+        return _actualPlacement switch
+        {
+            TooltipPlacement.Top => (ComputedX, ComputedY, ComputedWidth, Math.Max(0, ComputedHeight - ArrowLength)),
+            TooltipPlacement.Bottom => (ComputedX, ComputedY + ArrowLength, ComputedWidth, Math.Max(0, ComputedHeight - ArrowLength)),
+            TooltipPlacement.Left => (ComputedX, ComputedY, Math.Max(0, ComputedWidth - ArrowLength), ComputedHeight),
+            TooltipPlacement.Right => (ComputedX + ArrowLength, ComputedY, Math.Max(0, ComputedWidth - ArrowLength), ComputedHeight),
+            _ => (ComputedX, ComputedY + ArrowLength, ComputedWidth, Math.Max(0, ComputedHeight - ArrowLength))
+        };
+    }
+
+    private VectorPath CreateArrowPath(float bubbleX, float bubbleY, float bubbleWidth, float bubbleHeight)
+    {
+        float halfArrow = ArrowWidth / 2f;
+        float minHorizontal = bubbleX + BorderRadius.TopLeft + halfArrow;
+        float maxHorizontal = bubbleX + bubbleWidth - BorderRadius.TopRight - halfArrow;
+        float minVertical = bubbleY + BorderRadius.TopLeft + halfArrow;
+        float maxVertical = bubbleY + bubbleHeight - BorderRadius.BottomLeft - halfArrow;
+
+        return _actualPlacement switch
+        {
+            TooltipPlacement.Top => CreateTriangle(
+                Math.Clamp(ComputedX + _arrowOffset, minHorizontal, maxHorizontal),
+                ComputedY + ComputedHeight,
+                Math.Clamp(ComputedX + _arrowOffset - halfArrow, bubbleX, bubbleX + bubbleWidth),
+                bubbleY + bubbleHeight,
+                Math.Clamp(ComputedX + _arrowOffset + halfArrow, bubbleX, bubbleX + bubbleWidth),
+                bubbleY + bubbleHeight),
+
+            TooltipPlacement.Bottom => CreateTriangle(
+                Math.Clamp(ComputedX + _arrowOffset, minHorizontal, maxHorizontal),
+                ComputedY,
+                Math.Clamp(ComputedX + _arrowOffset - halfArrow, bubbleX, bubbleX + bubbleWidth),
+                bubbleY,
+                Math.Clamp(ComputedX + _arrowOffset + halfArrow, bubbleX, bubbleX + bubbleWidth),
+                bubbleY),
+
+            TooltipPlacement.Left => CreateTriangle(
+                ComputedX + ComputedWidth,
+                Math.Clamp(ComputedY + _arrowOffset, minVertical, maxVertical),
+                bubbleX + bubbleWidth,
+                Math.Clamp(ComputedY + _arrowOffset - halfArrow, bubbleY, bubbleY + bubbleHeight),
+                bubbleX + bubbleWidth,
+                Math.Clamp(ComputedY + _arrowOffset + halfArrow, bubbleY, bubbleY + bubbleHeight)),
+
+            TooltipPlacement.Right => CreateTriangle(
+                ComputedX,
+                Math.Clamp(ComputedY + _arrowOffset, minVertical, maxVertical),
+                bubbleX,
+                Math.Clamp(ComputedY + _arrowOffset - halfArrow, bubbleY, bubbleY + bubbleHeight),
+                bubbleX,
+                Math.Clamp(ComputedY + _arrowOffset + halfArrow, bubbleY, bubbleY + bubbleHeight)),
+
+            _ => CreateTriangle(ComputedX + _arrowOffset, ComputedY, ComputedX + _arrowOffset - halfArrow, bubbleY, ComputedX + _arrowOffset + halfArrow, bubbleY)
+        };
+    }
+
+    private static VectorPath CreateTriangle(float tipX, float tipY, float baseX1, float baseY1, float baseX2, float baseY2)
+    {
+        return new VectorPath()
+            .MoveTo(tipX, tipY)
+            .LineTo(baseX1, baseY1)
+            .LineTo(baseX2, baseY2)
+            .Close();
     }
 }
 
@@ -134,12 +245,16 @@ public class TooltipHost : Rayo.Core.CompositeView<TooltipHost>, Rayo.Core.Input
         if (app == null || string.IsNullOrWhiteSpace(_tooltipText)) return;
 
         _tooltipFrame = new TooltipFrame(_tooltipText);
+        _tooltipFrame.ConfigureArrow(TooltipPlacement.Bottom, 0);
+        _tooltipFrame.MeasureUpdate(float.PositiveInfinity, float.PositiveInfinity);
 
-        // Measure tooltip to get its size
+        var actualPlacement = ResolvePlacement();
+        _tooltipFrame.ConfigureArrow(actualPlacement, 0);
         _tooltipFrame.MeasureUpdate(float.PositiveInfinity, float.PositiveInfinity);
 
         // Calculate tooltip position
-        var (x, y) = CalculateTooltipPosition();
+        var (x, y, arrowOffset) = CalculateTooltipPosition(actualPlacement);
+        _tooltipFrame.ConfigureArrow(actualPlacement, arrowOffset);
 
         // Set position using SetX/Y (like Menu does)
         _tooltipFrame.X(x);
@@ -160,44 +275,61 @@ public class TooltipHost : Rayo.Core.CompositeView<TooltipHost>, Rayo.Core.Input
         }
     }
 
-    private (float x, float y) CalculateTooltipPosition()
+    private TooltipPlacement ResolvePlacement()
+    {
+        var app = UIApplication.Current;
+        TooltipPlacement actualPlacement = _placement;
+
+        if (app == null || actualPlacement != TooltipPlacement.Auto)
+        {
+            return actualPlacement == TooltipPlacement.Auto ? TooltipPlacement.Bottom : actualPlacement;
+        }
+
+        float targetX = _target.ComputedX;
+        float targetY = _target.ComputedY;
+        float targetWidth = _target.ComputedWidth;
+        float targetHeight = _target.ComputedHeight;
+        float spacing = 4;
+        float tooltipWidth = _tooltipFrame?.DesiredWidth > 0 ? _tooltipFrame.DesiredWidth : 80;
+        float tooltipHeight = _tooltipFrame?.DesiredHeight > 0 ? _tooltipFrame.DesiredHeight : 28;
+
+        float spaceTop = targetY;
+        float spaceBottom = app.Window.Height - (targetY + targetHeight);
+        float spaceLeft = targetX;
+        float spaceRight = app.Window.Width - (targetX + targetWidth);
+
+        // Prefer bottom, then top, then right, then left
+        if (spaceBottom >= tooltipHeight + spacing)
+            return TooltipPlacement.Bottom;
+        if (spaceTop >= tooltipHeight + spacing)
+            return TooltipPlacement.Top;
+        if (spaceRight >= tooltipWidth + spacing)
+            return TooltipPlacement.Right;
+        if (spaceLeft >= tooltipWidth + spacing)
+            return TooltipPlacement.Left;
+
+        return TooltipPlacement.Bottom;
+    }
+
+    private (float x, float y, float arrowOffset) CalculateTooltipPosition(TooltipPlacement actualPlacement)
     {
         var app = UIApplication.Current;
         if (_tooltipFrame == null || app == null)
-            return (0, 0);
+            return (0, 0, 0);
 
         float tooltipWidth = _tooltipFrame.DesiredWidth;
         float tooltipHeight = _tooltipFrame.DesiredHeight;
-        float spacing = 8; // Gap between target and tooltip
+        float spacing = 4;
 
         float x = 0, y = 0;
-
-        TooltipPlacement actualPlacement = _placement;
 
         // Use target element's coordinates (already absolute in Rayo)
         float targetX = _target.ComputedX;
         float targetY = _target.ComputedY;
         float targetWidth = _target.ComputedWidth;
         float targetHeight = _target.ComputedHeight;
-
-        // Auto placement: choose best position based on available space
-        if (actualPlacement == TooltipPlacement.Auto)
-        {
-            float spaceTop = targetY;
-            float spaceBottom = app.Window.Height - (targetY + targetHeight);
-            float spaceLeft = targetX;
-            float spaceRight = app.Window.Width - (targetX + targetWidth);
-
-            // Prefer bottom, then top, then right, then left
-            if (spaceBottom >= tooltipHeight + spacing)
-                actualPlacement = TooltipPlacement.Bottom;
-            else if (spaceTop >= tooltipHeight + spacing)
-                actualPlacement = TooltipPlacement.Top;
-            else if (spaceRight >= tooltipWidth + spacing)
-                actualPlacement = TooltipPlacement.Right;
-            else
-                actualPlacement = TooltipPlacement.Left;
-        }
+        float targetCenterX = targetX + targetWidth / 2f;
+        float targetCenterY = targetY + targetHeight / 2f;
 
         switch (actualPlacement)
         {
@@ -226,7 +358,11 @@ public class TooltipHost : Rayo.Core.CompositeView<TooltipHost>, Rayo.Core.Input
         x = Math.Clamp(x, 0, app.Window.Width - tooltipWidth);
         y = Math.Clamp(y, 0, app.Window.Height - tooltipHeight);
 
-        return (x, y);
+        float arrowOffset = actualPlacement is TooltipPlacement.Top or TooltipPlacement.Bottom
+            ? Math.Clamp(targetCenterX - x, 0, tooltipWidth)
+            : Math.Clamp(targetCenterY - y, 0, tooltipHeight);
+
+        return (x, y, arrowOffset);
     }
 
     public override void Render(IRenderer renderer)
