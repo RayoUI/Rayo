@@ -1173,16 +1173,19 @@ public class UIApplication : IDisposable
         if (!element.IsVisible) return;
 
         // Render the element itself
+        element.InvokeOnBeforeRender(renderer);
         element.Render(renderer);
 
         // Render children recursively
         if (!element.RendersChildrenManually)
         {
-            foreach (var child in element.GetChildren().ToArray())
+            foreach (var child in element.GetChildrenByZIndex())
             {
                 RenderElementRecursive(child, renderer);
             }
         }
+
+        element.InvokeOnAfterRender(renderer);
     }
 
     public void Dispose()

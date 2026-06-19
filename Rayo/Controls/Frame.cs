@@ -329,7 +329,11 @@ public class Frame : ContentView<Frame>, IPointerHandler
             }
         }
 
-        // Render border
+        // Content is rendered automatically by the rendering system via GetChildren()
+    }
+
+    protected override void OnAfterRender(IRenderer renderer)
+    {
         if (BorderWidth > 0 && BorderColor.PrimaryColor.A > 0)
         {
             bool uniformRadius = BorderRadius.TopLeft == BorderRadius.TopRight &&
@@ -359,7 +363,5 @@ public class Frame : ContentView<Frame>, IPointerHandler
                 renderer.DrawPathStroke(borderPath, BorderColor, BorderWidth);
             }
         }
-
-        // Content is rendered automatically by the rendering system via GetChildren()
     }
 }

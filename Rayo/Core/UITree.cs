@@ -731,7 +731,6 @@ public class UITree
             // Render the element with lifecycle hooks
             element.InvokeOnBeforeRender(renderer);
             element.Render(renderer);
-            element.InvokeOnAfterRender(renderer);
 
             // Render children (use ToArray to avoid collection modification during iteration)
             if (!element.RendersChildrenManually)
@@ -771,6 +770,8 @@ public class UITree
                     renderer.PopScissor();
                 }
             }
+
+            element.InvokeOnAfterRender(renderer);
 
             // Post-render effects (glow, inner shadows)
             if (effects.Count > 0)
@@ -964,6 +965,8 @@ public class UITree
             {
                 renderer.PopScissor();
             }
+
+            host.InvokeOnAfterRender(renderer);
         }
         finally
         {
@@ -1029,7 +1032,6 @@ public class UITree
 
         element.InvokeOnBeforeRender(renderer);
         element.Render(renderer);
-        element.InvokeOnAfterRender(renderer);
 
         if (effects.Count > 0)
         {

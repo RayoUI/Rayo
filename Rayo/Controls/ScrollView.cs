@@ -752,6 +752,11 @@ public class ScrollView : CompositeView<ScrollView>, IInputHandler, IScrollable,
     /// </summary>
     private void RenderChild(VisualElement element, IRenderer renderer, float clipX, float clipY, float clipWidth, float clipHeight)
     {
+        if (!element.IsVisible)
+        {
+            return;
+        }
+
         if (!OverlapsClip(element, clipX, clipY, clipWidth, clipHeight))
         {
             return;
@@ -777,15 +782,18 @@ public class ScrollView : CompositeView<ScrollView>, IInputHandler, IScrollable,
             renderer.PushScissor(childClipX, childClipY, childClipWidth, childClipHeight);
         }
 
+        element.InvokeOnBeforeRender(renderer);
         element.Render(renderer);
 
-        foreach (var child in element.GetChildren().ToArray())
+        if (!element.RendersChildrenManually)
         {
-            if (child.IsVisible)
+            foreach (var child in element.GetChildrenByZIndex())
             {
                 RenderChild(child, renderer, childClipX, childClipY, childClipWidth, childClipHeight);
             }
         }
+
+        element.InvokeOnAfterRender(renderer);
 
         if (needsChildScissor)
         {

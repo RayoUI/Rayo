@@ -1024,15 +1024,19 @@ public class TabControl : CompositeView<TabControl>, IFrameAnimation
 
         element.InvokeOnBeforeRender(renderer);
         element.Render(renderer);
-        element.InvokeOnAfterRender(renderer);
 
         if (element.RendersChildrenManually)
+        {
+            element.InvokeOnAfterRender(renderer);
             return;
+        }
 
         foreach (var child in element.GetChildrenByZIndex())
         {
             RenderSubtree(child, renderer);
         }
+
+        element.InvokeOnAfterRender(renderer);
     }
 
     private sealed record TabDragInfo(TabControl Owner, int Index);

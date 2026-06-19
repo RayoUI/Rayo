@@ -6,6 +6,7 @@ using Rayo.Layout;
 using Rayo.Reactivity;
 using Rayo.Rendering;
 using Rayo.Rendering.Brushes;
+using Rayo.Rendering.Graphics.VectorGraphics;
 
 /// <summary>
 /// Displays one slide at a time with previous/next navigation and optional indicators.
@@ -275,12 +276,13 @@ public class Carousel : CompositeView<Carousel>, IFrameAnimation
             VerticalAlignment = VerticalAlignment.Stretch
         };
 
-        _contentFrame = new Frame
+        _contentFrame = new CarouselFrame
         {
             Background = SlideBackground,
             BorderColor = BorderColor,
             BorderWidth = BorderWidth,
             BorderRadius = new CornerRadius(8),
+            ClipToBounds = true,
             HorizontalAlignment = HorizontalAlignment.Stretch,
             VerticalAlignment = VerticalAlignment.Stretch
         };
@@ -992,6 +994,163 @@ public class Carousel : CompositeView<Carousel>, IFrameAnimation
             {
                 renderer.DrawRect(ComputedX, ComputedY, ComputedWidth, ComputedHeight, SlideBackground);
             }
+        }
+    }
+
+    private sealed class CarouselFrame : Frame
+    {
+        protected internal override bool RendersChildrenManually => true;
+
+        public override void Render(IRenderer renderer)
+        {
+            DrawBackground(renderer);
+            RenderClippedContent(renderer);
+        }
+
+        private void DrawBackground(IRenderer renderer)
+        {
+            float bgX = ComputedX;
+            float bgY = ComputedY;
+            float bgWidth = ComputedWidth;
+            float bgHeight = ComputedHeight;
+            float radiusAdjust = 0f;
+
+            if (BorderWidth > 0 && BorderColor.PrimaryColor.A > 0)
+            {
+                bgX += BorderWidth;
+                bgY += BorderWidth;
+                bgWidth -= BorderWidth * 2f;
+                bgHeight -= BorderWidth * 2f;
+                radiusAdjust = BorderWidth;
+            }
+
+            if (Background.PrimaryColor.A <= 0)
+            {
+                return;
+            }
+
+            if (IsUniformRadius(BorderRadius))
+            {
+                float radius = Math.Max(0, BorderRadius.TopLeft - radiusAdjust);
+                if (radius > 0)
+                {
+                    renderer.DrawRoundedRect(bgX, bgY, bgWidth, bgHeight, radius, Background);
+                }
+                else
+                {
+                    renderer.DrawRect(bgX, bgY, bgWidth, bgHeight, Background);
+                }
+                return;
+            }
+
+            var path = VectorPath.RoundedRectangle(
+                bgX,
+                bgY,
+                bgWidth,
+                bgHeight,
+                Math.Max(0, BorderRadius.TopLeft - radiusAdjust),
+                Math.Max(0, BorderRadius.TopRight - radiusAdjust),
+                Math.Max(0, BorderRadius.BottomRight - radiusAdjust),
+                Math.Max(0, BorderRadius.BottomLeft - radiusAdjust));
+            renderer.DrawPath(path, Background);
+        }
+
+        private void RenderClippedContent(IRenderer renderer)
+        {
+            if (Content == null)
+            {
+                return;
+            }
+
+            var clip = GetContentClip();
+            if (clip.width <= 0 || clip.height <= 0)
+            {
+                return;
+            }
+
+            bool rounded = clip.radius.TopLeft > 0 ||
+                clip.radius.TopRight > 0 ||
+                clip.radius.BottomRight > 0 ||
+                clip.radius.BottomLeft > 0;
+
+            if (rounded)
+            {
+                renderer.PushRoundedClip(
+                    clip.x,
+                    clip.y,
+                    clip.width,
+                    clip.height,
+                    clip.radius.TopLeft,
+                    clip.radius.TopRight,
+                    clip.radius.BottomRight,
+                    clip.radius.BottomLeft);
+            }
+            else
+            {
+                renderer.PushScissor(clip.x, clip.y, clip.width, clip.height);
+            }
+
+            try
+            {
+                RenderSubtree(Content, renderer);
+            }
+            finally
+            {
+                if (rounded)
+                {
+                    renderer.PopRoundedClip();
+                }
+                else
+                {
+                    renderer.PopScissor();
+                }
+            }
+        }
+
+        private (float x, float y, float width, float height, CornerRadius radius) GetContentClip()
+        {
+            float inset = Math.Max(0, BorderWidth);
+            return (
+                ComputedX + inset,
+                ComputedY + inset,
+                Math.Max(0, ComputedWidth - inset * 2f),
+                Math.Max(0, ComputedHeight - inset * 2f),
+                new CornerRadius(
+                    Math.Max(0, BorderRadius.TopLeft - inset),
+                    Math.Max(0, BorderRadius.TopRight - inset),
+                    Math.Max(0, BorderRadius.BottomRight - inset),
+                    Math.Max(0, BorderRadius.BottomLeft - inset)));
+        }
+
+        private static bool IsUniformRadius(CornerRadius radius)
+        {
+            return radius.TopLeft == radius.TopRight &&
+                radius.TopLeft == radius.BottomRight &&
+                radius.TopLeft == radius.BottomLeft;
+        }
+
+        private static void RenderSubtree(VisualElement element, IRenderer renderer)
+        {
+            if (!element.IsVisible)
+            {
+                return;
+            }
+
+            element.InvokeOnBeforeRender(renderer);
+            element.Render(renderer);
+
+            if (element.RendersChildrenManually)
+            {
+                element.InvokeOnAfterRender(renderer);
+                return;
+            }
+
+            foreach (var child in element.GetChildrenByZIndex())
+            {
+                RenderSubtree(child, renderer);
+            }
+
+            element.InvokeOnAfterRender(renderer);
         }
     }
 
