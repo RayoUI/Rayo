@@ -264,6 +264,7 @@ public class GalleryBuilder : UserControl
         {
             // Input Controls
             ("Button", "Input"),
+            ("ButtonGroup", "Input"),
             ("IconButton", "Input"),
             ("Checkbox", "Input"),
             ("RadioButton", "Input"),
@@ -428,6 +429,7 @@ public class GalleryBuilder : UserControl
         var pageContent = page switch
         {
             "Button" => (VisualElement)new ButtonPage(),
+            "ButtonGroup" => new ButtonGroupPage(),
             "IconButton" => new IconButtonPage(),
             "Badge" => new BadgePage(),
             "Menu" => new MenuPage(),
