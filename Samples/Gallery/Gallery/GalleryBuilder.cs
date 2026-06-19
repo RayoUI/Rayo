@@ -265,6 +265,7 @@ public class GalleryBuilder : UserControl
             // Input Controls
             ("Button", "Input"),
             ("ButtonGroup", "Input"),
+            ("ButtonFloat", "Input"),
             ("ButtonIcon", "Input"),
             ("Checkbox", "Input"),
             ("RadioButton", "Input"),
@@ -430,6 +431,7 @@ public class GalleryBuilder : UserControl
         {
             "Button" => (VisualElement)new ButtonPage(),
             "ButtonGroup" => new ButtonGroupPage(),
+            "ButtonFloat" => new ButtonFloatPage(),
             "ButtonIcon" => new ButtonIconPage(),
             "Badge" => new BadgePage(),
             "Menu" => new MenuPage(),
