@@ -1,5 +1,6 @@
 namespace Rayo.Controls;
 
+using Rayo.Animation;
 using Rayo.Core;
 using Rayo.Layout;
 using Rayo.Reactivity;
@@ -15,10 +16,17 @@ public enum CarouselNavigationPlacement
     Overlay
 }
 
-public class Carousel : CompositeView<Carousel>
+public enum CarouselTransitionMode
+{
+    None,
+    Slide
+}
+
+public class Carousel : CompositeView<Carousel>, IFrameAnimation
 {
     private readonly CarouselViewport _viewport;
     private readonly Frame _contentFrame;
+    private readonly CarouselTransitionHost _transitionHost;
     private readonly IconButton _previousButton;
     private readonly IconButton _nextButton;
     private readonly HStack _indicatorStack;
@@ -26,6 +34,9 @@ public class Carousel : CompositeView<Carousel>
     private readonly Grid _root;
     private List<VisualElement> _items = [];
     private int _selectedIndex = -1;
+    private bool _isAnimating;
+    private float _transitionElapsed;
+    private int _transitionDirection = 1;
 
     #region Items
     [NotFluent]
@@ -34,6 +45,33 @@ public class Carousel : CompositeView<Carousel>
         get => _items;
         set => SetItems(value);
     }
+    #endregion
+
+    #region TransitionMode
+    [PaintProperty]
+    public CarouselTransitionMode TransitionMode
+    {
+        get => field;
+        set => this.SetProperty(ref field, value);
+    } = CarouselTransitionMode.Slide;
+    #endregion
+
+    #region TransitionDuration
+    [PaintProperty]
+    public float TransitionDuration
+    {
+        get => field;
+        set => this.SetProperty(ref field, Math.Max(0f, value));
+    } = 0.28f;
+    #endregion
+
+    #region TransitionEasing
+    [NotFluent]
+    public Func<float, float> TransitionEasing
+    {
+        get => field;
+        set => this.SetProperty(ref field, value ?? Easing.OutCubic);
+    } = Easing.OutCubic;
     #endregion
 
     #region SelectedIndex
@@ -85,7 +123,11 @@ public class Carousel : CompositeView<Carousel>
     public Brush SlideBackground
     {
         get => field;
-        set => this.SetProperty(ref field, value, () => _contentFrame.Background = value);
+        set => this.SetProperty(ref field, value, () =>
+        {
+            _contentFrame.Background = value;
+            _transitionHost.SlideBackground = value;
+        });
     } = new Color(35, 38, 46);
     #endregion
 
@@ -242,6 +284,14 @@ public class Carousel : CompositeView<Carousel>
             HorizontalAlignment = HorizontalAlignment.Stretch,
             VerticalAlignment = VerticalAlignment.Stretch
         };
+        _transitionHost = new CarouselTransitionHost
+        {
+            SlideBackground = SlideBackground,
+            ClipToBounds = true,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch
+        };
+        _contentFrame.Content = _transitionHost;
         _viewport.Content = _contentFrame;
 
         _previousButton = CreateNavigationButton(Icons.ChevronLeft, Previous);
@@ -312,11 +362,11 @@ public class Carousel : CompositeView<Carousel>
 
         if (_selectedIndex < _items.Count - 1)
         {
-            SelectedIndex = _selectedIndex + 1;
+            SelectIndex(_selectedIndex + 1, raiseEvent: true, direction: 1);
         }
         else if (Loop)
         {
-            SelectedIndex = 0;
+            SelectIndex(0, raiseEvent: true, direction: 1);
         }
     }
 
@@ -329,12 +379,18 @@ public class Carousel : CompositeView<Carousel>
 
         if (_selectedIndex > 0)
         {
-            SelectedIndex = _selectedIndex - 1;
+            SelectIndex(_selectedIndex - 1, raiseEvent: true, direction: -1);
         }
         else if (Loop)
         {
-            SelectedIndex = _items.Count - 1;
+            SelectIndex(_items.Count - 1, raiseEvent: true, direction: -1);
         }
+    }
+
+    protected override void OnUnmounted()
+    {
+        StopTransition();
+        base.OnUnmounted();
     }
 
     protected override void Measure(float availableWidth, float availableHeight)
@@ -370,21 +426,22 @@ public class Carousel : CompositeView<Carousel>
 
     private void SetItems(IList<VisualElement>? items)
     {
-        _contentFrame.ClearContent();
+        _transitionHost.ClearSlides();
         _items = items?.Where(item => item != null).ToList() ?? [];
         NormalizeSelectedIndex();
         RefreshAfterItemsChanged(selectionChanged: true);
     }
 
-    private void SelectIndex(int value, bool raiseEvent)
+    private void SelectIndex(int value, bool raiseEvent, int? direction = null)
     {
+        int oldIndex = _selectedIndex;
         bool changed = this.SetPropertyCondition(
             ref _selectedIndex,
             value,
             (current, incoming) => incoming != current && IsValidIndex(incoming),
             () =>
             {
-                UpdateContent();
+                UpdateContent(oldIndex, direction ?? GetDirection(oldIndex, value));
                 RebuildIndicators();
                 RefreshNavigationState();
                 RefreshLocalLayout();
@@ -405,7 +462,7 @@ public class Carousel : CompositeView<Carousel>
     private void RefreshAfterItemsChanged(bool selectionChanged)
     {
         NormalizeSelectedIndex();
-        UpdateContent();
+        UpdateContent(previousIndex: -1, direction: 1, animate: false);
         RefreshNavigation();
         RefreshLocalLayout();
 
@@ -426,25 +483,97 @@ public class Carousel : CompositeView<Carousel>
         _selectedIndex = Math.Clamp(_selectedIndex, 0, _items.Count - 1);
     }
 
-    private void UpdateContent()
+    private void UpdateContent(int previousIndex = -1, int direction = 1, bool animate = true)
     {
         var selected = SelectedItem;
         if (selected == null)
         {
-            _contentFrame.ClearContent();
+            _transitionHost.ClearSlides();
             _contentFrame.MarkNeedsPaint();
             return;
         }
 
-        if (!ReferenceEquals(_contentFrame.Content, selected))
+        var previous = previousIndex >= 0 && previousIndex < _items.Count ? _items[previousIndex] : null;
+        if (previous is VisualElement previousSlide &&
+            animate &&
+            TransitionMode == CarouselTransitionMode.Slide &&
+            TransitionDuration > 0f &&
+            !ReferenceEquals(previousSlide, selected) &&
+            ComputedWidth > 0 &&
+            ComputedHeight > 0)
         {
-            _contentFrame.ClearContent();
+            StartTransition(previousSlide, selected, direction);
+        }
+        else
+        {
+            StopTransition();
+            _transitionHost.SetCurrent(selected);
         }
 
-        _contentFrame.Content = selected;
         _contentFrame.InvalidateMeasure();
         _contentFrame.MarkNeedsPaint();
         MarkNeedsPaint();
+    }
+
+    private void StartTransition(VisualElement previous, VisualElement current, int direction)
+    {
+        StopTransition();
+
+        _transitionDirection = direction < 0 ? -1 : 1;
+        _transitionElapsed = 0f;
+        _isAnimating = true;
+
+        _transitionHost.StartTransition(previous, current, _transitionDirection);
+        FrameAnimationTicker.Register(this);
+
+        var app = UIApplication.Current;
+        if (app != null)
+        {
+            app.ContinuousRendering = true;
+        }
+
+        MarkNeedsPaint();
+        (UIApplication.Current?.Tree ?? UITree.Current)?.MarkNeedsRender();
+    }
+
+    private void StopTransition()
+    {
+        if (_isAnimating)
+        {
+            FrameAnimationTicker.Unregister(this);
+            _isAnimating = false;
+            _transitionElapsed = 0f;
+        }
+
+        var app = UIApplication.Current;
+        if (app != null)
+        {
+            app.ContinuousRendering = false;
+        }
+    }
+
+    void IFrameAnimation.Tick(float deltaTime)
+    {
+        if (!_isAnimating)
+        {
+            return;
+        }
+
+        _transitionElapsed += Math.Max(0f, deltaTime);
+        float t = TransitionDuration > 0f ? Math.Min(1f, _transitionElapsed / TransitionDuration) : 1f;
+        float eased = TransitionEasing(Math.Clamp(t, 0f, 1f));
+        _transitionHost.Progress = eased;
+        RefreshLocalLayout();
+
+        if (t >= 1f)
+        {
+            _transitionHost.CompleteTransition();
+            StopTransition();
+        }
+
+        _contentFrame.MarkNeedsPaint();
+        MarkNeedsPaint();
+        (UIApplication.Current?.Tree ?? UITree.Current)?.MarkNeedsRender();
     }
 
     private void RefreshLocalLayout()
@@ -607,6 +736,11 @@ public class Carousel : CompositeView<Carousel>
         return index >= 0 && index < _items.Count;
     }
 
+    private static int GetDirection(int oldIndex, int newIndex)
+    {
+        return newIndex >= oldIndex ? 1 : -1;
+    }
+
     private static IconButton CreateNavigationButton(IconData icon, Action action)
     {
         var button = new IconButton(icon)
@@ -750,5 +884,135 @@ public class Carousel : CompositeView<Carousel>
 
             return !float.IsInfinity(availableLength) && !float.IsNaN(availableLength) ? availableLength : 0;
         }
+    }
+
+    private sealed class CarouselTransitionHost : CompositeView<CarouselTransitionHost>
+    {
+        private VisualElement? _previous;
+        private VisualElement? _current;
+        private int _direction = 1;
+
+        public Brush SlideBackground
+        {
+            get => field;
+            set => this.SetProperty(ref field, value);
+        } = Color.Transparent;
+
+        public float Progress
+        {
+            get => field;
+            set
+            {
+                field = Math.Clamp(value, 0f, 1f);
+                InvalidateArrange();
+                MarkNeedsPaint();
+            }
+        }
+
+        public void SetCurrent(VisualElement current)
+        {
+            ClearSlides();
+            _current = current;
+            AddChild(current);
+            Progress = 1f;
+            InvalidateMeasure();
+        }
+
+        public void StartTransition(VisualElement previous, VisualElement current, int direction)
+        {
+            ClearSlides();
+            _previous = previous;
+            _current = current;
+            _direction = direction < 0 ? -1 : 1;
+            Progress = 0f;
+
+            AddChild(previous);
+            AddChild(current);
+            InvalidateMeasure();
+            MarkNeedsPaint();
+        }
+
+        public void CompleteTransition()
+        {
+            var current = _current;
+            ClearSlides();
+
+            if (current != null)
+            {
+                _current = current;
+                AddChild(current);
+            }
+
+            Progress = 1f;
+            InvalidateMeasure();
+            MarkNeedsPaint();
+        }
+
+        public void ClearSlides()
+        {
+            ClearChildren();
+            _previous = null;
+            _current = null;
+            Progress = 1f;
+        }
+
+        protected override void Measure(float availableWidth, float availableHeight)
+        {
+            _previous?.MeasureUpdate(availableWidth, availableHeight);
+            _current?.MeasureUpdate(availableWidth, availableHeight);
+
+            float desiredWidth = Math.Max(_previous?.DesiredWidth ?? 0, _current?.DesiredWidth ?? 0);
+            float desiredHeight = Math.Max(_previous?.DesiredHeight ?? 0, _current?.DesiredHeight ?? 0);
+            DesiredWidth = ResolveLength(Width, HorizontalAlignment, availableWidth, desiredWidth);
+            DesiredHeight = ResolveLength(Height, VerticalAlignment, availableHeight, desiredHeight);
+        }
+
+        protected override void Arrange(float x, float y, float width, float height)
+        {
+            base.Arrange(x, y, width, height);
+
+            if (_previous != null && Progress < 1f)
+            {
+                float previousX = x - (_direction * width * Progress);
+                _previous.ArrangeUpdate(previousX, y, width, height);
+            }
+
+            if (_current != null)
+            {
+                float currentX = _previous != null && Progress < 1f
+                    ? x + (_direction * width * (1f - Progress))
+                    : x;
+                _current.ArrangeUpdate(currentX, y, width, height);
+            }
+        }
+
+        public override void Render(IRenderer renderer)
+        {
+            if (SlideBackground.PrimaryColor.A > 0)
+            {
+                renderer.DrawRect(ComputedX, ComputedY, ComputedWidth, ComputedHeight, SlideBackground);
+            }
+        }
+    }
+
+    private static float ResolveLength(float explicitLength, Enum alignment, float availableLength, float desiredLength)
+    {
+        if (explicitLength > 0)
+        {
+            return explicitLength;
+        }
+
+        bool isStretch = alignment.Equals(HorizontalAlignment.Stretch) || alignment.Equals(VerticalAlignment.Stretch);
+        if (isStretch && !float.IsInfinity(availableLength))
+        {
+            return availableLength;
+        }
+
+        if (desiredLength > 0 && !float.IsNaN(desiredLength) && !float.IsInfinity(desiredLength))
+        {
+            return desiredLength;
+        }
+
+        return !float.IsInfinity(availableLength) && !float.IsNaN(availableLength) ? availableLength : 0;
     }
 }

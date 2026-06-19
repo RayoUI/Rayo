@@ -26,6 +26,8 @@ public class CarouselPage : UserControl
                         .Children(
                             new Carousel()
                                 .Size(new Size(520, 280))
+                                .TransitionMode(CarouselTransitionMode.Slide)
+                                .TransitionDuration(0.32f)
                                 .AddSlides(
                                     CreateFeatureSlide("Fast composition", "Build slides from any Rayo visual element.", new Color(59, 130, 246)),
                                     CreateFeatureSlide("Clear navigation", "Previous and next actions keep content easy to browse.", new Color(16, 185, 129)),
@@ -45,6 +47,7 @@ public class CarouselPage : UserControl
                         .OverlayNavigationButtonSize(58)
                         .OverlayNavigationIconSize(32)
                         .OverlayNavigationInset(16)
+                        .TransitionDuration(0.36f)
                         .NavigationButtonBackground(new Color(0, 0, 0, 0.38f))
                         .NavigationButtonHoverBackground(new Color(0, 0, 0, 0.58f))
                         .SlideBackground(new Color(24, 26, 32))
