@@ -81,6 +81,9 @@ public static class App
         {
             images.AddImage("Images/robot.png", "Robot");
             images.AddImage("Images/super_robot.png", "SuperRobot");
+            images.AddImage("Icons/svg/home.svg", "HomeSvg");
+            images.AddImage("Icons/svg/search.svg", "SearchSvg");
+            images.AddImage("Icons/svg/settings.svg", "SettingsSvg");
         });
     }
 

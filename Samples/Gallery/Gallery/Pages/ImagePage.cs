@@ -46,6 +46,18 @@ public class ImagePage : UserControl
                         )
                 ),
 
+                Helper.CreateExampleSection("SVG Image Assets",
+                    new HStack()
+                        .Spacing(16)
+                        .Children(
+                            CreateSvgImage("Home", "Assets/Icons/svg/home.svg", null),
+                            CreateSvgImage("Search", "Assets/Icons/svg/search.svg", new Color(59, 130, 246)),
+                            CreateSvgImage("Settings", "Assets/Icons/svg/settings.svg", new Color(34, 197, 94)),
+                            CreateSvgImage("Delete", "Assets/Icons/svg/delete.svg", new Color(239, 68, 68)),
+                            CreateSvgImage("Start", "Assets/Icons/svg/start.svg", new Color(234, 179, 8))
+                        )
+                ),
+
                 Helper.CreateExampleSection("Stretch Modes",
                     new HStack()
                         .Spacing(16)
@@ -80,6 +92,37 @@ public class ImagePage : UserControl
                             CreateSizedImage(128)
                         )
                 )
+            );
+    }
+
+    private VisualElement CreateSvgImage(string label, string source, Color? tint)
+    {
+        var image = new Image()
+            .Source(source)
+            .Size(new Size(48, 48))
+            .Stretch(StretchMode.Uniform);
+
+        if (tint.HasValue)
+        {
+            image.Tint(tint.Value);
+        }
+
+        return new VStack()
+            .Spacing(8)
+            .Alignment(Alignment.Center)
+            .Children(
+                new Frame()
+                    .Size(new Size(64, 64))
+                    .Background(new Color(45, 48, 58))
+                    .BorderRadius(8)
+                    .Content(
+                        image
+                            .HorizontalAlignment(HorizontalAlignment.Center)
+                            .VerticalAlignment(VerticalAlignment.Center)
+                    ),
+                new Label(label)
+                    .FontSize(11)
+                    .Foreground(new Color(140, 145, 160))
             );
     }
 
