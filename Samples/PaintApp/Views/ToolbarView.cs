@@ -16,7 +16,6 @@ public class ToolbarView : UserControl
     private readonly PaintViewState _vm;
     private readonly PaintCanvas    _canvas;
 
-    private ColorPicker _colorPicker = null!;
     private readonly Dictionary<PaintTool, IconButton> _toolButtons = new();
     private readonly Dictionary<float, Button>         _sizeButtons = new();
 
@@ -28,17 +27,28 @@ public class ToolbarView : UserControl
 
     public override VisualElement Build()
     {
-        _colorPicker = new ColorPicker()
-            .OnColorChanged(c => _vm.PrimaryColor.Value = c);
-        _colorPicker.SelectedColor = _vm.PrimaryColor.Value;
-        _colorPicker.ShowAlpha     = false;
-        _colorPicker.DisplayMode   = PickerDisplayMode.Floating;
+        var colorPreview = new Frame()
+            .Size(34)
+            .Background(_vm.PrimaryColor.Value)
+            .BorderColor(new Color(170, 170, 170))
+            .BorderWidth(1)
+            .BorderRadius(new CornerRadius(4));
+
+        var colorLauncher = new ColorPicker.ClickableFrame(() => ColorPicker.ShowDialog(
+                _vm.PrimaryColor.Value,
+                color => _vm.PrimaryColor.Value = color,
+                configure: picker => picker.ShowAlpha = false))
+            .Width(34)
+            .Height(34)
+            .Background(new Color(245, 245, 245))
+            .SetHoverBackground(new Color(220, 230, 245))
+            .Content(colorPreview);
 
         // Keep canvas + picker in sync when primary color changes (e.g. from palette).
         _vm.PrimaryColor.Subscribe(c =>
         {
             _canvas.DrawColor          = c;
-            _colorPicker.SelectedColor = c;
+            colorPreview.Background(c);
         });
 
         _vm.Tool.Subscribe(t =>
@@ -102,7 +112,7 @@ public class ToolbarView : UserControl
                             .Foreground(new Color(80, 80, 80))
                             .VerticalAlignment(VerticalAlignment.Center)
                             .Margin(new Thickness(4, 0)),
-                        _colorPicker
+                        new TooltipHost(colorLauncher, "Choose color", TooltipPlacement.Bottom)
                     )
             );
     }

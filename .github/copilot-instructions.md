@@ -200,8 +200,8 @@ public class MyComponent : UserControl
 
 ### Picker dialogs
 
-- `TimePicker`, `DatePicker`, and `ColorPicker` can be used either as trigger controls or as standalone modal pickers through their static `ShowDialog(...)` helpers.
-- Prefer `ShowDialog(...)` when a screen needs a custom launch surface instead of the picker's built-in trigger UI.
+- `TimePicker` and `DatePicker` can be used either as trigger controls or as standalone modal pickers through their static `ShowDialog(...)` helpers.
+- `ColorPicker` is dialog-only. Launch it with `ColorPicker.ShowDialog(...)` from a custom surface such as a `Frame` preview or a `Button`.
 
 ## Keeping docs up to date
 

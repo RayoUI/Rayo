@@ -4,7 +4,6 @@ using Rayo;
 using Rayo.Core;
 using Rayo.Core.Interfaces;
 using Rayo.Core.Input;
-using Rayo.Core.Platform;
 using Rayo.Layout;
 using Rayo.Reactivity;
 using Rayo.Rendering;
@@ -16,15 +15,13 @@ using static Rayo.Core.UIHelpers;
 using GradientStop = Rayo.Rendering.Brushes.GradientStop;
 
 /// <summary>
-/// Fluent color picker that mirrors Flutter's dialog UX so it works on desktop and mobile targets.
+/// Modal color picker that mirrors Flutter's dialog UX so it works on desktop and mobile targets.
 /// </summary>
 public class ColorPicker : UserControl, Rayo.Core.Interfaces.IGlobalPointerHandler
 {
     private readonly Signal<Color> _colorState;
-    private readonly Signal<string> _hexState;
 
     private bool _showAlpha = true;
-    private PickerDisplayMode _displayMode = PickerDisplayMode.Dialog;
     private bool _isOpen;
     private VisualElement? _activeOverlay;
     private Frame? _dialogCard;
@@ -35,12 +32,6 @@ public class ColorPicker : UserControl, Rayo.Core.Interfaces.IGlobalPointerHandl
     {
         var initial = new Color(59, 130, 246);
         _colorState = new Signal<Color>(initial);
-        _hexState = new Signal<string>(FormatHex(initial, _showAlpha));
-
-        RegisterDisposable(_colorState.Subscribe(color =>
-        {
-            _hexState.Value = FormatHex(color, _showAlpha);
-        }));
     }
 
     /// <summary>
@@ -66,25 +57,6 @@ public class ColorPicker : UserControl, Rayo.Core.Interfaces.IGlobalPointerHandl
             }
 
             _showAlpha = value;
-            _hexState.Value = FormatHex(_colorState.Value, _showAlpha);
-        }
-    }
-
-    /// <summary>
-    /// Gets or sets how the picker UI is displayed (floating Frame or dialog).
-    /// </summary>
-    public PickerDisplayMode DisplayMode
-    {
-        get => _displayMode;
-        set
-        {
-            if (_displayMode == value)
-            {
-                return;
-            }
-
-            _displayMode = value;
-            ClosePicker();
         }
     }
 
@@ -95,83 +67,17 @@ public class ColorPicker : UserControl, Rayo.Core.Interfaces.IGlobalPointerHandl
 
     public override VisualElement Build()
     {
-        var preview = new Frame();
-        preview.Width = 40;
-        preview.Height = 40;
-        preview.BorderRadius(new CornerRadius(10));
-        preview.Background = new SolidColorBrush(_colorState.Value);
-        preview.BorderWidth = 1;
-        preview.BorderColor = new Color(255, 255, 255, 30);
-
-        RegisterDisposable(_colorState.Subscribe(color => preview.Background(color)));
-
-        var hexLabel = new Label(_hexState.Value)
-            .FontSize(16)
-            .Foreground(Color.White);
-
-        RegisterDisposable(_hexState.Subscribe(value => hexLabel.Text(value)));
-
-        var hintLabel = new Label("Tap to choose")
-            .FontSize(12)
-            .Foreground(ColorDefault.Secondary);
-
-        var arrowLabel = new Label("?")
-            .FontSize(18)
-            .Foreground(ColorDefault.Secondary);
-
-        var infoStack = new VStack()
-            .Spacing(2)
-            .VerticalAlignment(VerticalAlignment.Center)
-            .Children(
-                hexLabel,
-                hintLabel
-            );
-
-        var infoRow = new HStack()
-            .Spacing(12)
-            .Alignment(Alignment.Center);
-        infoRow.AddChild(preview);
-        infoRow.AddChild(infoStack);
-
-        var layout = new HStack()
-            .Spacing(12)
-            .Alignment(Alignment.Center)
-            .JustifyContent(JustifyContent.SpaceBetween);
-        layout.AddChild(infoRow);
-        layout.AddChild(arrowLabel);
-
-        // Create wrapper Frame to hold the layout (buttons can't have AddChild called externally)
-        Frame container = new Frame();
-        container.HorizontalAlignment(HorizontalAlignment.Stretch);
-        container.Padding(new Thickness(14, 12));
-        container.Background(new Color(35, 35, 40));
-        container.BorderRadius(new CornerRadius(10));
-        container.BorderColor = new Color(255, 255, 255, 20);
-        container.BorderWidth = 1;
-        container.Content(layout);
-
-        // Make it clickable using a wrapper that implements IPointerHandler
-        var clickableWrapper = new ClickableFrame(OpenPicker)
-            .Background(Color.Transparent)
-            .SetHoverBackground(new Color(50, 50, 58, 0.3f))
-            .HorizontalAlignment(HorizontalAlignment.Stretch);
-        clickableWrapper.Content(container);
-
-        return clickableWrapper;
+        return new Frame()
+            .Width(0)
+            .Height(0)
+            .Background(Color.Transparent);
     }
 
     public void OpenPicker()
     {
         ClosePicker();
 
-        _activeOverlay = ResolveDisplayMode() == PickerDisplayMode.Floating
-            ? BuildFloatingOverlay(ConfirmSelection, CancelSelection)
-            : BuildDialogOverlay(ConfirmSelection, CancelSelection);
-
-        if (_activeOverlay == null)
-        {
-            return;
-        }
+        _activeOverlay = BuildDialogOverlay(ConfirmSelection, CancelSelection);
 
         _isOpen = true;
         Rayo.Core.OverlayManager.AddOverlay(_activeOverlay);
@@ -194,16 +100,6 @@ public class ColorPicker : UserControl, Rayo.Core.Interfaces.IGlobalPointerHandl
         _dialogCard = null;
 
         Rayo.Core.OverlayManager.EventManager?.UnregisterGlobalPointerHandler(this);
-    }
-
-    private PickerDisplayMode ResolveDisplayMode()
-    {
-        if (_displayMode != PickerDisplayMode.Auto)
-        {
-            return _displayMode;
-        }
-
-        return PlatformDetector.IsMobile ? PickerDisplayMode.Dialog : PickerDisplayMode.Floating;
     }
 
     private void ConfirmSelection(Color color)
@@ -240,55 +136,11 @@ public class ColorPicker : UserControl, Rayo.Core.Interfaces.IGlobalPointerHandl
         {
             SelectedColor = initialColor
         };
-        picker.DisplayMode = PickerDisplayMode.Dialog;
         configure?.Invoke(picker);
         picker._dialogConfirmed = onConfirm;
         picker._dialogCanceled = onCancel;
         picker.OpenPicker();
         return picker;
-    }
-
-    private VisualElement? BuildFloatingOverlay(Action<Color> onConfirm, Action onCancel)
-    {
-        var popover = new Frame();
-        popover.Width(380);
-        popover.Background = new SolidColorBrush(new Color(28, 28, 34));
-        popover.BorderRadius(new CornerRadius(16));
-        popover.Padding(new Thickness(20));
-        popover.BorderWidth = 1;
-        popover.BorderColor = new Color(255, 255, 255, 20);
-
-        popover.Content(BuildPickerContent(onConfirm, onCancel));
-        var overlay = new Absolute();
-        overlay.HorizontalAlignment = HorizontalAlignment.Stretch;
-        overlay.VerticalAlignment = VerticalAlignment.Stretch;
-        overlay.ClipToBounds = false;
-        overlay.Background = Color.Transparent;
-
-        const float EstimatedHeight = 520f;
-        float x = ComputedX;
-        float y = ComputedY + ComputedHeight + 4;
-        float width = popover.Width > 0 ? popover.Width : 380f;
-        float windowWidth = Rayo.Core.OverlayManager.WindowWidth;
-        float windowHeight = Rayo.Core.OverlayManager.WindowHeight;
-
-        if (windowWidth > 0 && x + width > windowWidth - 12)
-        {
-            x = windowWidth - width - 12;
-        }
-
-        if (windowHeight > 0 && y + EstimatedHeight > windowHeight - 12)
-        {
-            y = ComputedY - EstimatedHeight - 4;
-        }
-
-        x = Math.Max(12, x);
-        y = Math.Max(12, y);
-
-        popover.Position(x, y);
-        overlay.Children(popover!);
-
-        return overlay;
     }
 
     private VisualElement BuildDialogOverlay(Action<Color> onConfirm, Action onCancel)
@@ -802,7 +654,7 @@ public class ColorPicker : UserControl, Rayo.Core.Interfaces.IGlobalPointerHandl
     }
 
     /// <summary>
-    /// Simple clickable Frame for ColorPicker button functionality
+    /// Simple clickable Frame for custom ColorPicker launch surfaces.
     /// </summary>
     public sealed class ClickableFrame : Frame, Rayo.Core.Input.IPointerHandler
     {

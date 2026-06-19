@@ -13,20 +13,11 @@ public class ColorPickerPage : UserControl
 {
     public override VisualElement Build()
     {
-        var basicHexState = new Signal<string>(FormatHex(new Color(59, 130, 246)));
+        var basicColorState = new Signal<Color>(new Color(59, 130, 246));
+        var variantColorState = new Signal<Color>(new Color(234, 179, 8));
+        var noAlphaColorState = new Signal<Color>(new Color(59, 130, 246));
         var bindingColorState = new Signal<Color>(new Color(16, 185, 129));
         var dialogColorState = new Signal<Color>(new Color(168, 85, 247));
-
-        var basicPicker = new ColorPicker()
-            .SelectedColor(new Color(59, 130, 246));
-        basicPicker.OnColorChanged(color => basicHexState.Value = FormatHex(color));
-
-        var variantPicker = new ColorPicker()
-            .SelectedColor(new Color(234, 179, 8));
-
-        var noAlphaPicker = new ColorPicker()
-            .ShowAlpha(false)
-            .SelectedColor(new Color(59, 130, 246));
 
         var bindingPreview = CreateColorPreview("Live preview", bindingColorState);
         var dialogPreview = CreateColorPreview("Accent token", dialogColorState);
@@ -43,10 +34,6 @@ public class ColorPickerPage : UserControl
                 configure: picker => picker.ShowAlpha = false
             ));
 
-        var bindingPicker = new ColorPicker()
-            .SelectedColor(bindingColorState.Value);
-        bindingPicker.OnColorChanged(color => bindingColorState.Value = color);
-
         return new VStack()
             .Spacing(20)
             .Padding(new Thickness(20))
@@ -57,14 +44,14 @@ public class ColorPickerPage : UserControl
                     new VStack()
                         .Spacing(12)
                         .Children(
-                            new Label("Tap the preview to open the dialog. Listen to `ColorChanged` to react to selections.")
+                            new Label("Open the modal picker from a preview Frame and update state from the confirm callback.")
                                 .FontSize(13)
                                 .Foreground(ColorDefault.Secondary),
-                            basicPicker,
+                            CreateColorLauncher("Primary color", "Modal dialog", basicColorState),
                             new Label()
                                 .FontSize(14)
                                 .Foreground(ColorDefault.Info)
-                                .Text(basicHexState.Map(value => $"Last selection: {value}"))
+                                .Text(basicColorState.Map(value => $"Last selection: {FormatHex(value)}"))
                         )
                 ),
 
@@ -73,8 +60,10 @@ public class ColorPickerPage : UserControl
                         .Spacing(16)
                         .Wrap(true)
                         .Children(
-                            CreateVariantCard("Preset value", "Start the picker with your brand or theme color.", variantPicker),
-                            CreateVariantCard("Hide alpha", "Leave only RGB controls for opaque palettes.", noAlphaPicker)
+                            CreateVariantCard("Preset value", "Start the dialog with your brand or theme color.",
+                                CreateColorLauncher("Brand color", "Includes alpha", variantColorState)),
+                            CreateVariantCard("Hide alpha", "Leave only RGB controls for opaque palettes.",
+                                CreateColorLauncher("Opaque color", "RGB only", noAlphaColorState, showAlpha: false))
                         )
                 ),
 
@@ -86,7 +75,7 @@ public class ColorPickerPage : UserControl
                                 .FontSize(13)
                                 .Foreground(ColorDefault.Secondary),
                             bindingPreview,
-                            bindingPicker
+                            CreateColorLauncher("Theme color", "Updates the live preview", bindingColorState)
                         )
                 ),
 
@@ -94,7 +83,7 @@ public class ColorPickerPage : UserControl
                     new VStack()
                         .Spacing(12)
                         .Children(
-                            new Label("Launch the picker from any button or custom surface without rendering the built-in trigger.")
+                            new Label("Launch the picker from any button or custom surface.")
                                 .FontSize(13)
                                 .Foreground(ColorDefault.Secondary),
                             dialogPreview,
@@ -150,6 +139,53 @@ public class ColorPickerPage : UserControl
                             .Text(colorState.Map(FormatHex))
                     )
             );
+    }
+
+    private static VisualElement CreateColorLauncher(string title, string subtitle, Signal<Color> colorState, bool showAlpha = true)
+    {
+        var swatch = new Frame()
+            .Size(40)
+            .BorderRadius(10)
+            .Background(colorState)
+            .BorderWidth(1)
+            .BorderColor(new Color(255, 255, 255, 30));
+
+        var launcherContent = new Frame()
+            .HorizontalAlignment(HorizontalAlignment.Stretch)
+            .Padding(new Thickness(14, 12))
+            .Background(new Color(35, 35, 40))
+            .BorderRadius(new CornerRadius(10))
+            .BorderColor(new Color(255, 255, 255, 20))
+            .BorderWidth(1)
+            .Content(
+                new HStack()
+                    .Spacing(12)
+                    .Alignment(Alignment.Center)
+                    .Children(
+                        swatch,
+                        new VStack()
+                            .Spacing(2)
+                            .VerticalAlignment(VerticalAlignment.Center)
+                            .Children(
+                                new Label(title)
+                                    .FontSize(15)
+                                    .Foreground(Color.White),
+                                new Label()
+                                    .FontSize(12)
+                                    .Foreground(ColorDefault.Secondary)
+                                    .Text(colorState.Map(color => $"{subtitle} - {FormatHex(color)}"))
+                            )
+                    )
+            );
+
+        return new ColorPicker.ClickableFrame(() => ColorPicker.ShowDialog(
+                colorState.Value,
+                color => colorState.Value = color,
+                configure: picker => picker.ShowAlpha = showAlpha))
+            .Background(Color.Transparent)
+            .SetHoverBackground(new Color(255, 255, 255, 0.08f))
+            .HorizontalAlignment(HorizontalAlignment.Stretch)
+            .Content(launcherContent);
     }
 
     private static string FormatHex(Color color)

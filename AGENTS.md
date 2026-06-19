@@ -145,8 +145,8 @@ Reference docs that currently exist in the repo:
 
 ### Picker dialogs
 
-- `TimePicker`, `DatePicker`, and `ColorPicker` still work as trigger controls, but they also expose static `ShowDialog(...)` helpers for standalone modal launching.
-- Use `ShowDialog(...)` when the user needs a custom launcher instead of rendering the built-in picker trigger in the layout.
+- `TimePicker` and `DatePicker` still work as trigger controls, and they also expose static `ShowDialog(...)` helpers for standalone modal launching.
+- `ColorPicker` is dialog-only. Launch it with `ColorPicker.ShowDialog(...)` from a custom surface such as a `Frame` preview or a `Button`.
 
 ### Creating a custom component
 
