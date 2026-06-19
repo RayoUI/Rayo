@@ -24,6 +24,7 @@ public class EventManager
     private VisualElement? _draggedElement;
     private Vector2 _lastMousePos = Vector2.Zero;
     private Vector2 _dragStartPos = Vector2.Zero;
+    private CursorShape _currentCursorShape = CursorShape.Default;
 
     // Right-mouse-button pan state
     private IInputHandler? _rightDragTarget;
@@ -491,6 +492,7 @@ public class EventManager
             RespectInputTransparency = true,
             CheckClipping = true,
             ElementFilter = e => e is Rayo.Core.Input.IPointerHandler
+                || e.Cursor != CursorShape.Default
         };
 
         // Use HitTestRoot if element is not tree root (e.g. overlay)
@@ -502,6 +504,8 @@ public class EventManager
         if (result?.Metadata.ContainsKey("AllMatches") == true)
         {
             var matches = (List<HitTestResult>)result.Metadata["AllMatches"];
+            ApplyMouseCursor(ResolveCursorShape(matches));
+
             foreach (var match in matches)
             {
                 if (match.Element is Rayo.Core.Input.IPointerHandler && match.Element is VisualElement elem)
@@ -509,6 +513,10 @@ public class EventManager
                     newHoveredElements.Add(elem);
                 }
             }
+        }
+        else
+        {
+            ApplyMouseCursor(CursorShape.Default);
         }
 
         // OPTIMIZATION: Only update elements that CHANGED state
@@ -580,6 +588,68 @@ public class EventManager
 
         // Return true if any hoverable element was found
         return newHoveredElements.Count > 0;
+    }
+
+    private CursorShape ResolveCursorShape(List<HitTestResult> matches)
+    {
+        foreach (var match in matches)
+        {
+            var element = match.Element;
+            while (element != null)
+            {
+                if (element.Cursor != CursorShape.Default)
+                {
+                    return element.Cursor;
+                }
+
+                element = element.Parent;
+            }
+        }
+
+        return CursorShape.Default;
+    }
+
+    private void ApplyMouseCursor(CursorShape shape)
+    {
+        if (_mouse?.Cursor == null || _currentCursorShape == shape)
+        {
+            return;
+        }
+
+        var standardCursor = ToStandardCursor(shape);
+        try
+        {
+            if (_mouse.Cursor.IsSupported(standardCursor))
+            {
+                _mouse.Cursor.Type = CursorType.Standard;
+                _mouse.Cursor.StandardCursor = standardCursor;
+                _currentCursorShape = shape;
+            }
+        }
+        catch
+        {
+            // Some backends report cursor support but still reject a shape at runtime.
+        }
+    }
+
+    private static StandardCursor ToStandardCursor(CursorShape shape)
+    {
+        return shape switch
+        {
+            CursorShape.Arrow => StandardCursor.Arrow,
+            CursorShape.IBeam => StandardCursor.IBeam,
+            CursorShape.Crosshair => StandardCursor.Crosshair,
+            CursorShape.Hand => StandardCursor.Hand,
+            CursorShape.HResize => StandardCursor.HResize,
+            CursorShape.VResize => StandardCursor.VResize,
+            CursorShape.NwseResize => StandardCursor.NwseResize,
+            CursorShape.NeswResize => StandardCursor.NeswResize,
+            CursorShape.ResizeAll => StandardCursor.ResizeAll,
+            CursorShape.NotAllowed => StandardCursor.NotAllowed,
+            CursorShape.Wait => StandardCursor.Wait,
+            CursorShape.WaitArrow => StandardCursor.WaitArrow,
+            _ => StandardCursor.Default
+        };
     }
 
     /// <summary>

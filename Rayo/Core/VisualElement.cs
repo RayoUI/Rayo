@@ -193,6 +193,18 @@ public abstract class VisualElement : BindableObject, IDisposable, IInputTranspa
     }
     #endregion
 
+    #region Cursor
+    /// <summary>
+    /// Desktop cursor shape requested while the pointer is over this element.
+    /// </summary>
+    [PaintProperty]
+    public CursorShape Cursor
+    {
+        get => field;
+        set => this.SetProperty(ref field, value);
+    } = CursorShape.Default;
+    #endregion
+
     #region Parent
     public VisualElement? Parent
     {

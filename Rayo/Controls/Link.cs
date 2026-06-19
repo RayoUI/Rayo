@@ -136,6 +136,7 @@ public class Link : View<Link>,
     public Link()
     {
         Padding = new Thickness(0);
+        Cursor = CursorShape.Hand;
 
         _tapRecognizer = new TapRecognizer(
             maxMovementThreshold: 15f,
