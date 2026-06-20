@@ -68,9 +68,16 @@ public static class Icons
     /// Icono de guardar/diskette
     /// </summary>
     public static IconData Save => new IconData("save")
-        .AddRect(4f, 4f, 16f, 16f, filled: false, strokeWidth: 2f)
-        .AddRect(7f, 4f, 10f, 7f, filled: true)
-        .AddRect(7f, 13f, 10f, 3f, filled: true);
+        .AddLine(5f, 4f, 17f, 4f, 2f)
+        .AddLine(17f, 4f, 20f, 7f, 2f)
+        .AddLine(20f, 7f, 20f, 20f, 2f)
+        .AddLine(20f, 20f, 4f, 20f, 2f)
+        .AddLine(4f, 20f, 4f, 4f, 2f)
+        .AddLine(4f, 4f, 5f, 4f, 2f)
+        .AddRect(7f, 5f, 9f, 5f, filled: false, strokeWidth: 1.8f)
+        .AddLine(14f, 5f, 14f, 10f, 1.8f)
+        .AddRect(7f, 14f, 10f, 6f, filled: false, strokeWidth: 1.8f)
+        .AddLine(9f, 17f, 15f, 17f, 1.6f);
 
     // ==================== NAVEGACIÓN ====================
 
@@ -206,45 +213,29 @@ public static class Icons
     /// Chevron diagonal arriba-izquierda
     /// </summary>
     public static IconData ChevronUpLeft => new IconData("chevronUpLeft")
-        .AddPath(new List<(float x, float y)>
-        {
-            (15f, 15f),
-            (9f, 9f),
-            (9f, 15f)
-        }, strokeWidth: 2.5f);
+        .AddLine(16f, 8f, 8f, 8f, 2.5f)
+        .AddLine(8f, 8f, 8f, 16f, 2.5f);
 
     /// <summary>
     /// Chevron diagonal arriba-derecha
     /// </summary>
     public static IconData ChevronUpRight => new IconData("chevronUpRight")
-        .AddPath(new List<(float x, float y)>
-        {
-            (9f, 15f),
-            (15f, 9f),
-            (15f, 15f)
-        }, strokeWidth: 2.5f);
+        .AddLine(8f, 8f, 16f, 8f, 2.5f)
+        .AddLine(16f, 8f, 16f, 16f, 2.5f);
 
     /// <summary>
     /// Chevron diagonal abajo-izquierda
     /// </summary>
     public static IconData ChevronDownLeft => new IconData("chevronDownLeft")
-        .AddPath(new List<(float x, float y)>
-        {
-            (15f, 9f),
-            (9f, 15f),
-            (15f, 15f)
-        }, strokeWidth: 2.5f);
+        .AddLine(16f, 16f, 8f, 16f, 2.5f)
+        .AddLine(8f, 16f, 8f, 8f, 2.5f);
 
     /// <summary>
     /// Chevron diagonal abajo-derecha
     /// </summary>
     public static IconData ChevronDownRight => new IconData("chevronDownRight")
-        .AddPath(new List<(float x, float y)>
-        {
-            (9f, 9f),
-            (15f, 15f),
-            (9f, 15f)
-        }, strokeWidth: 2.5f);
+        .AddLine(8f, 16f, 16f, 16f, 2.5f)
+        .AddLine(16f, 16f, 16f, 8f, 2.5f);
 
     /// <summary>
     /// Icono de home/casa
@@ -277,84 +268,44 @@ public static class Icons
     /// Icono de email/correo
     /// </summary>
     public static IconData Email => new IconData("email")
-        .AddRect(3f, 5f, 18f, 14f, filled: false, strokeWidth: 2f)
-        .AddPath(new List<(float x, float y)>
-        {
-            (3f, 5f),
-            (12f, 13f),
-            (21f, 5f)
-        }, strokeWidth: 2f);
+        .AddLine(4f, 6f, 20f, 6f, 2f)
+        .AddLine(20f, 6f, 20f, 18f, 2f)
+        .AddLine(20f, 18f, 4f, 18f, 2f)
+        .AddLine(4f, 18f, 4f, 6f, 2f)
+        .AddLine(5f, 7f, 12f, 13f, 2f)
+        .AddLine(19f, 7f, 12f, 13f, 2f)
+        .AddLine(5f, 17f, 10f, 12f, 1.7f)
+        .AddLine(19f, 17f, 14f, 12f, 1.7f);
 
     /// <summary>
     /// Icono de notificación/campana
     /// </summary>
     public static IconData Notification => new IconData("notification")
-        .AddPath(new List<(float x, float y)>
-        {
-            (6f, 8f),
-            (6f, 6f),
-            (12f, 2f),
-            (18f, 6f),
-            (18f, 15f),
-            (20f, 17f),
-            (4f, 17f),
-            (6f, 15f),
-            (6f, 8f)
-        }, strokeWidth: 2f)
-        .AddPath(new List<(float x, float y)>
-        {
-            (10f, 20f),
-            (12f, 22f),
-            (14f, 20f)
-        }, strokeWidth: 2f);
+        .AddLine(12f, 4f, 12f, 3f, 2f)
+        .AddLine(8f, 8f, 8f, 14f, 2f)
+        .AddLine(16f, 8f, 16f, 14f, 2f)
+        .AddLine(8f, 8f, 9f, 6f, 2f)
+        .AddLine(9f, 6f, 12f, 5f, 2f)
+        .AddLine(12f, 5f, 15f, 6f, 2f)
+        .AddLine(15f, 6f, 16f, 8f, 2f)
+        .AddLine(8f, 14f, 5f, 18f, 2f)
+        .AddLine(5f, 18f, 19f, 18f, 2f)
+        .AddLine(19f, 18f, 16f, 14f, 2f)
+        .AddLine(10f, 20f, 14f, 20f, 2f)
+        .AddCircle(12f, 20f, 1.4f, filled: true);
 
     // ==================== OBJETOS ====================
 
     /// <summary>
-    /// Icono de configuración/engranaje
+    /// Icono de configuración/propiedades
     /// </summary>
     public static IconData Settings => new IconData("settings")
-        .AddCircle(12f, 12f, 3f, filled: false, strokeWidth: 2f)
-        .AddPath(new List<(float x, float y)>
-        {
-            (12f, 1f),
-            (12f, 4f)
-        }, strokeWidth: 2f)
-        .AddPath(new List<(float x, float y)>
-        {
-            (12f, 20f),
-            (12f, 23f)
-        }, strokeWidth: 2f)
-        .AddPath(new List<(float x, float y)>
-        {
-            (4.22f, 4.22f),
-            (6.34f, 6.34f)
-        }, strokeWidth: 2f)
-        .AddPath(new List<(float x, float y)>
-        {
-            (17.66f, 17.66f),
-            (19.78f, 19.78f)
-        }, strokeWidth: 2f)
-        .AddPath(new List<(float x, float y)>
-        {
-            (1f, 12f),
-            (4f, 12f)
-        }, strokeWidth: 2f)
-        .AddPath(new List<(float x, float y)>
-        {
-            (20f, 12f),
-            (23f, 12f)
-        }, strokeWidth: 2f)
-        .AddPath(new List<(float x, float y)>
-        {
-            (4.22f, 19.78f),
-            (6.34f, 17.66f)
-        }, strokeWidth: 2f)
-        .AddPath(new List<(float x, float y)>
-        {
-            (17.66f, 6.34f),
-            (19.78f, 4.22f)
-        }, strokeWidth: 2f);
+        .AddLine(4f, 7f, 20f, 7f, 2f)
+        .AddCircle(9f, 7f, 2.2f, filled: false, strokeWidth: 2f)
+        .AddLine(4f, 12f, 20f, 12f, 2f)
+        .AddCircle(15f, 12f, 2.2f, filled: false, strokeWidth: 2f)
+        .AddLine(4f, 17f, 20f, 17f, 2f)
+        .AddCircle(11f, 17f, 2.2f, filled: false, strokeWidth: 2f);
 
     /// <summary>
     /// Icono de estrella
@@ -378,20 +329,14 @@ public static class Icons
     /// Icono de corazón
     /// </summary>
     public static IconData Heart => new IconData("heart")
-        .AddPath(new List<(float x, float y)>
+        .AddCircle(8.5f, 8.7f, 4.2f, filled: true)
+        .AddCircle(15.5f, 8.7f, 4.2f, filled: true)
+        .AddPolygon(new List<(float x, float y)>
         {
-            (12f, 21.35f),
-            (10.55f, 20.03f),
-            (2f, 12f),
-            (2f, 8.5f),
-            (7.5f, 3f),
-            (12f, 5.5f),
-            (16.5f, 3f),
-            (22f, 8.5f),
-            (22f, 12f),
-            (13.45f, 20.03f),
-            (12f, 21.35f)
-        }, strokeWidth: 2f);
+            (4.8f, 10.8f),
+            (19.2f, 10.8f),
+            (12f, 21f)
+        }, filled: true);
 
     /// <summary>
     /// Icono de usuario/persona
@@ -445,15 +390,17 @@ public static class Icons
     public static IconData File => new IconData("file")
         .AddPath(new List<(float x, float y)>
         {
-            (6f, 2f),
-            (6f, 22f),
-            (18f, 22f),
-            (18f, 8f),
-            (13f, 2f),
-            (6f, 2f)
+            (7f, 4f),
+            (7f, 20f),
+            (18f, 20f),
+            (18f, 9f),
+            (13f, 4f),
+            (7f, 4f)
         }, strokeWidth: 2f)
-        .AddLine(13f, 2f, 13f, 8f, 2f)
-        .AddLine(13f, 8f, 18f, 8f, 2f);
+        .AddLine(13f, 4f, 13f, 9f, 2f)
+        .AddLine(13f, 9f, 18f, 9f, 2f)
+        .AddLine(10f, 13f, 15f, 13f, 1.7f)
+        .AddLine(10f, 16f, 15f, 16f, 1.7f);
 
     /// <summary>
     /// Icono de consola/terminal
@@ -655,11 +602,15 @@ public static class Icons
         .AddRect(5f, 11f, 14f, 10f, filled: false, strokeWidth: 2f)
         .AddPath(new List<(float x, float y)>
         {
-            (7f, 11f),
-            (7f, 7f),
-            (12f, 3f),
-            (17f, 7f),
-            (17f, 11f)
+            (8f, 11f),
+            (8f, 8f),
+            (8.5f, 6f),
+            (10f, 4.5f),
+            (12f, 4f),
+            (14f, 4.5f),
+            (15.5f, 6f),
+            (16f, 8f),
+            (16f, 11f)
         }, strokeWidth: 2f)
         .AddCircle(12f, 16f, 1.5f, filled: true);
 
@@ -670,10 +621,13 @@ public static class Icons
         .AddRect(5f, 11f, 14f, 10f, filled: false, strokeWidth: 2f)
         .AddPath(new List<(float x, float y)>
         {
-            (7f, 11f),
-            (7f, 7f),
-            (12f, 3f),
-            (17f, 7f)
+            (8f, 11f),
+            (8f, 8f),
+            (8.5f, 6f),
+            (10f, 4.5f),
+            (12f, 4f),
+            (14.5f, 4.5f),
+            (17f, 6.5f)
         }, strokeWidth: 2f)
         .AddCircle(12f, 16f, 1.5f, filled: true);
 
@@ -727,14 +681,24 @@ public static class Icons
     public static IconData Cloud => new IconData("cloud")
         .AddPath(new List<(float x, float y)>
         {
-            (6f, 16f),
-            (4f, 12f),
-            (6f, 8f),
-            (10f, 6f),
-            (14f, 8f),
-            (16f, 12f),
-            (14f, 16f),
-            (6f, 16f)
+            (6f, 18f),
+            (5f, 17.6f),
+            (4f, 16.6f),
+            (3.5f, 15f),
+            (4f, 13.2f),
+            (5.5f, 12f),
+            (7.2f, 12f),
+            (7.8f, 9.5f),
+            (9.8f, 7.6f),
+            (12.5f, 7.2f),
+            (15f, 8.4f),
+            (16.3f, 10.7f),
+            (18.2f, 10.8f),
+            (20.2f, 12.2f),
+            (20.8f, 14.5f),
+            (20.2f, 16.4f),
+            (18.5f, 18f),
+            (6f, 18f)
         }, strokeWidth: 2f);
 
     /// <summary>
@@ -757,15 +721,25 @@ public static class Icons
     public static IconData Moon => new IconData("moon")
         .AddPath(new List<(float x, float y)>
         {
-            (12f, 2f),
-            (15f, 2f),
-            (18f, 5f),
-            (18f, 9f),
-            (15f, 12f),
-            (12f, 12f),
-            (9f, 9f),
-            (9f, 5f),
-            (12f, 2f)
+            (17f, 3f),
+            (14f, 4f),
+            (11.5f, 6f),
+            (10f, 9f),
+            (10f, 12.5f),
+            (11.5f, 15.5f),
+            (14f, 18f),
+            (17f, 19f),
+            (14.6f, 20.4f),
+            (11.6f, 20.7f),
+            (8.6f, 19.7f),
+            (6f, 17.5f),
+            (4.4f, 14.5f),
+            (4.2f, 11f),
+            (5.2f, 7.7f),
+            (7.4f, 5f),
+            (10.4f, 3.4f),
+            (13.8f, 3f),
+            (17f, 3f)
         }, strokeWidth: 2f);
 
     /// <summary>
@@ -797,16 +771,21 @@ public static class Icons
     /// Icono de selector
     /// </summary>
     public static IconData Picker => new IconData("picker")
-        .AddPath(new List<(float x, float y)>
+        .AddCircle(17f, 6f, 3.2f, filled: true)
+        .AddPolygon(new List<(float x, float y)>
         {
-            (12f, 2f),
-            (14f, 4f),
-            (10f, 8f),
-            (8f, 6f),
-            (12f, 2f)
-        }, strokeWidth: 2f)
-        .AddLine(10f, 8f, 4f, 20f, 2f)
-        .AddLine(4f, 20f, 8f, 16f, 2f);
+            (14f, 7f),
+            (17f, 10f),
+            (8f, 19f),
+            (5f, 16f)
+        }, filled: true)
+        .AddPolygon(new List<(float x, float y)>
+        {
+            (6f, 18f),
+            (9f, 21f),
+            (4f, 22f)
+        }, filled: true)
+        .AddCircle(4f, 20f, 1.2f, filled: true);
 
     /// <summary>
     /// Icono de paleta de colores
@@ -824,9 +803,27 @@ public static class Icons
     /// Brush tool icon — angled stroke with a rounded tip.
     /// </summary>
     public static IconData BrushTool => new IconData("brushTool")
-        .AddLine(4f, 20f, 16f, 8f, 3f)
-        .AddCircle(17.5f, 6.5f, 3f, filled: false, strokeWidth: 2f)
-        .AddLine(4f, 20f, 7f, 18f, 2f);
+        .AddPolygon(new List<(float x, float y)>
+        {
+            (15f, 3f),
+            (19f, 5f),
+            (12f, 16f),
+            (8f, 14f)
+        }, filled: true)
+        .AddPolygon(new List<(float x, float y)>
+        {
+            (7f, 13f),
+            (13f, 16f),
+            (11f, 20f),
+            (4f, 17f)
+        }, filled: true)
+        .AddPolygon(new List<(float x, float y)>
+        {
+            (4f, 17f),
+            (11f, 20f),
+            (6f, 22f),
+            (3f, 21f)
+        }, filled: true);
 
     /// <summary>
     /// Eraser tool icon — a rectangle body with a dividing line.
@@ -834,9 +831,16 @@ public static class Icons
     public static IconData Eraser => new IconData("eraser")
         .AddPath(new List<(float x, float y)>
         {
-            (3f, 14f), (3f, 20f), (13f, 20f), (20f, 13f), (14f, 7f), (7f, 7f), (3f, 14f)
+            (4f, 15f),
+            (10f, 9f),
+            (18f, 17f),
+            (14f, 21f),
+            (8f, 21f),
+            (4f, 17f),
+            (4f, 15f)
         }, strokeWidth: 2f)
-        .AddLine(10f, 20f, 20f, 10f, 1.5f);
+        .AddLine(8f, 13f, 15f, 20f, 1.8f)
+        .AddLine(8f, 21f, 21f, 21f, 2f);
 
     /// <summary>
     /// Broom icon for clear/clean actions.
@@ -880,13 +884,29 @@ public static class Icons
     /// Fill (paint bucket) tool icon.
     /// </summary>
     public static IconData FillBucket => new IconData("fillBucket")
-        .AddPath(new List<(float x, float y)>
+        .AddPolygon(new List<(float x, float y)>
         {
-            (5f, 3f), (5f, 14f), (12f, 21f), (19f, 14f), (12f, 7f), (5f, 14f)
-        }, strokeWidth: 2f)
-        .AddLine(5f, 3f, 14f, 3f, 2f)
-        .AddLine(14f, 3f, 14f, 8f, 2f)
-        .AddCircle(20.5f, 19f, 2.5f, filled: true);
+            (6f, 9f),
+            (18f, 9f),
+            (16f, 20f),
+            (8f, 20f)
+        }, filled: true)
+        .AddPolygon(new List<(float x, float y)>
+        {
+            (12f, 3f),
+            (17f, 8f),
+            (14f, 8f),
+            (12f, 6f),
+            (10f, 8f),
+            (7f, 8f)
+        }, filled: true)
+        .AddPolygon(new List<(float x, float y)>
+        {
+            (15f, 13f),
+            (21f, 17f),
+            (18f, 20f)
+        }, filled: true)
+        .AddCircle(20f, 19f, 2f, filled: true);
 
     /// <summary>
     /// New file icon — a document with a plus sign.
@@ -894,12 +914,12 @@ public static class Icons
     public static IconData NewFile => new IconData("newFile")
         .AddPath(new List<(float x, float y)>
         {
-            (6f, 2f), (6f, 22f), (18f, 22f), (18f, 8f), (14f, 2f), (6f, 2f)
+            (7f, 4f), (7f, 20f), (18f, 20f), (18f, 9f), (13f, 4f), (7f, 4f)
         }, strokeWidth: 2f)
         .AddPath(new List<(float x, float y)>
         {
-            (14f, 2f), (14f, 8f), (18f, 8f)
+            (13f, 4f), (13f, 9f), (18f, 9f)
         }, strokeWidth: 2f)
-        .AddLine(9f, 14f, 15f, 14f, 2f)
-        .AddLine(12f, 11f, 12f, 17f, 2f);
+        .AddLine(10f, 14f, 15f, 14f, 2f)
+        .AddLine(12.5f, 11.5f, 12.5f, 16.5f, 2f);
 }
