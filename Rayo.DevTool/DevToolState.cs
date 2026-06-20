@@ -21,7 +21,7 @@ public class DevToolState : System.IDisposable
     public Signal<int> Port { get; } = new(9999);
 
     public Signal<List<LogMessage>> Logs { get; } = new(new List<LogMessage>());
-    public Signal<bool> IsConsoleMaximized    { get; } = new(true);
+    public Signal<bool> IsConsoleMaximized    { get; } = new(false);
     public Signal<bool> IsHighlightEnabled    { get; } = new(true);
 
     // Performance panel

@@ -21,7 +21,7 @@ public class TreeFrame : UserControl
 
     public override VisualElement Build()
     {
-        var highlightButton = new IconButton(Icons.Target)
+        var highlightButton = new ButtonIcon(Icons.Target)
             .Size(30)
             .IconSize(20)
             .IconColor(_state.IsHighlightEnabled.Map(enabled => 
@@ -29,11 +29,19 @@ public class TreeFrame : UserControl
             .Background(_state.IsHighlightEnabled.Map(enabled =>
                 enabled ? new Color(59, 130, 246, 0.2f) : Color.Transparent))
             .HoverBackground(new Color(255, 255, 255, 0.1f))
-            .BorderRadius(new CornerRadius(4))
             .OnTapped(() =>
             {
                 _state.IsHighlightEnabled.Value = !_state.IsHighlightEnabled.Value;
             });
+
+        highlightButton.BorderRadius = _state.IsHighlightEnabled.Value
+            ? new CornerRadius(0)
+            : new CornerRadius(4);
+
+        _state.IsHighlightEnabled.Subscribe(enabled =>
+        {
+            highlightButton.BorderRadius = enabled ? new CornerRadius(0) : new CornerRadius(4);
+        });
 
         var header = new Frame()
             .Background(new Color(40, 40, 45))
@@ -48,10 +56,11 @@ public class TreeFrame : UserControl
                     .JustifyContent(JustifyContent.SpaceBetween)
                     .Children(
                         new Label("Element Tree")
+                            .Padding(new Thickness(left: 5))
                             .FontSize(14)
                             .HorizontalAlignment(HorizontalAlignment.Stretch)
                             .Foreground(Color.White),
-                        highlightButton
+                        highlightButton.WithTooltip("Toggle element highlight")
                     )
             );
 
@@ -177,8 +186,8 @@ public class TreeFrame : UserControl
 
         if (!_state.ExpandedStates.TryGetValue(node.Id, out var savedExpanded))
         {
-            // Expand all nodes by default in DevTools to show full tree structure
-            // User can collapse nodes manually with double click
+            // Expand all nodes by default in DevTools to show full tree structure.
+            // Users can collapse/expand nodes with a single click on the chevron.
             savedExpanded = true;
             _state.ExpandedStates[node.Id] = savedExpanded;
         }
@@ -195,13 +204,6 @@ public class TreeFrame : UserControl
         bool hasInvalidDimensions = float.IsInfinity(node.Width) || float.IsInfinity(node.Height) ||
                                     float.IsNaN(node.Width) || float.IsNaN(node.Height);
         
-        // Create chevron icon
-        var chevronIcon = hasChildren 
-            ? new Icon(isExpanded.Value ? Icons.ChevronDown : Icons.ChevronRight)
-                .Size(12)
-                .Color(new Color(160, 160, 160))
-            : null;
-
         // Create text label with dimension info
         var displayText = $"{node.TypeName}{nameText}";
         if (hasInvalidDimensions)
@@ -216,46 +218,6 @@ public class TreeFrame : UserControl
             }
         }
         
-        var textLabel = new Label(displayText)
-            .Foreground(hasInvalidDimensions ? new Color(245, 158, 11) : new Color(200, 200, 200))
-            .FontSize(12);
-
-        var leftContent = new HStack()
-            .Spacing(4)
-            .Alignment(Alignment.Center)
-            .VerticalAlignment(VerticalAlignment.Center);
-
-        if (chevronIcon != null)
-        {
-            leftContent.AddChild(chevronIcon);
-        }
-        else
-        {
-            leftContent.AddChild(new Frame().Width(12).Height(12));
-        }
-
-        leftContent.AddChild(textLabel);
-
-        var content = new Grid()
-            .Rows(GridLength.Auto)
-            .Columns(GridLength.Star, GridLength.Auto)
-            .Padding(new Thickness(indent + 4, 4, 4, 4))
-            .VerticalAlignment(VerticalAlignment.Top)
-            .AddChild(leftContent, 0, 0);
-
-        if (hasChildren)
-        {
-            var badge = new Label($"{node.Children.Count}")
-                .FontSize(9)
-                .Foreground(new Color(140, 140, 150))
-                .Padding(new Thickness(4, 1))
-                .Background(new Color(50, 52, 60))
-                .BorderRadius(new CornerRadius(6))
-                .VerticalAlignment(VerticalAlignment.Center);
-
-            content.AddChild(badge, 0, 1);
-        }
-
         void SelectNode()
         {
             _state.SelectedElementId.Value = node.Id;
@@ -275,50 +237,75 @@ public class TreeFrame : UserControl
             _state.ExpandedStates[node.Id] = isExpanded.Value;
         }
 
-        var header = new Button()
-            .TextAlignment(HorizontalAlignment.Left)
-            .Padding(new Thickness(0))
-            .Text("")
-            .HorizontalAlignment(HorizontalAlignment.Stretch)
-            .VerticalAlignment(VerticalAlignment.Top)
-            .Background(_state.SelectedElementId.Map(id =>
-                id == node.Id ? new Color(59, 130, 246, 0.3f) : Color.Transparent))
-            .HoverBackground(_state.SelectedElementId.Map(id =>
-                id == node.Id ? new Color(59, 130, 246, 0.4f) : new Color(255, 255, 255, 0.1f)))
-            .BorderWidth(0);
+        var selectedBackground = _state.SelectedElementId.Map(id =>
+            id == node.Id ? new Color(59, 130, 246, 0.3f) : Color.Transparent);
+        var selectedHoverBackground = _state.SelectedElementId.Map(id =>
+            id == node.Id ? new Color(59, 130, 246, 0.4f) : new Color(255, 255, 255, 0.1f));
 
-        header.Tapped += args =>
+        ButtonIcon? chevronButton = null;
+        VisualElement chevronElement = hasChildren
+            ? chevronButton = new ButtonIcon(isExpanded.Value ? Icons.ChevronDown : Icons.ChevronRight)
+                .Size(20)
+                .IconSize(12)
+                .IconColor(new Color(160, 160, 160))
+                .Background(Color.Transparent)
+                .HoverBackground(new Color(255, 255, 255, 0.1f))
+                .PressedBackground(new Color(255, 255, 255, 0.16f))
+                .BorderWidth(0)
+                .Padding(new Thickness(4))
+                .BorderRadius(new CornerRadius(3))
+            : new Frame().Width(20).Height(20);
+
+        if (chevronButton != null)
         {
-            SelectNode();
+            chevronButton.Tapped += _ => ToggleExpanded();
 
-            if (args.TapCount >= 2)
-            {
-                ToggleExpanded();
-            }
-        };
-
-        // Wrap button and content in a container
-        var headerContainer = new Frame()
-            .HorizontalAlignment(HorizontalAlignment.Stretch)
-            .VerticalAlignment(VerticalAlignment.Top)  // Prevent infinite height
-            .Content(
-                new Grid()
-                    .Rows(GridLength.Auto)
-                    .Columns(GridLength.Star)
-                    .VerticalAlignment(VerticalAlignment.Top)  // Prevent infinite height
-                    .AddChild(header, 0, 0)
-                    .AddChild(content, 0, 0)
-            );
-
-        if (hasChildren && chevronIcon != null)
-        {
             isExpanded.Subscribe(expanded =>
             {
-                chevronIcon.IconData = expanded ? Icons.ChevronDown : Icons.ChevronRight;
+                chevronButton.IconData = expanded ? Icons.ChevronDown : Icons.ChevronRight;
             });
+
+            chevronElement = chevronButton.WithTooltip("Expand or collapse node");
         }
 
-        nodeContainer.AddChild(headerContainer);
+        var titleButton = new Button()
+            .TextAlignment(HorizontalAlignment.Left)
+            .Padding(new Thickness(0, 3, 0, 3))
+            .Text(displayText)
+            .TextColor(hasInvalidDimensions ? new Color(245, 158, 11) : new Color(200, 200, 200))
+            .FontSize(12)
+            .HorizontalAlignment(HorizontalAlignment.Stretch)
+            .VerticalAlignment(VerticalAlignment.Top)
+            .Background(selectedBackground)
+            .HoverBackground(selectedHoverBackground)
+            .PressedBackground(new Color(59, 130, 246, 0.5f))
+            .BorderWidth(0);
+
+        titleButton.Tapped += _ => SelectNode();
+
+        var headerGrid = new Grid()
+            .Rows(GridLength.Auto)
+            .Columns(GridLength.Pixels(indent + 4), GridLength.Pixels(20), GridLength.Star, GridLength.Auto)
+            .Padding(new Thickness(0, 2, 4, 2))
+            .VerticalAlignment(VerticalAlignment.Top)
+            .HorizontalAlignment(HorizontalAlignment.Stretch)
+            .AddChild(chevronElement, 0, 1)
+            .AddChild(titleButton, 0, 2);
+
+        if (hasChildren)
+        {
+            var badge = new Label($"{node.Children.Count}")
+                .FontSize(9)
+                .Foreground(new Color(140, 140, 150))
+                .Padding(new Thickness(4, 1))
+                .Background(new Color(50, 52, 60))
+                .BorderRadius(new CornerRadius(6))
+                .VerticalAlignment(VerticalAlignment.Center);
+
+            headerGrid.AddChild(badge, 0, 3);
+        }
+
+        nodeContainer.AddChild(headerGrid);
 
         if (hasChildren)
         {

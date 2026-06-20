@@ -19,7 +19,8 @@ public class StatusBarFrame : UserControl
     public override VisualElement Build()
     {
         return new Frame()
-            .Background(new Color(30, 30, 35))
+            .Background(_state.IsConsoleMaximized.Map(maximized =>
+                maximized ? new Color(30, 30, 35) : new Color(36, 42, 52)))
             .Padding(new Thickness(10, 5))
             .Height(30)
             .HorizontalAlignment(HorizontalAlignment.Stretch)
@@ -35,14 +36,29 @@ public class StatusBarFrame : UserControl
 
                         new Frame().HorizontalAlignment(HorizontalAlignment.Stretch), // Flexible space
 
-                        new Button()
-                            .Text("Show Console")
-                            .FontSize(10)
-                            .Width(100)
-                            .Background(ColorDefault.Info)
+                        CreateStatusIconButton(Icons.ArrowUp)
                             .IsVisible(_state.IsConsoleMaximized.Map(m => !m))
                             .OnTapped(() => _state.IsConsoleMaximized.Value = true)
+                            .WithTooltip("Show console")
                     )
             );
+    }
+
+    private static ButtonIcon CreateStatusIconButton(IconData icon)
+    {
+        return new ButtonIcon(icon)
+        {
+            Width = 26,
+            Height = 22,
+            IconSize = 13,
+            Padding = new Thickness(5),
+            Background = new Color(48, 58, 72),
+            HoverBackground = new Color(62, 74, 92),
+            PressedBackground = new Color(42, 50, 64),
+            BorderColor = new Color(74, 88, 110),
+            BorderWidth = 1,
+            BorderRadius = new CornerRadius(3),
+            IconColor = new Color(225, 232, 242)
+        };
     }
 }

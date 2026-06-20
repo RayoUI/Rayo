@@ -69,12 +69,67 @@ public class ToolbarFrame : UserControl
                             .Width(80)
                             .OnTapped(async () => await _state.RefreshTreeAsync()),
 
-                        new Frame().Width(12) // Spacer
+                        new Frame()
+                            .HorizontalAlignment(HorizontalAlignment.Stretch),
+
+                        BuildSettingsButton()
 
                         //new Label()
                         //    .Text(_state.ConnectionStatus)
                         //    .Foreground(_state.IsConnected.Map(c => c ? ColorDefault.Success : ColorDefault.Secondary))
                     )
             );
+    }
+
+    private VisualElement BuildSettingsButton()
+    {
+        var button = new ButtonIcon(Icons.Settings)
+        {
+            Width = 30,
+            Height = 30,
+            IconSize = 15,
+            Padding = new Thickness(6),
+            Background = new Color(40, 40, 46),
+            HoverBackground = new Color(55, 55, 62),
+            PressedBackground = new Color(32, 32, 38),
+            BorderColor = new Color(60, 60, 68),
+            BorderWidth = 1,
+            BorderRadius = new CornerRadius(3),
+            IconColor = new Color(220, 220, 230)
+        };
+
+        button.Tapped += _ => ShowSettingsDialog();
+        return button.WithTooltip("Open DevTools settings");
+    }
+
+    private void ShowSettingsDialog()
+    {
+        VisualElement? overlay = null;
+
+        var showComputed = new Checkbox("Show computed properties")
+        {
+            IsChecked = _state.ShowComputedProperties.Value,
+            FontSize = 13,
+            BoxSize = 16,
+            LabelColor = new Color(220, 220, 230),
+            Background = new Color(38, 38, 44),
+            HoverBackground = new Color(48, 48, 56),
+            CheckedBackground = new Color(34, 197, 94)
+        };
+
+        showComputed.Changed += value => _state.ShowComputedProperties.Value = value;
+
+        var content = new VStack()
+            .Spacing(12)
+            .HorizontalAlignment(HorizontalAlignment.Stretch)
+            .Children(showComputed);
+
+        overlay = new Dialog("DevTools Settings", content, () =>
+        {
+            if (overlay != null)
+                OverlayManager.RemoveOverlay(overlay);
+        }).Build();
+
+        OverlayManager.AddOverlay(overlay);
     }
 }

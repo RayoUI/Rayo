@@ -456,6 +456,19 @@ public static class Icons
         .AddLine(13f, 8f, 18f, 8f, 2f);
 
     /// <summary>
+    /// Icono de consola/terminal
+    /// </summary>
+    public static IconData Console => new IconData("console")
+        .AddRect(3f, 5f, 18f, 14f, filled: false, strokeWidth: 2f)
+        .AddPath(new List<(float x, float y)>
+        {
+            (7f, 9f),
+            (10f, 12f),
+            (7f, 15f)
+        }, strokeWidth: 2f)
+        .AddLine(12f, 15f, 17f, 15f, 2f);
+
+    /// <summary>
     /// Icono de carpeta/folder
     /// </summary>
     public static IconData Folder => new IconData("folder")
@@ -824,6 +837,26 @@ public static class Icons
             (3f, 14f), (3f, 20f), (13f, 20f), (20f, 13f), (14f, 7f), (7f, 7f), (3f, 14f)
         }, strokeWidth: 2f)
         .AddLine(10f, 20f, 20f, 10f, 1.5f);
+
+    /// <summary>
+    /// Broom icon for clear/clean actions.
+    /// </summary>
+    public static IconData Broom => new IconData("broom")
+        .AddLine(12f, 3f, 12f, 12f, 2.5f)
+        .AddRect(9f, 11f, 6f, 3f, filled: false, strokeWidth: 1.8f)
+        .AddPath(new List<(float x, float y)>
+        {
+            (7f, 14f),
+            (17f, 14f),
+            (20f, 21f),
+            (4f, 21f),
+            (7f, 14f)
+        }, strokeWidth: 2f)
+        .AddLine(8f, 15f, 7f, 21f, 1.2f)
+        .AddLine(11f, 15f, 10.5f, 21f, 1.2f)
+        .AddLine(14f, 15f, 14.5f, 21f, 1.2f)
+        .AddLine(16f, 15f, 18f, 21f, 1.2f)
+        .AddLine(5f, 19f, 19f, 19f, 1.2f);
 
     /// <summary>
     /// Rectangle tool icon — an outlined rectangle.
