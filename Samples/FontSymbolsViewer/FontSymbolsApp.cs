@@ -1,6 +1,7 @@
 using Rayo;
 using Rayo.Controls;
 using Rayo.Core;
+using Rayo.Gestures.Components;
 using Rayo.Layout;
 using Rayo.Rendering;
 
@@ -61,7 +62,10 @@ public sealed class FontSymbolsApp : UserControl
                     .Foreground(new Color(166, 176, 192)),
                 new Label("Cada celda muestra el glifo renderizado con FontFamily(\"Lineicons\") y su codepoint Unicode.")
                     .FontSize(12)
-                    .Foreground(new Color(120, 132, 150))
+                    .Foreground(new Color(120, 132, 150)),
+                new Label("Haz clic sobre cualquier glifo para copiar su codigo.")
+                    .FontSize(12)
+                    .Foreground(new Color(129, 218, 200))
             );
     }
 
@@ -118,7 +122,7 @@ public sealed class FontSymbolsApp : UserControl
 
     private static VisualElement BuildGlyphCard(FontGlyph glyph)
     {
-        return new Frame()
+        var card = new Frame()
             .Width(104)
             .Height(112)
             .Background(new Color(25, 28, 35))
@@ -152,6 +156,19 @@ public sealed class FontSymbolsApp : UserControl
                             .TextHorizontalAlignment(HorizontalAlignment.Center)
                     )
             );
+
+        return new GestureDetector(card)
+            .OnTap((System.Numerics.Vector2 _) => CopyGlyphCode(glyph));
+    }
+
+    private static void CopyGlyphCode(FontGlyph glyph)
+    {
+        var code = glyph.CodePoint <= 0xFFFF
+            ? $"\\u{glyph.CodePoint:X4}"
+            : $"\\U{glyph.CodePoint:X8}";
+
+        ClipboardService.SetText(code);
+        ToastService.ShowSuccess($"Copiado {code}", 1.5f);
     }
 
     private readonly record struct FontGlyph(int CodePoint, string Text);
