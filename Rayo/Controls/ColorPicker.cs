@@ -514,6 +514,9 @@ public class ColorPicker : UserControl, Rayo.Core.Interfaces.IGlobalPointerHandl
 
     public sealed class GradientSwatchFrame : Frame, IPointerHandler, IInputHandler
     {
+        private static readonly Color TopLightOverlay = new(255, 255, 255, 200);
+        private static readonly Color BottomShadeOverlay = new(0, 0, 0, 160);
+
         private readonly Action<Color> _onColorPicked;
         private bool _isDragging;
 
@@ -541,14 +544,14 @@ public class ColorPicker : UserControl, Rayo.Core.Interfaces.IGlobalPointerHandl
                 ComputedWidth,
                 ComputedHeight,
                 radius,
-                LinearGradientBrush.Vertical(new Color(255, 255, 255, 200), new Color(255, 255, 255, 0)));
+                LinearGradientBrush.Vertical(TopLightOverlay, Color.Transparent));
             renderer.DrawRoundedRect(
                 ComputedX,
                 ComputedY,
                 ComputedWidth,
                 ComputedHeight,
                 radius,
-                LinearGradientBrush.Vertical(new Color(0, 0, 0, 0), new Color(0, 0, 0, 160)));
+                LinearGradientBrush.Vertical(Color.Transparent, BottomShadeOverlay));
 
             if (BorderWidth > 0 && BorderColor.PrimaryColor.A > 0)
             {
@@ -623,14 +626,35 @@ public class ColorPicker : UserControl, Rayo.Core.Interfaces.IGlobalPointerHandl
         {
             float width = Math.Max(1f, ComputedWidth > 0 ? ComputedWidth : Width);
             float height = Math.Max(1f, ComputedHeight > 0 ? ComputedHeight : Height);
+            float inset = Math.Max(0f, BorderWidth);
+            float sampleWidth = Math.Max(1f, width - inset * 2f);
+            float sampleHeight = Math.Max(1f, height - inset * 2f);
 
-            float normalizedX = Math.Clamp(localPosition.X / width, 0f, 1f);
-            float normalizedY = Math.Clamp(localPosition.Y / height, 0f, 1f);
+            float normalizedX = Math.Clamp((localPosition.X - inset) / sampleWidth, 0f, 1f);
+            float normalizedY = Math.Clamp((localPosition.Y - inset) / sampleHeight, 0f, 1f);
 
-            float hue = normalizedX * 360f;
-            float value = 1f - normalizedY;
-            var color = FromHsva(hue, 1f, Math.Clamp(value, 0f, 1f), 1f);
-            _onColorPicked(color);
+            var baseColor = Background.GetColorAt(normalizedX, 0.5f);
+            var lightened = BlendOver(baseColor, TopLightOverlay.WithAlpha(TopLightOverlay.A * (1f - normalizedY)));
+            var shaded = BlendOver(lightened, BottomShadeOverlay.WithAlpha(BottomShadeOverlay.A * normalizedY));
+            _onColorPicked(shaded);
+        }
+
+        private static Color BlendOver(Color destination, Color source)
+        {
+            float sourceAlpha = Math.Clamp(source.A, 0f, 1f);
+            float destinationAlpha = Math.Clamp(destination.A, 0f, 1f);
+            float outputAlpha = sourceAlpha + destinationAlpha * (1f - sourceAlpha);
+
+            if (outputAlpha <= 0f)
+            {
+                return Color.Transparent;
+            }
+
+            return new Color(
+                (source.R * sourceAlpha + destination.R * destinationAlpha * (1f - sourceAlpha)) / outputAlpha,
+                (source.G * sourceAlpha + destination.G * destinationAlpha * (1f - sourceAlpha)) / outputAlpha,
+                (source.B * sourceAlpha + destination.B * destinationAlpha * (1f - sourceAlpha)) / outputAlpha,
+                outputAlpha);
         }
 
         private static LinearGradientBrush CreateSpectrumBrush()
