@@ -19,6 +19,7 @@
     <Project Path="Samples/BasicApp/BasicApp.csproj" />
     <Project Path="Samples/ButtonFloatExample/ButtonFloatExample.csproj" />
     <Project Path="Samples/FluentExamples/FluentExamples.csproj" />
+    <Project Path="Samples/FontSymbolsViewer/FontSymbolsViewer.csproj" />
     <Project Path="Samples/Kanban/Kanban.csproj" />
     <Project Path="Samples/ModularApp/ModularApp.csproj" />
     <Project Path="Samples/Notepad/Notepad.csproj" />
