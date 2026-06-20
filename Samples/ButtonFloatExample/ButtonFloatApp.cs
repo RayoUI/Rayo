@@ -51,7 +51,7 @@ public class ButtonFloatApp : UserControl
 
         _list = new VStack()
             .Spacing(12)
-            .Padding(new Thickness(0, 86, 0, 16))
+            .Padding(new Thickness(0, 0, 0, 16))
             .VerticalAlignment(VerticalAlignment.Top);
 
         RebuildList();
