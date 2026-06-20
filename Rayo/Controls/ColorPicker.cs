@@ -519,6 +519,7 @@ public class ColorPicker : UserControl, Rayo.Core.Interfaces.IGlobalPointerHandl
 
         private readonly Action<Color> _onColorPicked;
         private bool _isDragging;
+        private Vector2? _markerPosition;
 
         public GradientSwatchFrame(Action<Color> onColorPicked)
         {
@@ -526,7 +527,7 @@ public class ColorPicker : UserControl, Rayo.Core.Interfaces.IGlobalPointerHandl
 
             Width = 320;
             Height = 140;
-            BorderRadius = new CornerRadius(14);
+            BorderRadius = new CornerRadius(0);
             BorderWidth = 1;
             BorderColor = new Color(255, 255, 255, 30);
 
@@ -535,34 +536,82 @@ public class ColorPicker : UserControl, Rayo.Core.Interfaces.IGlobalPointerHandl
 
         public override void Render(IRenderer renderer)
         {
-            float radius = BorderRadius.TopLeft;
-
-            renderer.DrawRoundedRect(ComputedX, ComputedY, ComputedWidth, ComputedHeight, radius, Background);
-            renderer.DrawRoundedRect(
+            renderer.DrawRect(ComputedX, ComputedY, ComputedWidth, ComputedHeight, Background);
+            renderer.DrawRect(
                 ComputedX,
                 ComputedY,
                 ComputedWidth,
                 ComputedHeight,
-                radius,
                 LinearGradientBrush.Vertical(TopLightOverlay, Color.Transparent));
-            renderer.DrawRoundedRect(
+            renderer.DrawRect(
                 ComputedX,
                 ComputedY,
                 ComputedWidth,
                 ComputedHeight,
-                radius,
                 LinearGradientBrush.Vertical(Color.Transparent, BottomShadeOverlay));
 
             if (BorderWidth > 0 && BorderColor.PrimaryColor.A > 0)
             {
-                renderer.DrawRoundedRectOutline(
-                    ComputedX,
-                    ComputedY,
-                    ComputedWidth,
-                    ComputedHeight,
-                    radius,
-                    BorderWidth,
-                    BorderColor);
+                DrawDottedBorder(renderer);
+            }
+
+            if (_markerPosition is { } marker)
+            {
+                float inset = Math.Max(0f, BorderWidth);
+                float sampleWidth = Math.Max(1f, ComputedWidth - inset * 2f);
+                float sampleHeight = Math.Max(1f, ComputedHeight - inset * 2f);
+                float markerX = ComputedX + inset + marker.X * sampleWidth;
+                float markerY = ComputedY + inset + marker.Y * sampleHeight;
+
+                renderer.DrawCircleOutline(markerX, markerY, 7f, 3f, new Color(0, 0, 0, 180));
+                renderer.DrawCircleOutline(markerX, markerY, 6f, 2f, Color.White);
+            }
+        }
+
+        private void DrawDottedBorder(IRenderer renderer)
+        {
+            var color = BorderColor.PrimaryColor;
+            float radius = Math.Max(1f, BorderWidth);
+            float step = radius * 4f;
+            float left = ComputedX + radius;
+            float right = ComputedX + ComputedWidth - radius;
+            float top = ComputedY + radius;
+            float bottom = ComputedY + ComputedHeight - radius;
+
+            DrawDottedLine(renderer, left, top, right, top, step, radius, color);
+            DrawDottedLine(renderer, right, top, right, bottom, step, radius, color);
+            DrawDottedLine(renderer, right, bottom, left, bottom, step, radius, color);
+            DrawDottedLine(renderer, left, bottom, left, top, step, radius, color);
+        }
+
+        private static void DrawDottedLine(
+            IRenderer renderer,
+            float startX,
+            float startY,
+            float endX,
+            float endY,
+            float step,
+            float radius,
+            Color color)
+        {
+            var delta = new Vector2(endX - startX, endY - startY);
+            float length = delta.Length();
+
+            if (length <= 0f)
+            {
+                renderer.DrawCircle(startX, startY, radius, color);
+                return;
+            }
+
+            var direction = delta / length;
+            int dotCount = Math.Max(1, (int)MathF.Floor(length / step));
+
+            for (int i = 0; i <= dotCount; i++)
+            {
+                float distance = Math.Min(length, i * step);
+                float x = startX + direction.X * distance;
+                float y = startY + direction.Y * distance;
+                renderer.DrawCircle(x, y, radius, color);
             }
         }
 
@@ -633,10 +682,13 @@ public class ColorPicker : UserControl, Rayo.Core.Interfaces.IGlobalPointerHandl
             float normalizedX = Math.Clamp((localPosition.X - inset) / sampleWidth, 0f, 1f);
             float normalizedY = Math.Clamp((localPosition.Y - inset) / sampleHeight, 0f, 1f);
 
+            _markerPosition = new Vector2(normalizedX, normalizedY);
+
             var baseColor = Background.GetColorAt(normalizedX, 0.5f);
             var lightened = BlendOver(baseColor, TopLightOverlay.WithAlpha(TopLightOverlay.A * (1f - normalizedY)));
             var shaded = BlendOver(lightened, BottomShadeOverlay.WithAlpha(BottomShadeOverlay.A * normalizedY));
             _onColorPicked(shaded);
+            MarkNeedsPaint();
         }
 
         private static Color BlendOver(Color destination, Color source)
