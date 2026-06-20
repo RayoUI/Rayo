@@ -202,6 +202,7 @@ public class MyComponent : UserControl
 
 - `TimePicker` and `DatePicker` can be used either as trigger controls or as standalone modal pickers through their static `ShowDialog(...)` helpers.
 - `ColorPicker` is dialog-only. Launch it with `ColorPicker.ShowDialog(...)` from a custom surface such as a `Frame` preview or a `Button`.
+- `PathPicker` can be used either as a trigger control or as a standalone modal picker. Configure `Mode` for files, folders, or either; `FilePicker` and `FolderPicker` are convenience variants.
 
 ## Keeping docs up to date
 
