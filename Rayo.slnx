@@ -17,6 +17,7 @@
   <Folder Name="/Samples/">
     <Project Path="Samples/Arkanoid/Arkanoid.csproj" />
     <Project Path="Samples/BasicApp/BasicApp.csproj" />
+    <Project Path="Samples/ButtonFloatExample/ButtonFloatExample.csproj" />
     <Project Path="Samples/FluentExamples/FluentExamples.csproj" />
     <Project Path="Samples/Kanban/Kanban.csproj" />
     <Project Path="Samples/ModularApp/ModularApp.csproj" />

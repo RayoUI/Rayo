@@ -2,6 +2,7 @@ namespace Rayo.Controls;
 
 using Rayo;
 using Rayo.Core;
+using Rayo.Layout;
 using Rayo.Reactivity;
 using Rayo.Rendering;
 using Rayo.Rendering.Brushes;
@@ -29,8 +30,8 @@ public enum ButtonFloatPlacement
 
 /// <summary>
 /// Floating action button built on top of <see cref="ButtonIcon"/>.
-/// Add it as the last child in a Grid cell or Absolute layer so its high ZIndex
-/// can float above the main content.
+/// Add it as the last child in a Grid cell or Absolute layer so its high ZIndex can
+/// float above the main content.
 /// </summary>
 public class ButtonFloat : ButtonIcon
 {
@@ -119,5 +120,26 @@ public class ButtonFloat : ButtonIcon
             : VerticalAlignment.Top;
 
         Margin = new Thickness(Offset);
+    }
+
+    protected override void Arrange(float x, float y, float width, float height)
+    {
+        if (Parent is Absolute absolute)
+        {
+            float parentX = absolute.ComputedX + absolute.Padding.Left;
+            float parentY = absolute.ComputedY + absolute.Padding.Top;
+            float parentWidth = Math.Max(0, absolute.ComputedWidth - absolute.Padding.Horizontal);
+            float parentHeight = Math.Max(0, absolute.ComputedHeight - absolute.Padding.Vertical);
+
+            x = Placement is ButtonFloatPlacement.BottomRight or ButtonFloatPlacement.TopRight
+                ? parentX + parentWidth - width - Offset
+                : parentX + Offset;
+
+            y = Placement is ButtonFloatPlacement.BottomRight or ButtonFloatPlacement.BottomLeft
+                ? parentY + parentHeight - height - Offset
+                : parentY + Offset;
+        }
+
+        base.Arrange(x, y, width, height);
     }
 }
