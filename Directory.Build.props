@@ -13,7 +13,9 @@
     <PublishRepositoryUrl Condition="'$(PublishRepositoryUrl)' == ''">true</PublishRepositoryUrl>
     <IncludeSymbols Condition="'$(IncludeSymbols)' == ''">true</IncludeSymbols>
     <SymbolPackageFormat Condition="'$(SymbolPackageFormat)' == ''">snupkg</SymbolPackageFormat>
-    <ContinuousIntegrationBuild Condition="'$(ContinuousIntegrationBuild)' == ''">true</ContinuousIntegrationBuild>
+    <ContinuousIntegrationBuild Condition="'$(ContinuousIntegrationBuild)' == '' and '$(CI)' == 'true'">true</ContinuousIntegrationBuild>
+    <HotReloadEnabled Condition="'$(HotReloadEnabled)' == '' and '$(Configuration)' == 'Debug'">true</HotReloadEnabled>
+    <HotReloadSupported Condition="'$(HotReloadSupported)' == '' and '$(Configuration)' == 'Debug'">true</HotReloadSupported>
   </PropertyGroup>
 
   <ItemGroup Condition="'$(IsPackable)' == 'true' and Exists('$(MSBuildThisFileDirectory)README.md')">
