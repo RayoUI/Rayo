@@ -79,6 +79,31 @@ public class HighlightElementRequest : DevToolMessage
     public string? ElementId { get; set; }
 }
 
+/// <summary>
+/// Toggle a persistent dashed outline for a layout element in the running application.
+/// </summary>
+public class SetLayoutOutlineRequest : DevToolMessage
+{
+    public override string Type => "set_layout_outline";
+
+    [JsonPropertyName("elementId")]
+    public string ElementId { get; set; } = "";
+
+    [JsonPropertyName("enabled")]
+    public bool Enabled { get; set; }
+}
+
+/// <summary>
+/// Toggle inspect mode in the running application.
+/// </summary>
+public class SetInspectModeRequest : DevToolMessage
+{
+    public override string Type => "set_inspect_mode";
+
+    [JsonPropertyName("enabled")]
+    public bool Enabled { get; set; }
+}
+
 // ============================================================================
 // RESPONSE MESSAGES (Agent -> DevTool)
 // ============================================================================
@@ -155,6 +180,17 @@ public class OverlaysChangedEvent : DevToolMessage
     public override string Type => "overlays_changed";
 }
 
+/// <summary>
+/// Event notification when inspect mode selects an element in the client.
+/// </summary>
+public class InspectElementSelectedEvent : DevToolMessage
+{
+    public override string Type => "inspect_element_selected";
+
+    [JsonPropertyName("elementId")]
+    public string ElementId { get; set; } = "";
+}
+
 // ============================================================================
 // DATA STRUCTURES
 // ============================================================================
@@ -187,6 +223,9 @@ public class ElementNode
 
     [JsonPropertyName("visible")]
     public bool IsVisible { get; set; } = true;
+
+    [JsonPropertyName("isLayout")]
+    public bool IsLayout { get; set; }
 
     [JsonPropertyName("childCount")]
     public int ChildCount { get; set; }
@@ -253,6 +292,8 @@ public static class MessageSerializer
             "get_properties" => JsonSerializer.Deserialize<GetPropertiesRequest>(json, Options),
             "set_property" => JsonSerializer.Deserialize<SetPropertyRequest>(json, Options),
             "highlight" => JsonSerializer.Deserialize<HighlightElementRequest>(json, Options),
+            "set_layout_outline" => JsonSerializer.Deserialize<SetLayoutOutlineRequest>(json, Options),
+            "set_inspect_mode" => JsonSerializer.Deserialize<SetInspectModeRequest>(json, Options),
             "get_perf_stats"    => JsonSerializer.Deserialize<GetPerformanceStatsRequest>(json, Options),
             "set_dirty_heatmap" => JsonSerializer.Deserialize<SetDirtyHeatmapRequest>(json, Options),
             "set_overdraw"      => JsonSerializer.Deserialize<SetOverdrawVisualizerRequest>(json, Options),
@@ -265,6 +306,7 @@ public static class MessageSerializer
             "result" => JsonSerializer.Deserialize<ResultResponse>(json, Options),
             "tree_changed" => JsonSerializer.Deserialize<TreeChangedEvent>(json, Options),
             "overlays_changed" => JsonSerializer.Deserialize<OverlaysChangedEvent>(json, Options),
+            "inspect_element_selected" => JsonSerializer.Deserialize<InspectElementSelectedEvent>(json, Options),
             "log_message" => JsonSerializer.Deserialize<LogMessage>(json, Options),
             _ => null
         };

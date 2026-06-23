@@ -13,6 +13,8 @@ public class DevToolState : System.IDisposable
     public Signal<ElementNode?> RootNode { get; } = new(null);
     public Signal<List<ElementNode>> OverlayNodes { get; } = new(new List<ElementNode>());
     public Signal<string?> SelectedElementId { get; } = new(null);
+    public Signal<string?> HoveredElementId { get; } = new(null);
+    public Signal<HashSet<string>> LayoutOutlineElementIds { get; } = new(new HashSet<string>());
     public Signal<List<PropertyInfo>> Properties { get; } = new(new List<PropertyInfo>());
     public Signal<bool> ShowComputedProperties { get; } = new(false);
     public Signal<bool> IsConnected { get; } = new(false);
@@ -22,7 +24,7 @@ public class DevToolState : System.IDisposable
 
     public Signal<List<LogMessage>> Logs { get; } = new(new List<LogMessage>());
     public Signal<bool> IsConsoleMaximized    { get; } = new(false);
-    public Signal<bool> IsHighlightEnabled    { get; } = new(true);
+    public Signal<bool> IsHighlightEnabled    { get; } = new(false);
 
     // Performance panel
     public Signal<bool> IsPerformancePanelOpen  { get; } = new(false);
@@ -67,6 +69,9 @@ public class DevToolState : System.IDisposable
             RootNode.Value = null;
             OverlayNodes.Value = new List<ElementNode>();
             SelectedElementId.Value = null;
+            HoveredElementId.Value = null;
+            IsHighlightEnabled.Value = false;
+            LayoutOutlineElementIds.Value = new HashSet<string>();
             Properties.Value = new List<PropertyInfo>();
             ExpandedStates.Clear();
 
@@ -91,6 +96,8 @@ public class DevToolState : System.IDisposable
                 Log("Received TreeChangedEvent — refreshing tree.");
                 ConnectionStatus.Value = "Tree changed - refreshing...";
                 SelectedElementId.Value = null;
+                ClearHoveredElement();
+                ClearLayoutOutlines();
                 Properties.Value = new List<PropertyInfo>();
                 ExpandedStates.Clear();
                 _ = RefreshTreeAsync();
@@ -99,6 +106,11 @@ public class DevToolState : System.IDisposable
             {
                 ConnectionStatus.Value = "Overlays changed - refreshing...";
                 _ = RefreshOverlaysAsync();
+            }
+            else if (msg is InspectElementSelectedEvent selected)
+            {
+                SelectedElementId.Value = selected.ElementId;
+                _ = LoadPropertiesAsync(selected.ElementId);
             }
             else if (msg is PropertiesResponse propertiesResponse)
             {
@@ -117,9 +129,14 @@ public class DevToolState : System.IDisposable
 
         IsHighlightEnabled.Subscribe(enabled =>
         {
-            if (SelectedElementId.Value != null)
+            if (Client.IsConnected)
             {
-                _ = Client.HighlightAsync(enabled ? SelectedElementId.Value : null);
+                _ = Client.SetInspectModeAsync(enabled);
+
+                if (!enabled)
+                {
+                    _ = Client.HighlightAsync(HoveredElementId.Value);
+                }
             }
         });
 
@@ -232,6 +249,69 @@ public class DevToolState : System.IDisposable
             ElementId = elementId,
             IncludeComputed = ShowComputedProperties.Value
         });
+    }
+
+    public void HoverElement(string elementId)
+    {
+        HoveredElementId.Value = elementId;
+
+        if (Client.IsConnected)
+        {
+            _ = Client.HighlightAsync(elementId);
+        }
+    }
+
+    public void ClearHoveredElement(string? elementId = null)
+    {
+        if (elementId != null && HoveredElementId.Value != elementId)
+        {
+            return;
+        }
+
+        HoveredElementId.Value = null;
+
+        if (Client.IsConnected)
+        {
+            _ = Client.HighlightAsync(null);
+        }
+    }
+
+    public void ToggleLayoutOutline(string elementId)
+    {
+        var next = new HashSet<string>(LayoutOutlineElementIds.Value);
+        var enabled = !next.Contains(elementId);
+
+        if (enabled)
+        {
+            next.Add(elementId);
+        }
+        else
+        {
+            next.Remove(elementId);
+        }
+
+        LayoutOutlineElementIds.Value = next;
+
+        if (Client.IsConnected)
+        {
+            _ = Client.SetLayoutOutlineAsync(elementId, enabled);
+        }
+    }
+
+    public void ClearLayoutOutlines()
+    {
+        var activeElementIds = LayoutOutlineElementIds.Value.ToArray();
+        LayoutOutlineElementIds.Value = new HashSet<string>();
+
+        if (!Client.IsConnected)
+        {
+            return;
+        }
+
+        foreach (var elementId in activeElementIds)
+        {
+            _ = Client.SetLayoutOutlineAsync(elementId, false);
+        }
     }
 
     /// <summary>

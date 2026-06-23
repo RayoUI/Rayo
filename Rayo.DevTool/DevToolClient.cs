@@ -292,6 +292,16 @@ public class DevToolClient : IDisposable
         await SendAsync(new HighlightElementRequest { ElementId = elementId });
     }
 
+    public async Task SetLayoutOutlineAsync(string elementId, bool enabled)
+    {
+        await SendAsync(new SetLayoutOutlineRequest { ElementId = elementId, Enabled = enabled });
+    }
+
+    public async Task SetInspectModeAsync(bool enabled)
+    {
+        await SendAsync(new SetInspectModeRequest { Enabled = enabled });
+    }
+
     public async Task<PerformanceStatsResponse?> GetPerformanceStatsAsync()
     {
         var tcs = new TaskCompletionSource<PerformanceStatsResponse?>();

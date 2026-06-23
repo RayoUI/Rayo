@@ -10,6 +10,7 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Rayo.Core;
+using Rayo.Core.Interfaces;
 using Rayo.DevTool.Shared.Protocol;
 using Rayo.Rendering;
 using Rayo.Rendering.Brushes;
@@ -21,7 +22,7 @@ namespace Rayo.DevTools;
 /// <summary>
 /// Agent that runs inside a Rayo application to enable DevTool inspection
 /// </summary>
-public class DevToolAgent : IDisposable
+public class DevToolAgent : IDisposable, IGlobalPointerHandler
 {
     private readonly UITree _uiTree;
     private readonly IRenderer _renderer;
@@ -33,6 +34,9 @@ public class DevToolAgent : IDisposable
     private readonly int _port;
     private readonly Dictionary<string, WeakReference<VisualElement>> _elementCache = new();
     private string? _highlightedElementId;
+    private readonly HashSet<string> _layoutOutlineElementIds = new();
+    private readonly object _temporaryHighlightLock = new();
+    private bool _isInspectModeEnabled;
     private bool _isRunning;
     private DateTime _lastTreeStructureNotification = DateTime.MinValue;
     private readonly TimeSpan _treeChangeDebounceInterval = TimeSpan.FromMilliseconds(500);
@@ -51,6 +55,7 @@ public class DevToolAgent : IDisposable
 
     public bool IsConnected => _client?.Connected == true;
     public int Port => _port;
+    public bool BlocksPointerInput => true;
 
     public DevToolAgent(UITree uiTree, IRenderer renderer, int port = 9999)
     {
@@ -138,6 +143,8 @@ public class DevToolAgent : IDisposable
     /// </summary>
     private void CloseCurrentClient()
     {
+        SetInspectMode(false);
+        ClearTemporaryHighlights();
         UnsubscribeLogBridge();
         try { _stream?.Close(); } catch { }
         try { _client?.Close(); } catch { }
@@ -232,6 +239,8 @@ public class DevToolAgent : IDisposable
                 GetPropertiesRequest req => HandleGetProperties(req),
                 SetPropertyRequest req => HandleSetProperty(req),
                 HighlightElementRequest req => HandleHighlight(req),
+                SetLayoutOutlineRequest req => HandleSetLayoutOutline(req),
+                SetInspectModeRequest req => HandleSetInspectMode(req),
                 GetPerformanceStatsRequest => HandleGetPerformanceStats(),
                 SetDirtyHeatmapRequest req => HandleSetDirtyHeatmap(req),
                 SetOverdrawVisualizerRequest req => HandleSetOverdraw(req),
@@ -322,6 +331,7 @@ public class DevToolAgent : IDisposable
             Width = element.ComputedWidth,
             Height = element.ComputedHeight,
             IsVisible = element.IsVisible,
+            IsLayout = IsLayoutElement(element),
             ChildCount = childrenArray.Length
         };
 
@@ -331,6 +341,23 @@ public class DevToolAgent : IDisposable
         }
 
         return node;
+    }
+
+    private static bool IsLayoutElement(VisualElement element)
+    {
+        var type = element.GetType();
+
+        while (type != null)
+        {
+            if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Layout<>))
+            {
+                return true;
+            }
+
+            type = type.BaseType;
+        }
+
+        return false;
     }
 
     private string GetOrCreateElementId(VisualElement element)
@@ -906,7 +933,11 @@ public class DevToolAgent : IDisposable
 
     private ResultResponse HandleHighlight(HighlightElementRequest request)
     {
-        _highlightedElementId = request.ElementId;
+        lock (_temporaryHighlightLock)
+        {
+            _highlightedElementId = request.ElementId;
+        }
+
         _uiTree.MarkNeedsRender(); // Force repaint
 
         return new ResultResponse
@@ -914,6 +945,76 @@ public class DevToolAgent : IDisposable
             Success = true,
             RequestId = request.Id
         };
+    }
+
+    private ResultResponse HandleSetLayoutOutline(SetLayoutOutlineRequest request)
+    {
+        lock (_temporaryHighlightLock)
+        {
+            if (request.Enabled)
+            {
+                _layoutOutlineElementIds.Add(request.ElementId);
+            }
+            else
+            {
+                _layoutOutlineElementIds.Remove(request.ElementId);
+            }
+        }
+
+        _uiTree.MarkNeedsRender();
+
+        return new ResultResponse
+        {
+            Success = true,
+            RequestId = request.Id
+        };
+    }
+
+    private ResultResponse HandleSetInspectMode(SetInspectModeRequest request)
+    {
+        SetInspectMode(request.Enabled);
+
+        return new ResultResponse
+        {
+            Success = true,
+            RequestId = request.Id
+        };
+    }
+
+    private void SetInspectMode(bool enabled)
+    {
+        if (_isInspectModeEnabled == enabled)
+        {
+            if (enabled)
+            {
+                GetEventManager()?.RegisterGlobalPointerHandler(this);
+            }
+
+            return;
+        }
+
+        _isInspectModeEnabled = enabled;
+
+        if (enabled)
+        {
+            GetEventManager()?.RegisterGlobalPointerHandler(this);
+        }
+        else
+        {
+            GetEventManager()?.UnregisterGlobalPointerHandler(this);
+
+            lock (_temporaryHighlightLock)
+            {
+                _highlightedElementId = null;
+            }
+
+            _uiTree.MarkNeedsRender();
+        }
+    }
+
+    private EventManager? GetEventManager()
+    {
+        return _uiTree.EventManager ?? UIApplication.Current?.EventManager;
     }
 
     private PerformanceStatsResponse HandleGetPerformanceStats()
@@ -1031,40 +1132,150 @@ public class DevToolAgent : IDisposable
         return new ResultResponse { Success = true, RequestId = "" };
     }
 
+    public bool HandleGlobalPointer(System.Numerics.Vector2 position, VisualElement? hitElement)
+    {
+        if (!_isInspectModeEnabled)
+        {
+            return false;
+        }
+
+        var element = FindInspectElement(position);
+        if (element == null)
+        {
+            return true;
+        }
+
+        var elementId = GetOrCreateElementId(element);
+        SetTemporaryHighlight(elementId);
+        _ = SendMessageAsync(new InspectElementSelectedEvent { ElementId = elementId });
+
+        return true;
+    }
+
+    public bool HandleGlobalPointerMove(System.Numerics.Vector2 position, VisualElement? hitElement)
+    {
+        if (!_isInspectModeEnabled)
+        {
+            return false;
+        }
+
+        var element = FindInspectElement(position);
+        SetTemporaryHighlight(element != null ? GetOrCreateElementId(element) : null);
+
+        return false;
+    }
+
+    private VisualElement? FindInspectElement(System.Numerics.Vector2 position)
+    {
+        var options = new HitTestOptions
+        {
+            Mode = HitTestMode.FirstMatch,
+            IncludeInvisible = false,
+            RespectInputTransparency = true,
+            CheckClipping = true
+        };
+
+        for (int i = _uiTree.Overlays.Count - 1; i >= 0; i--)
+        {
+            var result = GetEventManager()?.HitTest.HitTestRoot(_uiTree.Overlays[i], position, options);
+            if (result?.Element != null)
+            {
+                return result.Element;
+            }
+        }
+
+        return GetEventManager()?.HitTest.HitTest(position, options)?.Element;
+    }
+
+    private void SetTemporaryHighlight(string? elementId)
+    {
+        var changed = false;
+
+        lock (_temporaryHighlightLock)
+        {
+            if (_highlightedElementId != elementId)
+            {
+                _highlightedElementId = elementId;
+                changed = true;
+            }
+        }
+
+        if (changed)
+        {
+            _uiTree.MarkNeedsRender();
+        }
+    }
+
     /// <summary>
     /// Called during rendering to draw highlight overlay
     /// </summary>
     public void RenderHighlight(IRenderer renderer)
     {
-        if (string.IsNullOrEmpty(_highlightedElementId)) return;
+        string? highlightedElementId;
+        List<string> layoutOutlineElementIds;
 
-        var element = GetElementById(_highlightedElementId);
-        if (element == null || !IsElementReachable(element))
+        lock (_temporaryHighlightLock)
         {
-            _highlightedElementId = null;
+            highlightedElementId = _highlightedElementId;
+            layoutOutlineElementIds = _layoutOutlineElementIds.ToList();
+        }
+
+        if (!string.IsNullOrEmpty(highlightedElementId))
+        {
+            var highlightedElement = GetElementById(highlightedElementId);
+            if (highlightedElement == null || !IsElementReachable(highlightedElement))
+            {
+                lock (_temporaryHighlightLock)
+                {
+                    if (_highlightedElementId == highlightedElementId)
+                    {
+                        _highlightedElementId = null;
+                    }
+                }
+            }
+            else
+            {
+                DrawHoverHighlight(renderer, highlightedElement);
+            }
+        }
+
+        if (layoutOutlineElementIds.Count == 0)
+        {
             return;
         }
 
-        // Element is hidden — preserve selection so highlight resumes when it becomes visible again
-        if (!element.IsVisible) return;
+        List<string>? staleIds = null;
+        foreach (var elementId in layoutOutlineElementIds)
+        {
+            var element = GetElementById(elementId);
+            if (element == null || !IsElementReachable(element))
+            {
+                (staleIds ??= new List<string>()).Add(elementId);
+                continue;
+            }
 
-        // Skip highlighting if element has invalid dimensions (including infinity)
-        // Allow very small dimensions (>0) but skip if exactly 0 or invalid
-        if (element.ComputedWidth < 0.01f || element.ComputedHeight < 0.01f ||
-            float.IsInfinity(element.ComputedWidth) || float.IsInfinity(element.ComputedHeight) ||
-            float.IsNaN(element.ComputedWidth) || float.IsNaN(element.ComputedHeight))
+            DrawLayoutOutline(renderer, element);
+        }
+
+        if (staleIds != null)
+        {
+            lock (_temporaryHighlightLock)
+            {
+                foreach (var staleId in staleIds)
+                {
+                    _layoutOutlineElementIds.Remove(staleId);
+                }
+            }
+        }
+    }
+
+    private void DrawHoverHighlight(IRenderer renderer, VisualElement element)
+    {
+        if (!CanRenderOverlay(element))
         {
             return;
         }
 
-        // Skip if position is invalid
-        if (float.IsInfinity(element.ComputedX) || float.IsInfinity(element.ComputedY) ||
-            float.IsNaN(element.ComputedX) || float.IsNaN(element.ComputedY))
-        {
-            return;
-        }
-
-        // Draw highlight overlay
         var color = new Color(59, 130, 246, 0.3f); // Semi-transparent blue
         var borderColor = new Color(59, 130, 246, 1f); // Solid blue
 
@@ -1083,6 +1294,126 @@ public class DevToolAgent : IDisposable
         }
     }
 
+    private void DrawLayoutOutline(IRenderer renderer, VisualElement element)
+    {
+        if (!CanRenderOverlay(element))
+        {
+            return;
+        }
+
+        var worldTransform = element.GetWorldRenderTransform();
+        renderer.PushTransform(worldTransform);
+        try
+        {
+            DrawDashedRect(renderer,
+                element.ComputedX,
+                element.ComputedY,
+                element.ComputedWidth,
+                element.ComputedHeight,
+                2f,
+                8f,
+                5f,
+                new Color(245, 158, 11, 1f));
+        }
+        finally
+        {
+            renderer.PopTransform();
+        }
+    }
+
+    private static bool CanRenderOverlay(VisualElement element)
+    {
+        if (!element.IsVisible) return false;
+
+        if (element.ComputedWidth < 0.01f || element.ComputedHeight < 0.01f ||
+            float.IsInfinity(element.ComputedWidth) || float.IsInfinity(element.ComputedHeight) ||
+            float.IsNaN(element.ComputedWidth) || float.IsNaN(element.ComputedHeight))
+        {
+            return false;
+        }
+
+        if (float.IsInfinity(element.ComputedX) || float.IsInfinity(element.ComputedY) ||
+            float.IsNaN(element.ComputedX) || float.IsNaN(element.ComputedY))
+        {
+            return false;
+        }
+
+        return true;
+    }
+
+    private static void DrawDashedRect(
+        IRenderer renderer,
+        float x,
+        float y,
+        float width,
+        float height,
+        float thickness,
+        float dashLength,
+        float gapLength,
+        Color color)
+    {
+        DrawDashedLine(renderer, x, y, x + width, y, thickness, dashLength, gapLength, color);
+        DrawDashedLine(renderer, x + width, y, x + width, y + height, thickness, dashLength, gapLength, color);
+        DrawDashedLine(renderer, x + width, y + height, x, y + height, thickness, dashLength, gapLength, color);
+        DrawDashedLine(renderer, x, y + height, x, y, thickness, dashLength, gapLength, color);
+    }
+
+    private static void DrawDashedLine(
+        IRenderer renderer,
+        float startX,
+        float startY,
+        float endX,
+        float endY,
+        float thickness,
+        float dashLength,
+        float gapLength,
+        Color color)
+    {
+        var dx = endX - startX;
+        var dy = endY - startY;
+        var length = MathF.Sqrt(dx * dx + dy * dy);
+
+        if (length <= 0.01f)
+        {
+            return;
+        }
+
+        var stepX = dx / length;
+        var stepY = dy / length;
+        var distance = 0f;
+
+        while (distance < length)
+        {
+            var next = MathF.Min(distance + dashLength, length);
+            renderer.DrawLine(
+                startX + stepX * distance,
+                startY + stepY * distance,
+                startX + stepX * next,
+                startY + stepY * next,
+                thickness,
+                color);
+            distance += dashLength + gapLength;
+        }
+    }
+
+    private void ClearTemporaryHighlights()
+    {
+        var hadHighlights = false;
+
+        lock (_temporaryHighlightLock)
+        {
+            hadHighlights = !string.IsNullOrEmpty(_highlightedElementId) || _layoutOutlineElementIds.Count > 0;
+
+            _highlightedElementId = null;
+            _layoutOutlineElementIds.Clear();
+        }
+
+        if (hadHighlights)
+        {
+            _uiTree.MarkNeedsRender();
+        }
+    }
+
     /// <summary>
     /// Called when the UI tree root changes (e.g., hot reload).
     /// Notifies connected DevTool clients to refresh the main tree.
@@ -1093,7 +1424,7 @@ public class DevToolAgent : IDisposable
     {
         // Do NOT clear _elementCache here — HandleGetTree() already clears it and
         // Dictionary is not thread-safe for concurrent Clear()+read from the TCP thread.
-        _highlightedElementId = null;
+        ClearTemporaryHighlights();
 
         // Suppress TreeStructureChanged notifications for the next debounce window.
         // This prevents premature GetTree requests before EnsureBuilt() has run —
@@ -1263,6 +1594,7 @@ public class DevToolAgent : IDisposable
 
     public void Dispose()
     {
+        SetInspectMode(false);
         _uiTree.RootChanged -= OnTreeChanged;
         _uiTree.OverlaysChanged -= OnOverlaysChanged;
         VisualElement.TreeStructureChanged -= OnTreeStructureChanged;

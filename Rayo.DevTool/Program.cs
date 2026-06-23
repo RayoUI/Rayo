@@ -19,7 +19,7 @@ public class Program
             {
                 config.Title = "Rayo DevTool";
                 config.Width = 900;
-                config.Height = 600;
+                config.Height = 800;
                 config.CanResize = true;
                 config.VSync = true;
 

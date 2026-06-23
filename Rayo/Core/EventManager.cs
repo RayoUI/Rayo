@@ -321,6 +321,7 @@ public class EventManager
         if (_tree.Root == null) return;
 
         var now = DateTime.UtcNow;
+        NotifyGlobalPointerMoveHandlers(position);
 
         // Process universal drag & drop if active
         if (_dragDropManager.IsDragging || _dragDropManager.CurrentDraggable != null)
@@ -476,6 +477,22 @@ public class EventManager
     }
 
     private bool _needsRenderThisFrame = false;
+
+    private void NotifyGlobalPointerMoveHandlers(Vector2 position)
+    {
+        if (_globalPointerHandlers.Count == 0)
+        {
+            return;
+        }
+
+        foreach (var handler in _globalPointerHandlers.ToList())
+        {
+            if (handler.HandleGlobalPointerMove(position, null))
+            {
+                break;
+            }
+        }
+    }
 
     /// <summary>
     /// Optimized version of ProcessMouseMove using advanced hit-testing.
@@ -755,7 +772,12 @@ public class EventManager
         {
             if (handler.HandleGlobalPointer(position, hitResult?.Element))
             {
-                break;  // Handler consumed the event
+                if (handler.BlocksPointerInput)
+                {
+                    return;  // Handler consumed the event and blocks normal input routing
+                }
+
+                break;  // Handler consumed the event for global handlers only
             }
         }
 
@@ -1822,6 +1844,11 @@ public class EventManager
         {
             if (handler.HandleGlobalPointer(pointerArgs.Position, hitResult?.Element))
             {
+                if (handler.BlocksPointerInput)
+                {
+                    return;
+                }
+
                 break;
             }
         }

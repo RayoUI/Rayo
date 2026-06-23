@@ -46,6 +46,7 @@ public class ToDoApp : UserControl
             .Padding(new Thickness(20))
             .Content(
                 new Grid()
+                    .Id("Soft")
                     .Rows(GridLength.Auto, GridLength.Auto, GridLength.Star)
                     .Columns(GridLength.Star)
                     .RowSpacing(20)

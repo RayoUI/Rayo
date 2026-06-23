@@ -13,6 +13,9 @@ namespace Rayo.DevTool.Frames;
 public class TreeFrame : UserControl
 {
     private readonly DevToolState _state;
+    private readonly Dictionary<string, VisualElement> _nodeRows = new();
+    private ScrollView? _treeScroll;
+    private VisualElement? _treeContent;
 
     public TreeFrame(DevToolState state)
     {
@@ -43,6 +46,19 @@ public class TreeFrame : UserControl
             highlightButton.BorderRadius = enabled ? new CornerRadius(0) : new CornerRadius(4);
         });
 
+        var clearLayoutOutlinesButton = new ButtonIcon(Icons.Broom)
+            .Size(30)
+            .IconSize(16)
+            .IconColor(_state.LayoutOutlineElementIds.Map(ids =>
+                ids.Count > 0 ? new Color(245, 158, 11) : new Color(110, 110, 118)))
+            .Background(_state.LayoutOutlineElementIds.Map(ids =>
+                ids.Count > 0 ? new Color(245, 158, 11, 0.18f) : Color.Transparent))
+            .HoverBackground(new Color(255, 255, 255, 0.1f))
+            .PressedBackground(new Color(245, 158, 11, 0.3f))
+            .BorderWidth(0)
+            .BorderRadius(new CornerRadius(4))
+            .OnTapped(() => _state.ClearLayoutOutlines());
+
         var header = new Frame()
             .Background(new Color(40, 40, 45))
             .Height(30)
@@ -51,18 +67,17 @@ public class TreeFrame : UserControl
                 new HStack()
                     .VerticalAlignment(VerticalAlignment.Top)
                     .HorizontalAlignment(HorizontalAlignment.Stretch)
-                    .Spacing(8)
+                    .Spacing(4)
                     .Alignment(Alignment.Center)
-                    .JustifyContent(JustifyContent.SpaceBetween)
+                    .JustifyContent(JustifyContent.Start)
                     .Children(
-                        new Label("Element Tree")
-                            .Padding(new Thickness(left: 5))
-                            .FontSize(14)
-                            .HorizontalAlignment(HorizontalAlignment.Stretch)
-                            .Foreground(Color.White),
-                        highlightButton.WithTooltip("Toggle element highlight")
+                        highlightButton.WithTooltip("Inspect client element"),
+                        clearLayoutOutlinesButton.WithTooltip("Clear layout outlines")
                     )
             );
+
+        var treeContent = BuildTreeView();
+        _treeContent = treeContent;
 
         var treeScroll = new ScrollView()
             .VerticalAlignment(VerticalAlignment.Stretch)
@@ -70,9 +85,10 @@ public class TreeFrame : UserControl
             .VerticalScrollBarVisibility(ScrollBarVisibility.Always)
             .HorizontalScrollBarVisibility(ScrollBarVisibility.Disabled)
             .ShowScrollbars(true)
-            .Content(
-                BuildTreeView()
-            );
+            .Content(treeContent);
+        _treeScroll = treeScroll;
+
+        _state.SelectedElementId.Subscribe(_ => EnsureSelectedNodeVisible());
 
         return new Frame()
             .Width(350)
@@ -121,6 +137,7 @@ public class TreeFrame : UserControl
 
         _state.RootNode.Subscribe(root =>
         {
+            _nodeRows.Clear();
             mainTreeContainer.ClearChildren();
 
             if (root != null)
@@ -140,6 +157,7 @@ public class TreeFrame : UserControl
             }
 
             mainTreeContainer.MarkNeedsLayout();
+            EnsureSelectedNodeVisible();
         });
 
         _state.OverlayNodes.Subscribe(overlays =>
@@ -163,6 +181,7 @@ public class TreeFrame : UserControl
             }
 
             overlaysContainer.MarkNeedsLayout();
+            EnsureSelectedNodeVisible();
         });
 
         mainTreeHeader.IsVisible = false;
@@ -222,9 +241,6 @@ public class TreeFrame : UserControl
         {
             _state.SelectedElementId.Value = node.Id;
 
-            // Highlight if highlight mode is enabled, otherwise clear highlight
-            _ = _state.Client.HighlightAsync(_state.IsHighlightEnabled.Value ? node.Id : null);
-
             _ = _state.LoadPropertiesAsync(node.Id);
         }
 
@@ -268,7 +284,7 @@ public class TreeFrame : UserControl
             chevronElement = chevronButton.WithTooltip("Expand or collapse node");
         }
 
-        var titleButton = new Button()
+        var titleButton = (HoverableTreeNodeButton)new HoverableTreeNodeButton()
             .TextAlignment(HorizontalAlignment.Left)
             .Padding(new Thickness(0, 3, 0, 3))
             .Text(displayText)
@@ -282,6 +298,8 @@ public class TreeFrame : UserControl
             .BorderWidth(0);
 
         titleButton.Tapped += _ => SelectNode();
+        titleButton.PointerEntered += _ => _state.HoverElement(node.Id);
+        titleButton.PointerExited += _ => _state.ClearHoveredElement(node.Id);
 
         var headerGrid = new Grid()
             .Rows(GridLength.Auto)
@@ -292,19 +310,27 @@ public class TreeFrame : UserControl
             .AddChild(chevronElement, 0, 1)
             .AddChild(titleButton, 0, 2);
 
-        if (hasChildren)
+        if (node.IsLayout)
         {
-            var badge = new Label($"{node.Children.Count}")
+            var badge = new Button()
+                .Text($"{node.Children.Count}")
                 .FontSize(9)
-                .Foreground(new Color(140, 140, 150))
+                .TextColor(Color.White)
                 .Padding(new Thickness(4, 1))
-                .Background(new Color(50, 52, 60))
+                .Background(_state.LayoutOutlineElementIds.Map(ids =>
+                    ids.Contains(node.Id) ? new Color(59, 130, 246, 0.85f) : new Color(50, 52, 60)))
+                .HoverBackground(new Color(59, 130, 246, 0.35f))
+                .PressedBackground(new Color(59, 130, 246, 1f))
+                .BorderWidth(0)
                 .BorderRadius(new CornerRadius(6))
-                .VerticalAlignment(VerticalAlignment.Center);
+                .VerticalAlignment(VerticalAlignment.Center)
+                .OnTapped(() => _state.ToggleLayoutOutline(node.Id))
+                .WithTooltip("Toggle layout outline");
 
             headerGrid.AddChild(badge, 0, 3);
         }
 
+        _nodeRows[node.Id] = headerGrid;
         nodeContainer.AddChild(headerGrid);
 
         if (hasChildren)
@@ -332,5 +358,64 @@ public class TreeFrame : UserControl
         }
 
         return nodeContainer;
+    }
+
+    private void EnsureSelectedNodeVisible()
+    {
+        var selectedElementId = _state.SelectedElementId.Value;
+        if (selectedElementId == null ||
+            _treeScroll == null ||
+            _treeContent == null ||
+            !_nodeRows.TryGetValue(selectedElementId, out var selectedRow))
+        {
+            return;
+        }
+
+        if (selectedRow.ComputedWidth <= 0 || selectedRow.ComputedHeight <= 0)
+        {
+            return;
+        }
+
+        var rectY = Math.Max(0, selectedRow.ComputedY - _treeContent.ComputedY);
+        var viewportHeight = Math.Max(0, _treeScroll.ComputedHeight - _treeScroll.Padding.Vertical);
+        var centeredOffset = rectY + selectedRow.ComputedHeight / 2f - viewportHeight / 2f;
+
+        _treeScroll.VerticalScrollOffset = centeredOffset;
+    }
+
+    private sealed class HoverableTreeNodeButton : Button, Rayo.Core.Input.IPointerHandler
+    {
+        public event System.Action<Rayo.Core.Input.PointerEventArgs>? PointerEntered;
+        public event System.Action<Rayo.Core.Input.PointerEventArgs>? PointerExited;
+
+        void Rayo.Core.Input.IPointerHandler.OnPointerEntered(Rayo.Core.Input.PointerEventArgs e)
+        {
+            base.OnPointerEntered(e);
+
+            if (e.PointerType == Rayo.Core.Input.PointerType.Mouse)
+            {
+                PointerEntered?.Invoke(e);
+            }
+        }
+
+        void Rayo.Core.Input.IPointerHandler.OnPointerExited(Rayo.Core.Input.PointerEventArgs e)
+        {
+            base.OnPointerExited(e);
+
+            if (e.PointerType == Rayo.Core.Input.PointerType.Mouse)
+            {
+                PointerExited?.Invoke(e);
+            }
+        }
+
+        void Rayo.Core.Input.IPointerHandler.OnPointerPressed(Rayo.Core.Input.PointerEventArgs e)
+        {
+            base.OnPointerPressed(e);
+        }
+
+        void Rayo.Core.Input.IPointerHandler.OnPointerReleased(Rayo.Core.Input.PointerEventArgs e)
+        {
+            base.OnPointerReleased(e);
+        }
     }
 }
