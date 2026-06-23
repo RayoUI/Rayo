@@ -30,6 +30,10 @@ public class Dialog : UserControl
     public event Action? Closed;
     #endregion
 
+    #region Canceled
+    public event Action? Canceled;
+    #endregion
+
     #region Content
     private readonly VisualElement? _content;
     public new VisualElement? Content
@@ -37,6 +41,11 @@ public class Dialog : UserControl
         get => _content;
     }
     #endregion
+
+    private readonly bool _showCancelButton;
+    private readonly string _okText;
+    private readonly string _cancelText;
+    private readonly Func<bool>? _validate;
 
     #region BorderRadius
     private readonly int _borderRadius = 8;
@@ -47,18 +56,54 @@ public class Dialog : UserControl
     #endregion
 
     public Dialog(string title, string message, Action onClose)
+        : this(title, message, onClose, null, false)
+    {
+    }
+
+    public Dialog(
+        string title,
+        string message,
+        Action? onClose,
+        Action? onCancel,
+        bool showCancelButton = true,
+        Func<bool>? validate = null,
+        string okText = "OK",
+        string cancelText = "Cancel")
     {
         _title = title;
         _message = message;
+        _showCancelButton = showCancelButton;
+        _okText = okText;
+        _cancelText = cancelText;
+        _validate = validate;
         if (onClose != null) Closed += onClose;
+        if (onCancel != null) Canceled += onCancel;
     }
 
     public Dialog(string title, VisualElement content, Action onClose)
+        : this(title, content, onClose, null, false)
+    {
+    }
+
+    public Dialog(
+        string title,
+        VisualElement content,
+        Action? onClose,
+        Action? onCancel,
+        bool showCancelButton = true,
+        Func<bool>? validate = null,
+        string okText = "OK",
+        string cancelText = "Cancel")
     {
         _title = title;
         _content = content;
         _message = "";
+        _showCancelButton = showCancelButton;
+        _okText = okText;
+        _cancelText = cancelText;
+        _validate = validate;
         if (onClose != null) Closed += onClose;
+        if (onCancel != null) Canceled += onCancel;
     }
 
     public override VisualElement Build()
@@ -77,14 +122,22 @@ public class Dialog : UserControl
         buttonSection.Background(new Color(40, 40, 42));
         buttonSection.Padding(new Thickness(24, 16, 24, 16));
         buttonSection.BorderRadius(new CornerRadius(0, 0, _borderRadius, _borderRadius));
-        buttonSection.Content(
-            new HStack()
-                .Children(CreateOKButton())
-                .HorizontalAlignment(HorizontalAlignment.Stretch)
-                .Alignment(Alignment.End)
-                .JustifyContent(JustifyContent.End)
-                .Spacing(10)
-        );
+        var buttons = new HStack()
+            .HorizontalAlignment(HorizontalAlignment.Stretch)
+            .Alignment(Alignment.End)
+            .JustifyContent(JustifyContent.End)
+            .Spacing(10);
+
+        if (_showCancelButton)
+        {
+            buttons.Children(CreateCancelButton(), CreateOKButton());
+        }
+        else
+        {
+            buttons.Children(CreateOKButton());
+        }
+
+        buttonSection.Content(buttons);
 
         var mainStack = new VStack()
             .Spacing(0)
@@ -137,24 +190,112 @@ public class Dialog : UserControl
     private Button CreateOKButton()
     {
         var button = new Button();
-        button.Text("OK");
+        button.Text(_okText);
         button.Width(100);
         button.Height(36);
         button.Background(new Color(0, 120, 215));
         button.HoverBackground(new Color(0, 140, 235));
         button.PressedBackground(new Color(0, 100, 195));
         button.BorderRadius(4);
-        button.OnTapped(() => Closed?.Invoke());
+        button.OnTapped(() =>
+        {
+            if (_validate != null && !_validate())
+            {
+                return;
+            }
+
+            Closed?.Invoke();
+        });
         return button;
     }
 
-    public static void Show(string title, string message)
+    private Button CreateCancelButton()
+    {
+        var button = new Button();
+        button.Text(_cancelText);
+        button.Width(100);
+        button.Height(36);
+        button.Background(new Color(72, 72, 76));
+        button.HoverBackground(new Color(92, 92, 96));
+        button.PressedBackground(new Color(58, 58, 62));
+        button.BorderRadius(4);
+        button.BorderWidth(0);
+        button.OnTapped(() => Canceled?.Invoke());
+        return button;
+    }
+
+    public static void Show(
+        string title,
+        string message,
+        bool showCancelButton = false,
+        Action? onAccepted = null,
+        Action? onCanceled = null,
+        Func<bool>? validate = null,
+        string okText = "OK",
+        string cancelText = "Cancel")
     {
         VisualElement? overlay = null;
-        
-        overlay = new Dialog(title, message, () => {
+
+        void RemoveOverlay()
+        {
             if (overlay != null) Rayo.Core.OverlayManager.RemoveOverlay(overlay);
-        }).Build(); // We need the built element (Frame)
+        }
+
+        overlay = new Dialog(
+            title,
+            message,
+            () =>
+            {
+                RemoveOverlay();
+                onAccepted?.Invoke();
+            },
+            () =>
+            {
+                RemoveOverlay();
+                onCanceled?.Invoke();
+            },
+            showCancelButton,
+            validate,
+            okText,
+            cancelText).Build(); // We need the built element (Frame)
+
+        Rayo.Core.OverlayManager.AddOverlay(overlay);
+    }
+
+    public static void Show(
+        string title,
+        VisualElement content,
+        bool showCancelButton = false,
+        Action? onAccepted = null,
+        Action? onCanceled = null,
+        Func<bool>? validate = null,
+        string okText = "OK",
+        string cancelText = "Cancel")
+    {
+        VisualElement? overlay = null;
+
+        void RemoveOverlay()
+        {
+            if (overlay != null) Rayo.Core.OverlayManager.RemoveOverlay(overlay);
+        }
+
+        overlay = new Dialog(
+            title,
+            content,
+            () =>
+            {
+                RemoveOverlay();
+                onAccepted?.Invoke();
+            },
+            () =>
+            {
+                RemoveOverlay();
+                onCanceled?.Invoke();
+            },
+            showCancelButton,
+            validate,
+            okText,
+            cancelText).Build();
 
         Rayo.Core.OverlayManager.AddOverlay(overlay);
     }
