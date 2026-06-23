@@ -870,20 +870,17 @@ public abstract class VisualElement : BindableObject, IDisposable, IInputTranspa
         var source = GetChildren();
         if (source is IReadOnlyList<VisualElement> readOnlyList)
         {
-            if (!HasNonDefaultZIndex(readOnlyList))
-                return readOnlyList;
+            var readOnlySnapshot = CreateChildrenSnapshot(readOnlyList);
+            if (!HasNonDefaultZIndex(readOnlySnapshot))
+                return readOnlySnapshot;
 
-            return CreateZOrderedSnapshot(readOnlyList);
+            StableSortByZIndex(readOnlySnapshot);
+            return readOnlySnapshot;
         }
 
         if (source is IList<VisualElement> list)
         {
-            var listSnapshot = new List<VisualElement>(list.Count);
-            for (int i = 0; i < list.Count; i++)
-            {
-                listSnapshot.Add(list[i]);
-            }
-
+            var listSnapshot = CreateChildrenSnapshot(list);
             if (!HasNonDefaultZIndex(listSnapshot))
                 return listSnapshot;
 
@@ -892,9 +889,20 @@ public abstract class VisualElement : BindableObject, IDisposable, IInputTranspa
         }
 
         var snapshot = new List<VisualElement>();
-        foreach (var child in source)
+        using var enumerator = source.GetEnumerator();
+        while (true)
         {
-            snapshot.Add(child);
+            try
+            {
+                if (!enumerator.MoveNext())
+                    break;
+
+                snapshot.Add(enumerator.Current);
+            }
+            catch (InvalidOperationException)
+            {
+                break;
+            }
         }
 
         if (!HasNonDefaultZIndex(snapshot))
@@ -915,15 +923,39 @@ public abstract class VisualElement : BindableObject, IDisposable, IInputTranspa
         return false;
     }
 
-    private static List<VisualElement> CreateZOrderedSnapshot(IReadOnlyList<VisualElement> children)
+    private static List<VisualElement> CreateChildrenSnapshot(IReadOnlyList<VisualElement> children)
     {
         var snapshot = new List<VisualElement>(children.Count);
         for (int i = 0; i < children.Count; i++)
         {
-            snapshot.Add(children[i]);
+            try
+            {
+                snapshot.Add(children[i]);
+            }
+            catch (ArgumentOutOfRangeException)
+            {
+                break;
+            }
         }
 
-        StableSortByZIndex(snapshot);
+        return snapshot;
+    }
+
+    private static List<VisualElement> CreateChildrenSnapshot(IList<VisualElement> children)
+    {
+        var snapshot = new List<VisualElement>(children.Count);
+        for (int i = 0; i < children.Count; i++)
+        {
+            try
+            {
+                snapshot.Add(children[i]);
+            }
+            catch (ArgumentOutOfRangeException)
+            {
+                break;
+            }
+        }
+
         return snapshot;
     }
 

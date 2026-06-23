@@ -13,6 +13,7 @@ public class DevToolState : System.IDisposable
     public Signal<ElementNode?> RootNode { get; } = new(null);
     public Signal<List<ElementNode>> OverlayNodes { get; } = new(new List<ElementNode>());
     public Signal<string?> SelectedElementId { get; } = new(null);
+    public Signal<int> SelectedElementRevealRequests { get; } = new(0);
     public Signal<string?> HoveredElementId { get; } = new(null);
     public Signal<HashSet<string>> LayoutOutlineElementIds { get; } = new(new HashSet<string>());
     public Signal<List<PropertyInfo>> Properties { get; } = new(new List<PropertyInfo>());
@@ -110,6 +111,7 @@ public class DevToolState : System.IDisposable
             else if (msg is InspectElementSelectedEvent selected)
             {
                 SelectedElementId.Value = selected.ElementId;
+                SelectedElementRevealRequests.Value++;
                 _ = LoadPropertiesAsync(selected.ElementId);
             }
             else if (msg is PropertiesResponse propertiesResponse)

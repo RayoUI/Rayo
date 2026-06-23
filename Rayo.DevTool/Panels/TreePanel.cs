@@ -88,7 +88,7 @@ public class TreeFrame : UserControl
             .Content(treeContent);
         _treeScroll = treeScroll;
 
-        _state.SelectedElementId.Subscribe(_ => EnsureSelectedNodeVisible());
+        _state.SelectedElementRevealRequests.Subscribe(_ => EnsureSelectedNodeVisible());
 
         return new Frame()
             .Width(350)
@@ -107,7 +107,7 @@ public class TreeFrame : UserControl
     {
         var container = new VStack()
             .Spacing(2)
-            .Padding(new Thickness(8))
+            .Padding(new Thickness(0, 8, 0, 8))
             .VerticalAlignment(VerticalAlignment.Top)
             .HorizontalAlignment(HorizontalAlignment.Stretch);
 
@@ -157,7 +157,6 @@ public class TreeFrame : UserControl
             }
 
             mainTreeContainer.MarkNeedsLayout();
-            EnsureSelectedNodeVisible();
         });
 
         _state.OverlayNodes.Subscribe(overlays =>
@@ -181,7 +180,6 @@ public class TreeFrame : UserControl
             }
 
             overlaysContainer.MarkNeedsLayout();
-            EnsureSelectedNodeVisible();
         });
 
         mainTreeHeader.IsVisible = false;
@@ -253,11 +251,17 @@ public class TreeFrame : UserControl
             _state.ExpandedStates[node.Id] = isExpanded.Value;
         }
 
-        var selectedBackground = _state.SelectedElementId.Map(id =>
-            id == node.Id ? new Color(59, 130, 246, 0.3f) : Color.Transparent);
-        var selectedHoverBackground = _state.SelectedElementId.Map(id =>
-            id == node.Id ? new Color(59, 130, 246, 0.4f) : new Color(255, 255, 255, 0.1f));
+        var rowBackground = new Computed<Color>(() =>
+        {
+            if (_state.SelectedElementId.Value == node.Id)
+            {
+                return new Color(59, 130, 246, 0.3f);
+            }
 
+            return _state.HoveredElementId.Value == node.Id
+                ? new Color(255, 255, 255, 0.08f)
+                : Color.Transparent;
+        });
         ButtonIcon? chevronButton = null;
         VisualElement chevronElement = hasChildren
             ? chevronButton = new ButtonIcon(isExpanded.Value ? Icons.ChevronDown : Icons.ChevronRight)
@@ -292,9 +296,9 @@ public class TreeFrame : UserControl
             .FontSize(12)
             .HorizontalAlignment(HorizontalAlignment.Stretch)
             .VerticalAlignment(VerticalAlignment.Top)
-            .Background(selectedBackground)
-            .HoverBackground(selectedHoverBackground)
-            .PressedBackground(new Color(59, 130, 246, 0.5f))
+            .Background(Color.Transparent)
+            .HoverBackground(Color.Transparent)
+            .PressedBackground(Color.Transparent)
             .BorderWidth(0);
 
         titleButton.Tapped += _ => SelectNode();
@@ -307,6 +311,7 @@ public class TreeFrame : UserControl
             .Padding(new Thickness(0, 2, 4, 2))
             .VerticalAlignment(VerticalAlignment.Top)
             .HorizontalAlignment(HorizontalAlignment.Stretch)
+            .Background(rowBackground)
             .AddChild(chevronElement, 0, 1)
             .AddChild(titleButton, 0, 2);
 
@@ -315,12 +320,13 @@ public class TreeFrame : UserControl
             var badge = new Button()
                 .Text($"{node.Children.Count}")
                 .FontSize(9)
-                .TextColor(Color.White)
+                .TextColor(_state.LayoutOutlineElementIds.Map(ids =>
+                    ids.Contains(node.Id) ? new Color(15, 23, 42) : Color.White))
                 .Padding(new Thickness(4, 1))
                 .Background(_state.LayoutOutlineElementIds.Map(ids =>
-                    ids.Contains(node.Id) ? new Color(59, 130, 246, 0.85f) : new Color(50, 52, 60)))
-                .HoverBackground(new Color(59, 130, 246, 0.35f))
-                .PressedBackground(new Color(59, 130, 246, 1f))
+                    ids.Contains(node.Id) ? new Color(147, 197, 253) : new Color(50, 52, 60)))
+                .HoverBackground(new Color(191, 219, 254))
+                .PressedBackground(new Color(191, 219, 254))
                 .BorderWidth(0)
                 .BorderRadius(new CornerRadius(6))
                 .VerticalAlignment(VerticalAlignment.Center)

@@ -1286,7 +1286,7 @@ public class DevToolAgent : IDisposable, IGlobalPointerHandler
             renderer.DrawRect(element.ComputedX, element.ComputedY,
                 element.ComputedWidth, element.ComputedHeight, color);
             renderer.DrawRectOutline(element.ComputedX, element.ComputedY,
-                element.ComputedWidth, element.ComputedHeight, 2, borderColor);
+                element.ComputedWidth, element.ComputedHeight, 1, borderColor);
         }
         finally
         {
@@ -1310,7 +1310,7 @@ public class DevToolAgent : IDisposable, IGlobalPointerHandler
                 element.ComputedY,
                 element.ComputedWidth,
                 element.ComputedHeight,
-                2f,
+                1f,
                 8f,
                 5f,
                 new Color(245, 158, 11, 1f));
