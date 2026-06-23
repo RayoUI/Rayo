@@ -114,6 +114,7 @@ public class TreeFrame : UserControl
         var mainTreeHeader = new Label("Main Tree")
             .Foreground(new Color(120, 180, 255))
             .FontSize(11)
+            .Margin(new Thickness(left: 10))
             .Padding(new Thickness(0, 0, 0, 4));
 
         var mainTreeContainer = new VStack()
@@ -124,6 +125,7 @@ public class TreeFrame : UserControl
         var overlaysHeader = new Label("Overlays")
             .Foreground(new Color(255, 180, 120))
             .FontSize(11)
+            .Margin(new Thickness(left: 10))
             .Padding(new Thickness(0, 12, 0, 4));
 
         var overlaysContainer = new VStack()
