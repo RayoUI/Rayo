@@ -1003,7 +1003,9 @@ public abstract class VisualElement : BindableObject, IDisposable, IInputTranspa
         if (!force && !NeedsMeasure && TryApplyCachedMeasure(availableWidth, availableHeight))
             return;
 
-        Measure(availableWidth, availableHeight);
+        var constrainedAvailable = ApplyMeasureConstraints(availableWidth, availableHeight);
+        Measure(constrainedAvailable.Width, constrainedAvailable.Height);
+        ApplyDesiredSizeConstraints();
         LastMeasuredAvailableWidth = availableWidth;
         LastMeasuredAvailableHeight = availableHeight;
         HasValidMeasure = true;
@@ -1016,6 +1018,10 @@ public abstract class VisualElement : BindableObject, IDisposable, IInputTranspa
 
     private void ExecuteArrange(float x, float y, float width, float height, bool force)
     {
+        var constrainedSize = ApplySizeConstraints(width, height);
+        width = constrainedSize.Width;
+        height = constrainedSize.Height;
+
         bool rectChanged = !HasValidArrange ||
             LastArrangedX != x ||
             LastArrangedY != y ||
@@ -1065,6 +1071,10 @@ public abstract class VisualElement : BindableObject, IDisposable, IInputTranspa
 
     public void ArrangeUpdate(float x, float y, float width, float height)
     {
+        var constrainedSize = ApplySizeConstraints(width, height);
+        width = constrainedSize.Width;
+        height = constrainedSize.Height;
+
         bool rectChanged = !HasValidArrange ||
             LastArrangedX != x ||
             LastArrangedY != y ||
@@ -1178,9 +1188,75 @@ public abstract class VisualElement : BindableObject, IDisposable, IInputTranspa
 
     private (float Width, float Height) NormalizeMeasureConstraints(float availableWidth, float availableHeight)
     {
-        float normalizedWidth = HasExplicitWidth ? Width : availableWidth;
-        float normalizedHeight = HasExplicitHeight ? Height : availableHeight;
+        var constrainedAvailable = ApplyMeasureConstraints(availableWidth, availableHeight);
+        var explicitSize = ApplySizeConstraints(Width, Height);
+        float normalizedWidth = HasExplicitWidth ? explicitSize.Width : constrainedAvailable.Width;
+        float normalizedHeight = HasExplicitHeight ? explicitSize.Height : constrainedAvailable.Height;
         return (QuantizeMeasureConstraint(normalizedWidth), QuantizeMeasureConstraint(normalizedHeight));
+    }
+
+    private (float Width, float Height) ApplyMeasureConstraints(float width, float height)
+    {
+        return (
+            ApplyMeasureConstraint(width, GetEffectiveMinWidth(), GetEffectiveMaxWidth()),
+            ApplyMeasureConstraint(height, GetEffectiveMinHeight(), GetEffectiveMaxHeight()));
+    }
+
+    private (float Width, float Height) ApplySizeConstraints(float width, float height)
+    {
+        return (
+            ApplySizeConstraint(width, GetEffectiveMinWidth(), GetEffectiveMaxWidth()),
+            ApplySizeConstraint(height, GetEffectiveMinHeight(), GetEffectiveMaxHeight()));
+    }
+
+    private void ApplyDesiredSizeConstraints()
+    {
+        var constrainedSize = ApplySizeConstraints(DesiredWidth, DesiredHeight);
+        DesiredWidth = constrainedSize.Width;
+        DesiredHeight = constrainedSize.Height;
+    }
+
+    private float GetEffectiveMinWidth() => SanitizeMinSize(MinWidth);
+
+    private float GetEffectiveMinHeight() => SanitizeMinSize(MinHeight);
+
+    private float GetEffectiveMaxWidth() => SanitizeMaxSize(MaxWidth, GetEffectiveMinWidth());
+
+    private float GetEffectiveMaxHeight() => SanitizeMaxSize(MaxHeight, GetEffectiveMinHeight());
+
+    private static float SanitizeMinSize(float value)
+    {
+        if (float.IsNaN(value))
+            return 0f;
+
+        return MathF.Max(0f, value);
+    }
+
+    private static float SanitizeMaxSize(float value, float minValue)
+    {
+        if (float.IsNaN(value))
+            return minValue;
+
+        return MathF.Max(minValue, value);
+    }
+
+    private static float ApplyMeasureConstraint(float value, float minValue, float maxValue)
+    {
+        if (float.IsNaN(value))
+            return 0f;
+
+        if (float.IsPositiveInfinity(value))
+            return maxValue;
+
+        return ApplySizeConstraint(value, minValue, maxValue);
+    }
+
+    private static float ApplySizeConstraint(float value, float minValue, float maxValue)
+    {
+        if (float.IsNaN(value))
+            value = 0f;
+
+        return MathF.Max(minValue, MathF.Min(value, maxValue));
     }
 
     private static float QuantizeMeasureConstraint(float value)
