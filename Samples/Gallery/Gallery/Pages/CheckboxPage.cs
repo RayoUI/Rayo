@@ -8,7 +8,7 @@ using static Rayo.Core.UIHelpers;
 
 namespace Gallery.Pages;
 
-public class CheckboxPage : UserControl
+public class CheckboxPage : Component
 {
     public override VisualElement Build()
     {

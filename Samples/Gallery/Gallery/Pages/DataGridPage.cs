@@ -9,7 +9,7 @@ using static Rayo.Core.UIHelpers;
 
 namespace Gallery.Pages;
 
-public class DataGridPage : UserControl
+public class DataGridPage : Component
 {
     public override VisualElement Build()
     {

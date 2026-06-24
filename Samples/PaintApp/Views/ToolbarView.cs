@@ -9,9 +9,9 @@ using Rayo.Rendering;
 namespace PaintApp.Views;
 
 /// <summary>
-/// Toolbar UserControl: file actions, tool selector, brush size selector, and color picker.
+/// Toolbar Component: file actions, tool selector, brush size selector, and color picker.
 /// </summary>
-public class ToolbarView : UserControl
+public class ToolbarView : Component
 {
     private readonly PaintViewState _vm;
     private readonly PaintCanvas    _canvas;

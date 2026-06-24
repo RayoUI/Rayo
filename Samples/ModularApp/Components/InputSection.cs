@@ -8,7 +8,7 @@ using static Rayo.Reactivity.Hooks;
 
 namespace ModularHooksApp.Components;
 
-public class InputSection : UserControl
+public class InputSection : Component
 {
     public override VisualElement Build()
     {

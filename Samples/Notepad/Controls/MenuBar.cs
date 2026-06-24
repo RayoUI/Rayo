@@ -6,7 +6,7 @@ using Rayo.Reactivity;
 
 namespace Notepad.Controls;
 
-public class MenuBar(IReadableSignal<TabControl?>? tabControl = null) : UserControl
+public class MenuBar(IReadableSignal<TabControl?>? tabControl = null) : Component
 {
     private int _untitledCounter = 1;
 

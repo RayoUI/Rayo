@@ -9,7 +9,7 @@ using System.Text;
 
 namespace Gallery.Pages;
 
-public class AccordionPage : UserControl
+public class AccordionPage : Component
 {
     private Label? _statusLabel;
 

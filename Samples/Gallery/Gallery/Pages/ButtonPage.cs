@@ -11,7 +11,7 @@ using GradientStop = Rayo.Rendering.Brushes.GradientStop;
 
 namespace Gallery.Pages;
 
-public class ButtonPage : UserControl
+public class ButtonPage : Component
 {
     public override VisualElement Build()
     {

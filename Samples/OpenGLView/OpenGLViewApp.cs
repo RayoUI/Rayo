@@ -9,10 +9,10 @@ using Rayo.Rendering;
 using Rayo.Rendering.Brushes;
 
 /// <summary>
-/// Root UserControl for the OpenGL sample.
+/// Root Component for the OpenGL sample.
 /// Demonstrates embedding a live OpenGL 3D scene inside a Rayo reactive layout.
 /// </summary>
-public class OpenGLViewApp : UserControl
+public class OpenGLViewApp : Component
 {
     // ── Reactive state ────────────────────────────────────────────────────────
 

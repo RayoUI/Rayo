@@ -7,7 +7,7 @@ using Rayo.Rendering;
 
 namespace Gallery.Pages;
 
-public class ButtonFloatPage : UserControl
+public class ButtonFloatPage : Component
 {
     public override VisualElement Build()
     {

@@ -8,7 +8,7 @@ using Rayo;
 
 namespace Gallery.Pages;
 
-public class EditorPage : UserControl
+public class EditorPage : Component
 {
     public override VisualElement Build()
     {

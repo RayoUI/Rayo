@@ -11,10 +11,10 @@ using SkiaSharp;
 namespace PaintApp;
 
 /// <summary>
-/// Root UserControl — creates the ViewModel and canvas, wires position feedback,
+/// Root Component — creates the ViewModel and canvas, wires position feedback,
 /// and composes the four main sub-views into the window layout.
 /// </summary>
-public class PaintAppUI : UserControl
+public class PaintAppUI : Component
 {
     private static PaintViewState vm = new();
     public override VisualElement Build()

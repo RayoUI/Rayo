@@ -10,7 +10,7 @@ using System.Collections.Generic;
 namespace Rayo.DevTool.Frames;
 
 
-public class ConsoleFrame : UserControl
+public class ConsoleFrame : Component
 {
     private readonly DevToolState _state;
 

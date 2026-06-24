@@ -119,7 +119,7 @@ public static class StyleEngine
 
         foreach (var child in element.GetChildren())
         {
-            if (scope == StyleScope.Local && !isRoot && child is UserControl)
+            if (scope == StyleScope.Local && !isRoot && child is Component)
                 continue;
             Walk(child, compiled, scope, isRoot: false);
         }

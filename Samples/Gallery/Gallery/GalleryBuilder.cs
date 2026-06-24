@@ -77,7 +77,7 @@ internal class NavItem : Frame, IPointerHandler
 /// Component Gallery - Showcases all Rayo components.
 /// Uses sidebar on desktop, drawer on mobile for responsive navigation.
 /// </summary>
-public class GalleryBuilder : UserControl
+public class GalleryBuilder : Component
 {
     private readonly Signal<string> _currentPage;
     private Drawer? _navigationDrawer;

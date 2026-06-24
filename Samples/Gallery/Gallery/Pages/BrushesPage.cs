@@ -11,7 +11,7 @@ using Rectangle = Rayo.Controls.Shapes.Rectangle;
 
 namespace Gallery.Pages;
 
-public class BrushesPage : UserControl
+public class BrushesPage : Component
 {
     public override VisualElement Build()
     {

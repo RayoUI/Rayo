@@ -10,7 +10,7 @@ using static Rayo.Core.UIHelpers;
 
 namespace Gallery.Pages;
 
-public class GestureDetectorPage : UserControl
+public class GestureDetectorPage : Component
 {
     public override VisualElement Build()
     {

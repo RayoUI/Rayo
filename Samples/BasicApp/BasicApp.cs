@@ -9,7 +9,7 @@ using Rayo.Styling;
 
 namespace Basic;
 
-public class BasicApp : UserControl
+public class BasicApp : Component
 {
     private readonly Signal<int> _counter;
     private readonly Computed<string> _title;

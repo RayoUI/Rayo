@@ -6,7 +6,7 @@ using Rayo.Rendering;
 
 namespace Gallery.Pages;
 
-public class FlexPage : UserControl
+public class FlexPage : Component
 {
     public override VisualElement Build()
     {

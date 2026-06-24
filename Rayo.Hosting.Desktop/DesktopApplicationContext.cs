@@ -31,7 +31,7 @@ internal class DesktopApplicationContext : IPlatformApplicationContext
         {
             throw new InvalidOperationException(
                 $"Type {typeof(TView).Name} must implement IUIBuilder. " +
-                $"Ensure your view extends ViewBase<TViewModel>, UserControl, or implements IUIBuilder directly.");
+                $"Ensure your view extends ViewBase<TViewModel>, Component, or implements IUIBuilder directly.");
         }
 
         // Use reflection to call SetUI<TView> on UIApplication

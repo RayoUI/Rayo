@@ -9,9 +9,9 @@ using StyleDemo.Components;
 namespace StyleDemo;
 
 // ---------------------------------------------------------------------------
-// StyleDemoApp — root UserControl for the style showcase.
+// StyleDemoApp — root Component for the style showcase.
 //
-// Extends UserControl (not IUIBuilder) so that:
+// Extends Component (not IUIBuilder) so that:
 //   • EnsureBuilt() calls StyleEngine.Apply(GlobalStyles, content) on first render
 //   • OnGlobalStylesChanged re-applies the new sheet to the whole tree when
 //     UseGlobalStyles() is called from the theme switcher buttons
@@ -30,7 +30,7 @@ namespace StyleDemo;
 //   10. Advanced selectors — multi-class (.a.b), Not(), FirstChild(), LastChild()
 //   11. Important()        — override cascade order regardless of specificity
 // ---------------------------------------------------------------------------
-public class StyleDemoApp : UserControl
+public class StyleDemoApp : Component
 {
     private string _activeTheme = "dark";
 

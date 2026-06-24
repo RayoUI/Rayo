@@ -6,7 +6,7 @@ using Rayo.Rendering;
 
 namespace Gallery.Pages;
 
-public class IconPage : UserControl
+public class IconPage : Component
 {
     public override VisualElement Build()
     {

@@ -7,7 +7,7 @@ using Rayo.Rendering;
 
 namespace Gallery.Pages;
 
-public class SideBarPage : UserControl
+public class SideBarPage : Component
 {
     private readonly Signal<string> _selectedItem;
     private readonly Signal<bool> _isCollapsed;

@@ -7,7 +7,7 @@ using Rayo.Rendering;
 /// <summary>
 /// Helper component to manage adding/removing content to the global overlay layer.
 /// </summary>
-public class Overlay : UserControl
+public class Overlay : Component
 {
     private readonly VisualElement _content;
     private readonly UIApplication _app;

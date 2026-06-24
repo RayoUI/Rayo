@@ -11,7 +11,7 @@ using static Rayo.Core.UIHelpers;
 
 namespace Gallery.Pages;
 
-public class DatePickerPage : UserControl
+public class DatePickerPage : Component
 {
     public override VisualElement Build()
     {

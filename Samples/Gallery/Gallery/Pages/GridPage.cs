@@ -6,7 +6,7 @@ using Rayo.Rendering;
 
 namespace Gallery.Pages;
 
-public class GridPage : UserControl
+public class GridPage : Component
 {
     public override VisualElement Build()
     {

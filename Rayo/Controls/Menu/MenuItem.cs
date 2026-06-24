@@ -12,7 +12,7 @@ public readonly record struct MenuItemIconOptions(IconData Icon, Brush Color, fl
 /// <summary>
 /// An item within a Menu.
 /// </summary>
-public class MenuItem : UserControl
+public class MenuItem : Component
 {
     private readonly string _text;
     private readonly Action? _onClick;

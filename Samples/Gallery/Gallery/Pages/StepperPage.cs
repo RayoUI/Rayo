@@ -9,7 +9,7 @@ using Orientation = Rayo.Controls.Orientation;
 
 namespace Gallery.Pages;
 
-public class StepperPage : UserControl
+public class StepperPage : Component
 {
     public override VisualElement Build()
     {

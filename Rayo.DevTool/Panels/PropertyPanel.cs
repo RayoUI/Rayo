@@ -11,7 +11,7 @@ using System.Linq;
 
 namespace Rayo.DevTool.Frames;
 
-public class PropertyFrame : UserControl
+public class PropertyFrame : Component
 {
     private readonly DevToolState _state;
 

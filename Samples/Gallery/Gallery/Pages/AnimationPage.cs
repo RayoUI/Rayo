@@ -7,7 +7,7 @@ using Rayo.Rendering;
 
 namespace Gallery.Pages;
 
-public class AnimationPage : UserControl
+public class AnimationPage : Component
 {
     private readonly List<EasingDemoState> _easingDemos = new();
     private bool _isPlayingAll;

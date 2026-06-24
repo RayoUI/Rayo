@@ -7,7 +7,7 @@ using Rayo.DevTool.Frames;
 
 namespace Rayo.DevTool;
 
-public class DevToolUI : UserControl
+public class DevToolUI : Component
 {
     // Static so the same instance survives hot-reload rebuilds of the DevTool UI itself.
     // The live TCP connection is preserved across reloads.

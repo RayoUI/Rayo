@@ -7,7 +7,7 @@ using Rayo;
 
 namespace Gallery.Pages;
 
-public class TabControlPage : UserControl
+public class TabControlPage : Component
 {
     public override VisualElement Build()
     {

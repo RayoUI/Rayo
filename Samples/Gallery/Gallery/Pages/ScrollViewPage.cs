@@ -7,7 +7,7 @@ using Rayo;
 
 namespace Gallery.Pages;
 
-public class ScrollViewPage : UserControl
+public class ScrollViewPage : Component
 {
     public override VisualElement Build()
     {

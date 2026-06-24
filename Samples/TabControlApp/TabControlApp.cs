@@ -15,7 +15,7 @@ namespace FluentExamples;
 ///   • WithTabHeaderTemplate — fully custom header elements
 ///   • TabItem.IsEnabled — per-tab enable / disable
 /// </summary>
-public class TabControlApp : UserControl
+public class TabControlApp : Component
 {
     // ── Reactive state ────────────────────────────────────────────────────────
 

@@ -11,7 +11,7 @@ using Rayo.Core.Input;
 
 namespace Rayo.DevTool.Frames;
 
-public class TreeFrame : UserControl
+public class TreeFrame : Component
 {
     private readonly DevToolState _state;
     private readonly Dictionary<string, VisualElement> _nodeRows = new();

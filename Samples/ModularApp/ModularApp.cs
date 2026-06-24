@@ -9,7 +9,7 @@ using Rayo;
 
 namespace ModularHooksApp;
 
-public class ModularApp : UserControl
+public class ModularApp : Component
 {
     public override VisualElement Build()
     {

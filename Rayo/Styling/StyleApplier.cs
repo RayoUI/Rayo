@@ -10,7 +10,7 @@ namespace Rayo.Styling;
 /// re-applied automatically whenever <c>IsHovered</c>, <c>IsPressed</c>, <c>IsEnabled</c>, or
 /// focus changes.
 ///
-/// Breakpoint-conditional rules are handled at the <see cref="UserControl"/> level, which
+/// Breakpoint-conditional rules are handled at the <see cref="Component"/> level, which
 /// re-runs the full style pipeline when <see cref="BreakpointHelper.BreakpointChanged"/> fires.
 ///
 /// Created internally by <see cref="StyleEngine"/> — not intended for direct use.

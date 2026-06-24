@@ -7,7 +7,7 @@ using System.Reflection;
 
 namespace Gallery.Pages;
 
-public class IconsPage : UserControl
+public class IconsPage : Component
 {
     private const int Columns = 6;
 

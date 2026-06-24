@@ -40,9 +40,9 @@ public class UIApplication : IDisposable
     public IServiceProvider? ServiceProvider { get; private set; }
 
     /// <summary>
-    /// Application-level style sheet applied to every <see cref="UserControl"/> subtree.
+    /// Application-level style sheet applied to every <see cref="Component"/> subtree.
     /// Set via <see cref="UseGlobalStyles"/> for a fluent setup. Component-level styles
-    /// (from <c>UserControl.BuildStyles()</c>) are applied after and therefore take priority.
+    /// (from <c>Component.BuildStyles()</c>) are applied after and therefore take priority.
     /// </summary>
     public StyleSheet? GlobalStyles { get; private set; }
 
@@ -166,13 +166,13 @@ public class UIApplication : IDisposable
 
     /// <summary>
     /// Fired after <see cref="UseTheme"/> switches the active theme, so that already-built
-    /// <see cref="UserControl"/> subtrees can re-apply styles with the new token values.
+    /// <see cref="Component"/> subtrees can re-apply styles with the new token values.
     /// </summary>
     public static event Action<Theme>? ThemeChanged;
 
     /// <summary>
     /// Sets the active theme at runtime. Fires <see cref="ThemeChanged"/> so that
-    /// <see cref="UserControl"/> instances can re-apply their styles with the new token values.
+    /// <see cref="Component"/> instances can re-apply their styles with the new token values.
     /// </summary>
     public UIApplication UseTheme(Theme theme)
     {
@@ -184,7 +184,7 @@ public class UIApplication : IDisposable
 
     /// <summary>
     /// Raised whenever <see cref="GlobalStyles"/> changes, so that already-built
-    /// <see cref="UserControl"/> subtrees can re-apply styles without a full rebuild.
+    /// <see cref="Component"/> subtrees can re-apply styles without a full rebuild.
     /// </summary>
     public static event Action<StyleSheet>? GlobalStylesChanged;
 
@@ -282,7 +282,7 @@ public class UIApplication : IDisposable
     }
 
     /// <summary>
-    /// Sets application-level styles that are applied to every <see cref="UserControl"/> subtree.
+    /// Sets application-level styles that are applied to every <see cref="Component"/> subtree.
     /// Use this to define a global theme. Component-level styles take priority over these.
     /// </summary>
     /// <example>

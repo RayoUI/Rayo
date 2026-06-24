@@ -9,11 +9,11 @@ using Rayo.Rendering;
 using Rayo.Rendering.Brushes;
 
 /// <summary>
-/// Root UserControl for the Direct3D 11 sample.
+/// Root Component for the Direct3D 11 sample.
 /// Demonstrates embedding a live 3D scene inside a Rayo reactive layout.
 /// DirectXScene3D owns its own D3D11 device — the UI itself uses SkiaSharp.
 /// </summary>
-public class DirectXViewApp : UserControl
+public class DirectXViewApp : Component
 {
     // ── Reactive state ────────────────────────────────────────────────────────
 

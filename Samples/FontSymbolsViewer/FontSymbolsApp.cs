@@ -7,7 +7,7 @@ using Rayo.Rendering;
 
 namespace FontSymbolsViewer;
 
-public sealed class FontSymbolsApp : UserControl
+public sealed class FontSymbolsApp : Component
 {
     public const string FontAlias = "Lineicons";
 

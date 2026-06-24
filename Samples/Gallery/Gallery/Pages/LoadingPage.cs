@@ -9,7 +9,7 @@ using Rayo;
 
 namespace Gallery.Pages;
 
-public class LoadingPage : UserControl
+public class LoadingPage : Component
 {
     public override VisualElement Build()
     {

@@ -9,7 +9,7 @@ using static Rayo.Core.UIHelpers;
 
 namespace Gallery.Pages;
 
-public class TimePickerPage : UserControl
+public class TimePickerPage : Component
 {
     public override VisualElement Build()
     {

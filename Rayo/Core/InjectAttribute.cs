@@ -3,11 +3,11 @@
 /// <summary>
 /// Marks a property for automatic dependency injection.
 /// Properties marked with this attribute will be automatically populated
-/// from the registered IServiceProvider when a UserControl is initialized.
+/// from the registered IServiceProvider when a Component is initialized.
 /// </summary>
 /// <example>
 /// <code>
-/// public class MyComponent : UserControl
+/// public class MyComponent : Component
 /// {
 ///     [Inject]
 ///     public IMyService? MyService { get; private set; }

@@ -9,7 +9,7 @@ using Rayo;
 namespace ModularHooksApp.Components;
 
 // 1. Convert to class inheriting from Component
-public class SharedStateSection : UserControl
+public class SharedStateSection : Component
 {
     public override VisualElement Build()
     {
@@ -46,7 +46,7 @@ public class SharedStateSection : UserControl
 }
 
 // 2. Child component receiving Props
-public class ControlComponent(IWritableSignal<int> value) : UserControl
+public class ControlComponent(IWritableSignal<int> value) : Component
 {
 
     public override VisualElement Build()
@@ -80,7 +80,7 @@ public class ControlComponent(IWritableSignal<int> value) : UserControl
 }
 
 // 3. Another child component receiving Props
-public class DisplayComponent(IReadableSignal<int> value) : UserControl
+public class DisplayComponent(IReadableSignal<int> value) : Component
 {
     public override VisualElement Build()
     {

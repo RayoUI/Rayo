@@ -8,13 +8,13 @@ using Rayo.Styling;
 namespace StyleDemo.Components;
 
 // ---------------------------------------------------------------------------
-// IsolatedCard — a UserControl with StyleScope.Local.
+// IsolatedCard — a Component with StyleScope.Local.
 //
 // No matter what global theme is active, this component always renders with
 // its own hardcoded look. It demonstrates that StyleScope.Local prevents the
 // global StyleSheet from cascading into the component's internal subtree.
 // ---------------------------------------------------------------------------
-public class IsolatedCard : UserControl
+public class IsolatedCard : Component
 {
     // StyleScope.Local: global styles stop at this component's boundary
     protected override StyleScope StyleScope => StyleScope.Local;

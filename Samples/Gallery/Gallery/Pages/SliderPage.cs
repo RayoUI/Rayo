@@ -8,7 +8,7 @@ using Rayo;
 
 namespace Gallery.Pages;
 
-public class SliderPage : UserControl
+public class SliderPage : Component
 {
     public override VisualElement Build()
     {

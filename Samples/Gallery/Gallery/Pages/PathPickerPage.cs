@@ -8,7 +8,7 @@ using static Rayo.Core.UIHelpers;
 
 namespace Gallery.Pages;
 
-public class PathPickerPage : UserControl
+public class PathPickerPage : Component
 {
     public override VisualElement Build()
     {

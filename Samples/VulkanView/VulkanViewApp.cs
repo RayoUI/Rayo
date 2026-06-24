@@ -10,11 +10,11 @@ using Rayo.Rendering.Brushes;
 using System.Numerics;
 
 /// <summary>
-/// Root UserControl for the Vulkan sample.
+/// Root Component for the Vulkan sample.
 /// Demonstrates embedding a live 3D scene inside a Rayo reactive layout
 /// rendered entirely through the Vulkan backend.
 /// </summary>
-public class VulkanViewApp : UserControl
+public class VulkanViewApp : Component
 {
     // ── Reactive state ────────────────────────────────────────────────────────
 

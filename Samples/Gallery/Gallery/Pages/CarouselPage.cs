@@ -8,7 +8,7 @@ using static Rayo.Core.UIHelpers;
 
 namespace Gallery.Pages;
 
-public class CarouselPage : UserControl
+public class CarouselPage : Component
 {
     public override VisualElement Build()
     {

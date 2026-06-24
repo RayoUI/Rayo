@@ -6,7 +6,7 @@ using Rayo.Rendering;
 
 namespace Notepad.Controls;
 
-public class StatusBar() : UserControl
+public class StatusBar() : Component
 {
     public override VisualElement Build()
     {

@@ -13,7 +13,7 @@ namespace FluentExamples;
 /// <summary>
 /// Comprehensive examples of monadic fluent extensions
 /// </summary>
-public class FluentExamplesApp : UserControl
+public class FluentExamplesApp : Component
 {
     private readonly Signal<bool> isActive = new(true);
     private readonly Signal<bool> isEnabled = new(true);

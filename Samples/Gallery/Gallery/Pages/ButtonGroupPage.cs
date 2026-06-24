@@ -6,7 +6,7 @@ using Rayo.Rendering;
 
 namespace Gallery.Pages;
 
-public class ButtonGroupPage : UserControl
+public class ButtonGroupPage : Component
 {
     private Label? _selectionLabel;
 

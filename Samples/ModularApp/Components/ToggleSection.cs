@@ -8,7 +8,7 @@ using static Rayo.Reactivity.Hooks;
 
 namespace ModularHooksApp.Components;
 
-public class ToggleSection : UserControl
+public class ToggleSection : Component
 {
     public override VisualElement Build()
     {

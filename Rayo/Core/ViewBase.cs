@@ -23,7 +23,7 @@
 /// }
 /// </code>
 /// </remarks>
-public abstract class ViewBase<TViewModel> : UserControl where TViewModel : class
+public abstract class ViewBase<TViewModel> : Component where TViewModel : class
 {
     private TViewModel? _viewModel;
     private bool _viewModelInjected;
@@ -148,7 +148,7 @@ public abstract class ViewBase<TViewModel> : UserControl where TViewModel : clas
 /// The ViewModel is created using DependencyInjector.CreateWithServices.
 /// </summary>
 /// <typeparam name="TViewModel">The ViewModel type for this View.</typeparam>
-public abstract class ViewBaseWithFactory<TViewModel> : UserControl where TViewModel : class
+public abstract class ViewBaseWithFactory<TViewModel> : Component where TViewModel : class
 {
     private TViewModel? _viewModel;
 

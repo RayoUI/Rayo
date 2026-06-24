@@ -597,7 +597,7 @@ public class DevToolAgent : IDisposable, IGlobalPointerHandler
             element.UpdateStyleBaselineEntry(request.PropertyName, value);
 
             // When Classes changes, re-apply styles so class selectors take effect immediately.
-            // Walk up the parent chain to find the owning UserControl and re-apply both its
+            // Walk up the parent chain to find the owning Component and re-apply both its
             // global and component (BuildStyles) rules so class selectors are re-evaluated.
             if (request.PropertyName is nameof(VisualElement.Classes) or nameof(VisualElement.Id))
             {
@@ -632,12 +632,12 @@ public class DevToolAgent : IDisposable, IGlobalPointerHandler
         var globalStyles = UIApplication.Current?.GlobalStyles;
         if (globalStyles != null)
         {
-            if (_uiTree.Root != null && _uiTree.Root is not UserControl)
+            if (_uiTree.Root != null && _uiTree.Root is not Component)
                 StyleEngine.Apply(globalStyles, _uiTree.Root);
 
             foreach (var overlay in _uiTree.Overlays)
             {
-                if (overlay is not UserControl)
+                if (overlay is not Component)
                     StyleEngine.Apply(globalStyles, overlay);
             }
         }
@@ -651,7 +651,7 @@ public class DevToolAgent : IDisposable, IGlobalPointerHandler
 
     private static void ReapplyStylesRecursive(VisualElement element)
     {
-        if (element is UserControl uc)
+        if (element is Component uc)
             uc.ReapplyStyles();
 
         foreach (var child in element.GetChildren())
@@ -1415,7 +1415,7 @@ public class DevToolAgent : IDisposable, IGlobalPointerHandler
     /// <summary>
     /// Called when the UI tree root changes (e.g., hot reload).
     /// Notifies connected DevTool clients to refresh the main tree.
-    /// A short delay is applied so that UserControl.EnsureBuilt() has time to
+    /// A short delay is applied so that Component.EnsureBuilt() has time to
     /// run on the next layout frame before DevTool requests the tree.
     /// </summary>
     private void OnTreeChanged()

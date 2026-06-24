@@ -9,7 +9,7 @@ using static Rayo.Core.UIHelpers;
 
 namespace Gallery.Pages;
 
-public class ColorPickerPage : UserControl
+public class ColorPickerPage : Component
 {
     public override VisualElement Build()
     {

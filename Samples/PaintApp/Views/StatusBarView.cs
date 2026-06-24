@@ -8,7 +8,7 @@ using Rayo.Rendering;
 namespace PaintApp.Views;
 
 /// <summary>Status bar — shows the active tool name and the cursor position on the canvas.</summary>
-public class StatusBarView : UserControl
+public class StatusBarView : Component
 {
     private readonly PaintViewState _vm;
 

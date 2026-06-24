@@ -167,7 +167,7 @@ static int ParseIntArg(string[] args, int index, int defaultValue)
         : defaultValue;
 }
 
-internal sealed class BenchmarkScrollPage : UserControl
+internal sealed class BenchmarkScrollPage : Component
 {
     internal static ScrollView? ActiveScrollView { get; private set; }
 
@@ -217,7 +217,7 @@ internal sealed class BenchmarkScrollPage : UserControl
     }
 }
 
-internal sealed class BenchmarkEditorPage : UserControl
+internal sealed class BenchmarkEditorPage : Component
 {
     internal static Editor? ActiveEditor { get; private set; }
 
@@ -270,7 +270,7 @@ internal sealed class BenchmarkEditorPage : UserControl
     }
 }
 
-internal sealed class BenchmarkWrappedEditorPage : UserControl
+internal sealed class BenchmarkWrappedEditorPage : Component
 {
     internal static Editor? ActiveEditor { get; private set; }
 
@@ -325,7 +325,7 @@ internal sealed class BenchmarkWrappedEditorPage : UserControl
     }
 }
 
-internal sealed class BenchmarkStylesPage : UserControl
+internal sealed class BenchmarkStylesPage : Component
 {
     private static readonly List<Frame> s_cards = [];
     private static readonly List<Label> s_metaLabels = [];

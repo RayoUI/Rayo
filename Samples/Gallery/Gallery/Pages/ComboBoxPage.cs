@@ -10,7 +10,7 @@ using static Rayo.Core.UIHelpers;
 
 namespace Gallery.Pages;
 
-public class ComboBoxPage : UserControl
+public class ComboBoxPage : Component
 {
     public override VisualElement Build()
     {

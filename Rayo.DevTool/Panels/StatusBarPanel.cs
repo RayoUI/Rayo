@@ -7,7 +7,7 @@ using static Rayo.Core.UIHelpers;
 
 namespace Rayo.DevTool.Frames;
 
-public class StatusBarFrame : UserControl
+public class StatusBarFrame : Component
 {
     private readonly DevToolState _state;
 

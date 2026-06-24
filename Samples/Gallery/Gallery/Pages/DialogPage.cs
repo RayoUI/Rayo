@@ -8,7 +8,7 @@ using static Rayo.Core.UIHelpers;
 
 namespace Gallery.Pages;
 
-public class DialogPage : UserControl
+public class DialogPage : Component
 {
     public override VisualElement Build()
     {

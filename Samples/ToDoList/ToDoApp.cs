@@ -21,7 +21,7 @@ public class TodoItem
 // ─────────────────────────────────────────────────────────────
 // Root component
 // ─────────────────────────────────────────────────────────────
-public class ToDoApp : UserControl
+public class ToDoApp : Component
 {
     private readonly SignalList<TodoItem> _tasks;
     private Computed<int?> _taskCount;
@@ -77,7 +77,7 @@ public class ToDoApp : UserControl
 // ─────────────────────────────────────────────────────────────
 // Header
 // ─────────────────────────────────────────────────────────────
-public class ToDoHeader(IReadableSignal<int?> taskCount) : UserControl
+public class ToDoHeader(IReadableSignal<int?> taskCount) : Component
 {
     protected override void OnInit()
     {
@@ -109,7 +109,7 @@ public class ToDoHeader(IReadableSignal<int?> taskCount) : UserControl
 // ─────────────────────────────────────────────────────────────
 // Input row
 // ─────────────────────────────────────────────────────────────
-public class ToDoInput(Action<string> onAdd) : UserControl
+public class ToDoInput(Action<string> onAdd) : Component
 {
     private Entry _entry = null!;
 
@@ -140,7 +140,7 @@ public class ToDoInput(Action<string> onAdd) : UserControl
 // ─────────────────────────────────────────────────────────────
 // Task list
 // ─────────────────────────────────────────────────────────────
-public class ToDoList(SignalList<TodoItem> tasks, Action<TodoItem> onDelete) : UserControl
+public class ToDoList(SignalList<TodoItem> tasks, Action<TodoItem> onDelete) : Component
 {
     private VStack _listContainer = null!;
 
@@ -181,7 +181,7 @@ public class ToDoList(SignalList<TodoItem> tasks, Action<TodoItem> onDelete) : U
 // ─────────────────────────────────────────────────────────────
 // Single task row
 // ─────────────────────────────────────────────────────────────
-public class ToDoItem(TodoItem task, Action<TodoItem> onDelete) : UserControl
+public class ToDoItem(TodoItem task, Action<TodoItem> onDelete) : Component
 {
     public override VisualElement Build()
     {

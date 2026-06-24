@@ -9,7 +9,7 @@ using Rayo;
 
 namespace Gallery.Pages;
 
-public class TooltipPage : UserControl
+public class TooltipPage : Component
 {
     public override VisualElement Build()
     {

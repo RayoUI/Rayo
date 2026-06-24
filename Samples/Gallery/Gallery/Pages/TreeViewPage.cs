@@ -10,7 +10,7 @@ using Rayo;
 
 namespace Gallery.Pages;
 
-public class TreeViewPage : UserControl
+public class TreeViewPage : Component
 {
     private Label? _statusLabel;
     private TreeView? _searchableTree;

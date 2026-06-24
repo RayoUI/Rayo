@@ -8,10 +8,10 @@ using Rayo.Reactivity;
 using Rayo.Rendering;
 
 /// <summary>
-/// Root UserControl for the MonoGame sample.
+/// Root Component for the MonoGame sample.
 /// Demonstrates embedding a live MonoGame scene inside a Rayo reactive layout.
 /// </summary>
-public class MonoGameViewApp : UserControl
+public class MonoGameViewApp : Component
 {
     // ── Reactive state ─────────────────────────────────────────────────────────
     private readonly Signal<float> _animSpeed;

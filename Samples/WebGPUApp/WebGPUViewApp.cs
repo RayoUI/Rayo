@@ -9,11 +9,11 @@ using Rayo.Rendering;
 using Rayo.Rendering.Brushes;
 
 /// <summary>
-/// Root UserControl for the WebGPU sample.
+/// Root Component for the WebGPU sample.
 /// Demonstrates embedding a live 3D scene inside a Rayo reactive layout.
 /// WebGPUScene3D owns its own wgpu device — the UI itself uses SkiaSharp.
 /// </summary>
-public class WebGPUViewApp : UserControl
+public class WebGPUViewApp : Component
 {
     // ── Reactive state ────────────────────────────────────────────────────────
 

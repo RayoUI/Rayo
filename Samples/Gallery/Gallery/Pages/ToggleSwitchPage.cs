@@ -11,7 +11,7 @@ using Rayo;
 
 namespace Gallery.Pages;
 
-public class ToggleSwitchPage : UserControl
+public class ToggleSwitchPage : Component
 {
     public override VisualElement Build()
     {

@@ -27,7 +27,7 @@ public abstract class VisualElement : BindableObject, IDisposable, IInputTranspa
 
     /// <summary>
     /// Static event fired whenever any element's <see cref="Classes"/> property changes.
-    /// <see cref="UserControl"/> subscribes to this to detect when a descendant's classes
+    /// <see cref="Component"/> subscribes to this to detect when a descendant's classes
     /// change so it can re-apply its style sheet.
     /// </summary>
     public static event Action<VisualElement>? ClassesChanged;

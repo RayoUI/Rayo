@@ -8,7 +8,7 @@ using static Rayo.Core.UIHelpers;
 
 namespace Gallery.Pages;
 
-public class StylesPage : UserControl
+public class StylesPage : Component
 {
     public override VisualElement Build()
     {

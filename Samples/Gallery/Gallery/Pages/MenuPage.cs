@@ -6,7 +6,7 @@ using Rayo.Rendering;
 
 namespace Gallery.Pages;
 
-public class MenuPage : UserControl
+public class MenuPage : Component
 {
     private string _lastAction = "No action yet";
     private Label? _actionLabel;

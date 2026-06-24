@@ -10,7 +10,7 @@ using System.Linq;
 
 namespace Rayo.DevTool.Frames;
 
-public class PerformanceFrame : UserControl
+public class PerformanceFrame : Component
 {
     private readonly DevToolState _state;
 

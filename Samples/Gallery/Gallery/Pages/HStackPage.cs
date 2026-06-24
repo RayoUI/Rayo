@@ -6,7 +6,7 @@ using Rayo.Rendering;
 
 namespace Gallery.Pages;
 
-public class HStackPage : UserControl
+public class HStackPage : Component
 {
     public override VisualElement Build()
     {

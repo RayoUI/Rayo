@@ -21,7 +21,7 @@ public class FileInfo
     }
 }
 
-public class NotepadApp : UserControl
+public class NotepadApp : Component
 {
     private Signal<TabControl?> _tabControl;
 

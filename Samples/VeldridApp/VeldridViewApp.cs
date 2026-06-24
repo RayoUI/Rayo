@@ -9,11 +9,11 @@ using Rayo.Rendering;
 using Rayo.Rendering.Brushes;
 
 /// <summary>
-/// Root UserControl for the Veldrid sample.
+/// Root Component for the Veldrid sample.
 /// Demonstrates embedding a live 3D scene inside a Rayo reactive layout.
 /// VeldridScene3D owns its own Veldrid GraphicsDevice — the UI itself uses SkiaSharp.
 /// </summary>
-public class VeldridViewApp : UserControl
+public class VeldridViewApp : Component
 {
     // ── Reactive state ────────────────────────────────────────────────────────
 

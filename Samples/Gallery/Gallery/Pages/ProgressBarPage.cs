@@ -10,7 +10,7 @@ using Rayo;
 
 namespace Gallery.Pages;
 
-public class ProgressBarPage : UserControl
+public class ProgressBarPage : Component
 {
     public override VisualElement Build()
     {

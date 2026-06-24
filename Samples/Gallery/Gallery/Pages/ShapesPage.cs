@@ -10,7 +10,7 @@ using Path = Rayo.Controls.Shapes.Path;
 
 namespace Gallery.Pages;
 
-public class ShapesPage : UserControl
+public class ShapesPage : Component
 {
     public override VisualElement Build()
     {

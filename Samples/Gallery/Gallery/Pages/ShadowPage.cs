@@ -8,7 +8,7 @@ using Shadow = Rayo.Controls.Shadow;
 
 namespace Gallery.Pages;
 
-public class ShadowPage : UserControl
+public class ShadowPage : Component
 {
     // Lighter surface used as the background tile so dark shadows have contrast
     private static readonly Color SurfaceBg = new Color(62, 65, 80);

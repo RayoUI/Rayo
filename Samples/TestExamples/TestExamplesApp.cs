@@ -10,7 +10,7 @@ using Rayo.Rendering.Brushes;
 
 namespace FluentExamples;
 
-public class TestExamplesApp : UserControl
+public class TestExamplesApp : Component
 {
     private bool active = false;
     public override VisualElement Build()

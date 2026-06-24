@@ -6,7 +6,7 @@ using Rayo.Rendering;
 
 namespace Gallery.Pages;
 
-public class LinkPage : UserControl
+public class LinkPage : Component
 {
     private Label? _statusLabel;
 

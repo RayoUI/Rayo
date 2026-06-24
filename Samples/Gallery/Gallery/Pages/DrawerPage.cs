@@ -6,7 +6,7 @@ using Rayo.Rendering;
 
 namespace Gallery.Pages;
 
-public class DrawerPage : UserControl
+public class DrawerPage : Component
 {
     private Drawer _leftDrawer = null!;
     private Drawer _rightDrawer = null!;

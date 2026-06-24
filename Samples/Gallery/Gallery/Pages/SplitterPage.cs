@@ -6,7 +6,7 @@ using Rayo.Rendering;
 
 namespace Gallery.Pages;
 
-public class SplitterPage : UserControl
+public class SplitterPage : Component
 {
     public override VisualElement Build()
     {

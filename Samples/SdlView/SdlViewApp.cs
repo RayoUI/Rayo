@@ -9,10 +9,10 @@ using Rayo.Rendering;
 using Rayo.Rendering.Brushes;
 
 /// <summary>
-/// Root UserControl for the SDL2 sample.
+/// Root Component for the SDL2 sample.
 /// Demonstrates embedding a live SDL2-rendered 2D mandala inside a Rayo reactive layout.
 /// </summary>
-public class SdlViewApp : UserControl
+public class SdlViewApp : Component
 {
     // ── Reactive state ────────────────────────────────────────────────────────
 

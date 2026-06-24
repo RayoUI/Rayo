@@ -5,7 +5,7 @@ using Rayo.Rendering;
 
 namespace Notepad.Controls;
 
-public class EditorTab(string content = "") : UserControl
+public class EditorTab(string content = "") : Component
 {
     protected override void OnInit()
     {

@@ -8,7 +8,7 @@ using Rayo.Rendering;
 /// <summary>
 /// A container for menu items, typically used in a MenuBar.
 /// </summary>
-public class Menu : UserControl
+public class Menu : Component
 {
     private readonly string _title;
     private readonly List<MenuItem> _items = new();

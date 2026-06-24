@@ -10,7 +10,7 @@ namespace Rayo.Core;
 /// Base class for creating reusable UI components with their own state and lifecycle.
 /// Similar to Flutter's StatelessWidget/StatefulWidget or React's Class Components.
 /// </summary>
-public abstract class UserControl : ContentView<UserControl>, IUIBuilder, IReactiveOwner
+public abstract class Component : ContentView<Component>, IUIBuilder, IReactiveOwner
 {
     private bool _isBuilt = false;
     private bool _hasInitialized = false;
@@ -69,9 +69,9 @@ public abstract class UserControl : ContentView<UserControl>, IUIBuilder, IReact
     /// <summary>
     /// Controls how far the style sheets applied to this component's subtree cascade.
     /// <para><see cref="StyleScope.Global"/> (default): styles penetrate into all nested
-    /// <see cref="UserControl"/> children — equivalent to normal CSS cascading.</para>
+    /// <see cref="Component"/> children — equivalent to normal CSS cascading.</para>
     /// <para><see cref="StyleScope.Local"/>: styles stop at the boundary of nested
-    /// <see cref="UserControl"/> children — equivalent to CSS Shadow DOM scoping.</para>
+    /// <see cref="Component"/> children — equivalent to CSS Shadow DOM scoping.</para>
     /// </summary>
     protected virtual StyleScope StyleScope => StyleScope.Global;
 

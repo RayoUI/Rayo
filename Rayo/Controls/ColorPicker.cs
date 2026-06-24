@@ -17,7 +17,7 @@ using GradientStop = Rayo.Rendering.Brushes.GradientStop;
 /// <summary>
 /// Modal color picker that mirrors Flutter's dialog UX so it works on desktop and mobile targets.
 /// </summary>
-public class ColorPicker : UserControl, Rayo.Core.Interfaces.IGlobalPointerHandler
+public class ColorPicker : Component, Rayo.Core.Interfaces.IGlobalPointerHandler
 {
     private readonly Signal<Color> _colorState;
 

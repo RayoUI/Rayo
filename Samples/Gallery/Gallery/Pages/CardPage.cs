@@ -8,7 +8,7 @@ using Shadow = Rayo.Controls.Shadow;
 
 namespace Gallery.Pages;
 
-public class CardPage : UserControl
+public class CardPage : Component
 {
     public override VisualElement Build()
     {

@@ -79,7 +79,7 @@ public class HotReloadManager : IDisposable
             
             // If the builder is a Component, use the component itself as the root
             // This allows the root component to have state, lifecycle and Rebuild capabilities
-            if (builder is UserControl component)
+            if (builder is Component component)
             {
                 newRoot = component;
             }

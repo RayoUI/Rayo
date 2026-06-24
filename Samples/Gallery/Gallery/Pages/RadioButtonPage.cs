@@ -8,7 +8,7 @@ using Rayo;
 
 namespace Gallery.Pages;
 
-public class RadioButtonPage : UserControl
+public class RadioButtonPage : Component
 {
     public override VisualElement Build()
     {

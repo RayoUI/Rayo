@@ -8,7 +8,7 @@ using Rayo.Rendering;
 
 namespace Gallery.Pages;
 
-public class AbsolutePage : UserControl
+public class AbsolutePage : Component
 {
     public override VisualElement Build()
     {

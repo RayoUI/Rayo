@@ -7,7 +7,7 @@ using Rayo.Rendering;
 
 namespace ButtonFloatExample;
 
-public class ButtonFloatApp : UserControl
+public class ButtonFloatApp : Component
 {
     private readonly SignalList<string> _items;
     private readonly Signal<int> _createdCount;

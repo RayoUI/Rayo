@@ -8,7 +8,7 @@ using Rayo.Rendering.Brushes;
 /// <summary>
 /// A modal dialog overlay.
 /// </summary>
-public class Dialog : UserControl
+public class Dialog : Component
 {
     #region Title
     private readonly string _title;
