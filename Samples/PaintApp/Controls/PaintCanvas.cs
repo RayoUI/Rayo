@@ -5,6 +5,7 @@ using Rayo.Core.Input;
 using Rayo.Reactivity;
 using Rayo.Rendering;
 using Rayo.Rendering.Graphics.VectorGraphics;
+using SkiaSharp;
 using System.Numerics;
 using IRenderer = Rayo.Rendering.IRenderer;
 
@@ -134,6 +135,41 @@ public class PaintCanvas : View<PaintCanvas>, IPointerHandler
             if (cmd is TextureFillCmd tfc) tfc.Texture?.Dispose();
 
         _strokes.RemoveAt(_strokes.Count - 1);
+        MarkNeedsPaint();
+    }
+
+    public void SavePng(string path)
+    {
+        int width = Math.Max(1, (int)MathF.Ceiling(EffectiveCanvasW));
+        int height = Math.Max(1, (int)MathF.Ceiling(EffectiveCanvasH));
+        byte[] pixels = BuildCpuCanvas(width, height);
+
+        using var bitmap = new SKBitmap(width, height, SKColorType.Rgba8888, SKAlphaType.Opaque);
+        System.Runtime.InteropServices.Marshal.Copy(pixels, 0, bitmap.GetPixels(), pixels.Length);
+        using var image = SKImage.FromBitmap(bitmap);
+        using var data = image.Encode(SKEncodedImageFormat.Png, 100);
+        using var stream = File.Open(path, FileMode.Create, FileAccess.Write, FileShare.None);
+        data.SaveTo(stream);
+    }
+
+    public void OpenImage(string path)
+    {
+        using var source = SKBitmap.Decode(path)
+            ?? throw new InvalidOperationException("The selected image could not be decoded.");
+
+        var imageInfo = new SKImageInfo(source.Width, source.Height, SKColorType.Rgba8888, SKAlphaType.Unpremul);
+        using var bitmap = new SKBitmap(imageInfo);
+        using (var canvas = new SKCanvas(bitmap))
+        {
+            canvas.Clear(SKColors.Transparent);
+            canvas.DrawBitmap(source, 0, 0);
+        }
+
+        byte[] pixels = new byte[bitmap.ByteCount];
+        System.Runtime.InteropServices.Marshal.Copy(bitmap.GetPixels(), pixels, 0, pixels.Length);
+
+        ClearCanvas(source.Width, source.Height);
+        _strokes.Add([new TextureFillCmd(pixels, source.Width, source.Height, 0, 0, source.Width, source.Height)]);
         MarkNeedsPaint();
     }
 

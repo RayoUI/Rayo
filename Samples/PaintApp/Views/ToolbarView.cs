@@ -75,7 +75,8 @@ public class ToolbarView : UserControl
                     .Children(
                         // File actions
                         MakeActionButton(Icons.NewFile,   "New",  ShowNewCanvasDialog),
-                        MakeActionButton(Icons.Save,      "Save", () => { /* save not implemented in this demo */ }),
+                        MakeActionButton(Icons.Image,     "Open", ShowOpenDialog),
+                        MakeActionButton(Icons.Save,      "Save", ShowSaveDialog),
                         MakeActionButton(Icons.ArrowLeft, "Undo", () => _canvas.Undo()),
 
                         Separator(),
@@ -229,6 +230,74 @@ public class ToolbarView : UserControl
         btn.MarkNeedsPaint();
     }
 
+    private void ShowOpenDialog()
+    {
+        FilePicker.ShowDialog(
+            OpenImage,
+            configure: picker =>
+            {
+                picker.DialogTitle = "Open image";
+                picker.SupportedFileExtensions = [".png", ".jpg", ".jpeg", ".bmp", ".webp"];
+                picker.DefaultDirectory = Environment.GetFolderPath(Environment.SpecialFolder.MyPictures);
+            });
+    }
+
+    private void OpenImage(string path)
+    {
+        try
+        {
+            _canvas.OpenImage(path);
+            _vm.SaveText.Value = $"Opened {Path.GetFileName(path)}";
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or NotSupportedException or ArgumentException or InvalidOperationException)
+        {
+            _vm.SaveText.Value = "Open failed";
+        }
+    }
+    private void ShowSaveDialog()
+    {
+        SaveFilePicker.ShowDialog(
+            SaveCanvas,
+            configure: picker =>
+            {
+                picker.DialogTitle = "Save canvas";
+                picker.DefaultFileName = "paintapp.png";
+                picker.SaveConflictBehavior = SaveFileConflictBehavior.Overwrite;
+                picker.FileExtensions = [".png"];
+                picker.DefaultDirectory = Environment.GetFolderPath(Environment.SpecialFolder.MyPictures);
+            });
+    }
+
+    private void SaveCanvas(string path)
+    {
+        if (File.Exists(path))
+        {
+            Dialog.Show(
+                "Overwrite file?",
+                $"{Path.GetFileName(path)} already exists. Do you want to replace it?",
+                showCancelButton: true,
+                onAccepted: () => SaveCanvasToPath(path),
+                onCanceled: () => _vm.SaveText.Value = "Save canceled",
+                okText: "Overwrite",
+                cancelText: "Cancel");
+            return;
+        }
+
+        SaveCanvasToPath(path);
+    }
+
+    private void SaveCanvasToPath(string path)
+    {
+        try
+        {
+            _canvas.SavePng(path);
+            _vm.SaveText.Value = $"Saved {Path.GetFileName(path)}";
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or NotSupportedException or ArgumentException)
+        {
+            _vm.SaveText.Value = "Save failed";
+        }
+    }
     // -- New Canvas dialog -----------------------------------------------------
 
     private void ShowNewCanvasDialog()

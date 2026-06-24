@@ -16,8 +16,16 @@ using static Rayo.Core.UIHelpers;
 public enum PathPickerMode
 {
     File,
+    OpenFile = File,
     Folder,
-    FileOrFolder
+    FileOrFolder,
+    SaveFile
+}
+
+public enum SaveFileConflictBehavior
+{
+    Overwrite,
+    Reject
 }
 
 /// <summary>
@@ -36,6 +44,7 @@ public class PathPicker : CompositeView<PathPicker>, IPointerHandler, IGlobalPoi
     private Label? _statusLabel;
     private VStack? _itemsStack;
     private ScrollView? _listScrollView;
+    private Entry? _fileNameEntry;
     private string? _pendingSelection;
     private bool _pendingSelectionIsDirectory;
     private Action<string>? _dialogConfirmed;
@@ -99,6 +108,15 @@ public class PathPicker : CompositeView<PathPicker>, IPointerHandler, IGlobalPoi
     }
     #endregion
 
+    #region DefaultDirectory
+    [LayoutProperty]
+    public string? DefaultDirectory
+    {
+        get => InitialDirectory;
+        set => InitialDirectory = value;
+    }
+    #endregion
+
     #region Placeholder
     [PaintProperty]
     public string Placeholder
@@ -124,6 +142,39 @@ public class PathPicker : CompositeView<PathPicker>, IPointerHandler, IGlobalPoi
         get => field;
         set => this.SetProperty(ref field, value ?? new List<string>(), () => RebuildDialogContent());
     } = new();
+    #endregion
+
+    #region SupportedFileExtensions
+    [LayoutProperty]
+    public List<string> SupportedFileExtensions
+    {
+        get => FileExtensions;
+        set => FileExtensions = value;
+    }
+    #endregion
+
+    #region DefaultFileName
+    [LayoutProperty]
+    public string DefaultFileName
+    {
+        get => field;
+        set => this.SetProperty(ref field, value ?? string.Empty, () =>
+        {
+            if (Mode == PathPickerMode.SaveFile && _fileNameEntry != null && string.IsNullOrWhiteSpace(_fileNameEntry.Text))
+            {
+                _fileNameEntry.Text = field;
+            }
+        });
+    } = "untitled";
+    #endregion
+
+    #region SaveConflictBehavior
+    [LayoutProperty]
+    public SaveFileConflictBehavior SaveConflictBehavior
+    {
+        get => field;
+        set => this.SetProperty(ref field, value);
+    } = SaveFileConflictBehavior.Overwrite;
     #endregion
 
     #region ShowHidden
@@ -265,6 +316,7 @@ public class PathPicker : CompositeView<PathPicker>, IPointerHandler, IGlobalPoi
         _dialogCard = null;
         _itemsStack = null;
         _listScrollView = null;
+        _fileNameEntry = null;
         _currentDirectoryLabel = null;
         _statusLabel = null;
         _pendingSelection = null;
@@ -429,7 +481,31 @@ public class PathPicker : CompositeView<PathPicker>, IPointerHandler, IGlobalPoi
             .Content(_listScrollView);
         listFrame.ClipToBounds = true;
 
-        var content = new Grid()
+        if (Mode == PathPickerMode.SaveFile)
+        {
+            return new Grid()
+                .Rows(
+                    GridLength.Pixels(28),
+                    GridLength.Pixels(34),
+                    GridLength.Pixels(42),
+                    GridLength.Pixels(58),
+                    GridLength.Star,
+                    GridLength.Pixels(20),
+                    GridLength.Pixels(36))
+                .Columns(GridLength.Star)
+                .RowSpacing(10)
+                .HorizontalAlignment(HorizontalAlignment.Stretch)
+                .VerticalAlignment(VerticalAlignment.Stretch)
+                .AddChild(title, 0, 0)
+                .AddChild(BuildNavigationBar(), 1, 0)
+                .AddChild(pathFrame, 2, 0)
+                .AddChild(BuildSaveFileNameRow(), 3, 0)
+                .AddChild(listFrame, 4, 0)
+                .AddChild(_statusLabel, 5, 0)
+                .AddChild(BuildDialogButtons(), 6, 0);
+        }
+
+        return new Grid()
             .Rows(
                 GridLength.Pixels(28),
                 GridLength.Pixels(34),
@@ -447,8 +523,33 @@ public class PathPicker : CompositeView<PathPicker>, IPointerHandler, IGlobalPoi
             .AddChild(listFrame, 3, 0)
             .AddChild(_statusLabel, 4, 0)
             .AddChild(BuildDialogButtons(), 5, 0);
+    }
 
-        return content;
+    private VisualElement BuildSaveFileNameRow()
+    {
+        string fileName = GetInitialSaveFileName();
+
+        _fileNameEntry = new Entry(fileName)
+        {
+            Height = 34,
+            Background = new Color(37, 39, 48),
+            BorderColor = new Color(50, 55, 65),
+            BorderWidth = 1,
+            TextColor = Color.White,
+            Placeholder = "File name",
+            PlaceholderColor = ColorDefault.Secondary,
+            HorizontalAlignment = HorizontalAlignment.Stretch
+        };
+        _fileNameEntry.OnCompletedHandler(ConfirmSelection);
+
+        return new VStack()
+            .Spacing(4)
+            .VerticalAlignment(VerticalAlignment.Top)
+            .Children(
+                new Label("File name")
+                    .FontSize(11)
+                    .Foreground(ColorDefault.Secondary),
+                _fileNameEntry);
     }
 
     private VisualElement BuildNavigationBar()
@@ -606,6 +707,10 @@ public class PathPicker : CompositeView<PathPicker>, IPointerHandler, IGlobalPoi
 
         _pendingSelection = entry.Path;
         _pendingSelectionIsDirectory = false;
+        if (Mode == PathPickerMode.SaveFile && _fileNameEntry != null)
+        {
+            _fileNameEntry.Text = entry.Name;
+        }
         RebuildDialogContent(preserveScrollOffset: true);
     }
 
@@ -616,12 +721,16 @@ public class PathPicker : CompositeView<PathPicker>, IPointerHandler, IGlobalPoi
             PathPickerMode.File => _pendingSelection,
             PathPickerMode.Folder => CurrentDirectory,
             PathPickerMode.FileOrFolder => _pendingSelection ?? CurrentDirectory,
+            PathPickerMode.SaveFile => BuildSaveFilePath(),
             _ => null
         };
 
         if (string.IsNullOrWhiteSpace(selected))
         {
-            SetStatus("Select an item first.");
+            if (Mode != PathPickerMode.SaveFile)
+            {
+                SetStatus("Select an item first.");
+            }
             return;
         }
 
@@ -786,7 +895,7 @@ public class PathPicker : CompositeView<PathPicker>, IPointerHandler, IGlobalPoi
 
     private IconData GetModeIcon()
     {
-        return Mode == PathPickerMode.File ? Icons.File : Icons.Folder;
+        return Mode is PathPickerMode.File or PathPickerMode.SaveFile ? Icons.File : Icons.Folder;
     }
 
     private string GetDialogTitle()
@@ -801,6 +910,7 @@ public class PathPicker : CompositeView<PathPicker>, IPointerHandler, IGlobalPoi
             PathPickerMode.File => "Select a file",
             PathPickerMode.Folder => "Select a folder",
             PathPickerMode.FileOrFolder => "Select a file or folder",
+            PathPickerMode.SaveFile => "Save file",
             _ => "Select path"
         };
     }
@@ -812,8 +922,69 @@ public class PathPicker : CompositeView<PathPicker>, IPointerHandler, IGlobalPoi
             PathPickerMode.File => "Select file",
             PathPickerMode.Folder => "Select folder",
             PathPickerMode.FileOrFolder => _pendingSelection == null || _pendingSelectionIsDirectory ? "Select folder" : "Select file",
+            PathPickerMode.SaveFile => "Save",
             _ => "Select"
         };
+    }
+
+    private string? BuildSaveFilePath()
+    {
+        string fileName = _fileNameEntry?.Text?.Trim() ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(fileName))
+        {
+            SetStatus("Enter a file name.");
+            return null;
+        }
+
+        if (fileName.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0)
+        {
+            SetStatus("The file name contains invalid characters.");
+            return null;
+        }
+
+        fileName = EnsureConfiguredExtension(fileName);
+        string selectedPath = Path.Combine(CurrentDirectory, fileName);
+        if (File.Exists(selectedPath) && SaveConflictBehavior == SaveFileConflictBehavior.Reject)
+        {
+            SetStatus("A file with this name already exists.");
+            return null;
+        }
+
+        return selectedPath;
+    }
+
+    private string GetInitialSaveFileName()
+    {
+        if (!string.IsNullOrWhiteSpace(_fileNameEntry?.Text))
+        {
+            return _fileNameEntry.Text;
+        }
+
+        if (!string.IsNullOrWhiteSpace(_pendingSelection) && File.Exists(_pendingSelection))
+        {
+            return Path.GetFileName(_pendingSelection);
+        }
+
+        if (!string.IsNullOrWhiteSpace(SelectedPath))
+        {
+            return Path.GetFileName(SelectedPath);
+        }
+
+        return EnsureConfiguredExtension(DefaultFileName);
+    }
+
+    private string EnsureConfiguredExtension(string fileName)
+    {
+        var extension = FileExtensions
+            .Select(NormalizeExtension)
+            .FirstOrDefault(ext => ext != "*");
+
+        if (string.IsNullOrWhiteSpace(extension) || string.Equals(Path.GetExtension(fileName), extension, StringComparison.OrdinalIgnoreCase))
+        {
+            return fileName;
+        }
+
+        return Path.ChangeExtension(fileName, extension);
     }
 
     private bool IsPendingSelection(string path)
@@ -1221,4 +1392,24 @@ public class FolderPicker : PathPicker
         return picker;
     }
 
+}
+
+/// <summary>
+/// Convenience picker configured for save-file selection.
+/// </summary>
+public class SaveFilePicker : PathPicker
+{
+    public SaveFilePicker()
+    {
+        Mode = PathPickerMode.SaveFile;
+        Placeholder = "Save file...";
+    }
+
+    public static SaveFilePicker ShowDialog(Action<string> onConfirm, Action? onCancel = null, Action<SaveFilePicker>? configure = null)
+    {
+        var picker = new SaveFilePicker();
+        configure?.Invoke(picker);
+        picker.OpenDialog(onConfirm, onCancel);
+        return picker;
+    }
 }

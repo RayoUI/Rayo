@@ -12,4 +12,5 @@ public class PaintViewState
     public Signal<float>     BrushSize    { get; } = new(3f);
     public Signal<string>    PositionText { get; } = new("");
     public Signal<string>    ToolText     { get; } = new("Pencil");
+    public Signal<string>    SaveText     { get; } = new("");
 }

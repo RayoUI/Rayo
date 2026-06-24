@@ -30,6 +30,10 @@ public class StatusBarView : UserControl
                         new Label()
                             .Text(_vm.PositionText)
                             .FontSize(11)
+                            .Foreground(new Color(160, 160, 160)),
+                        new Label()
+                            .Text(_vm.SaveText)
+                            .FontSize(11)
                             .Foreground(new Color(160, 160, 160))
                     )
             );
