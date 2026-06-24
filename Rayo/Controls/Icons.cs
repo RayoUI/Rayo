@@ -297,7 +297,7 @@ public static class Icons
     // ==================== OBJETOS ====================
 
     /// <summary>
-    /// Icono de configuración/propiedades
+    /// Settings/properties icon.
     /// </summary>
     public static IconData Settings => new IconData("settings")
         .AddLine(4f, 7f, 20f, 7f, 2f)
@@ -861,6 +861,25 @@ public static class Icons
         .AddLine(14f, 15f, 14.5f, 21f, 1.2f)
         .AddLine(16f, 15f, 18f, 21f, 1.2f)
         .AddLine(5f, 19f, 19f, 19f, 1.2f);
+
+    /// <summary>
+    /// Connector tool icon — two nodes joined by a line.
+    /// </summary>
+    public static IconData ConnectorTool => new IconData("connectorTool")
+        .AddCircle(7f, 7f, 3f, filled: false, strokeWidth: 2.2f)
+        .AddCircle(17f, 17f, 3f, filled: false, strokeWidth: 2.2f)
+        .AddLine(9.2f, 9.2f, 14.8f, 14.8f, 2.2f);
+
+    /// <summary>
+    /// Move tool icon — four-way movement arrows.
+    /// </summary>
+    public static IconData MoveTool => new IconData("moveTool")
+        .AddLine(12f, 4f, 12f, 20f, 2.2f)
+        .AddLine(4f, 12f, 20f, 12f, 2.2f)
+        .AddPath(new List<(float x, float y)> { (9f, 7f), (12f, 4f), (15f, 7f) }, strokeWidth: 2.2f)
+        .AddPath(new List<(float x, float y)> { (9f, 17f), (12f, 20f), (15f, 17f) }, strokeWidth: 2.2f)
+        .AddPath(new List<(float x, float y)> { (7f, 9f), (4f, 12f), (7f, 15f) }, strokeWidth: 2.2f)
+        .AddPath(new List<(float x, float y)> { (17f, 9f), (20f, 12f), (17f, 15f) }, strokeWidth: 2.2f);
 
     /// <summary>
     /// Rectangle tool icon — an outlined rectangle.

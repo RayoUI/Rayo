@@ -6,7 +6,7 @@ Guidance for Codex when working in this repository.
 
 - **Never create git commits** unless the user explicitly asks.
 - **All renderers must be updated together.** Any change to `IRenderer`, renderer-facing contracts, or the rendering pipeline must be applied to `Rayo.Rendering.OpenGL`, `Rayo.Rendering.SkiaSharp`, and `Rayo.Rendering.Vulkan`. If a fix is not applicable to one backend, add a comment explaining why.
-- **Language is English - always.** All code comments, XML doc-comments, inline comments, doc files (`Help/`, `Doc/`), and user-facing strings must be in English.
+- **Default language is English - always.** All code comments, XML doc-comments, inline comments, doc files (`Help/`, `Doc/`), and user-facing strings must be written in English by default, even when the user writes in another language unless they explicitly request localized output.
 
 ## Build
 
