@@ -8,18 +8,12 @@ using Rayo.Rendering;
 
 namespace MobileApp;
 
-public enum AppRoute
-{
-    Home,
-    Details,
-    Profile,
-    Settings
-}
-
 public class MainView : Component
 {
     private readonly Signal<AppRoute> _currentRoute = new(AppRoute.Home);
     private readonly Signal<int> _counter = new(0);
+    private readonly Signal<bool> _canGoBack = new(false);
+    private readonly List<AppRoute> _backStack = new();
     private readonly Computed<string> _counterText;
     private readonly Computed<string> _title;
     private Drawer? _drawer;
@@ -75,21 +69,41 @@ public class MainView : Component
                     .Spacing(12)
                     .Alignment(Alignment.Center)
                     .Children(
-                        new ButtonIcon(Icons.Menu)
-                            .Size(44)
-                            .IconSize(24)
-                            .IconColor(Color.White)
-                            .Background(Color.Transparent)
-                            .HoverBackground(new Color(43, 63, 94))
-                            .PressedBackground(new Color(16, 27, 43))
-                            .BorderWidth(0)
-                            .OnTapped(() => _drawer?.Open()),
+                        BuildNavigationButton(),
                         new Label()
                             .Text(_title)
                             .FontSize(18)
                             .Foreground(Color.White)
                             .VerticalAlignment(VerticalAlignment.Center)
                     ));
+    }
+
+    private VisualElement BuildNavigationButton()
+    {
+        if (_canGoBack.Value)
+        {
+            return new ButtonIcon(Icons.ChevronLeft)
+                .Size(44)
+                .IconSize(24)
+                .IconColor(Color.White)
+                .Background(Color.Transparent)
+                .HoverBackground(new Color(43, 63, 94))
+                .PressedBackground(new Color(16, 27, 43))
+                .BorderWidth(0)
+                .OnTapped(GoBack)
+                .WithTooltip("Go back");
+        }
+
+        return new ButtonIcon(Icons.Menu)
+            .Size(44)
+            .IconSize(24)
+            .IconColor(Color.White)
+            .Background(Color.Transparent)
+            .HoverBackground(new Color(43, 63, 94))
+            .PressedBackground(new Color(16, 27, 43))
+            .BorderWidth(0)
+            .OnTapped(() => _drawer?.Open())
+            .WithTooltip("Open menu");
     }
 
     private VisualElement BuildDrawerContent()
@@ -142,7 +156,7 @@ public class MainView : Component
             .BorderRadius(8)
             .OnTapped(() =>
             {
-                Navigate(route);
+                NavigateRoot(route);
                 Drawer.CloseCurrentDrawer();
             });
 
@@ -151,12 +165,43 @@ public class MainView : Component
 
     private void Navigate(AppRoute route)
     {
+        Navigate(route, trackHistory: true);
+    }
+
+    private void NavigateRoot(AppRoute route)
+    {
+        _backStack.Clear();
+        _canGoBack.Value = false;
+        Navigate(route, trackHistory: false);
+    }
+
+    private void Navigate(AppRoute route, bool trackHistory)
+    {
         if (_currentRoute.Value == route)
         {
             return;
         }
 
+        if (trackHistory)
+        {
+            _backStack.Add(_currentRoute.Value);
+            _canGoBack.Value = true;
+        }
+
         _currentRoute.Value = route;
+    }
+
+    private void GoBack()
+    {
+        if (_backStack.Count == 0)
+        {
+            return;
+        }
+
+        var previousRoute = _backStack[^1];
+        _backStack.RemoveAt(_backStack.Count - 1);
+        _canGoBack.Value = _backStack.Count > 0;
+        Navigate(previousRoute, trackHistory: false);
     }
 
     private void UpdateContent()
@@ -172,7 +217,7 @@ public class MainView : Component
 
     private VisualElement CreatePage(AppRoute route) => route switch
     {
-        AppRoute.Details => new DetailsPage(),
+        AppRoute.Details => new DetailsPage(Navigate),
         AppRoute.Profile => new ProfilePage(),
         AppRoute.Settings => new SettingsPage(),
         _ => new HomePage(_counter, _counterText)
