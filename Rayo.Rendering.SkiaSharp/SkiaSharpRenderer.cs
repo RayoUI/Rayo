@@ -42,6 +42,8 @@ public class SkiaSharpRenderer : IRenderer, INativeGradientRenderer
     private readonly Stack<SKRect> _scissorStack = new();
     private readonly Stack<int> _roundedClipStack = new();
     private readonly Stack<int> _transformStack = new();
+    private readonly Stack<float> _opacityStack = new();
+    private float _currentOpacity = 1f;
 
     // Cache for fallback fonts to avoid repeated lookups
     private readonly Dictionary<int, SKTypeface> _fallbackFontCache = new();
@@ -229,7 +231,7 @@ public class SkiaSharpRenderer : IRenderer, INativeGradientRenderer
         if (_canvas == null)
             throw new InvalidOperationException("Renderer not initialized");
 
-        _canvas.Clear(ToSKColor(color));
+        _canvas.Clear(ToSKColor(color, applyOpacity: false));
     }
 
     private SKPaint GetCachedFillPaint(Color color, bool antialias = true)
@@ -930,7 +932,16 @@ public class SkiaSharpRenderer : IRenderer, INativeGradientRenderer
         }
         else
         {
-            _canvas.DrawImage(skTexture.Image, destRect);
+            using var paint = _currentOpacity < 1f
+                ? new SKPaint
+                {
+                    ColorFilter = SKColorFilter.CreateBlendMode(
+                        ToSKColor(new Color(1f, 1f, 1f, 1f)),
+                        SKBlendMode.Modulate),
+                    IsAntialias = true
+                }
+                : null;
+            _canvas.DrawImage(skTexture.Image, destRect, paint);
         }
     }
 
@@ -1027,6 +1038,22 @@ public class SkiaSharpRenderer : IRenderer, INativeGradientRenderer
         _canvas.Restore();
     }
 
+    public void PushOpacity(float opacity)
+    {
+        _opacityStack.Push(_currentOpacity);
+        _currentOpacity *= Math.Clamp(opacity, 0f, 1f);
+    }
+
+    public void PopOpacity()
+    {
+        if (_opacityStack.Count == 0)
+        {
+            throw new InvalidOperationException("PopOpacity called without matching PushOpacity");
+        }
+
+        _currentOpacity = _opacityStack.Pop();
+    }
+
     // === Clipping Methods ===
 
     public void PushScissor(float x, float y, float width, float height)
@@ -1074,13 +1101,14 @@ public class SkiaSharpRenderer : IRenderer, INativeGradientRenderer
 
     // === Helper Methods ===
 
-    private SKColor ToSKColor(Color color)
+    private SKColor ToSKColor(Color color, bool applyOpacity = true)
     {
+        float alpha = applyOpacity ? color.A * _currentOpacity : color.A;
         return new SKColor(
             (byte)(color.R * 255),
             (byte)(color.G * 255),
             (byte)(color.B * 255),
-            (byte)(color.A * 255)
+            (byte)(Math.Clamp(alpha, 0f, 1f) * 255)
         );
     }
 
@@ -1500,7 +1528,7 @@ public class SkiaSharpRenderer : IRenderer, INativeGradientRenderer
 
     private SKColor[] GetCachedGradientColors(Color[] colors)
     {
-        var key = ColorArrayCacheKey.Create(colors);
+        var key = ColorArrayCacheKey.Create(colors, _currentOpacity);
         if (_gradientColorCache.TryGetValue(key, out var cachedColors))
             return cachedColors;
 
@@ -1780,12 +1808,13 @@ public class SkiaSharpRenderer : IRenderer, INativeGradientRenderer
         }
     }
 
-    private readonly record struct ColorArrayCacheKey(int Length, int ColorsHash)
+    private readonly record struct ColorArrayCacheKey(int Length, int OpacityBits, int ColorsHash)
     {
-        public static ColorArrayCacheKey Create(Color[] colors)
+        public static ColorArrayCacheKey Create(Color[] colors, float opacity)
         {
             var hash = new HashCode();
             hash.Add(colors.Length);
+            hash.Add(opacity);
 
             for (int i = 0; i < colors.Length; i++)
             {
@@ -1796,7 +1825,7 @@ public class SkiaSharpRenderer : IRenderer, INativeGradientRenderer
                 hash.Add(color.A);
             }
 
-            return new ColorArrayCacheKey(colors.Length, hash.ToHashCode());
+            return new ColorArrayCacheKey(colors.Length, BitConverter.SingleToInt32Bits(opacity), hash.ToHashCode());
         }
     }
 }

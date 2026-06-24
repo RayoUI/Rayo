@@ -714,6 +714,12 @@ public class UITree
             renderer.PushTransform(element.GetRenderTransform());
         }
 
+        bool hasOpacity = element.Opacity < 1f;
+        if (hasOpacity)
+        {
+            renderer.PushOpacity(element.Opacity);
+        }
+
         try
         {
             // SOLID: Delegation to specialized renderer
@@ -781,6 +787,11 @@ public class UITree
         }
         finally
         {
+            if (hasOpacity)
+            {
+                renderer.PopOpacity();
+            }
+
             if (hasTransform)
             {
                 renderer.PopTransform();
@@ -928,6 +939,12 @@ public class UITree
             renderer.PushTransform(host.GetRenderTransform());
         }
 
+        bool hasOpacity = host.Opacity < 1f;
+        if (hasOpacity)
+        {
+            renderer.PushOpacity(host.Opacity);
+        }
+
         try
         {
             renderer.DrawTexture(baseLayer.Texture!, host.ComputedX, host.ComputedY, width, height);
@@ -970,6 +987,11 @@ public class UITree
         }
         finally
         {
+            if (hasOpacity)
+            {
+                renderer.PopOpacity();
+            }
+
             if (hasTransform)
             {
                 renderer.PopTransform();

@@ -1172,20 +1172,36 @@ public class UIApplication : IDisposable
     {
         if (!element.IsVisible) return;
 
-        // Render the element itself
-        element.InvokeOnBeforeRender(renderer);
-        element.Render(renderer);
-
-        // Render children recursively
-        if (!element.RendersChildrenManually)
+        bool hasOpacity = element.Opacity < 1f;
+        if (hasOpacity)
         {
-            foreach (var child in element.GetChildrenByZIndex())
-            {
-                RenderElementRecursive(child, renderer);
-            }
+            renderer.PushOpacity(element.Opacity);
         }
 
-        element.InvokeOnAfterRender(renderer);
+        try
+        {
+            // Render the element itself
+            element.InvokeOnBeforeRender(renderer);
+            element.Render(renderer);
+
+            // Render children recursively
+            if (!element.RendersChildrenManually)
+            {
+                foreach (var child in element.GetChildrenByZIndex())
+                {
+                    RenderElementRecursive(child, renderer);
+                }
+            }
+
+            element.InvokeOnAfterRender(renderer);
+        }
+        finally
+        {
+            if (hasOpacity)
+            {
+                renderer.PopOpacity();
+            }
+        }
     }
 
     public void Dispose()

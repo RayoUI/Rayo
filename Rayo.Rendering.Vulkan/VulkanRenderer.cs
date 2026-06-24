@@ -66,7 +66,9 @@ public sealed unsafe class VulkanRenderer : IRenderer
     // Scissor stack
     private readonly Stack<(int x, int y, int w, int h)> _scissorStack = new();
     private readonly Stack<Matrix3x2> _transformStack = new();
+    private readonly Stack<float> _opacityStack = new();
     private Matrix3x2 _currentTransform = Matrix3x2.Identity;
+    private float _currentOpacity = 1f;
 
     // Render-to-texture state
     public bool IsRenderingToTexture => false; // Off-screen pass not yet active
@@ -643,6 +645,28 @@ public sealed unsafe class VulkanRenderer : IRenderer
         _currentTransform = _transformStack.Pop();
     }
 
+    public void PushOpacity(float opacity)
+    {
+        FlushShapeBatch();
+        FlushTextBatch();
+        FlushImageBatch();
+
+        _opacityStack.Push(_currentOpacity);
+        _currentOpacity *= Math.Clamp(opacity, 0f, 1f);
+    }
+
+    public void PopOpacity()
+    {
+        FlushShapeBatch();
+        FlushTextBatch();
+        FlushImageBatch();
+
+        if (_opacityStack.Count == 0)
+            throw new InvalidOperationException("PopOpacity called without matching PushOpacity");
+
+        _currentOpacity = _opacityStack.Pop();
+    }
+
     // ── Clipping ──────────────────────────────────────────────────────────
 
     public void PushScissor(float x, float y, float width, float height)
@@ -918,8 +942,8 @@ public sealed unsafe class VulkanRenderer : IRenderer
 
     // ── Utilities ─────────────────────────────────────────────────────────
 
-    private static Vector4 ToVec4(Color c)
-        => new Vector4(c.R / 255f, c.G / 255f, c.B / 255f, c.A / 255f);
+    private Vector4 ToVec4(Color c)
+        => new Vector4(c.R / 255f, c.G / 255f, c.B / 255f, (c.A / 255f) * _currentOpacity);
 
     private void LoadDefaultFont()
     {

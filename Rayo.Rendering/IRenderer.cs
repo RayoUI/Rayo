@@ -195,6 +195,19 @@ public interface IRenderer : IDisposable
     /// </summary>
     void PopTransform() { }
 
+    // === Opacity ===
+
+    /// <summary>
+    /// Multiplies the alpha of subsequent draw calls until <see cref="PopOpacity"/>.
+    /// Values are nested multiplicatively.
+    /// </summary>
+    void PushOpacity(float opacity) { }
+
+    /// <summary>
+    /// Restores the previous opacity pushed with <see cref="PushOpacity"/>.
+    /// </summary>
+    void PopOpacity() { }
+
     // === Clipping ===
 
     void PushScissor(float x, float y, float width, float height);

@@ -1,4 +1,4 @@
-﻿using Silk.NET.OpenGL;
+using Silk.NET.OpenGL;
 using System.Numerics;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
@@ -41,7 +41,9 @@ public unsafe class OpenGLRenderer : IRenderer
     private Stack<(int x, int y, int width, int height)> _scissorStack = new();
     private Stack<int> _roundedClipStack = new();
     private Stack<Matrix3x2> _transformStack = new();
+    private Stack<float> _opacityStack = new();
     private Matrix3x2 _currentTransform = Matrix3x2.Identity;
+    private float _currentOpacity = 1f;
 
     private uint _viewportWidth = 0;
     private uint _viewportHeight = 0;
@@ -395,7 +397,7 @@ void main()
         }
         catch
         {
-            // Silently fail — rendering will skip text if no font is found.
+            // Silently fail � rendering will skip text if no font is found.
         }
     }
 
@@ -487,10 +489,10 @@ void main()
     {
         ushort baseIndex = (ushort)_vertices.Count;
 
-        _vertices.Add(new Vertex { Position = new Vector2(x, y), Color = new Vector4(color.R, color.G, color.B, color.A) });
-        _vertices.Add(new Vertex { Position = new Vector2(x + width, y), Color = new Vector4(color.R, color.G, color.B, color.A) });
-        _vertices.Add(new Vertex { Position = new Vector2(x + width, y + height), Color = new Vector4(color.R, color.G, color.B, color.A) });
-        _vertices.Add(new Vertex { Position = new Vector2(x, y + height), Color = new Vector4(color.R, color.G, color.B, color.A) });
+        _vertices.Add(new Vertex { Position = new Vector2(x, y), Color = ToColorVector(color) });
+        _vertices.Add(new Vertex { Position = new Vector2(x + width, y), Color = ToColorVector(color) });
+        _vertices.Add(new Vertex { Position = new Vector2(x + width, y + height), Color = ToColorVector(color) });
+        _vertices.Add(new Vertex { Position = new Vector2(x, y + height), Color = ToColorVector(color) });
 
         _indices.Add(baseIndex);
         _indices.Add((ushort)(baseIndex + 1));
@@ -528,7 +530,7 @@ void main()
         float maxRadius = Math.Min(width / 2, height / 2);
         float r = Math.Min(radius, maxRadius);
 
-        var colorVec = new Vector4(color.R, color.G, color.B, color.A);
+        var colorVec = ToColorVector(color);
         ushort baseIndex = (ushort)_vertices.Count;
         int segments = 16;
 
@@ -742,7 +744,7 @@ void main()
         // Draw a quadrilateral as two triangles
         ushort baseIndex = (ushort)_vertices.Count;
 
-        var colorVec = new Vector4(color.R, color.G, color.B, color.A);
+        var colorVec = ToColorVector(color);
 
         // Add 4 vertices for the quad
         _vertices.Add(new Vertex { Position = new Vector2(x1, y1), Color = colorVec });
@@ -773,7 +775,7 @@ void main()
         float ny = dx / len * (thickness / 2);
 
         ushort baseIndex = (ushort)_vertices.Count;
-        var colorVec = new Vector4(color.R, color.G, color.B, color.A);
+        var colorVec = ToColorVector(color);
 
         _vertices.Add(new Vertex { Position = new Vector2(x1 + nx, y1 + ny), Color = colorVec });
         _vertices.Add(new Vertex { Position = new Vector2(x1 - nx, y1 - ny), Color = colorVec });
@@ -794,7 +796,7 @@ void main()
         segments = Math.Min(segments, 64);
 
         ushort baseIndex = (ushort)_vertices.Count;
-        var colorVec = new Vector4(color.R, color.G, color.B, color.A);
+        var colorVec = ToColorVector(color);
 
         _vertices.Add(new Vertex { Position = new Vector2(cx, cy), Color = colorVec });
 
@@ -838,7 +840,7 @@ void main()
         if (points.Count < 3) return;
 
         ushort baseIndex = (ushort)_vertices.Count;
-        var colorVec = new Vector4(color.R, color.G, color.B, color.A);
+        var colorVec = ToColorVector(color);
 
         float centerX = 0, centerY = 0;
         foreach (var p in points)
@@ -898,7 +900,7 @@ void main()
     public void DrawCircleOutline(float cx, float cy, float radius, float thickness, Brushes.Brush brush)
         => DrawCircleOutline(cx, cy, radius, thickness, brush.PrimaryColor);
 
-    // === Gráficos Vectoriales ===
+    // === Gr�ficos Vectoriales ===
 
     public void DrawPath(Graphics.VectorGraphics.VectorPath path, Color color)
     {
@@ -908,7 +910,7 @@ void main()
             return;
 
         ushort baseIndex = (ushort)_vertices.Count;
-        var colorVec = new Vector4(color.R, color.G, color.B, color.A);
+        var colorVec = ToColorVector(color);
 
         foreach (var point in triangles)
         {
@@ -923,14 +925,14 @@ void main()
 
     public void DrawPathStroke(Graphics.VectorGraphics.VectorPath path, Color color, float thickness)
     {
-        // ✅ MEJORA: Usar teselador avanzado similar a Skia para suavidad máxima
+        // ? MEJORA: Usar teselador avanzado similar a Skia para suavidad m�xima
         var triangles = Graphics.VectorGraphics.PathTessellator.TessellateStrokeAdvanced(path, thickness);
 
         if (triangles.Count < 3)
             return;
 
         ushort baseIndex = (ushort)_vertices.Count;
-        var colorVec = new Vector4(color.R, color.G, color.B, color.A);
+        var colorVec = ToColorVector(color);
 
         foreach (var point in triangles)
         {
@@ -979,7 +981,7 @@ void main()
         DrawPathStroke(path, color, thickness);
     }
 
-    // ── Font-fallback helpers ─────────────────────────────────────────────
+    // -- Font-fallback helpers ---------------------------------------------
 
     /// <summary>
     /// Resolves the best atlas + glyph info for a given Unicode codepoint.
@@ -1093,7 +1095,7 @@ void main()
         indices.Add(bi); indices.Add((ushort)(bi + 2)); indices.Add((ushort)(bi + 3));
     }
 
-    // ── Public draw methods ───────────────────────────────────────────────
+    // -- Public draw methods -----------------------------------------------
 
     // Returns the baseline Y for a given top-of-line Y, using the real font ascent.
     // Falls back to 75% of fontSize if no default font is loaded yet.
@@ -1128,7 +1130,7 @@ void main()
             penX = x - minX;
         float penY = BaselineY(y, _defaultFont, fontSize);
 
-        var colorVec = new Vector4(color.R, color.G, color.B, color.A);
+        var colorVec = ToColorVector(color);
 
         // Batch glyphs per-atlas to avoid mid-string texture switches.
         var primaryVerts  = new List<TextVertex>();
@@ -1197,7 +1199,7 @@ void main()
         var fallbackVerts = new List<TextVertex>();
         var fallbackIdx   = new List<ushort>();
 
-        var colorVec = new Vector4(color.R, color.G, color.B, color.A);
+        var colorVec = ToColorVector(color);
 
         for (int i = 0; i < text.Length; )
         {
@@ -1264,7 +1266,7 @@ void main()
         float penY = BaselineY(y, _defaultFont, fontSize);
 
         const float italicSkew = 0.25f;
-        var colorVec = new Vector4(color.PrimaryColor.R, color.PrimaryColor.G, color.PrimaryColor.B, color.PrimaryColor.A);
+        var colorVec = ToColorVector(color.PrimaryColor);
 
         var primaryVerts  = new List<TextVertex>();
         var primaryIdx    = new List<ushort>();
@@ -1480,7 +1482,7 @@ void main()
         Flush();
 
         var color = tint ?? new Color(1, 1, 1, 1);
-        var colorVec = new Vector4(color.R, color.G, color.B, color.A);
+        var colorVec = ToColorVector(color);
 
         var imageVertices = new List<TextVertex>();
         var imageIndices = new List<ushort>();
@@ -1569,6 +1571,22 @@ void main()
         _currentTransform = _transformStack.Pop();
     }
 
+    public void PushOpacity(float opacity)
+    {
+        Flush();
+        _opacityStack.Push(_currentOpacity);
+        _currentOpacity *= Math.Clamp(opacity, 0f, 1f);
+    }
+
+    public void PopOpacity()
+    {
+        Flush();
+
+        if (_opacityStack.Count == 0)
+            throw new InvalidOperationException("PopOpacity called without matching PushOpacity");
+
+        _currentOpacity = _opacityStack.Pop();
+    }
     public void PushScissor(float x, float y, float width, float height)
     {
         Flush();
@@ -1790,12 +1808,12 @@ void main()
         {
             _gl.Enable(EnableCap.ScissorTest);
             
-            // ✅ FIX: Restore the scissor box as well, in case it was modified or reset
+            // ? FIX: Restore the scissor box as well, in case it was modified or reset
             var (x, y, w, h) = _scissorStack.Peek();
             _gl.Scissor(x, y, (uint)w, (uint)h);
         }
 
-  // Renderizar rectángulos
+  // Renderizar rect�ngulos
   if (_vertices.Count > 0)
         {
           _gl.UseProgram(_shaderProgram);
@@ -1894,7 +1912,7 @@ _gl.BindBuffer(BufferTargetARB.ElementArrayBuffer, _textEbo);
      _gl.FramebufferTexture2D(FramebufferTarget.Framebuffer, FramebufferAttachment.ColorAttachment0,
 TextureTarget.Texture2D, textureId, 0);
 
-        // Verificar que el framebuffer está completo
+        // Verificar que el framebuffer est� completo
         var status = _gl.CheckFramebufferStatus(FramebufferTarget.Framebuffer);
         if (status != GLEnum.FramebufferComplete)
         {
@@ -1927,7 +1945,7 @@ TextureTarget.Texture2D, textureId, 0);
    // Actualizar viewport
         _gl.Viewport(0, 0, (uint)renderTarget.Width, (uint)renderTarget.Height);
 
-   // Actualizar matriz de proyección para el nuevo tamaño
+   // Actualizar matriz de proyecci�n para el nuevo tama�o
         _projection = Matrix4x4.CreateOrthographicOffCenter(0, renderTarget.Width, renderTarget.Height, 0, -1, 1);
 }
 
@@ -1945,7 +1963,7 @@ TextureTarget.Texture2D, textureId, 0);
         _currentFBO = _fboStack.Pop();
         _gl.BindFramebuffer(FramebufferTarget.Framebuffer, _currentFBO);
 
-        // ✅ CRÍTICO: Restaurar viewport con WIDTH y HEIGHT correctos
+        // ? CR�TICO: Restaurar viewport con WIDTH y HEIGHT correctos
         _gl.Viewport(0, 0, _viewportWidth, _viewportHeight);
         _projection = Matrix4x4.CreateOrthographicOffCenter(0, _viewportWidth, _viewportHeight, 0, -1, 1);
     }
@@ -1957,6 +1975,9 @@ TextureTarget.Texture2D, textureId, 0);
         // Delegates to the existing OpenGLTexture constructor that uploads pixel data.
         return new OpenGLTexture(_gl, width, height, rgbaPixels, TextureFormat.RGBA8);
     }
+
+    private Vector4 ToColorVector(Color color)
+        => new(color.R, color.G, color.B, color.A * _currentOpacity);
 
     public void Dispose()
     {
