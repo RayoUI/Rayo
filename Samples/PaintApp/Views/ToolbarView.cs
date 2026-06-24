@@ -239,8 +239,8 @@ public class ToolbarView : UserControl
         int initW = Math.Max(100, (int)(_canvas.CanvasWidth  > 0 ? _canvas.CanvasWidth  : _canvas.ComputedWidth));
         int initH = Math.Max(100, (int)(_canvas.CanvasHeight > 0 ? _canvas.CanvasHeight : _canvas.ComputedHeight));
 
-        var widthEntry  = new Entry(initW.ToString()) { IsNumericOnly = true, IsDecimalAllowed = false, Width = 90, Height = 36 };
-        var heightEntry = new Entry(initH.ToString()) { IsNumericOnly = true, IsDecimalAllowed = false, Width = 90, Height = 36 };
+        var widthEntry  = new EntryNumber(initW) { AllowDecimal = false, AllowNegative = false, Width = 90, Height = 36, Minimum = 50 };
+        var heightEntry = new EntryNumber(initH) { AllowDecimal = false, AllowNegative = false, Width = 90, Height = 36, Minimum = 50 };
 
         void Close()  => OverlayManager.RemoveOverlay(overlay!);
 

@@ -135,6 +135,10 @@ public class NodePropertiesPanel : CompositeView<NodePropertiesPanel>
             {
                 AddBooleanToggle(list, model);
             }
+            else if (model.TypeId == NodeTypeId.NumberValue)
+            {
+                AddNumberEntry(list, model);
+            }
             else
             {
                 AddTextEntry(list, model);
@@ -170,7 +174,28 @@ public class NodePropertiesPanel : CompositeView<NodePropertiesPanel>
         var entry = new Entry(model.Value ?? "");
         entry.HorizontalAlignment = HorizontalAlignment.Stretch;
         entry.Height = 28;
-        entry.NumericOnly(model.TypeId == NodeTypeId.NumberValue);
+        entry.TextChanged += newText =>
+        {
+            model.Value = newText;
+            _selectedNode?.MarkNeedsPaint();
+        };
+        list.AddChild(entry);
+    }
+
+    private void AddNumberEntry(VStack list, NodeModel model)
+    {
+        double.TryParse(
+            model.Value,
+            System.Globalization.NumberStyles.Any,
+            System.Globalization.CultureInfo.InvariantCulture,
+            out var currentValue);
+
+        var entry = new EntryNumber(currentValue)
+        {
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            Height = 28,
+            ValueFormat = "G4"
+        };
         entry.TextChanged += newText =>
         {
             model.Value = newText;

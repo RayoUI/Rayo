@@ -192,26 +192,26 @@ public class PropertyFrame : UserControl
         var bounds = GetNumericBounds(prop.Name);
         bool isNull      = IsNullValue(prop.Value);
         var  displayValue = isNull ? "" : FormatNumberValue(prop.Value);
-        var  entry        = new Entry
+        var  entry        = new EntryNumber
         {
-            IsNumericOnly = true,
-            IsDecimalAllowed = true,
-            IsNegativeAllowed = bounds.MinValue is null || bounds.MinValue < 0f
+            AllowDecimal = true,
+            AllowNegative = bounds.MinValue is null || bounds.MinValue < 0f,
+            DragIncrement = GetNumericDragIncrement(prop.Name),
+            ValueFormat = "G4"
         };
+        if (bounds.MinValue.HasValue)
+            entry.Minimum = bounds.MinValue.Value;
+        if (bounds.MaxValue.HasValue)
+            entry.Maximum = bounds.MaxValue.Value;
+
         entry.Text(displayValue)
              .Placeholder(isNull ? "null" : "")
              .HorizontalAlignment(HorizontalAlignment.Stretch)
              .FontSize(11)
-             .OnTextChanged(async text =>
+             .OnValueChanged(async value =>
              {
-                 if (float.TryParse(text,
-                         System.Globalization.NumberStyles.Any,
-                         System.Globalization.CultureInfo.InvariantCulture,
-                         out var v))
-                 {
-                     v = ClampToBounds(v, bounds);
-                     await _state.Client.SetPropertyAsync(elementId, prop.Name, v);
-                 }
+                 var v = ClampToBounds((float)value, bounds);
+                 await _state.Client.SetPropertyAsync(elementId, prop.Name, v);
              });
         return entry;
     }
@@ -373,20 +373,18 @@ public class PropertyFrame : UserControl
     /// <summary>Labeled mini float entry used in Thickness / CornerRadius editors.</summary>
     private static VisualElement FloatEntry(string label, float initialValue, bool allowNegative, Action<float> onChange)
     {
-        var miniEntry = new Entry { IsNumericOnly = true, IsDecimalAllowed = true, IsNegativeAllowed = allowNegative };
+        var miniEntry = new EntryNumber(initialValue)
+        {
+            AllowDecimal = true,
+            AllowNegative = allowNegative,
+            Minimum = allowNegative ? double.NegativeInfinity : 0d,
+            DragIncrement = 1d,
+            ValueFormat = "G4"
+        };
         miniEntry.Text(FormatFloat(initialValue))
                  .FontSize(11)
                  .HorizontalAlignment(HorizontalAlignment.Stretch)
-                 .OnTextChanged(text =>
-                 {
-                     if (float.TryParse(text,
-                             System.Globalization.NumberStyles.Any,
-                             System.Globalization.CultureInfo.InvariantCulture,
-                             out var v))
-                     {
-                         onChange(allowNegative ? v : Math.Max(0f, v));
-                     }
-                 });
+                 .OnValueChanged(value => onChange(allowNegative ? (float)value : Math.Max(0f, (float)value)));
 
         return new VStack()
             .Spacing(1)
@@ -573,5 +571,19 @@ public class PropertyFrame : UserControl
         if (bounds.MaxValue.HasValue && value > bounds.MaxValue.Value)
             value = bounds.MaxValue.Value;
         return value;
+    }
+
+    private static double GetNumericDragIncrement(string propertyName)
+    {
+        return propertyName switch
+        {
+            "Opacity" => 0.01d,
+            "Rotation" => 1d,
+            "Scale" => 0.05d,
+            "FontSize" or "BorderWidth" or "StrokeWidth" or "StrokeThickness" or
+            "Spacing" or "ItemSpacing" or "RowSpacing" or "ColumnSpacing" or
+            "Gap" or "RowGap" or "CornerRadius" or "BorderRadius" => 0.5d,
+            _ => 1d
+        };
     }
 }
