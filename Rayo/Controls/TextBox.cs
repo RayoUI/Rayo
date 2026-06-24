@@ -1,7 +1,7 @@
 ﻿namespace Rayo.Controls;
 
 using System;
-using Rayo.Animation;
+using System.Threading;
 using Rayo.Core;
 using Rayo.Core.Interfaces;
 using Rayo.Reactivity;
@@ -13,7 +13,7 @@ using IRenderer = Rayo.Rendering.IRenderer;
 /// <summary>
 /// Text input field with support for single-line and multi-line text editing.
 /// </summary>
-public abstract class TextBox<T> : Rayo.Core.View<T>, IInputHandler, IFocusable, IFrameAnimation, IFrameAnimationThrottle, Rayo.Core.Platform.IVirtualKeyboardOptions where T : Rayo.Core.View<T>
+public abstract class TextBox<T> : Rayo.Core.View<T>, IInputHandler, IFocusable, Rayo.Core.Platform.IVirtualKeyboardOptions where T : Rayo.Core.View<T>
 {
     // =========================================================================
     // INTERFACE IMPLEMENTATIONS
@@ -259,8 +259,10 @@ public abstract class TextBox<T> : Rayo.Core.View<T>, IInputHandler, IFocusable,
     // Cursor blink state
     private DateTime _lastCursorActivityTime = DateTime.UtcNow;
     protected bool _cursorVisible = true;
-    private const double CursorBlinkIntervalMs = 530;  // Standard Windows caret blink rate
-    float IFrameAnimationThrottle.TargetFps => 8f;
+    private const int CursorBlinkIntervalMs = 530;  // Standard Windows caret blink rate
+    private readonly object _cursorBlinkTimerLock = new();
+    private Timer? _cursorBlinkTimer;
+    private volatile bool _cursorBlinkActive;
     private readonly List<TextLineInfo> _multilineLines = new();
     private bool _multilineLinesDirty = true;
     private string _lastMultilineText = string.Empty;
@@ -308,7 +310,94 @@ public abstract class TextBox<T> : Rayo.Core.View<T>, IInputHandler, IFocusable,
     protected void ResetCursorBlink()
     {
         _lastCursorActivityTime = DateTime.UtcNow;
+        bool wasVisible = _cursorVisible;
         _cursorVisible = true;
+
+        if (IsFocused)
+        {
+            _cursorBlinkActive = true;
+            RestartCursorBlinkTimer(CursorBlinkIntervalMs);
+            if (!wasVisible)
+            {
+                MarkNeedsPaint();
+            }
+        }
+        else
+        {
+            _cursorBlinkActive = false;
+            StopCursorBlinkTimer(dispose: false);
+        }
+    }
+
+    private void RestartCursorBlinkTimer(int dueTimeMs)
+    {
+        if (!IsFocused || !_cursorBlinkActive)
+        {
+            return;
+        }
+
+        lock (_cursorBlinkTimerLock)
+        {
+            _cursorBlinkTimer ??= new Timer(OnCursorBlinkTimer);
+            _cursorBlinkTimer.Change(Math.Max(1, dueTimeMs), Timeout.Infinite);
+        }
+    }
+
+    private void StopCursorBlinkTimer(bool dispose)
+    {
+        Timer? timerToDispose = null;
+
+        lock (_cursorBlinkTimerLock)
+        {
+            if (_cursorBlinkTimer == null)
+            {
+                return;
+            }
+
+            _cursorBlinkTimer.Change(Timeout.Infinite, Timeout.Infinite);
+            if (dispose)
+            {
+                timerToDispose = _cursorBlinkTimer;
+                _cursorBlinkTimer = null;
+            }
+        }
+
+        timerToDispose?.Dispose();
+    }
+
+    private void OnCursorBlinkTimer(object? state)
+    {
+        var app = UIApplication.Current;
+        if (app != null)
+        {
+            app.RunOnMainThread(UpdateCursorBlink);
+        }
+        else
+        {
+            UpdateCursorBlink();
+        }
+    }
+
+    private void UpdateCursorBlink()
+    {
+        if (!IsFocused || !_cursorBlinkActive)
+        {
+            StopCursorBlinkTimer(dispose: false);
+            return;
+        }
+
+        double elapsed = (DateTime.UtcNow - _lastCursorActivityTime).TotalMilliseconds;
+        int cycleCount = (int)(elapsed / CursorBlinkIntervalMs);
+        bool shouldBeVisible = (cycleCount % 2) == 0;
+
+        if (_cursorVisible != shouldBeVisible)
+        {
+            _cursorVisible = shouldBeVisible;
+            MarkNeedsPaint();
+        }
+
+        int nextDelay = CursorBlinkIntervalMs - (int)(elapsed % CursorBlinkIntervalMs);
+        RestartCursorBlinkTimer(nextDelay);
     }
 
     private void InvalidateMultilineCache()
@@ -317,6 +406,13 @@ public abstract class TextBox<T> : Rayo.Core.View<T>, IInputHandler, IFocusable,
         _lastMultilineText = string.Empty;
         _multilineContentWidth = 0;
         _lastSingleLineText = string.Empty;
+    }
+
+    protected override void OnUnmounted()
+    {
+        _cursorBlinkActive = false;
+        StopCursorBlinkTimer(dispose: true);
+        base.OnUnmounted();
     }
 
     private void EnsureMultilineCache()
@@ -1294,7 +1390,6 @@ public abstract class TextBox<T> : Rayo.Core.View<T>, IInputHandler, IFocusable,
     {
         IsFocused = true;
         ResetCursorBlink();
-        FrameAnimationTicker.Register(this);
         MarkNeedsPaint();
 
         if (Rayo.Core.Platform.PlatformDetector.IsMobile)
@@ -1306,36 +1401,14 @@ public abstract class TextBox<T> : Rayo.Core.View<T>, IInputHandler, IFocusable,
     public void OnFocusLost()
     {
         IsFocused = false;
-        FrameAnimationTicker.Unregister(this);
+        _cursorBlinkActive = false;
+        StopCursorBlinkTimer(dispose: false);
         ClearSelection();
         MarkNeedsPaint();
 
         if (Rayo.Core.Platform.PlatformDetector.IsMobile)
         {
             Rayo.Core.Platform.VirtualKeyboardManager.Hide();
-        }
-    }
-
-    // =========================================================================
-    // IFrameAnimation IMPLEMENTATION (cursor blink)
-    // =========================================================================
-
-    /// <summary>
-    /// Called every frame while focused to update cursor blink state.
-    /// </summary>
-    public void Tick(float deltaTime)
-    {
-        if (!IsFocused) return;
-
-        // Check if cursor visibility should change
-        var elapsed = (DateTime.UtcNow - _lastCursorActivityTime).TotalMilliseconds;
-        int cycleCount = (int)(elapsed / CursorBlinkIntervalMs);
-        bool shouldBeVisible = (cycleCount % 2) == 0;
-
-        if (_cursorVisible != shouldBeVisible)
-        {
-            _cursorVisible = shouldBeVisible;
-            MarkNeedsPaint();
         }
     }
 
