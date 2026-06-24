@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>preview</LangVersion>
+    <OutputType>Library</OutputType>
+    <RootNamespace>MobileApp</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Rayo\Rayo.csproj" />
+    <ProjectReference Include="..\..\Rayo.Hosting.Abstractions\Rayo.Hosting.Abstractions.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -16,7 +16,7 @@ public class KanbanApp : IUIBuilder
             .HorizontalAlignment(HorizontalAlignment.Stretch)
             .VerticalAlignment(VerticalAlignment.Stretch) // Ensure root fills window
             .Children(
-                new Label("Drag & Drop Example - Arrastra las tarjetas a las zonas")
+                new Label("Drag & Drop Example - Drag the cards to the zones")
                     .Size(new Size(0, 40)),
 
                 new HStack()
