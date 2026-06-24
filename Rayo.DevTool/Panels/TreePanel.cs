@@ -7,6 +7,7 @@ using Rayo.Rendering;
 using static Rayo.Core.UIHelpers;
 using System.Collections.Generic;
 using System.Linq;
+using Rayo.Core.Input;
 
 namespace Rayo.DevTool.Frames;
 
@@ -304,8 +305,6 @@ public class TreeFrame : UserControl
             .BorderWidth(0);
 
         titleButton.Tapped += _ => SelectNode();
-        titleButton.PointerEntered += _ => _state.HoverElement(node.Id);
-        titleButton.PointerExited += _ => _state.ClearHoveredElement(node.Id);
 
         var headerGrid = new Grid()
             .Rows(GridLength.Auto)
@@ -313,7 +312,6 @@ public class TreeFrame : UserControl
             .Padding(new Thickness(0, 2, 4, 2))
             .VerticalAlignment(VerticalAlignment.Top)
             .HorizontalAlignment(HorizontalAlignment.Stretch)
-            .Background(rowBackground)
             .AddChild(chevronElement, 0, 1)
             .AddChild(titleButton, 0, 2);
 
@@ -338,8 +336,26 @@ public class TreeFrame : UserControl
             headerGrid.AddChild(badge, 0, 3);
         }
 
-        _nodeRows[node.Id] = headerGrid;
-        nodeContainer.AddChild(headerGrid);
+        var rowFrame = new TreeNodeRowFrame(
+                onSelect: SelectNode,
+                onHoverChanged: isHovered =>
+                {
+                    if (isHovered)
+                    {
+                        _state.HoverElement(node.Id);
+                    }
+                    else
+                    {
+                        _state.ClearHoveredElement(node.Id);
+                    }
+                })
+            .Background(rowBackground)
+            .HorizontalAlignment(HorizontalAlignment.Stretch)
+            .VerticalAlignment(VerticalAlignment.Top)
+            .Content(headerGrid);
+
+        _nodeRows[node.Id] = rowFrame;
+        nodeContainer.AddChild(rowFrame);
 
         if (hasChildren)
         {
@@ -424,6 +440,58 @@ public class TreeFrame : UserControl
         void Rayo.Core.Input.IPointerHandler.OnPointerReleased(Rayo.Core.Input.PointerEventArgs e)
         {
             base.OnPointerReleased(e);
+        }
+    }
+
+    private sealed class TreeNodeRowFrame : Frame, IPointerHandler
+    {
+        private readonly System.Action _onSelect;
+        private readonly System.Action<bool> _onHoverChanged;
+        private bool _isPressed;
+
+        public TreeNodeRowFrame(System.Action onSelect, System.Action<bool> onHoverChanged)
+        {
+            _onSelect = onSelect;
+            _onHoverChanged = onHoverChanged;
+            BorderWidth = 0;
+            Padding = new Thickness(0);
+        }
+
+        void IPointerHandler.OnPointerEntered(PointerEventArgs e)
+        {
+            if (e.PointerType == PointerType.Mouse)
+            {
+                _onHoverChanged(true);
+            }
+        }
+
+        void IPointerHandler.OnPointerExited(PointerEventArgs e)
+        {
+            if (e.PointerType == PointerType.Mouse)
+            {
+                _onHoverChanged(false);
+            }
+
+            _isPressed = false;
+        }
+
+        void IPointerHandler.OnPointerPressed(PointerEventArgs e)
+        {
+            if (!e.Handled)
+            {
+                _isPressed = true;
+            }
+        }
+
+        void IPointerHandler.OnPointerReleased(PointerEventArgs e)
+        {
+            if (_isPressed && !e.Handled)
+            {
+                _onSelect();
+                e.Handled = true;
+            }
+
+            _isPressed = false;
         }
     }
 }
