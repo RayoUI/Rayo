@@ -340,35 +340,53 @@ public class PropertyFrame : UserControl
     {
         var t = ParseThickness(prop.Value);
 
-        return new HStack()
-            .Spacing(3)
-            .HorizontalAlignment(HorizontalAlignment.Stretch)
-            .Children(
-                FloatEntry("L", t.Left, false, v => { t = new Thickness(v, t.Top, t.Right, t.Bottom);   _ = _state.Client.SetPropertyAsync(elementId, prop.Name, t); }),
-                FloatEntry("T", t.Top, false, v => { t = new Thickness(t.Left, v, t.Right, t.Bottom);   _ = _state.Client.SetPropertyAsync(elementId, prop.Name, t); }),
-                FloatEntry("R", t.Right, false, v => { t = new Thickness(t.Left, t.Top, v, t.Bottom);     _ = _state.Client.SetPropertyAsync(elementId, prop.Name, t); }),
-                FloatEntry("B", t.Bottom, false, v => { t = new Thickness(t.Left, t.Top, t.Right, v);      _ = _state.Client.SetPropertyAsync(elementId, prop.Name, t); })
-            );
+        return BuildFourValueEditor(
+            FloatEntry("L", t.Left, false, v => { t = new Thickness(v, t.Top, t.Right, t.Bottom);   _ = _state.Client.SetPropertyAsync(elementId, prop.Name, t); }),
+            FloatEntry("T", t.Top, false, v => { t = new Thickness(t.Left, v, t.Right, t.Bottom);   _ = _state.Client.SetPropertyAsync(elementId, prop.Name, t); }),
+            FloatEntry("B", t.Bottom, false, v => { t = new Thickness(t.Left, t.Top, t.Right, v);      _ = _state.Client.SetPropertyAsync(elementId, prop.Name, t); }),
+            FloatEntry("R", t.Right, false, v => { t = new Thickness(t.Left, t.Top, v, t.Bottom);     _ = _state.Client.SetPropertyAsync(elementId, prop.Name, t); })
+        );
     }
 
     private VisualElement BuildCornerRadiusEditor(PropertyInfo prop, string elementId)
     {
         var r = ParseCornerRadius(prop.Value);
 
-        return new HStack()
-            .Spacing(3)
-            .HorizontalAlignment(HorizontalAlignment.Stretch)
-            .Children(
-                FloatEntry("TL", r.TopLeft, false, v => { r = new CornerRadius(v, r.TopRight, r.BottomRight, r.BottomLeft);     _ = _state.Client.SetPropertyAsync(elementId, prop.Name, r); }),
-                FloatEntry("TR", r.TopRight, false, v => { r = new CornerRadius(r.TopLeft, v, r.BottomRight, r.BottomLeft);      _ = _state.Client.SetPropertyAsync(elementId, prop.Name, r); }),
-                FloatEntry("BR", r.BottomRight, false, v => { r = new CornerRadius(r.TopLeft, r.TopRight, v, r.BottomLeft);         _ = _state.Client.SetPropertyAsync(elementId, prop.Name, r); }),
-                FloatEntry("BL", r.BottomLeft, false, v => { r = new CornerRadius(r.TopLeft, r.TopRight, r.BottomRight, v);        _ = _state.Client.SetPropertyAsync(elementId, prop.Name, r); })
-            );
+        return BuildFourValueEditor(
+            FloatEntry("TL", r.TopLeft, false, v => { r = new CornerRadius(v, r.TopRight, r.BottomRight, r.BottomLeft);     _ = _state.Client.SetPropertyAsync(elementId, prop.Name, r); }),
+            FloatEntry("TR", r.TopRight, false, v => { r = new CornerRadius(r.TopLeft, v, r.BottomRight, r.BottomLeft);      _ = _state.Client.SetPropertyAsync(elementId, prop.Name, r); }),
+            FloatEntry("BL", r.BottomLeft, false, v => { r = new CornerRadius(r.TopLeft, r.TopRight, r.BottomRight, v);        _ = _state.Client.SetPropertyAsync(elementId, prop.Name, r); }),
+            FloatEntry("BR", r.BottomRight, false, v => { r = new CornerRadius(r.TopLeft, r.TopRight, v, r.BottomLeft);         _ = _state.Client.SetPropertyAsync(elementId, prop.Name, r); })
+        );
     }
 
     // -------------------------------------------------------------------------
     // Helpers
     // -------------------------------------------------------------------------
+
+    /// <summary>Two-by-two layout used by editors with four related numeric values.</summary>
+    private static VisualElement BuildFourValueEditor(
+        VisualElement topLeft,
+        VisualElement topRight,
+        VisualElement bottomLeft,
+        VisualElement bottomRight)
+    {
+        topRight.Margin = new Thickness(left: 12);
+        bottomRight.Margin = new Thickness(left: 12);
+
+        return new Grid
+            {
+                RowSpacing = 3,
+                ColumnSpacing = 6
+            }
+            .Rows(GridLength.Auto, GridLength.Auto)
+            .Columns(GridLength.Star, GridLength.Star)
+            .HorizontalAlignment(HorizontalAlignment.Stretch)
+            .AddChild(topLeft, 0, 0)
+            .AddChild(topRight, 0, 1)
+            .AddChild(bottomLeft, 1, 0)
+            .AddChild(bottomRight, 1, 1);
+    }
 
     /// <summary>Labeled mini float entry used in Thickness / CornerRadius editors.</summary>
     private static VisualElement FloatEntry(string label, float initialValue, bool allowNegative, Action<float> onChange)
@@ -386,17 +404,20 @@ public class PropertyFrame : UserControl
                  .HorizontalAlignment(HorizontalAlignment.Stretch)
                  .OnValueChanged(value => onChange(allowNegative ? (float)value : Math.Max(0f, (float)value)));
 
-        return new VStack()
-            .Spacing(1)
+        return new Grid
+            {
+                ColumnSpacing = 5
+            }
+            .Rows(GridLength.Auto)
+            .Columns(GridLength.Pixels(30), GridLength.Star)
             .HorizontalAlignment(HorizontalAlignment.Stretch)
-            .Alignment(Alignment.Center)
-            .Children(
+            .AddChild(
                 new Label(label)
-                    .FontSize(9)
-                    .Foreground(new Color(110, 110, 130))
-                    .HorizontalAlignment(HorizontalAlignment.Center),
-                miniEntry
-            );
+                    .FontSize(11)
+                    .Foreground(new Color(140, 140, 160))
+                    .VerticalAlignment(VerticalAlignment.Center),
+                0, 0)
+            .AddChild(miniEntry, 0, 1);
     }
 
     /// <summary>Format a float to at most 4 significant digits, no trailing zeros.</summary>

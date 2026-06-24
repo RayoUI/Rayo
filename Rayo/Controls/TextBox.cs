@@ -7,6 +7,7 @@ using Rayo.Core.Interfaces;
 using Rayo.Reactivity;
 using Rayo.Rendering;
 using Rayo.Rendering.Brushes;
+using Rayo.Rendering.Graphics.VectorGraphics;
 using IRenderer = Rayo.Rendering.IRenderer;
 
 /// <summary>
@@ -1106,30 +1107,29 @@ public abstract class TextBox<T> : Rayo.Core.View<T>, IInputHandler, IFocusable,
         var bgColor = IsFocused ? FocusBackground : Background;
         var borderColor = IsFocused ? FocusBorderColor : BorderColor;
 
-        // Fondo
-        renderer.DrawRoundedRect(ComputedX, ComputedY, ComputedWidth, ComputedHeight, BorderRadius.TopLeft, bgColor);
-
-        // Borde
+        // Fondo y borde con radios independientes por esquina.
         if (BorderWidth > 0)
         {
-            renderer.DrawRoundedRect(
-                ComputedX + BorderWidth,
-                ComputedY + BorderWidth,
-                ComputedWidth - BorderWidth * 2,
-                ComputedHeight - BorderWidth * 2,
-                BorderRadius.TopLeft,
-                bgColor
-            );
+            renderer.DrawPath(CreateRoundedRectPath(ComputedX, ComputedY, ComputedWidth, ComputedHeight, BorderRadius), borderColor);
 
-            renderer.DrawRoundedRect(ComputedX, ComputedY, ComputedWidth, ComputedHeight, BorderRadius.TopLeft, borderColor);
-            renderer.DrawRoundedRect(
-                ComputedX + BorderWidth,
-                ComputedY + BorderWidth,
-                ComputedWidth - BorderWidth * 2,
-                ComputedHeight - BorderWidth * 2,
-                BorderRadius.TopLeft,
-                bgColor
-            );
+            var innerRadius = new CornerRadius(
+                MathF.Max(0, BorderRadius.TopLeft - BorderWidth),
+                MathF.Max(0, BorderRadius.TopRight - BorderWidth),
+                MathF.Max(0, BorderRadius.BottomRight - BorderWidth),
+                MathF.Max(0, BorderRadius.BottomLeft - BorderWidth));
+
+            renderer.DrawPath(
+                CreateRoundedRectPath(
+                    ComputedX + BorderWidth,
+                    ComputedY + BorderWidth,
+                    MathF.Max(0, ComputedWidth - BorderWidth * 2),
+                    MathF.Max(0, ComputedHeight - BorderWidth * 2),
+                    innerRadius),
+                bgColor);
+        }
+        else
+        {
+            renderer.DrawPath(CreateRoundedRectPath(ComputedX, ComputedY, ComputedWidth, ComputedHeight, BorderRadius), bgColor);
         }
 
         // Área de contenido visible
@@ -1810,6 +1810,19 @@ public abstract class TextBox<T> : Rayo.Core.View<T>, IInputHandler, IFocusable,
         {
             _scrollOffsetX = Math.Max(0, cursorX - 10);
         }
+    }
+
+    private static VectorPath CreateRoundedRectPath(float x, float y, float width, float height, CornerRadius radius)
+    {
+        return VectorPath.RoundedRectangle(
+            x,
+            y,
+            width,
+            height,
+            radius.TopLeft,
+            radius.TopRight,
+            radius.BottomRight,
+            radius.BottomLeft);
     }
 
     private readonly record struct TextLineInfo(int Start, int Length, string DisplayText, int LineIndex, float[] PrefixWidths, float Width);

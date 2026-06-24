@@ -478,7 +478,6 @@ public class DevToolAgent : IDisposable, IGlobalPointerHandler
                 if (float.IsInfinity(f) || float.IsNaN(f))
                 {
                     info.Value = null;
-                    info.IsReadOnly = true;
                 }
                 else
                     info.Value = value;
@@ -488,7 +487,6 @@ public class DevToolAgent : IDisposable, IGlobalPointerHandler
                 if (double.IsInfinity(d) || double.IsNaN(d))
                 {
                     info.Value = null;
-                    info.IsReadOnly = true;
                 }
                 else
                     info.Value = value;
