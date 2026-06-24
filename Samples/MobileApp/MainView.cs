@@ -1,3 +1,4 @@
+using MobileApp.Components;
 using MobileApp.Pages;
 using Rayo;
 using Rayo.Controls;
@@ -53,57 +54,16 @@ public class MainView : Component
             .Rows(GridLength.Pixels(60), GridLength.Star)
             .Columns(GridLength.Star)
             .Background(new Color(246, 248, 252))
-            .AddChild(BuildAppBar(), 0, 0)
+            .AddChild(
+                new AppBar(
+                    _title,
+                    _canGoBack,
+                    GoBack,
+                    () => _drawer?.Open(),
+                    CreateOverflowItems(_currentRoute.Value)),
+                0,
+                0)
             .AddChild(_contentHost, 1, 0);
-    }
-
-    private VisualElement BuildAppBar()
-    {
-        return new Frame()
-            .Height(60)
-            .Background(new Color(25, 39, 62))
-            .Padding(new Thickness(8, 8))
-            .Content(
-                new HStack()
-                    .Height(44)
-                    .Spacing(12)
-                    .Alignment(Alignment.Center)
-                    .Children(
-                        BuildNavigationButton(),
-                        new Label()
-                            .Text(_title)
-                            .FontSize(18)
-                            .Foreground(Color.White)
-                            .VerticalAlignment(VerticalAlignment.Center)
-                    ));
-    }
-
-    private VisualElement BuildNavigationButton()
-    {
-        if (_canGoBack.Value)
-        {
-            return new ButtonIcon(Icons.ChevronLeft)
-                .Size(44)
-                .IconSize(24)
-                .IconColor(Color.White)
-                .Background(Color.Transparent)
-                .HoverBackground(new Color(43, 63, 94))
-                .PressedBackground(new Color(16, 27, 43))
-                .BorderWidth(0)
-                .OnTapped(GoBack)
-                .WithTooltip("Go back");
-        }
-
-        return new ButtonIcon(Icons.Menu)
-            .Size(44)
-            .IconSize(24)
-            .IconColor(Color.White)
-            .Background(Color.Transparent)
-            .HoverBackground(new Color(43, 63, 94))
-            .PressedBackground(new Color(16, 27, 43))
-            .BorderWidth(0)
-            .OnTapped(() => _drawer?.Open())
-            .WithTooltip("Open menu");
     }
 
     private VisualElement BuildDrawerContent()
@@ -222,4 +182,19 @@ public class MainView : Component
         AppRoute.Settings => new SettingsPage(),
         _ => new HomePage(_counter, _counterText)
     };
+
+    private IReadOnlyList<AppBarOverflowItem> CreateOverflowItems(AppRoute route)
+    {
+        if (route != AppRoute.Home)
+        {
+            return [];
+        }
+
+        return
+        [
+            new AppBarOverflowItem("About MobileApp", Icons.Info, () => ToastService.ShowInfo("MobileApp starter template")),
+            new AppBarOverflowItem("Reset counter", Icons.Refresh, () => _counter.Value = 0),
+            new AppBarOverflowItem("Open settings", Icons.Settings, () => NavigateRoot(AppRoute.Settings))
+        ];
+    }
 }

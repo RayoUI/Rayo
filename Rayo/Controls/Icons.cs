@@ -90,6 +90,14 @@ public static class Icons
         .AddLine(3f, 18f, 21f, 18f, 2.5f);
 
     /// <summary>
+    /// Vertical overflow menu icon
+    /// </summary>
+    public static IconData MoreVertical => new IconData("moreVertical")
+        .AddCircle(12f, 6f, 1.6f, filled: true)
+        .AddCircle(12f, 12f, 1.6f, filled: true)
+        .AddCircle(12f, 18f, 1.6f, filled: true);
+
+    /// <summary>
     /// Icono de flecha arriba
     /// </summary>
     public static IconData ArrowUp => new IconData("arrowUp")
