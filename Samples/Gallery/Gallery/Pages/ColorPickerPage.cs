@@ -183,7 +183,7 @@ public class ColorPickerPage : UserControl
                 color => colorState.Value = color,
                 configure: picker => picker.ShowAlpha = showAlpha))
             .Background(Color.Transparent)
-            .SetHoverBackground(new Color(255, 255, 255, 0.08f))
+            .HoverBackground(new Color(255, 255, 255, 0.08f))
             .HorizontalAlignment(HorizontalAlignment.Stretch)
             .Content(launcherContent);
     }

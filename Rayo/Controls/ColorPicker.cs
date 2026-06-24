@@ -762,12 +762,6 @@ public class ColorPicker : UserControl, Rayo.Core.Interfaces.IGlobalPointerHandl
             set => _hoverBackground = value;
         }
 
-        public ClickableFrame SetHoverBackground(Brush value)
-        {
-            HoverBackground = value;
-            return this;
-        }
-
         public void OnPointerEntered(PointerEventArgs e)
         {
             Background = _hoverBackground;

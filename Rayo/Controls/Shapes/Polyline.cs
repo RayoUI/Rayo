@@ -11,10 +11,7 @@ using System.Numerics;
 /// </summary>
 public class Polyline : Shape<Polyline>
 {
-    //private List<Vector2> Points = new();
     private float _minX, _minY, _maxX, _maxY;
-
-    //public IReadOnlyList<Vector2> Points => Points;
 
     [PaintProperty]
     public List<Vector2> Points
@@ -34,22 +31,6 @@ public class Polyline : Shape<Polyline>
     {
         Points = points.ToList();
     }
-
-    //public Polyline Points(params Vector2[] points)
-    //{
-    //    Points = new List<Vector2>(points);
-    //    UpdateBounds();
-    //    MarkNeedsPaint();
-    //    return this;
-    //}
-
-    //public Polyline Points(IEnumerable<(float x, float y)> points)
-    //{
-    //    Points = points.Select(p => new Vector2(p.x, p.y)).ToList();
-    //    UpdateBounds();
-    //    MarkNeedsPaint();
-    //    return this;
-    //}
 
     public Polyline AddPoint(float x, float y)
     {

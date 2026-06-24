@@ -9,11 +9,7 @@ using System.Numerics;
 /// </summary>
 public class Polygon : Shape<Polygon>
 {
-    //private List<Vector2> Points = new();
     private float _minX, _minY, _maxX, _maxY;
-    //private FillRule _fillRule = FillRule.EvenOdd;
-
-    //public IReadOnlyList<Vector2> Points => Points;
 
     [PaintProperty]
     public List<Vector2> Points

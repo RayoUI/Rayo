@@ -59,20 +59,6 @@ public partial class Path : Shape<Path>
         Data = data;
     }
 
-    //public Path Data(string data)
-    //{
-    //    Data = data;
-    //    return this;
-    //}
-
-    //public Path FillRule(FillRule fillRule)
-    //{
-    //    FillRule = fillRule;
-    //    return this;
-    //}
-
-    // Fluent API for building paths programmatically
-
     public Path MoveTo(float x, float y)
     {
         _segments.Add(new PathSegment(PathCommand.MoveTo, x, y));

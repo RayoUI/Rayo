@@ -201,18 +201,6 @@ public class EntryNumber : Entry, IInputHandler
         return this;
     }
 
-    public EntryNumber Decimal(bool allowDecimal)
-    {
-        AllowDecimal = allowDecimal;
-        return this;
-    }
-
-    public EntryNumber Negative(bool allowNegative)
-    {
-        AllowNegative = allowNegative;
-        return this;
-    }
-
     public EntryNumber CommitValue()
     {
         CommitText();

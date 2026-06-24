@@ -179,12 +179,6 @@ public class Expander : CompositeView<Expander>
     // Events
     #region ExpandedChanged
     public event Action<bool>? ExpandedChanged;
-
-    //public Expander OnExpandedChanged(Action<bool> handler)
-    //{
-    //    ExpandedChanged += handler;
-    //    return this;
-    //}
     #endregion
 
 

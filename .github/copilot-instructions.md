@@ -159,6 +159,8 @@ new MyWidget()
     .Height(40);
 ```
 
+Do **not** add manual fluent setters for ordinary public properties on `VisualElement` descendants. The source generator already creates them, including inherited properties such as `MaxLength`, `IsReadOnly`, `IsPassword`, `HoverBackground`, etc. Only add manual fluent-style methods when they are not simple property setters, for example action/building APIs such as `AddItem(...)`, `ClearItems()`, `MoveTo(...)`, or grouped convenience methods that set multiple properties. Prefer generated property methods in samples and docs.
+
 `[NotFluent]` disables fluent generation:
 - on a class: no generated fluent setters for that class,
 - on a property: skip only that property.

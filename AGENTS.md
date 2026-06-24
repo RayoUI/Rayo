@@ -113,6 +113,8 @@ new Button()
 
 **CRTP pattern**: `public class MyWidget : View<MyWidget>` - fluent chain always returns the derived type.
 
+Do **not** add manual fluent setters for ordinary public properties on `VisualElement` descendants. The source generator already creates them, including inherited properties such as `MaxLength`, `IsReadOnly`, `IsPassword`, `HoverBackground`, etc. Only add manual fluent-style methods when they are not simple property setters, for example action/building APIs such as `AddItem(...)`, `ClearItems()`, `MoveTo(...)`, or grouped convenience methods that set multiple properties. Prefer generated property methods in samples and docs.
+
 **`[NotFluent]`** skips generation for a class or property:
 - On a **class**: no fluent setters generated for any properties of that class
 - On a **property**: only that specific property is skipped

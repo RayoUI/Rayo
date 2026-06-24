@@ -486,24 +486,6 @@ public abstract class TextBox<T> : Rayo.Core.View<T>, IInputHandler, IFocusable,
         return _cursorVisible;
     }
 
-    // =========================================================================
-    // FLUENT API (Manual methods with custom logic)
-    // =========================================================================
-    // Note: Placeholder(), Background(), TextColor(), BorderWidth(),
-    // IsPassword(), IsMultiline(), FontSize() are auto-generated
-
-    public TextBox<T> Password(bool isPassword)
-    {
-        IsPassword = isPassword;
-        return this;
-    }
-
-//public TextBox<T> KeyboardType(Rayo.Core.Platform.VirtualKeyboardType keyboardType)
-    //{
-    //    KeyboardType = keyboardType;
-    //    return this;
-    //}
-
     internal void InvokeEnter()
     {
         Enter?.Invoke();

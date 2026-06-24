@@ -45,20 +45,6 @@ public class Editor : TextBox<Editor>, IScrollable
         return this;
     }
 
-    // Fluent API for MaxLength (base property) - hide inherited version
-    public Editor SetMaxLength(int maxLength)
-    {
-        MaxLength = maxLength;
-        return this;
-    }
-
-    // Fluent API for IsReadOnly (base property) - hide inherited version
-    //public new Editor IsReadOnly(bool isReadOnly)
-    //{
-    //    IsReadOnly = isReadOnly;
-    //    return this;
-    //}
-
     /// <summary>
     /// Auto-size height based on content (MAUI property).
     /// </summary>

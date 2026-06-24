@@ -37,20 +37,6 @@ public class Entry : TextBox<Entry>
         return this;
     }
 
-    //// Fluent API for MaxLength (base property) - hide inherited version
-    //public new Entry MaxLength(int maxLength)
-    //{
-    //    MaxLength = maxLength;
-    //    return this;
-    //}
-
-    //// Fluent API for IsReadOnly (base property) - hide inherited version
-    //public new Entry IsReadOnly(bool isReadOnly)
-    //{
-    //    IsReadOnly = isReadOnly;
-    //    return this;
-    //}
-
     // Override CanHandleInput to respect IsReadOnly
     public override bool CanHandleInput => !IsReadOnly;
 

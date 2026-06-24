@@ -158,7 +158,7 @@ public class EditorPage : UserControl
                                 .Foreground(ColorDefault.Secondary),
 
                             new Editor()
-                                .SetMaxLength(100)
+                                .MaxLength(100)
                                 .Width(500)
                                 .Height(120)
                                 .Placeholder("Type up to 100 characters..."),

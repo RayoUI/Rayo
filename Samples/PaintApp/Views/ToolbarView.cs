@@ -41,7 +41,7 @@ public class ToolbarView : UserControl
             .Width(34)
             .Height(34)
             .Background(new Color(245, 245, 245))
-            .SetHoverBackground(new Color(220, 230, 245))
+            .HoverBackground(new Color(220, 230, 245))
             .Content(colorPreview);
 
         // Keep canvas + picker in sync when primary color changes (e.g. from palette).
