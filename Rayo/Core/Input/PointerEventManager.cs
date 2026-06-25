@@ -236,8 +236,11 @@ public class PointerEventManager
                 var overlayResult = _hitTestEngine.HitTestRoot(overlay, position);
                 if (overlayResult?.Element != null)
                 {
-                    hitElement = overlayResult.Element;
-                    break;
+                    if (FindScrollableAncestor(overlayResult.Element) != null || !overlay.IsInputTransparent)
+                    {
+                        hitElement = overlayResult.Element;
+                        break;
+                    }
                 }
             }
         }
@@ -257,17 +260,26 @@ public class PointerEventManager
         const float ScrollSpeed = 60f;
         float deltaY = -scrollWheel.Y * ScrollSpeed;
 
-        var element = hitElement;
+        var scrollableElement = FindScrollableAncestor(hitElement);
+        if (scrollableElement != null)
+        {
+            scrollableElement.Scroll(deltaY);
+        }
+    }
+
+    private static IScrollable? FindScrollableAncestor(VisualElement? element)
+    {
         while (element != null)
         {
             if (element is IScrollable scrollable)
             {
-                scrollable.Scroll(deltaY);
-                break;
+                return scrollable;
             }
 
             element = element.Parent;
         }
+
+        return null;
     }
 
     // =========================================================================

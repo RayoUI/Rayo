@@ -65,10 +65,10 @@ public class AppBar : Component
     {
         if (_canGoBack.Value)
         {
-            return CreateAppBarButton(Icons.ChevronLeft, _onBack).WithTooltip("Go back");
+            return CreateAppBarButton(Icons.ChevronLeft, _onBack);
         }
 
-        return CreateAppBarButton(Icons.Menu, _onOpenMenu).WithTooltip("Open menu");
+        return CreateAppBarButton(Icons.Menu, _onOpenMenu);
     }
 
     private VisualElement BuildOverflowButton()

@@ -9,26 +9,50 @@ namespace MobileApp.Pages;
 
 public class HomePage : Component
 {
-    private readonly Signal<int> _counter;
-    private readonly Computed<string> _counterText;
+    private readonly SignalList<TaskItem> _tasks;
+    private int _taskCount = 3;
+    private VStack _taskList = null!;
 
-    public HomePage(Signal<int> counter, Computed<string> counterText)
+    public HomePage()
     {
-        _counter = counter;
-        _counterText = counterText;
+        _tasks = UseSignalList<TaskItem>();
+        _tasks.Add(new TaskItem("Review sprint notes", "Today", new Color(62, 126, 214)));
+        _tasks.Add(new TaskItem("Ship mobile polish", "Tomorrow", new Color(34, 150, 94)));
+        _tasks.Add(new TaskItem("Check Android build", "Friday", new Color(225, 142, 38)));
+    }
+
+    protected override void OnInit()
+    {
+        UseSubscription(_tasks, () => UIUpdateQueue.EnqueueUIUpdate(RebuildTasks));
     }
 
     public override VisualElement Build()
     {
-        return new ScrollView()
-            .Content(
-                new VStack()
-                    .Spacing(18)
-                    .Padding(new Thickness(20))
-                    .Children(
-                        BuildHeroCard(),
-                        BuildCounterCard()
-                    ));
+        _taskList = new VStack()
+            .Spacing(18);
+        RebuildTasks();
+
+        return new Grid()
+            .Rows(GridLength.Star)
+            .Columns(GridLength.Star)
+            .AddChild(
+                new ScrollView()
+                    .Content(
+                        new VStack()
+                            .Spacing(18)
+                            .Padding(new Thickness(20, 20, 20, 96))
+                            .Children(
+                                BuildHeroCard(),
+                                _taskList
+                            )),
+                0,
+                0)
+            .AddChild(
+                new ButtonFloat(Icons.Add)
+                    .Dock(ButtonFloatPlacement.BottomRight, 20)
+                    .OnTapped(AddTask),
+                0,
+                0);
     }
 
     private VisualElement BuildHeroCard()
@@ -41,54 +65,71 @@ public class HomePage : Component
                 new VStack()
                     .Spacing(8)
                     .Children(
-                        new Label("Welcome")
+                        new Label("ButtonFloat")
                             .FontSize(26)
                             .Foreground(new Color(25, 39, 62)),
-                        new Label("This starter shows a drawer, route switching, and shared UI running on Desktop and Android.")
+                        new Label("The home page now uses a floating action button over scrollable content, matching a common mobile compose action.")
                             .FontSize(14)
                             .LineHeight(1.25f)
                             .Foreground(new Color(91, 103, 122))
                     ));
     }
 
-    private VisualElement BuildCounterCard()
+    private VisualElement BuildTaskCard(string title, string due, Color accent)
     {
         return new Frame()
             .Background(Color.White)
             .BorderRadius(14)
-            .Padding(new Thickness(20))
+            .Padding(new Thickness(16))
             .Content(
-                new VStack()
-                    .Spacing(16)
+                new HStack()
+                    .Spacing(12)
                     .Children(
-                        new Label("Counter")
-                            .FontSize(18)
-                            .Foreground(new Color(25, 39, 62)),
-                        new Label()
-                            .Text(_counterText)
-                            .FontSize(52)
-                            .Foreground(new Color(62, 126, 214))
-                            .TextHorizontalAlignment(HorizontalAlignment.Center)
-                            .HorizontalAlignment(HorizontalAlignment.Stretch),
-                        new HStack()
-                            .Height(48)
-                            .Spacing(10)
-                            .Alignment(Alignment.Center)
-                            .JustifyContent(JustifyContent.Center)
+                        new Frame()
+                            .Size(40)
+                            .BorderRadius(20)
+                            .Background(new Color(accent.R, accent.G, accent.B, 0.18f))
+                            .Content(
+                                new Icon(Icons.Check)
+                                    .Size(18)
+                                    .Color(accent)
+                                    .HorizontalAlignment(HorizontalAlignment.Center)
+                                    .VerticalAlignment(VerticalAlignment.Center)),
+                        new VStack()
+                            .Spacing(3)
+                            .VerticalAlignment(VerticalAlignment.Center)
                             .Children(
-                                new Button()
-                                    .Text("-")
-                                    .Size(new Size(56, 48))
-                                    .OnTapped(() => _counter.Value--),
-                                new Button()
-                                    .Text("Reset")
-                                    .Size(new Size(96, 48))
-                                    .OnTapped(() => _counter.Value = 0),
-                                new Button()
-                                    .Text("+")
-                                    .Size(new Size(56, 48))
-                                    .OnTapped(() => _counter.Value++)
+                                new Label(title)
+                                    .FontSize(15)
+                                    .Foreground(new Color(25, 39, 62)),
+                                new Label(due)
+                                    .FontSize(12)
+                                    .Foreground(new Color(91, 103, 122))
                             )
                     ));
     }
+
+    private void AddTask()
+    {
+        _taskCount++;
+        _tasks.Insert(0, new TaskItem($"New mobile task #{_taskCount}", "Just now", new Color(62, 126, 214)));
+        ToastService.ShowSuccess($"Created task #{_taskCount}");
+    }
+
+    private void RebuildTasks()
+    {
+        if (_taskList is null)
+        {
+            return;
+        }
+
+        _taskList.ClearChildren();
+
+        foreach (var task in _tasks)
+        {
+            _taskList.AddChild(BuildTaskCard(task.Title, task.Due, task.Accent));
+        }
+    }
+
+    private readonly record struct TaskItem(string Title, string Due, Color Accent);
 }

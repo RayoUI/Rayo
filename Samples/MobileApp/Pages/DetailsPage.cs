@@ -80,7 +80,7 @@ public class DetailsPage : Component
                                         new Label("Template checklist")
                                             .FontSize(18)
                                             .Foreground(new Color(25, 39, 62)),
-                                        new Label("Shared project\nDesktop host\nAndroid host\nDrawer navigation\nCounter state\nTwo routed pages")
+                                        new Label("Shared project\nDesktop host\nAndroid host\nDrawer navigation\nCounter state\nRouted pages")
                                             .FontSize(14)
                                             .LineHeight(1.35f)
                                             .Foreground(new Color(91, 103, 122))

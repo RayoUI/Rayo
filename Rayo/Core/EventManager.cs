@@ -450,7 +450,7 @@ public class EventManager
                 for (int i = _app.Overlays.Count - 1; i >= 0; i--)
                 {
                     var overlay = _app.Overlays[i];
-                    bool inBounds = overlay.ContainsWindowPoint(position);
+                    bool inBounds = !overlay.IsInputTransparent && overlay.ContainsWindowPoint(position);
                     if (inBounds)
                     {
                         ProcessMouseMoveOptimized(overlay, position);
@@ -742,8 +742,8 @@ public class EventManager
                     break; // Found hit in overlay
                 }
 
-                // Even if no interactive element found, block if pointer is within overlay bounds
-                bool inBounds = overlay.ContainsWindowPoint(position);
+                // Even if no interactive element found, opaque overlays block the content behind.
+                bool inBounds = !overlay.IsInputTransparent && overlay.ContainsWindowPoint(position);
                 if (inBounds)
                 {
                     mouseDownInOverlay = true;
@@ -1063,8 +1063,8 @@ public class EventManager
                     break;
                 }
 
-                // Even if no interactive element found, block if pointer is within overlay bounds
-                bool inBounds = overlay.ContainsWindowPoint(position);
+                // Even if no interactive element found, opaque overlays block the content behind.
+                bool inBounds = !overlay.IsInputTransparent && overlay.ContainsWindowPoint(position);
                 if (inBounds)
                 {
                     hitWasInOverlay = true;
@@ -1162,9 +1162,10 @@ public class EventManager
         // Shift+vertical wheel redirects to horizontal scroll
         if (isShift && deltaX == 0) { deltaX = -deltaY; deltaY = 0; }
 
-        // First, check overlays (they're on top)
+        // First, check overlays (they're on top). Transparent overlays such as
+        // toast notifications should not prevent scrolling the content behind.
         IScrollable? scrollable = null;
-        bool isInOverlay = false;
+        bool shouldCheckMainTree = true;
         
         if (_app != null && _app.Overlays.Count > 0)
         {
@@ -1177,24 +1178,26 @@ public class EventManager
                 // Use simple bounds check since overlays typically fill the screen
                 if (overlay.ContainsWindowPoint(position))
                 {
-                    isInOverlay = true;
-                    
                     // Now search for scrollable within this overlay
                     scrollable = FindScrollableAtPosition(overlay, position);
                     if (scrollable != null)
                     {
+                        shouldCheckMainTree = false;
                         break;
                     }
-                    
-                    // Even if no scrollable found, stop here if we're inside the overlay
-                    // This prevents scrolling elements behind the overlay
-                    break;
+
+                    if (!overlay.IsInputTransparent)
+                    {
+                        // Modal/popover overlays still block the content behind.
+                        shouldCheckMainTree = false;
+                        break;
+                    }
                 }
             }
         }
         
-        // If no overlay hit, check main tree
-        if (!isInOverlay && scrollable == null)
+        // If no blocking overlay handled the wheel, check main tree
+        if (shouldCheckMainTree && scrollable == null)
         {
             scrollable = FindScrollableAtPosition(_tree.Root, position);
         }

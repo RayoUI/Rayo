@@ -25,6 +25,7 @@ public class MainView : Component
         _counterText = UseComputed(() => _counter.Value.ToString());
         _title = UseComputed(() => _currentRoute.Value switch
         {
+            AppRoute.Counter => "Counter",
             AppRoute.Details => "Details",
             AppRoute.Profile => "Profile",
             AppRoute.Settings => "Settings",
@@ -95,6 +96,7 @@ public class MainView : Component
                     .VerticalAlignment(VerticalAlignment.Top)
                     .Children(
                         CreateDrawerItem("Home", Icons.Home, AppRoute.Home),
+                        CreateDrawerItem("Counter", Icons.Add, AppRoute.Counter),
                         CreateDrawerItem("Details", Icons.Info, AppRoute.Details),
                         CreateDrawerItem("Profile", Icons.Person, AppRoute.Profile),
                         CreateDrawerItem("Settings", Icons.Settings, AppRoute.Settings)
@@ -177,14 +179,24 @@ public class MainView : Component
 
     private VisualElement CreatePage(AppRoute route) => route switch
     {
+        AppRoute.Counter => new CounterPage(_counter, _counterText),
         AppRoute.Details => new DetailsPage(Navigate),
         AppRoute.Profile => new ProfilePage(),
         AppRoute.Settings => new SettingsPage(),
-        _ => new HomePage(_counter, _counterText)
+        _ => new HomePage()
     };
 
     private IReadOnlyList<AppBarOverflowItem> CreateOverflowItems(AppRoute route)
     {
+        if (route == AppRoute.Counter)
+        {
+            return
+            [
+                new AppBarOverflowItem("Reset counter", Icons.Refresh, () => _counter.Value = 0),
+                new AppBarOverflowItem("Open settings", Icons.Settings, () => NavigateRoot(AppRoute.Settings))
+            ];
+        }
+
         if (route != AppRoute.Home)
         {
             return [];
@@ -193,7 +205,6 @@ public class MainView : Component
         return
         [
             new AppBarOverflowItem("About MobileApp", Icons.Info, () => ToastService.ShowInfo("MobileApp starter template")),
-            new AppBarOverflowItem("Reset counter", Icons.Refresh, () => _counter.Value = 0),
             new AppBarOverflowItem("Open settings", Icons.Settings, () => NavigateRoot(AppRoute.Settings))
         ];
     }

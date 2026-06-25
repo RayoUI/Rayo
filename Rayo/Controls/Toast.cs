@@ -87,7 +87,8 @@ internal sealed class HeadlessToastManager : Rayo.Animation.IFrameAnimation, Ray
         _toastContainer = new VStack()
             .Spacing(_spacing)
             .HorizontalAlignment(HorizontalAlignment.Left)
-            .VerticalAlignment(VerticalAlignment.Top);
+            .VerticalAlignment(VerticalAlignment.Top)
+            .SetInputTransparent(true);
     }
 
     private void RegisterTicker()
@@ -295,6 +296,17 @@ internal class ToastNotification : Frame
             );
 
         this.Content(content);
+        MarkInputTransparentTree(this);
+    }
+
+    private static void MarkInputTransparentTree(VisualElement element)
+    {
+        element.IsInputTransparent = true;
+
+        foreach (var child in element.GetChildren())
+        {
+            MarkInputTransparentTree(child);
+        }
     }
 
     public void Update(float deltaTime)
@@ -347,7 +359,8 @@ public class ToastManager : Rayo.Animation.IFrameAnimation, Rayo.Animation.IFram
         _toastContainer = new VStack()
             .Spacing(_spacing)
             .HorizontalAlignment(HorizontalAlignment.Left)
-            .VerticalAlignment(VerticalAlignment.Top);
+            .VerticalAlignment(VerticalAlignment.Top)
+            .SetInputTransparent(true);
     }
 
     public void Show(string message, ToastType type = ToastType.Info, float duration = 3f)
