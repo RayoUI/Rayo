@@ -38,6 +38,12 @@
     <Project Path="Samples/CrossPlatformApp.Desktop/CrossPlatformApp.Desktop.csproj" />
     <Project Path="Samples/CrossPlatformApp/CrossPlatformApp.csproj" />
   </Folder>
+  <Folder Name="/Samples/MobileApp/">
+    <Project Path="Samples/MobileApp.Android/MobileApp.Android.csproj">
+      <Deploy />
+    </Project>
+    <Project Path="Samples/MobileApp.Desktop/MobileApp.Desktop.csproj" />
+  </Folder>
   <Folder Name="/Samples/Gallery/">
     <Project Path="Samples/Gallery/Gallery.Android/Gallery.Android.csproj">
       <Deploy />
