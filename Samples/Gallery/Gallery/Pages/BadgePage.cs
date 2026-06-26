@@ -318,7 +318,7 @@ public class BadgePage : Component
                     .Background(new Color(55, 60, 75))
                     .HoverBackground(new Color(70, 75, 90))
                     .TextColor(Color.White)
-                    .BorderWidth(0)
+                    .BorderThickness(0)
                     .Padding(new Thickness(16, 10, 16, 10))
             )
             .Badge(

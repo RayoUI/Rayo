@@ -13,7 +13,7 @@ using Rayo.Rendering;
 /// </summary>
 public class MonoGameViewApp : Component
 {
-    // ── Reactive state ─────────────────────────────────────────────────────────
+    // -- Reactive state ---------------------------------------------------------
     private readonly Signal<float> _animSpeed;
     private readonly Signal<int>   _ballCount;
 
@@ -28,7 +28,7 @@ public class MonoGameViewApp : Component
         _countLabel = UseComputed(() => $"Balls: {_ballCount.Value}");
     }
 
-    // ── Build ──────────────────────────────────────────────────────────────────
+    // -- Build ------------------------------------------------------------------
     public override VisualElement Build() =>
         new VStack()
             .Background(new Color(15, 17, 28))
@@ -40,7 +40,7 @@ public class MonoGameViewApp : Component
                 BuildControlPanel()
             );
 
-    // ── Header ─────────────────────────────────────────────────────────────────
+    // -- Header -----------------------------------------------------------------
     private static VisualElement BuildHeader() =>
         new VStack()
             .Padding(new Thickness(20, 16, 20, 8))
@@ -57,12 +57,12 @@ public class MonoGameViewApp : Component
                     .Foreground(new Color(140, 144, 168))
             );
 
-    // ── MonoGame viewport ──────────────────────────────────────────────────────
+    // -- MonoGame viewport ------------------------------------------------------
     private VisualElement BuildSceneArea() =>
         new Frame()
             .BorderRadius(10)
-            //.BorderWidth(1)
-            .BorderColor(new Color(50, 55, 80))
+            //.BorderThickness(1)
+            .BorderBrush(new Color(50, 55, 80))
             .Margin(new Thickness(16, 8))
             .HorizontalAlignment(HorizontalAlignment.Stretch)
             .VerticalAlignment(VerticalAlignment.Stretch)
@@ -75,7 +75,7 @@ public class MonoGameViewApp : Component
                     .BallCount(_ballCount)
             );
 
-    // ── Control panel ──────────────────────────────────────────────────────────
+    // -- Control panel ----------------------------------------------------------
     private VisualElement BuildControlPanel() =>
         new VStack()
             .Padding(new Thickness(16, 10, 16, 16))

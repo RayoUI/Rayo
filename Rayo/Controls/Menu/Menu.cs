@@ -123,8 +123,8 @@ public class Menu : Component
         menuFrame.Width( menuWidth );
         menuFrame.X( x );
         menuFrame.Y( y );
-        menuFrame.BorderColor = new Color( 80, 80, 80 );
-        menuFrame.BorderWidth = 1;
+        menuFrame.BorderBrush = new Color( 80, 80, 80 );
+        menuFrame.BorderThickness = 1;
         menuFrame.Content(vstack);
         menuFrame.HorizontalAlignment = HorizontalAlignment.Left;
         menuFrame.VerticalAlignment = VerticalAlignment.Top;

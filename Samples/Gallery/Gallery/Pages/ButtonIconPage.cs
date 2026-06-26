@@ -110,8 +110,8 @@ public class ButtonIconPage : Component
                                 .Background(Color.Transparent)
                                 .HoverBackground(new Color(70, 130, 180, 0.1f))
                                 .PressedBackground(new Color(70, 130, 180, 0.2f))
-                                .BorderWidth(2)
-                                .BorderColor(new Color(70, 130, 180))
+                                .BorderThickness(2)
+                                .BorderBrush(new Color(70, 130, 180))
                                 .OnTapped(() => Console.WriteLine("Download clicked")),
 
                             new ButtonIcon(Icons.Upload)
@@ -119,8 +119,8 @@ public class ButtonIconPage : Component
                                 .Background(Color.Transparent)
                                 .HoverBackground(new Color(76, 175, 80, 0.1f))
                                 .PressedBackground(new Color(76, 175, 80, 0.2f))
-                                .BorderWidth(2)
-                                .BorderColor(new Color(76, 175, 80))
+                                .BorderThickness(2)
+                                .BorderBrush(new Color(76, 175, 80))
                                 .OnTapped(() => Console.WriteLine("Upload clicked")),
 
                             new ButtonIcon(Icons.Delete)
@@ -128,8 +128,8 @@ public class ButtonIconPage : Component
                                 .Background(Color.Transparent)
                                 .HoverBackground(new Color(244, 67, 54, 0.1f))
                                 .PressedBackground(new Color(244, 67, 54, 0.2f))
-                                .BorderWidth(2)
-                                .BorderColor(new Color(244, 67, 54))
+                                .BorderThickness(2)
+                                .BorderBrush(new Color(244, 67, 54))
                                 .OnTapped(() => Console.WriteLine("Delete clicked")),
 
                             new ButtonIcon(Icons.Lock)
@@ -137,8 +137,8 @@ public class ButtonIconPage : Component
                                 .Background(Color.Transparent)
                                 .HoverBackground(new Color(33, 150, 243, 0.1f))
                                 .PressedBackground(new Color(33, 150, 243, 0.2f))
-                                .BorderWidth(2)
-                                .BorderColor(new Color(33, 150, 243))
+                                .BorderThickness(2)
+                                .BorderBrush(new Color(33, 150, 243))
                                 .OnTapped(() => Console.WriteLine("Lock clicked"))
                         )
                 ),
@@ -387,12 +387,15 @@ public class ButtonIconPage : Component
         settingsButton.OnTapped(() => Console.WriteLine("Settings"));
 
         return Helper.CreateExampleSection("Icon Toolbar",
-            new HStack()
-                .Spacing(4)
-                .Padding(new Thickness(8))
+            new Frame()
                 .Background(new Color(40, 40, 45))
                 .BorderRadius(new CornerRadius(6))
-                .Children(backButton, forwardButton, refreshButton, divider, volumeButton, muteButton, settingsButton)
+                .Padding(new Thickness(8))
+                .Content(
+                    new HStack()
+                        .Spacing(4)
+                        .Children(backButton, forwardButton, refreshButton, divider, volumeButton, muteButton, settingsButton)
+                )
         );
     }
 }

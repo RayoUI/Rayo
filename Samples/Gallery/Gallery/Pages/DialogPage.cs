@@ -167,7 +167,7 @@ public class DialogPage : Component
             .HoverBackground(Lighten(background, 24))
             .PressedBackground(Darken(background, 24))
             .TextColor(Color.White)
-            .BorderWidth(0)
+            .BorderThickness(0)
             .BorderRadius(6)
             .Padding(new Thickness(16, 10, 16, 10))
             .OnTapped(onTapped);

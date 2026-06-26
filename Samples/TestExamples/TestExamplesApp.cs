@@ -24,7 +24,7 @@ public class TestExamplesApp : Component
                     .Margin(10)
                     .Height(40)
                     .Background(Color.Gray)
-                    .BorderRadius(5)
+                    .CornerRadius(5)
                     .OnTextChanged((text) =>
                     {
                         Console.WriteLine("Text changed: " + text);

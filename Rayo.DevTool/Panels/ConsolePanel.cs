@@ -80,8 +80,8 @@ public class ConsoleFrame : Component
             Background = new Color(60, 60, 65),
             HoverBackground = new Color(74, 74, 82),
             PressedBackground = new Color(48, 48, 54),
-            BorderColor = new Color(75, 75, 82),
-            BorderWidth = 1,
+            BorderBrush = new Color(75, 75, 82),
+            BorderThickness = 1,
             BorderRadius = new CornerRadius(3),
             IconColor = new Color(230, 230, 235)
         };

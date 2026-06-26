@@ -119,7 +119,7 @@ public class SideBarPage : Component
                                                 .Background(new Color(239, 68, 68))
                                                 .HoverBackground(new Color(255, 88, 88))
                                                 .TextColor(Color.White)
-                                                .BorderWidth(0)
+                                                .BorderThickness(0)
                                                 .HorizontalAlignment(HorizontalAlignment.Stretch)
                                                 .Padding(new Thickness(12, 8, 12, 8))
                                         )

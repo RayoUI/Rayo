@@ -216,8 +216,8 @@ public class BrushesPage : Component
         Frame.Background(brush);
         Frame.ClipToBounds(true);
         Frame.BorderRadius(new CornerRadius(8));
-        Frame.BorderColor(new Color(80, 80, 80));
-        Frame.BorderWidth(1);
+        Frame.BorderBrush(new Color(80, 80, 80));
+        Frame.BorderThickness(1);
 
         return new VStack()
             .Spacing(8)

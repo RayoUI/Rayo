@@ -38,8 +38,8 @@ public class FramePage : Component
         frame1.Width(300);
         frame1.Height(100);
         frame1.Background(new Color(40, 40, 50));
-        frame1.BorderColor(new Color(100, 100, 120));
-        frame1.BorderWidth(2);
+        frame1.BorderBrush(new Color(100, 100, 120));
+        frame1.BorderThickness(2);
         frame1.BorderRadius(8);
         frame1.Padding(new Thickness(20));
         frame1.Content(
@@ -116,8 +116,8 @@ public class FramePage : Component
         frame1.Width(400);
         frame1.Height(300);
         frame1.Background(new Color(30, 30, 35));
-        frame1.BorderColor(new Color(70, 70, 80));
-        frame1.BorderWidth(1);
+        frame1.BorderBrush(new Color(70, 70, 80));
+        frame1.BorderThickness(1);
         frame1.BorderRadius(10);
         frame1.Padding(new Thickness(12));
         frame1.Content(new ScrollView(itemsStack));
@@ -125,8 +125,8 @@ public class FramePage : Component
         var frame2 = new Frame();
         frame2.Width(400);
         frame2.Background(new Color(30, 30, 35));
-        frame2.BorderColor(new Color(70, 70, 80));
-        frame2.BorderWidth(1);
+        frame2.BorderBrush(new Color(70, 70, 80));
+        frame2.BorderThickness(1);
         frame2.BorderRadius(10);
         frame2.Padding(new Thickness(12));
         frame2.Content(
@@ -158,8 +158,8 @@ public class FramePage : Component
         frame1.Width(150);
         frame1.Height(120);
         frame1.Background(new Color(45, 55, 72));
-        frame1.BorderColor(new Color(59, 130, 246));
-        frame1.BorderWidth(3);
+        frame1.BorderBrush(new Color(59, 130, 246));
+        frame1.BorderThickness(3);
         frame1.BorderRadius(12);
         frame1.Padding(new Thickness(16));
         frame1.Content(
@@ -174,8 +174,8 @@ public class FramePage : Component
         frame2.Width(150);
         frame2.Height(120);
         frame2.Background(new Color(45, 55, 72));
-        frame2.BorderColor(new Color(34, 197, 94));
-        frame2.BorderWidth(1);
+        frame2.BorderBrush(new Color(34, 197, 94));
+        frame2.BorderThickness(1);
         frame2.BorderRadius(4);
         frame2.Padding(new Thickness(16));
         frame2.Content(
@@ -218,8 +218,8 @@ public class FramePage : Component
         stretchFrame.Width(350);
         stretchFrame.Height(120);
         stretchFrame.Background(new Color(30, 30, 35));
-        stretchFrame.BorderColor(new Color(70, 70, 80));
-        stretchFrame.BorderWidth(1);
+        stretchFrame.BorderBrush(new Color(70, 70, 80));
+        stretchFrame.BorderThickness(1);
         stretchFrame.BorderRadius(8);
         stretchFrame.Padding(new Thickness(12));
         stretchFrame.Content(
@@ -278,8 +278,8 @@ public class FramePage : Component
         var outerFrame = new Frame();
         outerFrame.Width(350);
         outerFrame.Background(new Color(30, 30, 35));
-        outerFrame.BorderColor(new Color(70, 70, 80));
-        outerFrame.BorderWidth(1);
+        outerFrame.BorderBrush(new Color(70, 70, 80));
+        outerFrame.BorderThickness(1);
         outerFrame.BorderRadius(12);
         outerFrame.Padding(new Thickness(20));
         outerFrame.Content(
@@ -358,8 +358,8 @@ public class FramePage : Component
         frame.Width(150);
         frame.Height(120);
         frame.Background(new Color(30, 30, 35));
-        frame.BorderColor(new Color(70, 70, 80));
-        frame.BorderWidth(1);
+        frame.BorderBrush(new Color(70, 70, 80));
+        frame.BorderThickness(1);
         frame.BorderRadius(8);
         frame.Padding(new Thickness(12));
         frame.Content(content);

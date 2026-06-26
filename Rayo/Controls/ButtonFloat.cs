@@ -72,7 +72,7 @@ public class ButtonFloat : ButtonIcon
         HoverBackground = new Color(37, 99, 235);
         PressedBackground = new Color(29, 78, 216);
         IconColor = Color.White;
-        BorderWidth = 0;
+        BorderThickness = 0;
         ZIndex = 1000;
 
         ApplySize();

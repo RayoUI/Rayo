@@ -24,7 +24,7 @@ using IRenderer = Rayo.Rendering.IRenderer;
 /// - ITappable for tap gesture support
 /// - IGestureRecognizerHost for gesture recognizers
 /// </summary>
-public class Button : Rayo.Core.View<Button>,
+public class Button : BorderView<Button>,
     IPointerHandler,           // Modern unified pointer events
     ITappable,                 // Tap gesture support
     IGestureRecognizerHost     // Hosts gesture recognizers
@@ -102,24 +102,6 @@ public class Button : Rayo.Core.View<Button>,
     } = HorizontalAlignment.Center;
     #endregion
 
-    #region BorderWidth
-    [PaintProperty]
-    public float BorderWidth
-    {
-        get => field;
-        set => this.SetProperty(ref field, value);
-    }
-    #endregion
-
-    #region BorderColor
-    [PaintProperty]
-    public Brush BorderColor
-    {
-        get => field;
-        set => this.SetProperty(ref field, value);
-    }
-    #endregion
-
     #region IsHovered
     [PaintProperty]
     public new bool IsHovered
@@ -179,8 +161,8 @@ public class Button : Rayo.Core.View<Button>,
         HoverBackground = new Color(100, 150, 200);
         PressedBackground = new Color(50, 100, 150);
         TextColor = Color.White;
-        BorderWidth = 2;
-        BorderColor = new Color(40, 80, 120);
+        BorderThickness = 2;
+        BorderBrush = new Color(40, 80, 120);
 
         // Touch-friendly sizing
         // Minimum recommended size for touch: 44x44 (iOS HIG) or 48x48 (Material Design)

@@ -94,7 +94,7 @@ public class AbsolutePage : Component
                                 .Text("Button")
                                 .Background(new Color(34, 197, 94))
                                 .TextColor(Color.White)
-                                .BorderWidth(0)
+                                .BorderThickness(0)
                                 .Padding(new Thickness(16, 8, 16, 8)),
 
                             new Icon(Icons.Star)

@@ -40,7 +40,7 @@ public class SideBarItem
 /// <summary>
 /// SideBar - A fixed navigation sidebar with collapsible support.
 /// </summary>
-public class SideBar : Rayo.Core.CompositeView<SideBar>
+public class SideBar : BorderCompositeView<SideBar>
 {
     private Frame? _container;
     private VStack? _itemsContainer;
@@ -167,36 +167,6 @@ public class SideBar : Rayo.Core.CompositeView<SideBar>
     } = Color.White;
     #endregion
 
-    #region BorderColor
-    public Brush BorderColor
-    {
-        get => field;
-        set
-        {
-            if (this.SetProperty(ref field, value))
-            {
-                _container?.BorderColor(value.PrimaryColor);
-                MarkNeedsPaint();
-            }
-        }
-    } = new Color(50, 55, 65);
-    #endregion
-
-    #region BorderWidth
-    public float BorderWidth
-    {
-        get => field;
-        set
-        {
-            if (this.SetProperty(ref field, value))
-            {
-                _container?.BorderWidth(value);
-                MarkNeedsPaint();
-            }
-        }
-    } = 1;
-    #endregion
-
     #region ItemBorderRadius
     public float ItemBorderRadius
     {
@@ -278,8 +248,22 @@ public class SideBar : Rayo.Core.CompositeView<SideBar>
     public SideBar()
     {
         Background = new Color(25, 27, 35);
+        BorderBrush = new Color(50, 55, 65);
+        BorderThickness = 1;
         Width = ExpandedWidth;
         BuildComponents();
+    }
+
+    protected override void OnBorderBrushChanged()
+    {
+        base.OnBorderBrushChanged();
+        _container?.BorderBrush(BorderBrush.PrimaryColor);
+    }
+
+    protected override void OnBorderThicknessChanged()
+    {
+        base.OnBorderThicknessChanged();
+        _container?.BorderThickness(BorderThickness);
     }
 
     private void BuildComponents()
@@ -312,8 +296,8 @@ public class SideBar : Rayo.Core.CompositeView<SideBar>
 
         _container = new Frame()
             .Background(Background)
-            .BorderColor(BorderColor.PrimaryColor)
-            .BorderWidth(BorderWidth)
+            .BorderBrush(BorderBrush.PrimaryColor)
+            .BorderThickness(BorderThickness)
             .HorizontalAlignment(HorizontalAlignment.Stretch)
             .VerticalAlignment(VerticalAlignment.Stretch)
             .Content(mainLayout);
@@ -408,7 +392,7 @@ public class SideBar : Rayo.Core.CompositeView<SideBar>
             .IconData(IsCollapsed ? Icons.ChevronRight : Icons.ChevronLeft)
             .Background(Color.Transparent)
             .HoverBackground(ItemHoverColor.PrimaryColor)
-            .BorderWidth(0)
+            .BorderThickness(0)
             .Padding(new Thickness(8))
             .HorizontalAlignment(HorizontalAlignment.Right);
 

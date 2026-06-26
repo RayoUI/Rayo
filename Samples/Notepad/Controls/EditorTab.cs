@@ -21,7 +21,7 @@ public class EditorTab(string content = "") : Component
             .FocusBackground(new Color(30, 30, 30))
             .Background(new Color(30, 30, 30))
             .TextColor(Color.White)
-            .BorderWidth(0)
+            .BorderThickness(0)
             .HorizontalAlignment(HorizontalAlignment.Stretch)
             .VerticalAlignment(VerticalAlignment.Stretch)
             .OnTextChanged(text => content = text);

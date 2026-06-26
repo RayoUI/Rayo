@@ -1070,7 +1070,7 @@ public class TabControl : CompositeView<TabControl>, IFrameAnimation
             _index = index;
             _tab = tab;
             Padding = new Thickness(0);
-            BorderWidth = 0;
+            BorderThickness = 0;
             HorizontalAlignment = HorizontalAlignment.Left;
             VerticalAlignment = VerticalAlignment.Top;
             IsEnabled = tab.IsEnabled;
@@ -1100,7 +1100,7 @@ public class TabControl : CompositeView<TabControl>, IFrameAnimation
             var contentHost = new Frame
             {
                 Background = Color.Transparent,
-                BorderWidth = 0,
+                BorderThickness = 0,
                 Padding = new Thickness(0, 0, reserve, 0),
                 HorizontalAlignment = HorizontalAlignment.Stretch,
                 VerticalAlignment = VerticalAlignment.Stretch,
@@ -1426,8 +1426,8 @@ internal class TabScrollButton : ButtonIcon
         IconData = iconData;
         IconSize = 14f;
         IconColor = new Color(240, 240, 240, 0.98f);
-        BorderWidth = 0;
-        BorderColor = Color.Transparent;
+        BorderThickness = 0;
+        BorderBrush = Color.Transparent;
         BorderRadius = new CornerRadius(0);
         Padding = new Thickness(0);
         RefreshStyle();
@@ -1489,7 +1489,7 @@ internal sealed class TabHeaderCloseButton : ButtonIcon
         Background = Color.Transparent;
         HoverBackground = new Color(255, 255, 255, 0.08f);
         PressedBackground = new Color(255, 255, 255, 0.14f);
-        BorderWidth = 0;
+        BorderThickness = 0;
         BorderRadius = new CornerRadius(4);
         Padding = new Thickness(0);
         UpdateIconColor();

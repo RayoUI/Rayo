@@ -9,7 +9,7 @@ using Orientation = Rayo.Styling.Orientation;
 namespace StyleDemo;
 
 // ---------------------------------------------------------------------------
-// Design tokens — the single source of truth for each theme's visual values.
+// Design tokens � the single source of truth for each theme's visual values.
 // All style rules reference tokens instead of hard-coded colors.
 // ---------------------------------------------------------------------------
 public static class AppThemes
@@ -109,25 +109,25 @@ public static class AppThemes
     }
 
     // -----------------------------------------------------------------------
-    // Shared rule builder — consumes tokens, emits a StyleSheet.
+    // Shared rule builder � consumes tokens, emits a StyleSheet.
     //
     // Demonstrates:
-    //   • Design tokens referenced from style rules
-    //   • @extend  (btnBase extended by .primary, .secondary, .danger, .ghost)
-    //   • Specificity (type=1 < class=11 < multi-class=21 < id=101)
-    //   • When(StyleTrigger.*) — hover / pressed / disabled pseudo-states
-    //   • When(Breakpoint.*)   — named responsive tiers
-    //   • When(Func<float,bool>) — custom-predicate responsive conditions
-    //   • When(PlatformType.*) — OS platform conditions
-    //   • When(ColorScheme.*)  — OS dark/light preference
-    //   • When(Orientation.*)  — portrait / landscape
-    //   • Not() / FirstChild() / LastChild() structural selectors
-    //   • Multi-class selector (.adv-btn.accent)
-    //   • Important()          — override specificity
+    //   � Design tokens referenced from style rules
+    //   � @extend  (btnBase extended by .primary, .secondary, .danger, .ghost)
+    //   � Specificity (type=1 < class=11 < multi-class=21 < id=101)
+    //   � When(StyleTrigger.*) � hover / pressed / disabled pseudo-states
+    //   � When(Breakpoint.*)   � named responsive tiers
+    //   � When(Func<float,bool>) � custom-predicate responsive conditions
+    //   � When(PlatformType.*) � OS platform conditions
+    //   � When(ColorScheme.*)  � OS dark/light preference
+    //   � When(Orientation.*)  � portrait / landscape
+    //   � Not() / FirstChild() / LastChild() structural selectors
+    //   � Multi-class selector (.adv-btn.accent)
+    //   � Important()          � override specificity
     // -----------------------------------------------------------------------
     private static StyleSheet BuildSheet(StyleTokens t)
     {
-        // Shared base style — @extended by all primary button variants
+        // Shared base style � @extended by all primary button variants
         var btnBase = new Style<Button>()
             .Height(40f)
             .BorderRadius(t.Get<float>(Radius))
@@ -176,7 +176,7 @@ public static class AppThemes
                 .FontSize(12f),
 
             // ----------------------------------------------------------------
-            // Button variants — btnBase @extended, then each class adds colour
+            // Button variants � btnBase @extended, then each class adds colour
             // ----------------------------------------------------------------
             new Style<Button>(".primary")
                 .Extend(btnBase)
@@ -213,8 +213,8 @@ public static class AppThemes
                 .HoverBackground(t.Get<Color>(BgHeader))
                 .PressedBackground(t.Get<Color>(Secondary))
                 .TextColor(t.Get<Color>(Primary))
-                .BorderWidth(1f)
-                .BorderColor(t.Get<Color>(Primary)),
+                .BorderThickness(1f)
+                .BorderBrush(t.Get<Color>(Primary)),
 
             new Style<Button>(".disabled-demo")
                 .Extend(btnBase)
@@ -254,7 +254,7 @@ public static class AppThemes
                     s.Foreground(t.Get<Color>(TextMain))),
 
             // ----------------------------------------------------------------
-            // SECTION 6 — Named breakpoints
+            // SECTION 6 � Named breakpoints
             // Re-applied automatically when the window crosses a px threshold.
             // ----------------------------------------------------------------
             new Style<Frame>(".bp-bar")
@@ -270,13 +270,13 @@ public static class AppThemes
                 .Foreground(t.Get<Color>(Danger))
                 .FontSize(13f)
                 .Text("XSmall  (< 480 px)")
-                .When(Breakpoint.Small,  s => s.Foreground(t.Get<Color>(TextMuted)).Text("Small  (480–767 px)"))
-                .When(Breakpoint.Medium, s => s.Foreground(t.Get<Color>(Primary)).Text("Medium  (768–1023 px)"))
-                .When(Breakpoint.Large,  s => s.Foreground(t.Get<Color>(Success)).Text("Large  (1024–1439 px)"))
-                .When(Breakpoint.XLarge, s => s.Foreground(t.Get<Color>(PrimaryHv)).Text("XLarge  (≥ 1440 px)")),
+                .When(Breakpoint.Small,  s => s.Foreground(t.Get<Color>(TextMuted)).Text("Small  (480�767 px)"))
+                .When(Breakpoint.Medium, s => s.Foreground(t.Get<Color>(Primary)).Text("Medium  (768�1023 px)"))
+                .When(Breakpoint.Large,  s => s.Foreground(t.Get<Color>(Success)).Text("Large  (1024�1439 px)"))
+                .When(Breakpoint.XLarge, s => s.Foreground(t.Get<Color>(PrimaryHv)).Text("XLarge  (= 1440 px)")),
 
             // ----------------------------------------------------------------
-            // SECTION 6 — Predicate breakpoints
+            // SECTION 6 � Predicate breakpoints
             // Re-evaluated on every pixel change, not just at named thresholds.
             // ----------------------------------------------------------------
             new Style<Frame>(".pred-bar")
@@ -294,12 +294,12 @@ public static class AppThemes
                 .Foreground(t.Get<Color>(Danger))
                 .FontSize(13f)
                 .Text("Compact  (< 500 px)")
-                .When(w => w >= 500,  s => s.Foreground(t.Get<Color>(Primary)).Text("Medium  (≥ 500 px)"))
-                .When(w => w >= 800,  s => s.Foreground(t.Get<Color>(Success)).Text("Wide  (≥ 800 px)"))
-                .When(w => w >= 1200, s => s.Foreground(t.Get<Color>(PrimaryHv)).Text("Full  (≥ 1200 px)")),
+                .When(w => w >= 500,  s => s.Foreground(t.Get<Color>(Primary)).Text("Medium  (= 500 px)"))
+                .When(w => w >= 800,  s => s.Foreground(t.Get<Color>(Success)).Text("Wide  (= 800 px)"))
+                .When(w => w >= 1200, s => s.Foreground(t.Get<Color>(PrimaryHv)).Text("Full  (= 1200 px)")),
 
             // ----------------------------------------------------------------
-            // SECTION 7 — Platform
+            // SECTION 7 � Platform
             // Evaluated once at startup; the OS never changes at runtime.
             // ----------------------------------------------------------------
             new Style<Frame>(".platform-chip")
@@ -323,7 +323,7 @@ public static class AppThemes
                 .When(PlatformType.iOS,     s => s.Foreground(t.Get<Color>(TextOnPrimary)).Text("iOS")),
 
             // ----------------------------------------------------------------
-            // SECTION 7 — OS color scheme
+            // SECTION 7 � OS color scheme
             // Polled every ~5 s; re-applies when dark/light preference changes.
             // ----------------------------------------------------------------
             new Style<Frame>(".scheme-chip")
@@ -336,12 +336,12 @@ public static class AppThemes
             new Style<Label>(".scheme-label")
                 .Foreground(t.Get<Color>(TextMuted))
                 .FontSize(13f)
-                .Text("Detecting…")
+                .Text("Detecting�")
                 .When(ColorScheme.Dark,  s => s.Foreground(new Color(140, 160, 255)).Text("OS: Dark mode"))
                 .When(ColorScheme.Light, s => s.Foreground(new Color(40,  70,  200)).Text("OS: Light mode")),
 
             // ----------------------------------------------------------------
-            // SECTION 7 — Orientation
+            // SECTION 7 � Orientation
             // Re-evaluated on every resize; Portrait when height > width.
             // ----------------------------------------------------------------
             new Style<Frame>(".orient-chip")
@@ -356,10 +356,10 @@ public static class AppThemes
                 .FontSize(13f)
                 .Text("Landscape")
                 .When(Orientation.Portrait,  s => s.Foreground(t.Get<Color>(TextOnPrimary)).Text("Portrait  (h > w)"))
-                .When(Orientation.Landscape, s => s.Foreground(t.Get<Color>(TextOnPrimary)).Text("Landscape  (w ≥ h)")),
+                .When(Orientation.Landscape, s => s.Foreground(t.Get<Color>(TextOnPrimary)).Text("Landscape  (w = h)")),
 
             // ----------------------------------------------------------------
-            // SECTION 8 — Multi-class selector
+            // SECTION 8 � Multi-class selector
             // .adv-btn.accent requires BOTH classes to match (AND logic).
             // Specificity: .adv-btn = 11, .adv-btn.accent = 21 → wins on conflict.
             // ----------------------------------------------------------------
@@ -371,7 +371,7 @@ public static class AppThemes
                 .TextColor(t.Get<Color>(TextMain))
                 .When(StyleTrigger.Hover, s => s.Background(t.Get<Color>(BgHeader))),
 
-            new Style<Button>(".adv-btn.accent")      // both classes required — spec 21
+            new Style<Button>(".adv-btn.accent")      // both classes required � spec 21
                 .Background(t.Get<Color>(Primary))
                 .TextColor(t.Get<Color>(TextOnPrimary))
                 .Height(52f)
@@ -379,7 +379,7 @@ public static class AppThemes
                 .When(StyleTrigger.Hover, s => s.Background(t.Get<Color>(PrimaryHv))),
 
             // ----------------------------------------------------------------
-            // SECTION 8 — Not() + FirstChild / LastChild
+            // SECTION 8 � Not() + FirstChild / LastChild
             // ----------------------------------------------------------------
             // Base style for all list rows
             new Style<Label>(".list-row")
@@ -400,7 +400,7 @@ public static class AppThemes
                 .Foreground(t.Get<Color>(Danger)),
 
             // ----------------------------------------------------------------
-            // SECTION 9 — Important()
+            // SECTION 9 � Important()
             // .imp-base (spec 11) is marked Important() so it is applied AFTER
             // .imp-base.imp-override (spec 21). The lower-specificity rule wins.
             // ----------------------------------------------------------------
@@ -408,7 +408,7 @@ public static class AppThemes
                 .Foreground(t.Get<Color>(Danger))
                 .Important(),
 
-            new Style<Label>(".imp-base.imp-override")  // spec 21 — normally wins, but doesn't here
+            new Style<Label>(".imp-base.imp-override")  // spec 21 � normally wins, but doesn't here
                 .Foreground(t.Get<Color>(Success)),
         ];
     }

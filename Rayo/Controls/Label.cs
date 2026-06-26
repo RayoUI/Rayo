@@ -5,6 +5,7 @@ using Rayo.Core.Assets;
 using Rayo.Reactivity;
 using Rayo.Rendering;
 using Rayo.Rendering.Brushes;
+using Rayo.Rendering.Graphics.VectorGraphics;
 using IRenderer = Rayo.Rendering.IRenderer;
 
 /// <summary>
@@ -12,7 +13,7 @@ using IRenderer = Rayo.Rendering.IRenderer;
 /// Uses hybrid reactive approach: Generator for simple properties.
 /// Migrated to new MAUI-like architecture: inherits from View<Label>
 /// </summary>
-public class Label : Rayo.Core.View<Label>
+public class Label : BorderView<Label>
 {
     // =========================================================================
     // PROPERTIES
@@ -215,17 +216,33 @@ public class Label : Rayo.Core.View<Label>
         var bgColor = Background.PrimaryColor;
         if (bgColor.A > 0)
         {
-            if (BorderRadius.TopLeft > 0 || BorderRadius.TopRight > 0 ||
-                BorderRadius.BottomLeft > 0 || BorderRadius.BottomRight > 0)
+            if (HasAnyRadius(BorderRadius))
             {
-                renderer.DrawRoundedRect(
-                    ComputedX,
-                    ComputedY,
-                    ComputedWidth,
-                    ComputedHeight,
-                    BorderRadius.TopLeft,
-                    bgColor
-                );
+                if (IsUniformRadius(BorderRadius))
+                {
+                    renderer.DrawRoundedRect(
+                        ComputedX,
+                        ComputedY,
+                        ComputedWidth,
+                        ComputedHeight,
+                        BorderRadius.TopLeft,
+                        bgColor
+                    );
+                }
+                else
+                {
+                    var path = VectorPath.RoundedRectangle(
+                        ComputedX,
+                        ComputedY,
+                        ComputedWidth,
+                        ComputedHeight,
+                        BorderRadius.TopLeft,
+                        BorderRadius.TopRight,
+                        BorderRadius.BottomRight,
+                        BorderRadius.BottomLeft
+                    );
+                    renderer.DrawPath(path, bgColor);
+                }
             }
             else
             {
@@ -349,6 +366,15 @@ public class Label : Rayo.Core.View<Label>
             }
         }
     }
+
+    private static bool HasAnyRadius(CornerRadius radius) =>
+        radius.TopLeft > 0 || radius.TopRight > 0 ||
+        radius.BottomRight > 0 || radius.BottomLeft > 0;
+
+    private static bool IsUniformRadius(CornerRadius radius) =>
+        radius.TopLeft == radius.TopRight &&
+        radius.TopRight == radius.BottomRight &&
+        radius.BottomRight == radius.BottomLeft;
 
     private float EstimateLineWidth(string line)
     {

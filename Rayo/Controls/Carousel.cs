@@ -23,7 +23,7 @@ public enum CarouselTransitionMode
     Slide
 }
 
-public class Carousel : CompositeView<Carousel>, IFrameAnimation
+public class Carousel : BorderCompositeView<Carousel>, IFrameAnimation
 {
     private readonly CarouselViewport _viewport;
     private readonly Frame _contentFrame;
@@ -130,24 +130,6 @@ public class Carousel : CompositeView<Carousel>, IFrameAnimation
             _transitionHost.SlideBackground = value;
         });
     } = new Color(35, 38, 46);
-    #endregion
-
-    #region BorderColor
-    [PaintProperty]
-    public Brush BorderColor
-    {
-        get => field;
-        set => this.SetProperty(ref field, value, () => _contentFrame.BorderColor = value);
-    } = new Color(70, 75, 90);
-    #endregion
-
-    #region BorderWidth
-    [LayoutProperty]
-    public float BorderWidth
-    {
-        get => field;
-        set => this.SetProperty(ref field, value, () => _contentFrame.BorderWidth = value);
-    } = 1f;
     #endregion
 
     #region NavigationButtonBackground
@@ -269,6 +251,8 @@ public class Carousel : CompositeView<Carousel>, IFrameAnimation
         Width = 360;
         Height = 260;
         Padding = new Thickness(0);
+        BorderBrush = new Color(70, 75, 90);
+        BorderThickness = 1f;
 
         _viewport = new CarouselViewport
         {
@@ -279,8 +263,8 @@ public class Carousel : CompositeView<Carousel>, IFrameAnimation
         _contentFrame = new CarouselFrame
         {
             Background = SlideBackground,
-            BorderColor = BorderColor,
-            BorderWidth = BorderWidth,
+            BorderBrush = BorderBrush,
+            BorderThickness = BorderThickness,
             BorderRadius = new CornerRadius(8),
             ClipToBounds = true,
             HorizontalAlignment = HorizontalAlignment.Stretch,
@@ -602,6 +586,24 @@ public class Carousel : CompositeView<Carousel>, IFrameAnimation
         RefreshNavigationState();
     }
 
+    protected override void OnBorderBrushChanged()
+    {
+        base.OnBorderBrushChanged();
+        if (_contentFrame != null)
+        {
+            _contentFrame.BorderBrush = BorderBrush;
+        }
+    }
+
+    protected override void OnBorderThicknessChanged()
+    {
+        base.OnBorderThicknessChanged();
+        if (_contentFrame != null)
+        {
+            _contentFrame.BorderThickness = BorderThickness;
+        }
+    }
+
     private void RebuildNavigation()
     {
         _navigationRow.ClearChildren();
@@ -663,7 +665,7 @@ public class Carousel : CompositeView<Carousel>, IFrameAnimation
                 Background = isSelected ? IndicatorSelectedColor : IndicatorColor,
                 HoverBackground = isSelected ? IndicatorSelectedColor : NavigationButtonHoverBackground,
                 PressedBackground = IndicatorSelectedColor,
-                BorderWidth = 0,
+                BorderThickness = 0,
                 BorderRadius = new CornerRadius(IndicatorSize / 2f),
                 Padding = new Thickness(0)
             };
@@ -750,7 +752,7 @@ public class Carousel : CompositeView<Carousel>, IFrameAnimation
             Width = 36,
             Height = 36,
             IconSize = 18,
-            BorderWidth = 0,
+            BorderThickness = 0,
             BorderRadius = new CornerRadius(18),
             Padding = new Thickness(0)
         };
@@ -1015,13 +1017,13 @@ public class Carousel : CompositeView<Carousel>, IFrameAnimation
             float bgHeight = ComputedHeight;
             float radiusAdjust = 0f;
 
-            if (BorderWidth > 0 && BorderColor.PrimaryColor.A > 0)
+            if (BorderThickness.Left > 0 && BorderBrush.PrimaryColor.A > 0)
             {
-                bgX += BorderWidth;
-                bgY += BorderWidth;
-                bgWidth -= BorderWidth * 2f;
-                bgHeight -= BorderWidth * 2f;
-                radiusAdjust = BorderWidth;
+                bgX += BorderThickness.Left;
+                bgY += BorderThickness.Top;
+                bgWidth -= BorderThickness.Horizontal;
+                bgHeight -= BorderThickness.Vertical;
+                radiusAdjust = BorderThickness.Left;
             }
 
             if (Background.PrimaryColor.A <= 0)
@@ -1109,7 +1111,7 @@ public class Carousel : CompositeView<Carousel>, IFrameAnimation
 
         private (float x, float y, float width, float height, CornerRadius radius) GetContentClip()
         {
-            float inset = Math.Max(0, BorderWidth);
+            float inset = Math.Max(0, BorderThickness.Left);
             return (
                 ComputedX + inset,
                 ComputedY + inset,

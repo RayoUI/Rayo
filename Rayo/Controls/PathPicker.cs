@@ -31,7 +31,7 @@ public enum SaveFileConflictBehavior
 /// <summary>
 /// File-system picker control that can select files, folders, or either.
 /// </summary>
-public class PathPicker : CompositeView<PathPicker>, IPointerHandler, IGlobalPointerHandler
+public class PathPicker : BorderCompositeView<PathPicker>, IPointerHandler, IGlobalPointerHandler
 {
     private static PathPicker? _currentlyOpenPathPicker;
 
@@ -57,6 +57,8 @@ public class PathPicker : CompositeView<PathPicker>, IPointerHandler, IGlobalPoi
         Background = new Color(40, 40, 45);
         Width = 320;
         Height = 44;
+        BorderBrush = new Color(100, 100, 100);
+        BorderThickness = 1;
         CurrentDirectory = ResolveInitialDirectory(null);
         BuildComponents();
 
@@ -196,13 +198,6 @@ public class PathPicker : CompositeView<PathPicker>, IPointerHandler, IGlobalPoi
     #endregion
 
     #region Styling
-    [PaintProperty]
-    public Brush BorderColor
-    {
-        get => field;
-        set => this.SetProperty(ref field, value, () => _pickerButton?.BorderColor(value));
-    } = new Color(100, 100, 100);
-
     [PaintProperty]
     public Brush TextColor
     {
@@ -399,8 +394,8 @@ public class PathPicker : CompositeView<PathPicker>, IPointerHandler, IGlobalPoi
 
         _pickerButton = new Frame()
             .Background(Background)
-            .BorderColor(BorderColor)
-            .BorderWidth(1)
+            .BorderBrush(BorderBrush)
+            .BorderThickness(BorderThickness)
             .Padding(new Thickness(12, 6, 12, 6))
             .HorizontalAlignment(HorizontalAlignment.Stretch)
             .VerticalAlignment(VerticalAlignment.Stretch);
@@ -408,6 +403,18 @@ public class PathPicker : CompositeView<PathPicker>, IPointerHandler, IGlobalPoi
         _pickerButton.Content(content);
 
         UpdateTriggerContent();
+    }
+
+    protected override void OnBorderBrushChanged()
+    {
+        base.OnBorderBrushChanged();
+        _pickerButton?.BorderBrush(BorderBrush);
+    }
+
+    protected override void OnBorderThicknessChanged()
+    {
+        base.OnBorderThicknessChanged();
+        _pickerButton?.BorderThickness(BorderThickness);
     }
 
     private Frame BuildDialogOverlay()
@@ -421,8 +428,8 @@ public class PathPicker : CompositeView<PathPicker>, IPointerHandler, IGlobalPoi
             .Width(620)
             .Height(560)
             .Background(new Color(30, 30, 35))
-            .BorderColor(new Color(50, 55, 65))
-            .BorderWidth(1)
+            .BorderBrush(new Color(50, 55, 65))
+            .BorderThickness(1)
             .BorderRadius(new CornerRadius(14))
             .Padding(new Thickness(16))
             .HorizontalAlignment(HorizontalAlignment.Center)
@@ -472,8 +479,8 @@ public class PathPicker : CompositeView<PathPicker>, IPointerHandler, IGlobalPoi
 
         var listFrame = new Frame()
             .Background(new Color(34, 36, 44))
-            .BorderColor(new Color(50, 55, 65))
-            .BorderWidth(1)
+            .BorderBrush(new Color(50, 55, 65))
+            .BorderThickness(1)
             .BorderRadius(new CornerRadius(12))
             .Padding(new Thickness(8))
             .HorizontalAlignment(HorizontalAlignment.Stretch)
@@ -533,8 +540,8 @@ public class PathPicker : CompositeView<PathPicker>, IPointerHandler, IGlobalPoi
         {
             Height = 34,
             Background = new Color(37, 39, 48),
-            BorderColor = new Color(50, 55, 65),
-            BorderWidth = 1,
+            BorderBrush = new Color(50, 55, 65),
+            BorderThickness = 1,
             TextColor = Color.White,
             Placeholder = "File name",
             PlaceholderColor = ColorDefault.Secondary,
@@ -576,7 +583,7 @@ public class PathPicker : CompositeView<PathPicker>, IPointerHandler, IGlobalPoi
             Height = 36,
             Background = new Color(45, 45, 52),
             HoverBackground = new Color(55, 55, 62),
-            BorderWidth = 0,
+            BorderThickness = 0,
             BorderRadius = new CornerRadius(6)
         };
         cancelButton.OnTapped(CancelSelection);
@@ -588,7 +595,7 @@ public class PathPicker : CompositeView<PathPicker>, IPointerHandler, IGlobalPoi
             Height = 36,
             Background = ColorDefault.Primary,
             HoverBackground = ColorDefault.Info,
-            BorderWidth = 0,
+            BorderThickness = 0,
             BorderRadius = new CornerRadius(6)
         };
         selectButton.OnTapped(ConfirmSelection);

@@ -168,12 +168,15 @@ public class GestureDetectorPage : Component
                                 .FontSize(12)
                                 .Foreground(ColorDefault.Secondary),
 
-                            new Absolute()
+                            new Frame()
                                 .Size(new Size(300, 150))
                                 .Background(new Color(50, 50, 60))
                                 .BorderRadius(8)
-                                .Children(
-                                    CreateDraggableBox(dragBoxX, dragBoxY, panOffset)
+                                .Content(
+                                    new Absolute()
+                                        .Children(
+                                            CreateDraggableBox(dragBoxX, dragBoxY, panOffset)
+                                        )
                                 )
                         )
                 ),

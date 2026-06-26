@@ -68,11 +68,11 @@ public class FluentExamplesApp : Component
                 // When with a reactive signal
                 new Frame()
                     .Height(60)
-                    .BorderWidth(2)
+                    .BorderThickness(2)
                     .BorderRadius(8)
                     .When(isActive,
-                        f => f.Background(Color.Red).BorderColor(new Color(139, 0, 0)),
-                        f => f.Background(Color.Gray).BorderColor(Color.DarkGray))
+                        f => f.Background(Color.Red).BorderBrush(new Color(139, 0, 0)),
+                        f => f.Background(Color.Gray).BorderBrush(Color.DarkGray))
                     .Content(
                         new Label()
                             .Text("Reactive Status")
@@ -95,11 +95,11 @@ public class FluentExamplesApp : Component
                 // WhenAll - REACTIVE multiple conditions (NEW!)
                 new Frame()
                     .Height(60)
-                    .BorderWidth(2)
+                    .BorderThickness(2)
                     .BorderRadius(8)
                     .WhenAll(
-                        f => f.Background(Color.Green).BorderColor(new Color(0, 200, 0)),
-                        f => f.Background(Color.Red).BorderColor(new Color(200, 0, 0)),
+                        f => f.Background(Color.Green).BorderBrush(new Color(0, 200, 0)),
+                        f => f.Background(Color.Red).BorderBrush(new Color(200, 0, 0)),
                         isActive, isEnabled, isVisible)
                     .Content(
                         new Label()
@@ -323,10 +323,10 @@ public class FluentExamplesApp : Component
                 // Observe - signal with transformation
                 new Frame()
                     .Height(60)
-                    .BorderWidth(2)
+                    .BorderThickness(2)
                     .Observe(counter, (f, value) => 
                         f.Background(value > 5 ? Color.Red : Color.Green)
-                         .BorderColor(value > 10 ? Color.Yellow : Color.Gray))
+                         .BorderBrush(value > 10 ? Color.Yellow : Color.Gray))
                     .Content(
                         new Label()
                             .Text("Reactive Frame")
@@ -376,11 +376,14 @@ public class FluentExamplesApp : Component
                     .Foreground(Color.Yellow),
 
                 // WithChildren - add multiple children to a VStack
-                new VStack()
+                new Frame()
                     .Background(Color.DarkGray)
                     .Padding(new Thickness(10))
                     .BorderRadius(8)
-                    .WithChildren(children),
+                    .Content(
+                        new VStack()
+                            .WithChildren(children)
+                    ),
 
                 // ForEachChild - iterate over children
                 new VStack()
@@ -451,7 +454,7 @@ public class FluentExamplesApp : Component
                             .TextColor(Color.White)
                             .OnTextChanged(newText => emailSignal.Value = newText)
                             .TryApply(
-                                e => e.BorderWidth(1),
+                                e => e.BorderThickness(1),
                                 ex => System.Console.WriteLine($"Entry error: {ex.Message}")
                             ),
                         new Label()
@@ -503,9 +506,9 @@ public class FluentExamplesApp : Component
                 // Complex composition example
                 new Frame()
                     .Height(100)
-                    .BorderWidth(2)
+                    .BorderThickness(2)
                     .BorderRadius(10)
-                    .When(counter.Value > 0, f => f.BorderColor(Color.Green))
+                    .When(counter.Value > 0, f => f.BorderBrush(Color.Green))
                     .WhenNotNull(username.Value, (f, name) => f.Background(new Color(0, 100, 0)))
                     .Guard(true, "Frame requires initialization")
                     .Tap(f => System.Console.WriteLine("Complex frame rendered"))

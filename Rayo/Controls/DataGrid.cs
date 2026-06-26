@@ -42,7 +42,7 @@ public enum SortDirection
 /// <summary>
 /// DataGrid component for displaying tabular data
 /// </summary>
-public class DataGrid : CompositeView<DataGrid>
+public class DataGrid : BorderCompositeView<DataGrid>
 {
     private string? _sortColumn = null;
     private SortDirection _sortDirection = SortDirection.None;
@@ -143,14 +143,6 @@ public class DataGrid : CompositeView<DataGrid>
     } = Color.White;
     #endregion
 
-    #region BorderColor
-    public Brush BorderColor
-    {
-        get => field;
-        set => this.SetProperty(ref field, value);
-    } = new Color(50, 55, 65);
-    #endregion
-
     #region GridLineColor
     public Brush GridLineColor
     {
@@ -200,6 +192,7 @@ public class DataGrid : CompositeView<DataGrid>
     {
         Width = 600;
         Height = 400;
+        BorderBrush = new Color(50, 55, 65);
         BorderRadius = new CornerRadius(8);
         BuildGrid();
     }
@@ -293,7 +286,7 @@ public class DataGrid : CompositeView<DataGrid>
             if (_sortColumn == column.PropertyName)
             {
                 displayText = _sortDirection == SortDirection.Ascending
-                    ? $"{headerText} ▲"
+                    ? $"{headerText} ?"
                     : $"{headerText} ▼";
             }
 
@@ -305,8 +298,8 @@ public class DataGrid : CompositeView<DataGrid>
             headerCell.Background(HeaderBackground);
             headerCell.HoverBackground(column.CanSort ? (Rendering.Brushes.Brush)new Color(58, 58, 70) : HeaderBackground);
             headerCell.PressedBackground(column.CanSort ? (Rendering.Brushes.Brush)new Color(68, 68, 80) : HeaderBackground);
-            headerCell.BorderColor(BorderColor);
-            headerCell.BorderWidth(1);
+            headerCell.BorderBrush(BorderBrush);
+            headerCell.BorderThickness(1);
             headerCell.BorderRadius(0);
             headerCell.Padding(new Thickness(8, 0, 8, 0));
             headerCell.Height(HeaderHeight);
@@ -517,9 +510,9 @@ public class DataGrid : CompositeView<DataGrid>
 
         _grid?.Render(renderer);
 
-        if (BorderColor.PrimaryColor.A > 0)
+        if (BorderBrush.PrimaryColor.A > 0)
         {
-            renderer.DrawRoundedRectOutline(ComputedX, ComputedY, ComputedWidth, ComputedHeight, BorderRadius.TopLeft, 1, BorderColor);
+            renderer.DrawRoundedRectOutline(ComputedX, ComputedY, ComputedWidth, ComputedHeight, BorderRadius.TopLeft, 1, BorderBrush);
         }
     }
 }
@@ -841,8 +834,8 @@ internal sealed class RecyclableDataGridRow : CompositeView<RecyclableDataGridRo
             cell.Background = rowBackground;
             cell.HoverBackground = rowBackground;
             cell.PressedBackground = pressedBackground;
-            cell.BorderColor = borderBrush;
-            cell.BorderWidth = borderWidth;
+            cell.BorderBrush = borderBrush;
+            cell.BorderThickness = borderWidth;
             cell.BorderRadius = new CornerRadius(0);
             cell.Padding = new Thickness(8, 0, 8, 0);
             cell.Height = rowHeight;

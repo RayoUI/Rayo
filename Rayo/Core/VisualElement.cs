@@ -7,7 +7,6 @@ using Rayo.Rendering.Brushes;
 
 namespace Rayo.Core;
 
-using CornerRadius = Rayo.CornerRadius;
 using Position = Rayo.Position;
 using Size = Rayo.Size;
 using Thickness = Rayo.Thickness;
@@ -126,6 +125,8 @@ public abstract class VisualElement : BindableObject, IDisposable, IInputTranspa
     {
 
     }
+
+    internal virtual CornerRadius VisualCornerRadius => CornerRadius.None;
 
     #region Id
     [PaintProperty]
@@ -315,15 +316,6 @@ public abstract class VisualElement : BindableObject, IDisposable, IInputTranspa
         get => field;
         set => this.SetProperty(ref field, value);
     }
-    #endregion
-
-    #region BorderRadius
-    [PaintProperty]
-    public CornerRadius BorderRadius
-    {
-        get => field;
-        set => this.SetProperty(ref field, value);
-    } = CornerRadius.None;
     #endregion
 
     #region Alignment

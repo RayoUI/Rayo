@@ -127,7 +127,7 @@ public class EditorPage : Component
                                 .Background(new Color(20, 30, 50))
                                 .TextColor(new Color(200, 220, 255))
                                 .PlaceholderColor(new Color(100, 120, 160))
-                                .BorderColor(ColorDefault.Primary),
+                                .BorderBrush(ColorDefault.Primary),
 
                             new Label("Large font:")
                                 .Foreground(ColorDefault.Secondary),
@@ -145,7 +145,7 @@ public class EditorPage : Component
                                 .Width(500)
                                 .Height(120)
                                 .Placeholder("No border style...")
-                                .BorderWidth(0)
+                                .BorderThickness(0)
                                 .Background(new Color(30, 30, 35))
                         )
                 ),
@@ -184,7 +184,7 @@ public class EditorPage : Component
                                 .Background(new Color(20, 20, 25))
                                 .TextColor(new Color(100, 255, 100))
                                 .FontSize(13)
-                                .BorderColor(new Color(60, 60, 70))
+                                .BorderBrush(new Color(60, 60, 70))
                         )
                 ),
 

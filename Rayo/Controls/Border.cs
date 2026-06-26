@@ -9,10 +9,8 @@ using Rayo.Rendering.Brushes;
 /// Border component - Container with configurable border and optional shadow
 /// Similar to MAUI Border control
 /// </summary>
-public class Border : Rayo.Core.CompositeView<Border>
+public class Border : ContentView<Border>
 {
-    private VisualElement? _content;
-
     #region Background
     [PaintProperty]
     public new Brush Background
@@ -67,24 +65,6 @@ public class Border : Rayo.Core.CompositeView<Border>
     } = null;
     #endregion
 
-    [LayoutProperty]
-    public VisualElement? Content
-    {
-        get => _content;
-        set => this.SetProperty(ref _content, value, () =>
-        {
-            if (_content != null)
-            {
-                RemoveChild(_content);
-            }
-            _content = value;
-            if (_content != null)
-            {
-                AddChild(_content);
-            }
-        });
-    }
-
     public Border() { }
 
     public Border(VisualElement content)
@@ -115,11 +95,11 @@ public class Border : Rayo.Core.CompositeView<Border>
         float contentWidth  = availableWidth  - paddingH;
         float contentHeight = availableHeight - paddingV;
 
-        if (_content != null)
+        if (Content != null)
         {
-            _content.MeasureUpdate(contentWidth, contentHeight);
-            DesiredWidth  = _content.DesiredWidth  + paddingH;
-            DesiredHeight = _content.DesiredHeight + paddingV;
+            Content.MeasureUpdate(contentWidth, contentHeight);
+            DesiredWidth  = Content.DesiredWidth  + paddingH;
+            DesiredHeight = Content.DesiredHeight + paddingV;
         }
         else
         {
@@ -135,7 +115,7 @@ public class Border : Rayo.Core.CompositeView<Border>
     {
         base.Arrange(x, y, width, height);
 
-        if (_content != null)
+        if (Content != null)
         {
             var (sl, st, sr, sb) = ShadowExtent();
 
@@ -144,7 +124,7 @@ public class Border : Rayo.Core.CompositeView<Border>
             float contentWidth  = width  - Padding.Left - Padding.Right  - BorderThickness.Left - BorderThickness.Right  - sl - sr;
             float contentHeight = height - Padding.Top  - Padding.Bottom - BorderThickness.Top  - BorderThickness.Bottom - st - sb;
 
-            _content.ArrangeUpdate(contentX, contentY, contentWidth, contentHeight);
+            Content.ArrangeUpdate(contentX, contentY, contentWidth, contentHeight);
         }
     }
 

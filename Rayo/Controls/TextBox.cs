@@ -13,7 +13,7 @@ using IRenderer = Rayo.Rendering.IRenderer;
 /// <summary>
 /// Text input field with support for single-line and multi-line text editing.
 /// </summary>
-public abstract class TextBox<T> : Rayo.Core.View<T>, IInputHandler, IFocusable, Rayo.Core.Platform.IVirtualKeyboardOptions where T : Rayo.Core.View<T>
+public abstract class TextBox<T> : BorderView<T>, IInputHandler, IFocusable, Rayo.Core.Platform.IVirtualKeyboardOptions where T : BorderView<T>
 {
     // =========================================================================
     // INTERFACE IMPLEMENTATIONS
@@ -22,7 +22,7 @@ public abstract class TextBox<T> : Rayo.Core.View<T>, IInputHandler, IFocusable,
     // IInputHandler (virtual to allow override in derived classes like Editor)
     public virtual bool CanHandleInput => true;
 
-    // IFocusable — set by EventManager; [NotFluent] suppresses builder generation,
+    // IFocusable � set by EventManager; [NotFluent] suppresses builder generation,
     // [PaintProperty] documents that focus changes require a repaint.
     [NotFluent, PaintProperty]
     public bool IsFocused
@@ -31,7 +31,7 @@ public abstract class TextBox<T> : Rayo.Core.View<T>, IInputHandler, IFocusable,
         set => this.SetProperty(ref field, value);
     }
 
-    // IVirtualKeyboardOptions — controls on-screen keyboard type on mobile platforms.
+    // IVirtualKeyboardOptions � controls on-screen keyboard type on mobile platforms.
     // Behavioral only: no effect on layout or visuals.
     public Rayo.Core.Platform.VirtualKeyboardType KeyboardType { get; set; } =
         Rayo.Core.Platform.VirtualKeyboardType.Default;
@@ -45,7 +45,7 @@ public abstract class TextBox<T> : Rayo.Core.View<T>, IInputHandler, IFocusable,
     /// <summary>
     /// Gets or sets the text content.
     /// Manual implementation required for cursor/selection clamping logic.
-    /// Does not use SetProperty — marks paint explicitly after side effects.
+    /// Does not use SetProperty � marks paint explicitly after side effects.
     /// </summary>
     [PaintProperty]
     public string Text
@@ -155,31 +155,13 @@ public abstract class TextBox<T> : Rayo.Core.View<T>, IInputHandler, IFocusable,
     } = new Color(120, 120, 120);
     #endregion
 
-    #region BorderColor
+    #region FocusBorderBrush
     [PaintProperty]
-    public Brush BorderColor
-    {
-        get => field;
-        set => this.SetProperty(ref field, value);
-    } = new Color(70, 70, 70);
-    #endregion
-
-    #region FocusBorderColor
-    [PaintProperty]
-    public Brush FocusBorderColor
+    public Brush FocusBorderBrush
     {
         get => field;
         set => this.SetProperty(ref field, value);
     } = new Color(59, 130, 246);
-    #endregion
-
-    #region BorderWidth
-    [PaintProperty]
-    public float BorderWidth
-    {
-        get => field;
-        set => this.SetProperty(ref field, value);
-    } = 2;
     #endregion
 
     #region IsPassword
@@ -242,11 +224,11 @@ public abstract class TextBox<T> : Rayo.Core.View<T>, IInputHandler, IFocusable,
     // INTERNAL STATE (Selection, scrolling, mouse tracking)
     // =========================================================================
 
-    // Sistema de selección de texto
-    protected int _selectionStart = 0;  // Inicio de la selección
-    protected int _selectionEnd = 0;    // Fin de la selección
+    // Sistema de selecci�n de texto
+    protected int _selectionStart = 0;  // Inicio de la selecci�n
+    protected int _selectionEnd = 0;    // Fin de la selecci�n
 
-    // Estado para selección con mouse
+    // Estado para selecci�n con mouse
     private bool _isMouseSelecting = false;
 
     private int _mouseSelectionStart = 0;
@@ -296,6 +278,8 @@ public abstract class TextBox<T> : Rayo.Core.View<T>, IInputHandler, IFocusable,
     {
         // Remove hardcoded size - let it size dynamically
         Padding = new Thickness(10, 6, 10, 6);
+        BorderBrush = new Color(70, 70, 70);
+        BorderThickness = 2;
         BorderRadius = new CornerRadius(4);
     }
 
@@ -595,7 +579,7 @@ public abstract class TextBox<T> : Rayo.Core.View<T>, IInputHandler, IFocusable,
         // Check MaxLength before inserting
         if (MaxLength > 0 && Text.Length >= MaxLength && !HasSelection) return;
 
-        // Si hay selección, eliminarla primero
+        // Si hay selecci�n, eliminarla primero
         if (HasSelection)
         {
             DeleteSelection();
@@ -613,7 +597,7 @@ public abstract class TextBox<T> : Rayo.Core.View<T>, IInputHandler, IFocusable,
         // Check read-only mode
         if (IsReadOnly) return;
 
-        // Si hay selección, eliminarla
+        // Si hay selecci�n, eliminarla
         if (HasSelection)
         {
             DeleteSelection();
@@ -623,7 +607,7 @@ public abstract class TextBox<T> : Rayo.Core.View<T>, IInputHandler, IFocusable,
             return;
         }
 
-        // Si no hay selección, borrar carácter anterior
+        // Si no hay selecci�n, borrar car�cter anterior
         if (_cursorPosition > 0)
         {
             // FIX: Move cursor back first to avoid Text setter clamping logic causing negative index
@@ -636,14 +620,14 @@ public abstract class TextBox<T> : Rayo.Core.View<T>, IInputHandler, IFocusable,
     }
 
     /// <summary>
-    /// Elimina el carácter a la derecha del cursor (tecla Delete)
+    /// Elimina el car�cter a la derecha del cursor (tecla Delete)
     /// </summary>
     public void DeleteCharForward()
     {
         // Check read-only mode
         if (IsReadOnly) return;
 
-        // Si hay selección, eliminarla
+        // Si hay selecci�n, eliminarla
         if (HasSelection)
         {
             DeleteSelection();
@@ -653,7 +637,7 @@ public abstract class TextBox<T> : Rayo.Core.View<T>, IInputHandler, IFocusable,
             return;
         }
 
-        // Si no hay selección, borrar carácter siguiente
+        // Si no hay selecci�n, borrar car�cter siguiente
         if (_cursorPosition < Text.Length)
         {
             AssignTextPreservingCursor(Text.Remove(_cursorPosition, 1));
@@ -667,7 +651,7 @@ public abstract class TextBox<T> : Rayo.Core.View<T>, IInputHandler, IFocusable,
     {
         if (shiftPressed)
         {
-            // Si no hay selección, iniciar desde la posición actual
+            // Si no hay selecci�n, iniciar desde la posici�n actual
             if (!HasSelection)
             {
                 _selectionStart = _cursorPosition;
@@ -677,7 +661,7 @@ public abstract class TextBox<T> : Rayo.Core.View<T>, IInputHandler, IFocusable,
         }
         else
         {
-            // Si hay selección, mover al inicio de la selección
+            // Si hay selecci�n, mover al inicio de la selecci�n
             if (HasSelection)
             {
                 _cursorPosition = Math.Min(_selectionStart, _selectionEnd);
@@ -698,7 +682,7 @@ public abstract class TextBox<T> : Rayo.Core.View<T>, IInputHandler, IFocusable,
     {
         if (shiftPressed)
         {
-            // Si no hay selección, iniciar desde la posición actual
+            // Si no hay selecci�n, iniciar desde la posici�n actual
             if (!HasSelection)
             {
                 _selectionStart = _cursorPosition;
@@ -708,7 +692,7 @@ public abstract class TextBox<T> : Rayo.Core.View<T>, IInputHandler, IFocusable,
         }
         else
         {
-            // Si hay selección, mover al final de la selección
+            // Si hay selecci�n, mover al final de la selecci�n
             if (HasSelection)
             {
                 _cursorPosition = Math.Max(_selectionStart, _selectionEnd);
@@ -770,7 +754,7 @@ public abstract class TextBox<T> : Rayo.Core.View<T>, IInputHandler, IFocusable,
     }
 
     /// <summary>
-    /// Mueve el cursor una línea hacia arriba (solo para multiline)
+    /// Mueve el cursor una l�nea hacia arriba (solo para multiline)
     /// </summary>
     public virtual void MoveCursorUp(bool shiftPressed = false)
     {
@@ -781,21 +765,21 @@ public abstract class TextBox<T> : Rayo.Core.View<T>, IInputHandler, IFocusable,
         int currentLineIndex = currentLine.LineIndex;
         int charIndexInLine = _cursorPosition - currentLine.Start;
 
-        // Si estamos en la primera línea, no podemos subir más
+        // Si estamos en la primera l�nea, no podemos subir m�s
         if (currentLineIndex == 0)
         {
             MoveCursorToStart(shiftPressed);
             return;
         }
 
-        // Calcular nueva posición en la línea anterior
+        // Calcular nueva posici�n en la l�nea anterior
         var previousLine = _multilineLines[currentLineIndex - 1];
         
-        // Mover al mismo índice de carácter o al final de la línea anterior (lo que sea menor)
+        // Mover al mismo �ndice de car�cter o al final de la l�nea anterior (lo que sea menor)
         int newCharIndex = Math.Min(charIndexInLine, previousLine.Length);
         int newCursorPos = previousLine.Start + newCharIndex;
 
-        // Manejar selección si Shift está presionado
+        // Manejar selecci�n si Shift est� presionado
         if (shiftPressed)
         {
             if (!HasSelection)
@@ -817,7 +801,7 @@ public abstract class TextBox<T> : Rayo.Core.View<T>, IInputHandler, IFocusable,
     }
 
     /// <summary>
-    /// Mueve el cursor una línea hacia abajo (solo para multiline)
+    /// Mueve el cursor una l�nea hacia abajo (solo para multiline)
     /// </summary>
     public virtual void MoveCursorDown(bool shiftPressed = false)
     {
@@ -828,21 +812,21 @@ public abstract class TextBox<T> : Rayo.Core.View<T>, IInputHandler, IFocusable,
         int currentLineIndex = currentLine.LineIndex;
         int charIndexInLine = _cursorPosition - currentLine.Start;
 
-        // Si estamos en la última línea, no podemos bajar más
+        // Si estamos en la �ltima l�nea, no podemos bajar m�s
         if (currentLineIndex >= _multilineLines.Count - 1)
         {
             MoveCursorToEnd(shiftPressed);
             return;
         }
 
-        // Calcular nueva posición en la línea siguiente
+        // Calcular nueva posici�n en la l�nea siguiente
         var nextLine = _multilineLines[currentLineIndex + 1];
         
-        // Mover al mismo índice de carácter o al final de la línea siguiente (lo que sea menor)
+        // Mover al mismo �ndice de car�cter o al final de la l�nea siguiente (lo que sea menor)
         int newCharIndex = Math.Min(charIndexInLine, nextLine.Length);
         int newCursorPos = nextLine.Start + newCharIndex;
 
-        // Manejar selección si Shift está presionado
+        // Manejar selecci�n si Shift est� presionado
         if (shiftPressed)
         {
             if (!HasSelection)
@@ -864,7 +848,7 @@ public abstract class TextBox<T> : Rayo.Core.View<T>, IInputHandler, IFocusable,
     }
 
     /// <summary>
-    /// Limpia la selección actual
+    /// Limpia la selecci�n actual
     /// </summary>
     protected void ClearSelection()
     {
@@ -962,7 +946,7 @@ public abstract class TextBox<T> : Rayo.Core.View<T>, IInputHandler, IFocusable,
             string clipboardText = Rayo.Core.ClipboardService.GetText() ?? string.Empty;
             if (string.IsNullOrEmpty(clipboardText)) return;
 
-            // Si hay selección, reemplazarla
+            // Si hay selecci�n, reemplazarla
             if (HasSelection)
             {
                 DeleteSelection();
@@ -994,16 +978,16 @@ public abstract class TextBox<T> : Rayo.Core.View<T>, IInputHandler, IFocusable,
     }
 
     /// <summary>
-    /// Mueve el cursor una página hacia arriba (multiline - aprox. 10 líneas)
+    /// Mueve el cursor una p�gina hacia arriba (multiline - aprox. 10 l�neas)
     /// </summary>
     public void MoveCursorPageUp(bool shiftPressed = false)
     {
         if (!IsMultiline) return;
 
-        // Dividir texto en líneas
+        // Dividir texto en l�neas
         string[] lines = Text.Split('\n');
         
-        // Encontrar línea actual
+        // Encontrar l�nea actual
         int currentLineIndex = 0;
         int accumulatedPos = 0;
         for (int i = 0; i < lines.Length; i++)
@@ -1017,17 +1001,17 @@ public abstract class TextBox<T> : Rayo.Core.View<T>, IInputHandler, IFocusable,
             accumulatedPos += lineLength + 1; // +1 por el '\n'
         }
 
-        // Calcular línea de destino (10 líneas hacia arriba, o primera línea)
+        // Calcular l�nea de destino (10 l�neas hacia arriba, o primera l�nea)
         int targetLineIndex = Math.Max(0, currentLineIndex - 10);
         
-        // Calcular nueva posición absoluta
+        // Calcular nueva posici�n absoluta
         int newCursorPos = 0;
         for (int i = 0; i < targetLineIndex; i++)
         {
             newCursorPos += lines[i].Length + 1; // +1 por el '\n'
         }
 
-        // Manejar selección
+        // Manejar selecci�n
         if (shiftPressed)
         {
             if (!HasSelection)
@@ -1049,16 +1033,16 @@ public abstract class TextBox<T> : Rayo.Core.View<T>, IInputHandler, IFocusable,
     }
 
     /// <summary>
-    /// Mueve el cursor una página hacia abajo (multiline - aprox. 10 líneas)
+    /// Mueve el cursor una p�gina hacia abajo (multiline - aprox. 10 l�neas)
     /// </summary>
     public void MoveCursorPageDown(bool shiftPressed = false)
     {
         if (!IsMultiline) return;
 
-        // Dividir texto en líneas
+        // Dividir texto en l�neas
         string[] lines = Text.Split('\n');
         
-        // Encontrar línea actual
+        // Encontrar l�nea actual
         int currentLineIndex = 0;
         int accumulatedPos = 0;
         for (int i = 0; i < lines.Length; i++)
@@ -1072,18 +1056,18 @@ public abstract class TextBox<T> : Rayo.Core.View<T>, IInputHandler, IFocusable,
             accumulatedPos += lineLength + 1; // +1 por el '\n'
         }
 
-        // Calcular línea de destino (10 líneas hacia abajo, o última línea)
+        // Calcular l�nea de destino (10 l�neas hacia abajo, o �ltima l�nea)
         int targetLineIndex = Math.Min(lines.Length - 1, currentLineIndex + 10);
         
-        // Calcular nueva posición absoluta (al final de la línea de destino)
+        // Calcular nueva posici�n absoluta (al final de la l�nea de destino)
         int newCursorPos = 0;
         for (int i = 0; i < targetLineIndex; i++)
         {
             newCursorPos += lines[i].Length + 1; // +1 por el '\n'
         }
-        newCursorPos += lines[targetLineIndex].Length; // Al final de la línea
+        newCursorPos += lines[targetLineIndex].Length; // Al final de la l�nea
 
-        // Manejar selección
+        // Manejar selecci�n
         if (shiftPressed)
         {
             if (!HasSelection)
@@ -1109,8 +1093,8 @@ public abstract class TextBox<T> : Rayo.Core.View<T>, IInputHandler, IFocusable,
     /// </summary>
     private void UpdateScrollToCursor()
     {
-        // Medir el texto hasta el cursor (cachear renderer sería ideal, pero por ahora usar lazy)
-        // Esta función se llama solo cuando el usuario mueve el cursor, no en cada render
+        // Medir el texto hasta el cursor (cachear renderer ser�a ideal, pero por ahora usar lazy)
+        // Esta funci�n se llama solo cuando el usuario mueve el cursor, no en cada render
     }
 
     protected override void Measure(float availableWidth, float availableHeight)
@@ -1172,7 +1156,7 @@ public abstract class TextBox<T> : Rayo.Core.View<T>, IInputHandler, IFocusable,
 
     public override void Render(IRenderer renderer)
     {
-        // Cachear el renderer para mediciones precisas en selección con mouse
+        // Cachear el renderer para mediciones precisas en selecci�n con mouse
         _cachedRenderer = renderer;
 
         // Safety check: Ensure cursor and selection are within bounds before rendering
@@ -1183,25 +1167,25 @@ public abstract class TextBox<T> : Rayo.Core.View<T>, IInputHandler, IFocusable,
         if (_selectionEnd > Text.Length) _selectionEnd = Text.Length;
 
         var bgColor = IsFocused ? FocusBackground : Background;
-        var borderColor = IsFocused ? FocusBorderColor : BorderColor;
+        var borderColor = IsFocused ? FocusBorderBrush : BorderBrush;
 
         // Fondo y borde con radios independientes por esquina.
-        if (BorderWidth > 0)
+        if (BorderThickness.Left > 0)
         {
             renderer.DrawPath(CreateRoundedRectPath(ComputedX, ComputedY, ComputedWidth, ComputedHeight, BorderRadius), borderColor);
 
             var innerRadius = new CornerRadius(
-                MathF.Max(0, BorderRadius.TopLeft - BorderWidth),
-                MathF.Max(0, BorderRadius.TopRight - BorderWidth),
-                MathF.Max(0, BorderRadius.BottomRight - BorderWidth),
-                MathF.Max(0, BorderRadius.BottomLeft - BorderWidth));
+                MathF.Max(0, BorderRadius.TopLeft - BorderThickness.Left),
+                MathF.Max(0, BorderRadius.TopRight - BorderThickness.Right),
+                MathF.Max(0, BorderRadius.BottomRight - BorderThickness.Right),
+                MathF.Max(0, BorderRadius.BottomLeft - BorderThickness.Left));
 
             renderer.DrawPath(
                 CreateRoundedRectPath(
-                    ComputedX + BorderWidth,
-                    ComputedY + BorderWidth,
-                    MathF.Max(0, ComputedWidth - BorderWidth * 2),
-                    MathF.Max(0, ComputedHeight - BorderWidth * 2),
+                    ComputedX + BorderThickness.Left,
+                    ComputedY + BorderThickness.Top,
+                    MathF.Max(0, ComputedWidth - BorderThickness.Horizontal),
+                    MathF.Max(0, ComputedHeight - BorderThickness.Vertical),
                     innerRadius),
                 bgColor);
         }
@@ -1210,11 +1194,11 @@ public abstract class TextBox<T> : Rayo.Core.View<T>, IInputHandler, IFocusable,
             renderer.DrawPath(CreateRoundedRectPath(ComputedX, ComputedY, ComputedWidth, ComputedHeight, BorderRadius), bgColor);
         }
 
-        // Área de contenido visible
-        float contentX = ComputedX + Padding.Left + BorderWidth;
-        float contentY = ComputedY + Padding.Top + BorderWidth;
-        float contentWidth = ComputedWidth - Padding.Horizontal - BorderWidth * 2;
-        float contentHeight = ComputedHeight - Padding.Vertical - BorderWidth * 2;
+        // �rea de contenido visible
+        float contentX = ComputedX + Padding.Left + BorderThickness.Left;
+        float contentY = ComputedY + Padding.Top + BorderThickness.Top;
+        float contentWidth = ComputedWidth - Padding.Horizontal - BorderThickness.Horizontal;
+        float contentHeight = ComputedHeight - Padding.Vertical - BorderThickness.Vertical;
 
         // Habilitar scissor test para clipping
         renderer.PushScissor(contentX, contentY, contentWidth, contentHeight);
@@ -1229,7 +1213,7 @@ public abstract class TextBox<T> : Rayo.Core.View<T>, IInputHandler, IFocusable,
 
         try
         {
-            // Dibujar selección de texto (si existe)
+            // Dibujar selecci�n de texto (si existe)
             if (HasSelection && IsFocused)
             {
                 int selStart = Math.Min(_selectionStart, _selectionEnd);
@@ -1343,7 +1327,7 @@ public abstract class TextBox<T> : Rayo.Core.View<T>, IInputHandler, IFocusable,
                     var textSize = renderer.MeasureText(processedText, FontSize);
 
                     float textX = contentX - _scrollOffsetX;
-                    // Centrar verticalmente en el área de contenido
+                    // Centrar verticalmente en el �rea de contenido
                     float textY = contentY + (contentHeight - textSize.Y) / 2;
 
                     // Dibujar texto completo con scroll offset
@@ -1351,10 +1335,10 @@ public abstract class TextBox<T> : Rayo.Core.View<T>, IInputHandler, IFocusable,
                 }
             }
 
-            // Cursor (si está enfocado y visible en el ciclo de parpadeo)
+            // Cursor (si est� enfocado y visible en el ciclo de parpadeo)
             if (IsFocused && IsCursorVisible())
             {
-                // Calcular posición del cursor
+                // Calcular posici�n del cursor
                 float cursorX, cursorY, cursorHeight;
 
                 if (IsMultiline)
@@ -1384,7 +1368,7 @@ public abstract class TextBox<T> : Rayo.Core.View<T>, IInputHandler, IFocusable,
     }
 
     /// <summary>
-    /// Implementación de IInputHandler para selección con mouse y eventos de teclado
+    /// Implementaci�n de IInputHandler para selecci�n con mouse y eventos de teclado
     /// </summary>
     public void OnFocusGained()
     {
@@ -1431,7 +1415,7 @@ public abstract class TextBox<T> : Rayo.Core.View<T>, IInputHandler, IFocusable,
                     return true;
                 }
 
-                // Click simple - iniciar selección con mouse
+                // Click simple - iniciar selecci�n con mouse
                 _lastClickTime = now;
                 _isMouseSelecting = true;
                 int clickPosition = GetCursorPositionFromMouse(args.Position.X, args.Position.Y);
@@ -1446,7 +1430,7 @@ public abstract class TextBox<T> : Rayo.Core.View<T>, IInputHandler, IFocusable,
             case InputEventType.MouseDrag:
                 if (_isMouseSelecting)
                 {
-                    // Actualizar selección mientras se arrastra
+                    // Actualizar selecci�n mientras se arrastra
                     int dragPosition = GetCursorPositionFromMouse(args.Position.X, args.Position.Y);
                     _cursorPosition = dragPosition;
                     _selectionStart = _mouseSelectionStart;
@@ -1524,7 +1508,7 @@ public abstract class TextBox<T> : Rayo.Core.View<T>, IInputHandler, IFocusable,
             }
         }
 
-        // Teclas de navegación y edición
+        // Teclas de navegaci�n y edici�n
         switch (key)
         {
             case InputKey.Backspace:
@@ -1611,7 +1595,7 @@ public abstract class TextBox<T> : Rayo.Core.View<T>, IInputHandler, IFocusable,
     }
 
     /// <summary>
-    /// Maneja repetición automática de teclas
+    /// Maneja repetici�n autom�tica de teclas
     /// </summary>
     private bool HandleKeyRepeat(InputEventArgs args)
     {
@@ -1691,48 +1675,48 @@ public abstract class TextBox<T> : Rayo.Core.View<T>, IInputHandler, IFocusable,
     }
 
     /// <summary>
-    /// Calcula la posición del cursor en el texto basado en la coordenada X del mouse
+    /// Calcula la posici�n del cursor en el texto basado en la coordenada X del mouse
     /// </summary>
     protected virtual int GetCursorPositionFromMouse(float mouseX, float mouseY)
     {
-        // Si el texto está vacío, retornar 0
+        // Si el texto est� vac�o, retornar 0
         if (string.IsNullOrEmpty(Text))
         {
             return 0;
         }
 
-        // Calcular el área de contenido
-        float contentX = ComputedX + Padding.Left + BorderWidth;
-        float contentY = ComputedY + Padding.Top + BorderWidth;
+        // Calcular el �rea de contenido
+        float contentX = ComputedX + Padding.Left + BorderThickness.Left;
+        float contentY = ComputedY + Padding.Top + BorderThickness.Top;
 
         if (IsMultiline)
         {
-            // Multiline: determinar línea y posición dentro de la línea
+            // Multiline: determinar l�nea y posici�n dentro de la l�nea
             float lineHeight = FontSize * 1.2f;
             float localY = mouseY - contentY + _scrollOffsetY;
 
-            // Determinar qué línea se clickeó
+            // Determinar qu� l�nea se clicke�
             int clickedLine = Math.Max(0, (int)(localY / lineHeight));
             EnsureMultilineCache();
             clickedLine = Math.Min(clickedLine, _multilineLines.Count - 1);
             var lineInfo = _multilineLines[clickedLine];
             int lineStartPos = lineInfo.Start;
-            // Calcular posición X local dentro de la línea
+            // Calcular posici�n X local dentro de la l�nea
             float localX = mouseX - contentX + _scrollOffsetX;
 
-            // Si está antes del texto de la línea, cursor al inicio de la línea
+            // Si est� antes del texto de la l�nea, cursor al inicio de la l�nea
             if (localX <= 0)
             {
                 return lineStartPos;
             }
 
-            // Si está después del texto de la línea, cursor al final de la línea
+            // Si est� despu�s del texto de la l�nea, cursor al final de la l�nea
             if (localX >= lineInfo.Width)
             {
                 return lineStartPos + lineInfo.Length;
             }
 
-            // Buscar posición dentro de la línea
+            // Buscar posici�n dentro de la l�nea
             for (int i = 0; i <= lineInfo.Length; i++)
             {
                 float widthUpTo = GetPrefixWidth(lineInfo, i);
@@ -1755,7 +1739,7 @@ public abstract class TextBox<T> : Rayo.Core.View<T>, IInputHandler, IFocusable,
         }
         else
         {
-            // Single line (lógica original)
+            // Single line (l�gica original)
             float localX = mouseX - contentX + _scrollOffsetX;
 
             if (localX <= 0)
@@ -1796,7 +1780,7 @@ public abstract class TextBox<T> : Rayo.Core.View<T>, IInputHandler, IFocusable,
     }
 
     /// <summary>
-    /// Mide el ancho del texto (usa renderer cacheado si está disponible)
+    /// Mide el ancho del texto (usa renderer cacheado si est� disponible)
     /// </summary>
     protected float MeasureTextWidth(string text)
     {
@@ -1818,7 +1802,7 @@ public abstract class TextBox<T> : Rayo.Core.View<T>, IInputHandler, IFocusable,
         if (_measureWidthCache.TryGetValue(text, out float cachedWidth))
             return cachedWidth;
 
-        // Si tenemos renderer cacheado, usar medición precisa
+        // Si tenemos renderer cacheado, usar medici�n precisa
         float measuredWidth;
         if (_cachedRenderer != null)
         {
@@ -1833,8 +1817,8 @@ public abstract class TextBox<T> : Rayo.Core.View<T>, IInputHandler, IFocusable,
         }
         else
         {
-            // Fallback: aproximación con ancho promedio de carácter
-            // Usar 8 pixels por carácter como estimación
+            // Fallback: aproximaci�n con ancho promedio de car�cter
+            // Usar 8 pixels por car�cter como estimaci�n
             measuredWidth = text.Length * (FontSize * 0.6f);
         }
 
@@ -1855,12 +1839,12 @@ public abstract class TextBox<T> : Rayo.Core.View<T>, IInputHandler, IFocusable,
         float cursorX = GetCursorOffsetWithinLine(safeCursorPos);
         float cursorLocalX = cursorX - _scrollOffsetX;
 
-        // Cursor is right of the visible area — scroll right
+        // Cursor is right of the visible area � scroll right
         if (cursorLocalX > visibleWidth - 10)
         {
             _scrollOffsetX = cursorX - visibleWidth + 10;
         }
-        // Cursor is left of the visible area — scroll left
+        // Cursor is left of the visible area � scroll left
         else if (cursorLocalX < 10)
         {
             _scrollOffsetX = Math.Max(0, cursorX - 10);

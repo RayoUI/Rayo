@@ -1263,11 +1263,11 @@ public class UITree
         float y = element.ComputedY;
         float width = element.ComputedWidth;
         float height = element.ComputedHeight;
-        var radius = element.BorderRadius;
+        var radius = element.VisualCornerRadius;
 
         if (element is Rayo.Controls.Frame frame)
         {
-            float inset = Math.Max(0, frame.BorderWidth);
+            float inset = Math.Max(0, frame.BorderThickness.Left);
             x += inset;
             y += inset;
             width -= inset * 2f;

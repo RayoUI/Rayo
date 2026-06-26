@@ -15,7 +15,7 @@ using System.Numerics;
 /// ComboBox/Dropdown component for selecting from a list of options.
 /// Uses IPointerHandler for modern pointer event handling.
 /// </summary>
-public class ComboBox : Rayo.Core.CompositeView<ComboBox>,
+public class ComboBox : BorderCompositeView<ComboBox>,
     Rayo.Core.Input.IPointerHandler,
     IGlobalPointerHandler
 {
@@ -75,15 +75,6 @@ public class ComboBox : Rayo.Core.CompositeView<ComboBox>,
             _dropdownButton?.Background(value);
         }
     }
-    #endregion
-
-    #region BorderColor
-    [PaintProperty]
-    public Brush BorderColor
-    {
-        get => field;
-        set => this.SetProperty(ref field, value, () => { _dropdownButton?.BorderColor(value); });
-    } = new Color(200, 200, 200);
     #endregion
 
     #region HoverColor
@@ -282,6 +273,8 @@ public class ComboBox : Rayo.Core.CompositeView<ComboBox>,
         Background = Color.White;
         Width = 200;
         Height = 32;
+        BorderBrush = new Color(200, 200, 200);
+        BorderThickness = 1;
         BuildComponents();
 
         // Add the dropdown button as a child so it's part of the UI tree
@@ -289,6 +282,20 @@ public class ComboBox : Rayo.Core.CompositeView<ComboBox>,
         {
             AddChild(_dropdownButton);
         }
+    }
+
+    protected override void OnBorderBrushChanged()
+    {
+        base.OnBorderBrushChanged();
+        _dropdownButton?.BorderBrush(BorderBrush);
+        _dropdownFrame?.BorderBrush(BorderBrush);
+    }
+
+    protected override void OnBorderThicknessChanged()
+    {
+        base.OnBorderThicknessChanged();
+        _dropdownButton?.BorderThickness(BorderThickness);
+        _dropdownFrame?.BorderThickness(BorderThickness);
     }
 
     private void BuildComponents()
@@ -320,8 +327,8 @@ public class ComboBox : Rayo.Core.CompositeView<ComboBox>,
 
         _dropdownButton = (Frame)new Frame()
             .Background(Background)
-            .BorderColor(BorderColor)
-            .BorderWidth(1)
+            .BorderBrush(BorderBrush)
+            .BorderThickness(BorderThickness)
             .Padding(new Thickness(12, 8, 12, 8))
             .HorizontalAlignment(HorizontalAlignment.Stretch)
             .VerticalAlignment(VerticalAlignment.Stretch)
@@ -356,7 +363,7 @@ public class ComboBox : Rayo.Core.CompositeView<ComboBox>,
                 TextColor = isSelected ? Color.White : TextColor,
                 HoverBackground = isSelected ? SelectedColor : HoverColor,
                 PressedBackground = isSelected ? SelectedColor : HoverColor,
-                BorderWidth = 0,
+                BorderThickness = 0,
                 Padding = new Thickness(8, 4, 8, 4),
                 FontSize = 14
             };
@@ -431,8 +438,8 @@ public class ComboBox : Rayo.Core.CompositeView<ComboBox>,
         _dropdownFrame.Width = dropdownWidth;
         _dropdownFrame.Height = dropdownHeight;
         _dropdownFrame.Background = Background;
-        _dropdownFrame.BorderColor = BorderColor;
-        _dropdownFrame.BorderWidth = 1;
+        _dropdownFrame.BorderBrush = BorderBrush;
+        _dropdownFrame.BorderThickness = BorderThickness;
         _dropdownFrame.Padding = new Thickness(0);  // FIX: Remove padding so content fits exactly
         _dropdownFrame.HorizontalAlignment = HorizontalAlignment.Left;  // Prevent stretch
         _dropdownFrame.VerticalAlignment = VerticalAlignment.Top;        // Prevent stretch

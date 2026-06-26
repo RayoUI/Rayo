@@ -203,7 +203,7 @@ public class GalleryBuilder : Component
                             .Height(44)
                             .Background(Color.Transparent)
                             .HoverBackground(new Color(60, 60, 65))
-                            .BorderWidth(0)
+                            .BorderThickness(0)
                             .OnTapped(() =>
                             {
                                 _navigationDrawer?.Open();

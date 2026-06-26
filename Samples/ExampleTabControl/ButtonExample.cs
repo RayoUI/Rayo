@@ -13,8 +13,8 @@ internal class ButtonExample : IUIBuilder
         new Button()
             .Size(new Size(150, 50))
             .Background(new Color(34, 197, 94))
-            .BorderColor(Color.Black)
-            .BorderWidth(4)
+            .BorderBrush(Color.Black)
+            .BorderThickness(4)
             .BorderRadius(12)
             .Text("Click Me")
             .OnTapped(() => Console.WriteLine("Event click"));

@@ -100,9 +100,9 @@ public class ButtonGroupPage : Component
                         .HoverBackground(new Color(241, 245, 249))
                         .PressedBackground(new Color(226, 232, 240))
                         .SelectedBackground(new Color(16, 185, 129))
-                        .SelectedBorderColor(new Color(5, 150, 105))
+                        .SelectedBorderBrush(new Color(5, 150, 105))
                         .SelectedTextColor(Color.White)
-                        .BorderColor(new Color(148, 163, 184))
+                        .BorderBrush(new Color(148, 163, 184))
                         .TextColor(new Color(51, 65, 85))
                 )
             );

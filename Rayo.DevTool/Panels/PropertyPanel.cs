@@ -103,7 +103,7 @@ public class PropertyFrame : Component
             .Background(new Color(45, 45, 52));
 
     // -------------------------------------------------------------------------
-    // Property row — two-column layout: fixed label | stretching value
+    // Property row � two-column layout: fixed label | stretching value
     // -------------------------------------------------------------------------
 
     private VisualElement BuildPropertyRow(PropertyInfo prop)
@@ -116,14 +116,14 @@ public class PropertyFrame : Component
             .Columns(GridLength.Pixels(LabelColumnWidth), GridLength.Star)
             .HorizontalAlignment(HorizontalAlignment.Stretch)
             .AddChild(
-                // Left column: property name — fixed width, clipped
+                // Left column: property name � fixed width, clipped
                 new Label(prop.Name)
                     .Padding(new Thickness(6, 4))
                     .Foreground(new Color(156, 220, 254))
                     .FontSize(11),
                 0, 0)
             .AddChild(
-                // Right column: editor — stretch child fills remaining space
+                // Right column: editor � stretch child fills remaining space
                 editor,
                 0, 1);
     }
@@ -277,8 +277,8 @@ public class PropertyFrame : Component
             .FontSize(10)
             .Background(new Color(40, 40, 46))
             .HoverBackground(new Color(55, 55, 62))
-            .BorderColor(new Color(60, 60, 68))
-            .BorderWidth(1)
+            .BorderBrush(new Color(60, 60, 68))
+            .BorderThickness(1)
             .BorderRadius(new CornerRadius(2));
 
         button.OnTapped(() =>
@@ -318,7 +318,7 @@ public class PropertyFrame : Component
             .ItemTextAlignment(HorizontalAlignment.Left)
             .HorizontalAlignment(HorizontalAlignment.Stretch)
             .Background(new Color(40, 40, 46))
-            .BorderColor(new Color(60, 60, 68))
+            .BorderBrush(new Color(60, 60, 68))
             .TextColor(Color.White)
             .HoverColor(new Color(55, 55, 62))
             .SelectedColor(ColorDefault.Primary);
@@ -570,7 +570,7 @@ public class PropertyFrame : Component
             "Opacity" => (0f, 1f),
             "Scale" => (0f, null),
             "Width" or "Height" or "MinWidth" or "MinHeight" or "MaxWidth" or "MaxHeight" or
-            "BorderWidth" or "StrokeWidth" or "StrokeThickness" or
+            "StrokeWidth" or "StrokeThickness" or
             "FontSize" or "Spacing" or "ItemSpacing" or "RowSpacing" or "ColumnSpacing" or
             "Gap" or "RowGap" or "Padding" or "Margin" or
             "Radius" or "RadiusX" or "RadiusY" or "InnerRadius" or
@@ -601,7 +601,7 @@ public class PropertyFrame : Component
             "Opacity" => 0.01d,
             "Rotation" => 1d,
             "Scale" => 0.05d,
-            "FontSize" or "BorderWidth" or "StrokeWidth" or "StrokeThickness" or
+            "FontSize" or "StrokeWidth" or "StrokeThickness" or
             "Spacing" or "ItemSpacing" or "RowSpacing" or "ColumnSpacing" or
             "Gap" or "RowGap" or "CornerRadius" or "BorderRadius" => 0.5d,
             _ => 1d

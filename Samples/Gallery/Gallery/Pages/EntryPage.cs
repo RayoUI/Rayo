@@ -159,7 +159,7 @@ public class EntryPage : Component
                                 .Background(new Color(20, 30, 50))
                                 .TextColor(new Color(200, 220, 255))
                                 .PlaceholderColor(new Color(100, 120, 160))
-                                .BorderColor(ColorDefault.Primary),
+                                .BorderBrush(ColorDefault.Primary),
 
                             new Label("Larger font (18px):")
                                 .Foreground(ColorDefault.Secondary),
@@ -175,7 +175,7 @@ public class EntryPage : Component
                             new Entry()
                                 .Width(350)
                                 .Placeholder("Minimal style...")
-                                .BorderWidth(0)
+                                .BorderThickness(0)
                                 .Background(new Color(30, 30, 35))
                         )
                 ),

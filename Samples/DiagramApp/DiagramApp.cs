@@ -27,8 +27,8 @@ public class DiagramApp : Component
     {
         return new Frame()
             .Background(new Color(30, 34, 40))
-            .BorderColor(new Color(48, 54, 64))
-            .BorderWidth(1)
+            .BorderBrush(new Color(48, 54, 64))
+            .BorderThickness(1)
             .Padding(new Thickness(16))
             .Content(
                 new VStack()
@@ -95,8 +95,8 @@ public class DiagramApp : Component
             .Background(new Color(84, 92, 104))
             .HoverBackground(new Color(104, 114, 128))
             .PressedBackground(new Color(66, 72, 82))
-            .BorderColor(new Color(112, 122, 138))
-            .BorderWidth(1.5f)
+            .BorderBrush(new Color(112, 122, 138))
+            .BorderThickness(1.5f)
             .OnTapped(ConfirmClear);
 
         return button.WithTooltip("Clear", TooltipPlacement.Bottom);
@@ -138,7 +138,7 @@ public class DiagramApp : Component
             .Background(isActive ? new Color(62, 126, 214) : new Color(54, 64, 78))
             .HoverBackground(isActive ? new Color(76, 146, 238) : new Color(68, 82, 100))
             .PressedBackground(isActive ? new Color(46, 100, 178) : new Color(42, 50, 62))
-            .BorderColor(isActive ? new Color(246, 196, 92) : new Color(84, 104, 130))
-            .BorderWidth(isActive ? 2.5f : 1.5f);
+            .BorderBrush(isActive ? new Color(246, 196, 92) : new Color(84, 104, 130))
+            .BorderThickness(isActive ? 2.5f : 1.5f);
     }
 }

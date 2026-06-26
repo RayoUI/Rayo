@@ -40,7 +40,7 @@ public class DevToolAgent : IDisposable, IGlobalPointerHandler
     private bool _isRunning;
     private DateTime _lastTreeStructureNotification = DateTime.MinValue;
     private readonly TimeSpan _treeChangeDebounceInterval = TimeSpan.FromMilliseconds(500);
-    // Serializes all stream writes — NetworkStream does not support concurrent WriteAsync calls.
+    // Serializes all stream writes � NetworkStream does not support concurrent WriteAsync calls.
     private readonly SemaphoreSlim _sendLock = new SemaphoreSlim(1, 1);
     private bool _isLogBridgeSubscribed;
 
@@ -99,7 +99,7 @@ public class DevToolAgent : IDisposable, IGlobalPointerHandler
 
     private async Task AcceptClientsAsync()
     {
-        Log("AcceptClientsAsync — waiting for connections...");
+        Log("AcceptClientsAsync � waiting for connections...");
         while (_isRunning && !_cts!.Token.IsCancellationRequested)
         {
             try
@@ -119,22 +119,22 @@ public class DevToolAgent : IDisposable, IGlobalPointerHandler
 
                 await HandleClientAsync();
 
-                // Client disconnected — clean up so AcceptTcpClientAsync can
+                // Client disconnected � clean up so AcceptTcpClientAsync can
                 // accept the next connection without leaving a half-open socket.
-                Log("HandleClientAsync returned — cleaning up, waiting for next connection.");
+                Log("HandleClientAsync returned � cleaning up, waiting for next connection.");
                 CloseCurrentClient();
             }
             catch (ObjectDisposedException)
             {
-                Log("AcceptClientsAsync — listener disposed, stopping.");
+                Log("AcceptClientsAsync � listener disposed, stopping.");
                 break;
             }
             catch (Exception ex)
             {
-                Log($"AcceptClientsAsync — error: {ex.GetType().Name}: {ex.Message}");
+                Log($"AcceptClientsAsync � error: {ex.GetType().Name}: {ex.Message}");
             }
         }
-        Log("AcceptClientsAsync — loop ended.");
+        Log("AcceptClientsAsync � loop ended.");
     }
 
     /// <summary>
@@ -176,7 +176,7 @@ public class DevToolAgent : IDisposable, IGlobalPointerHandler
         var buffer = new byte[8192];
         var messageBuffer = new StringBuilder();
 
-        Log("HandleClientAsync — read loop started.");
+        Log("HandleClientAsync � read loop started.");
         while (_client?.Connected == true && !_cts!.Token.IsCancellationRequested)
         {
             try
@@ -184,7 +184,7 @@ public class DevToolAgent : IDisposable, IGlobalPointerHandler
                 var bytesRead = await _stream!.ReadAsync(buffer, 0, buffer.Length, _cts.Token);
                 if (bytesRead == 0)
                 {
-                    Log("HandleClientAsync — 0 bytes read (graceful close by client).");
+                    Log("HandleClientAsync � 0 bytes read (graceful close by client).");
                     break;
                 }
 
@@ -208,17 +208,17 @@ public class DevToolAgent : IDisposable, IGlobalPointerHandler
             }
             catch (OperationCanceledException)
             {
-                Log("HandleClientAsync — cancelled (server shutting down).");
+                Log("HandleClientAsync � cancelled (server shutting down).");
                 break;
             }
             catch (IOException ex)
             {
-                Log($"HandleClientAsync — IOException (client disconnected): {ex.Message}");
+                Log($"HandleClientAsync � IOException (client disconnected): {ex.Message}");
                 break;
             }
             catch (Exception ex)
             {
-                Log($"HandleClientAsync — unexpected error: {ex.GetType().Name}: {ex.Message}");
+                Log($"HandleClientAsync � unexpected error: {ex.GetType().Name}: {ex.Message}");
             }
         }
 
@@ -256,7 +256,7 @@ public class DevToolAgent : IDisposable, IGlobalPointerHandler
         }
         catch (Exception ex)
         {
-            Log($"ProcessMessageAsync — error: {ex.GetType().Name}: {ex.Message}");
+            Log($"ProcessMessageAsync � error: {ex.GetType().Name}: {ex.Message}");
         }
     }
 
@@ -276,7 +276,7 @@ public class DevToolAgent : IDisposable, IGlobalPointerHandler
         }
         catch (Exception ex)
         {
-            Log($"SendMessageAsync — send failed ({message.GetType().Name}): {ex.GetType().Name}: {ex.Message}");
+            Log($"SendMessageAsync � send failed ({message.GetType().Name}): {ex.GetType().Name}: {ex.Message}");
         }
         finally
         {
@@ -554,8 +554,8 @@ public class DevToolAgent : IDisposable, IGlobalPointerHandler
             "DesiredWidth" or "DesiredHeight" => "Computed",
             "Margin" or "Padding" => "Spacing",
             "HorizontalAlignment" or "VerticalAlignment" => "Alignment",
-            "Background" or "Foreground" or "BorderColor" => "Appearance",
-            "BorderWidth" or "BorderRadius" => "Border",
+            "Background" or "Foreground" => "Appearance",
+            "BorderBrush" or "BorderThickness" or "BorderRadius" or "CornerRadius" => "Border",
             "IsVisible" or "IsEnabled" or "IsFocused" => "State",
             "Name" or "Tag" => "Identity",
             _ => "General"
@@ -771,7 +771,7 @@ public class DevToolAgent : IDisposable, IGlobalPointerHandler
             "Opacity" => (0d, 1d),
             "Scale" => (0d, null),
             "Width" or "Height" or "MinWidth" or "MinHeight" or "MaxWidth" or "MaxHeight" or
-            "BorderWidth" or "StrokeWidth" or "StrokeThickness" or
+            "StrokeWidth" or "StrokeThickness" or
             "FontSize" or "Spacing" or "ItemSpacing" or "RowSpacing" or "ColumnSpacing" or
             "Gap" or "RowGap" or
             "Radius" or "RadiusX" or "RadiusY" or "InnerRadius" or
@@ -1420,16 +1420,16 @@ public class DevToolAgent : IDisposable, IGlobalPointerHandler
     /// </summary>
     private void OnTreeChanged()
     {
-        // Do NOT clear _elementCache here — HandleGetTree() already clears it and
+        // Do NOT clear _elementCache here � HandleGetTree() already clears it and
         // Dictionary is not thread-safe for concurrent Clear()+read from the TCP thread.
         ClearTemporaryHighlights();
 
         // Suppress TreeStructureChanged notifications for the next debounce window.
-        // This prevents premature GetTree requests before EnsureBuilt() has run —
+        // This prevents premature GetTree requests before EnsureBuilt() has run �
         // the only relevant notification will be the delayed TreeChangedEvent below.
         _lastTreeStructureNotification = DateTime.UtcNow;
 
-        Log($"OnTreeChanged — IsConnected={IsConnected}. Scheduling delayed TreeChangedEvent (350ms).");
+        Log($"OnTreeChanged � IsConnected={IsConnected}. Scheduling delayed TreeChangedEvent (350ms).");
 
         if (IsConnected)
         {
@@ -1437,16 +1437,16 @@ public class DevToolAgent : IDisposable, IGlobalPointerHandler
             {
                 try
                 {
-                    // Wait for EnsureBuilt() to run (lazy — triggered on next layout frame).
+                    // Wait for EnsureBuilt() to run (lazy � triggered on next layout frame).
                     // 350 ms is enough to cover one or two render frames at 60 fps.
                     await Task.Delay(350);
-                    Log("OnTreeChanged — delay elapsed, sending TreeChangedEvent.");
+                    Log("OnTreeChanged � delay elapsed, sending TreeChangedEvent.");
                     await SendMessageAsync(new TreeChangedEvent());
-                    Log("OnTreeChanged — TreeChangedEvent sent.");
+                    Log("OnTreeChanged � TreeChangedEvent sent.");
                 }
                 catch (Exception ex)
                 {
-                    Log($"OnTreeChanged — error sending TreeChangedEvent: {ex.Message}");
+                    Log($"OnTreeChanged � error sending TreeChangedEvent: {ex.Message}");
                 }
             });
         }
@@ -1458,7 +1458,7 @@ public class DevToolAgent : IDisposable, IGlobalPointerHandler
     /// </summary>
     private void OnOverlaysChanged()
     {
-        Log($"OnOverlaysChanged — IsConnected={IsConnected}.");
+        Log($"OnOverlaysChanged � IsConnected={IsConnected}.");
         if (IsConnected)
         {
             _ = Task.Run(async () =>
@@ -1466,11 +1466,11 @@ public class DevToolAgent : IDisposable, IGlobalPointerHandler
                 try
                 {
                     await SendMessageAsync(new OverlaysChangedEvent());
-                    Log("OnOverlaysChanged — OverlaysChangedEvent sent.");
+                    Log("OnOverlaysChanged � OverlaysChangedEvent sent.");
                 }
                 catch (Exception ex)
                 {
-                    Log($"OnOverlaysChanged — error: {ex.Message}");
+                    Log($"OnOverlaysChanged � error: {ex.Message}");
                 }
             });
         }
@@ -1514,17 +1514,17 @@ public class DevToolAgent : IDisposable, IGlobalPointerHandler
                     if (isInMainTree)
                     {
                         await SendMessageAsync(new TreeChangedEvent());
-                        Log("OnTreeStructureChanged — TreeChangedEvent sent (main tree).");
+                        Log("OnTreeStructureChanged � TreeChangedEvent sent (main tree).");
                     }
                     else if (isInOverlay)
                     {
                         await SendMessageAsync(new OverlaysChangedEvent());
-                        Log("OnTreeStructureChanged — OverlaysChangedEvent sent (overlay).");
+                        Log("OnTreeStructureChanged � OverlaysChangedEvent sent (overlay).");
                     }
                 }
                 catch (Exception ex)
                 {
-                    Log($"OnTreeStructureChanged — error: {ex.Message}");
+                    Log($"OnTreeStructureChanged � error: {ex.Message}");
                 }
             });
         }
@@ -1584,7 +1584,7 @@ public class DevToolAgent : IDisposable, IGlobalPointerHandler
                 }
                 catch (Exception ex)
                 {
-                    Log($"SendLogMessage — error: {ex.Message}");
+                    Log($"SendLogMessage � error: {ex.Message}");
                 }
             });
         }

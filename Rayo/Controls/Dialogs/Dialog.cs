@@ -49,7 +49,7 @@ public class Dialog : Component
 
     #region BorderRadius
     private readonly int _borderRadius = 8;
-    public new int BorderRadius
+    public int BorderRadius
     {
         get => _borderRadius;
     }
@@ -113,7 +113,7 @@ public class Dialog : Component
         dialogBox.Width(420);
         dialogBox.Background = new SolidColorBrush(new Color(45, 45, 48));
         dialogBox.BorderRadius(_borderRadius);
-        dialogBox.BorderWidth = 1;
+        dialogBox.BorderThickness = 1;
         dialogBox.Padding(new Thickness(0));
         dialogBox.HorizontalAlignment(HorizontalAlignment.Center);
         dialogBox.VerticalAlignment(VerticalAlignment.Center);
@@ -219,7 +219,7 @@ public class Dialog : Component
         button.HoverBackground(new Color(92, 92, 96));
         button.PressedBackground(new Color(58, 58, 62));
         button.BorderRadius(4);
-        button.BorderWidth(0);
+        button.BorderThickness(0);
         button.OnTapped(() => Canceled?.Invoke());
         return button;
     }

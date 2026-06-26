@@ -5,6 +5,7 @@ using Rayo.Layout;
 using Rayo.Reactivity;
 using Rayo.Rendering;
 using Rayo.Rendering.Brushes;
+using Rayo.Rendering.Graphics.VectorGraphics;
 
 /// <summary>
 /// Badge variants for different visual styles
@@ -46,15 +47,13 @@ public enum BadgeShape
 /// Badge - A small visual indicator for notifications, counts, or status labels.
 /// Can be used standalone or positioned over other elements.
 /// </summary>
-public class Badge : CompositeView<Badge>
+public class Badge : BorderCompositeView<Badge>
 {
     // Internal state for Text/Count mutual exclusivity
     private string _textValue = "";
     private int? _countValue = null;
     // Backing fields for reactive properties (previously generated)
     private Brush _textColor = Color.White;
-    private Brush _borderColor = Color.Transparent;
-    private float _borderWidth;
     private float _fontSize;
     private BadgeVariant _variant;
     private BadgeSize _badgeSize;
@@ -70,24 +69,6 @@ public class Badge : CompositeView<Badge>
     {
         get => _textColor;
         set => this.SetProperty(ref _textColor, value);
-    }
-    #endregion
-
-    #region BorderColor
-    [PaintProperty]
-    public Brush BorderColor
-    {
-        get => _borderColor;
-        set => this.SetProperty(ref _borderColor, value);
-    }
-    #endregion
-
-    #region BorderWidth
-    [PaintProperty]
-    public float BorderWidth
-    {
-        get => _borderWidth;
-        set => this.SetProperty(ref _borderWidth, value);
     }
     #endregion
 
@@ -184,8 +165,8 @@ public class Badge : CompositeView<Badge>
         // Initialize reactive properties
         Background = new Color(239, 68, 68);
         TextColor = Color.White;
-        BorderColor = Background;
-        BorderWidth = 0;
+        BorderBrush = Background;
+        BorderThickness = 0;
         FontSize = 12;
         Variant = BadgeVariant.Solid;
         BadgeSize = BadgeSize.Medium;
@@ -304,18 +285,12 @@ public class Badge : CompositeView<Badge>
         float width = ComputedWidth;
         float height = ComputedHeight;
 
-        // Calculate corner radius based on shape
-        float cornerRadius = Shape switch
-        {
-            BadgeShape.Rounded => height / 2,
-            BadgeShape.Square => 4f,
-            BadgeShape.Circle => Math.Max(width, height) / 2,
-            _ => height / 2
-        };
+        var cornerRadius = GetEffectiveCornerRadius(width, height);
+        bool uniformRadius = IsUniformRadius(cornerRadius);
 
         // Get brushes based on variant
         Brush bgBrush, fgBrush, borderBrush;
-        float borderWidth = BorderWidth;
+        float borderWidth = BorderThickness.Left;
 
         switch (Variant)
         {
@@ -323,7 +298,7 @@ public class Badge : CompositeView<Badge>
                 bgBrush = Color.Transparent;
                 fgBrush = Background;
                 borderBrush = Background;
-                borderWidth = Math.Max(1f, BorderWidth);
+                borderWidth = Math.Max(1f, BorderThickness.Left);
                 break;
 
             case BadgeVariant.Subtle:
@@ -337,20 +312,49 @@ public class Badge : CompositeView<Badge>
             default:
                 bgBrush = Background;
                 fgBrush = TextColor;
-                borderBrush = BorderColor;
+                borderBrush = BorderBrush;
                 break;
         }
 
         // Draw background
         if (bgBrush.PrimaryColor.A > 0)
         {
-            renderer.DrawRoundedRect(x, y, width, height, cornerRadius, bgBrush);
+            if (uniformRadius)
+            {
+                renderer.DrawRoundedRect(x, y, width, height, cornerRadius.TopLeft, bgBrush);
+            }
+            else
+            {
+                renderer.DrawPath(CreateRoundedRectPath(x, y, width, height, cornerRadius), bgBrush);
+            }
         }
 
         // Draw border
         if (borderWidth > 0 && borderBrush.PrimaryColor.A > 0)
         {
-            renderer.DrawRoundedRectOutline(x, y, width, height, cornerRadius, borderWidth, borderBrush);
+            if (uniformRadius)
+            {
+                renderer.DrawRoundedRectOutline(x, y, width, height, cornerRadius.TopLeft, borderWidth, borderBrush);
+            }
+            else
+            {
+                float halfBorder = borderWidth / 2f;
+                var borderRadius = new CornerRadius(
+                    Math.Max(0, cornerRadius.TopLeft - halfBorder),
+                    Math.Max(0, cornerRadius.TopRight - halfBorder),
+                    Math.Max(0, cornerRadius.BottomRight - halfBorder),
+                    Math.Max(0, cornerRadius.BottomLeft - halfBorder));
+
+                renderer.DrawPathStroke(
+                    CreateRoundedRectPath(
+                        x + halfBorder,
+                        y + halfBorder,
+                        width - borderWidth,
+                        height - borderWidth,
+                        borderRadius),
+                    borderBrush,
+                    borderWidth);
+            }
         }
 
         // Draw text (not for dot mode)
@@ -370,6 +374,44 @@ public class Badge : CompositeView<Badge>
             }
         }
     }
+
+    private CornerRadius GetEffectiveCornerRadius(float width, float height)
+    {
+        if (HasAnyRadius(BorderRadius))
+        {
+            return BorderRadius;
+        }
+
+        float radius = Shape switch
+        {
+            BadgeShape.Rounded => height / 2,
+            BadgeShape.Square => 4f,
+            BadgeShape.Circle => Math.Max(width, height) / 2,
+            _ => height / 2
+        };
+
+        return new CornerRadius(radius);
+    }
+
+    private static VectorPath CreateRoundedRectPath(float x, float y, float width, float height, CornerRadius radius) =>
+        VectorPath.RoundedRectangle(
+            x,
+            y,
+            Math.Max(0, width),
+            Math.Max(0, height),
+            radius.TopLeft,
+            radius.TopRight,
+            radius.BottomRight,
+            radius.BottomLeft);
+
+    private static bool HasAnyRadius(CornerRadius radius) =>
+        radius.TopLeft > 0 || radius.TopRight > 0 ||
+        radius.BottomRight > 0 || radius.BottomLeft > 0;
+
+    private static bool IsUniformRadius(CornerRadius radius) =>
+        radius.TopLeft == radius.TopRight &&
+        radius.TopRight == radius.BottomRight &&
+        radius.BottomRight == radius.BottomLeft;
 }
 
 /// <summary>

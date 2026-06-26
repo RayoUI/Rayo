@@ -11,11 +11,11 @@ using Rayo.Rendering.Brushes;
 /// <summary>
 /// Root Component for the Direct3D 11 sample.
 /// Demonstrates embedding a live 3D scene inside a Rayo reactive layout.
-/// DirectXScene3D owns its own D3D11 device — the UI itself uses SkiaSharp.
+/// DirectXScene3D owns its own D3D11 device � the UI itself uses SkiaSharp.
 /// </summary>
 public class DirectXViewApp : Component
 {
-    // ── Reactive state ────────────────────────────────────────────────────────
+    // -- Reactive state --------------------------------------------------------
 
     private readonly Signal<float> _animSpeed = new(1.0f);
     private readonly Signal<bool>  _animate   = new(true);
@@ -38,7 +38,7 @@ public class DirectXViewApp : Component
         _speedLabel = new Computed<string>(() => $"Speed: {_animSpeed.Value:F1}x");
     }
 
-    // ── Build ─────────────────────────────────────────────────────────────────
+    // -- Build -----------------------------------------------------------------
 
     public override VisualElement Build() =>
         new VStack()
@@ -51,7 +51,7 @@ public class DirectXViewApp : Component
                 BuildControlPanel()
             );
 
-    // ── Header ────────────────────────────────────────────────────────────────
+    // -- Header ----------------------------------------------------------------
 
     private static VisualElement BuildHeader() =>
         new VStack()
@@ -67,12 +67,12 @@ public class DirectXViewApp : Component
                     .Foreground(new Color(140, 144, 168))
             );
 
-    // ── Scene area ────────────────────────────────────────────────────────────
+    // -- Scene area ------------------------------------------------------------
 
     private VisualElement BuildSceneArea() =>
         new Frame()
             .BorderRadius(10)
-            .BorderColor(new Color(45, 50, 80))
+            .BorderBrush(new Color(45, 50, 80))
             .Margin(new Thickness(16, 8))
             .HorizontalAlignment(HorizontalAlignment.Stretch)
             .VerticalAlignment(VerticalAlignment.Stretch)
@@ -87,7 +87,7 @@ public class DirectXViewApp : Component
                     .MaxFps(_maxFps)
             );
 
-    // ── Control panel ─────────────────────────────────────────────────────────
+    // -- Control panel ---------------------------------------------------------
 
     private VisualElement BuildControlPanel() =>
         new VStack()

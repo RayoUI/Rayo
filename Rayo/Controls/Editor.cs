@@ -114,7 +114,7 @@ public class Editor : TextBox<Editor>, IScrollable
 
     private float GetTextAreaWidth()
     {
-        float width = ComputedWidth - Padding.Horizontal - BorderWidth * 2;
+        float width = ComputedWidth - Padding.Horizontal - BorderThickness.Horizontal;
         if (ShowScrollbar)
         {
             width -= ScrollbarWidth + 4;
@@ -339,7 +339,7 @@ public class Editor : TextBox<Editor>, IScrollable
         get
         {
             if (WordWrap)
-                return ComputedWidth - Padding.Horizontal - BorderWidth * 2;
+                return ComputedWidth - Padding.Horizontal - BorderThickness.Horizontal;
 
             // Re-measure when text shaping inputs change.
             if (!ReferenceEquals(Text, _lastMaxLineText) ||
@@ -384,7 +384,7 @@ public class Editor : TextBox<Editor>, IScrollable
     {
         if (WordWrap) return;
 
-        float viewportWidth = ComputedWidth - Padding.Horizontal - BorderWidth * 2 - (ShowScrollbar ? ScrollbarWidth + 4 : 0);
+        float viewportWidth = ComputedWidth - Padding.Horizontal - BorderThickness.Horizontal - (ShowScrollbar ? ScrollbarWidth + 4 : 0);
         float maxScroll = Math.Max(0, ContentWidth - viewportWidth);
 
         float newOffset = _scrollOffsetX + deltaX;
@@ -403,7 +403,7 @@ public class Editor : TextBox<Editor>, IScrollable
     /// <param name="deltaY">Amount to scroll (positive = down, negative = up)</param>
     public void Scroll(float deltaY)
     {
-        float viewportHeight = ComputedHeight - Padding.Vertical - BorderWidth * 2;
+        float viewportHeight = ComputedHeight - Padding.Vertical - BorderThickness.Vertical;
         float maxScroll = Math.Max(0, ContentHeight - viewportHeight);
 
         float newOffset = _scrollOffsetY + deltaY;
@@ -426,7 +426,7 @@ public class Editor : TextBox<Editor>, IScrollable
     /// </summary>
     public Editor SetVerticalScrollOffset(float offset)
     {
-        float viewportHeight = ComputedHeight - Padding.Vertical - BorderWidth * 2;
+        float viewportHeight = ComputedHeight - Padding.Vertical - BorderThickness.Vertical;
         float maxScroll = Math.Max(0, ContentHeight - viewportHeight);
         _scrollOffsetY = Math.Clamp(offset, 0, maxScroll);
         MarkNeedsPaint();
@@ -447,7 +447,7 @@ public class Editor : TextBox<Editor>, IScrollable
     /// </summary>
     public void ScrollToBottom()
     {
-        float viewportHeight = ComputedHeight - Padding.Vertical - BorderWidth * 2;
+        float viewportHeight = ComputedHeight - Padding.Vertical - BorderThickness.Vertical;
         float maxScroll = Math.Max(0, ContentHeight - viewportHeight);
         _scrollOffsetY = maxScroll;
         MarkNeedsPaint();
@@ -460,9 +460,9 @@ public class Editor : TextBox<Editor>, IScrollable
     public void EnsureCursorVisible()
     {
         float lineHeight = FontSize * LineHeightFactor;
-        float viewportHeight = ComputedHeight - Padding.Vertical - BorderWidth * 2
+        float viewportHeight = ComputedHeight - Padding.Vertical - BorderThickness.Vertical
                                - (NeedsHorizontalScrollbar ? ScrollbarWidth + 2 : 0);
-        float viewportWidth  = ComputedWidth  - Padding.Horizontal - BorderWidth * 2
+        float viewportWidth  = ComputedWidth  - Padding.Horizontal - BorderThickness.Horizontal
                                - (ShowScrollbar ? ScrollbarWidth + 4 : 0);
 
         bool dirty = false;
@@ -506,7 +506,7 @@ public class Editor : TextBox<Editor>, IScrollable
     }
 
     private bool NeedsHorizontalScrollbar =>
-        ShowScrollbar && !WordWrap && ContentWidth > ComputedWidth - Padding.Horizontal - BorderWidth * 2 - (ShowScrollbar ? ScrollbarWidth + 4 : 0);
+        ShowScrollbar && !WordWrap && ContentWidth > ComputedWidth - Padding.Horizontal - BorderThickness.Horizontal - (ShowScrollbar ? ScrollbarWidth + 4 : 0);
 
     // =========================================================================
     // HELPER METHODS
@@ -606,38 +606,38 @@ public class Editor : TextBox<Editor>, IScrollable
         if (_selectionEnd > Text.Length) _selectionEnd = Text.Length;
 
         var bgColor = IsFocused ? FocusBackground : Background;
-        var borderBrush = IsFocused ? FocusBorderColor : BorderColor;
+        var borderBrush = IsFocused ? FocusBorderBrush : BorderBrush;
 
         // Draw background
         renderer.DrawRoundedRect(ComputedX, ComputedY, ComputedWidth, ComputedHeight, BorderRadius.TopLeft, bgColor);
 
         // Draw border
-        if (BorderWidth > 0)
+        if (BorderThickness.Left > 0)
         {
             renderer.DrawRoundedRect(
-                ComputedX + BorderWidth,
-                ComputedY + BorderWidth,
-                ComputedWidth - BorderWidth * 2,
-                ComputedHeight - BorderWidth * 2,
+                ComputedX + BorderThickness.Left,
+                ComputedY + BorderThickness.Top,
+                ComputedWidth - BorderThickness.Horizontal,
+                ComputedHeight - BorderThickness.Vertical,
                 BorderRadius.TopLeft,
                 bgColor
             );
             renderer.DrawRoundedRect(ComputedX, ComputedY, ComputedWidth, ComputedHeight, BorderRadius.TopLeft, borderBrush);
             renderer.DrawRoundedRect(
-                ComputedX + BorderWidth,
-                ComputedY + BorderWidth,
-                ComputedWidth - BorderWidth * 2,
-                ComputedHeight - BorderWidth * 2,
+                ComputedX + BorderThickness.Left,
+                ComputedY + BorderThickness.Top,
+                ComputedWidth - BorderThickness.Horizontal,
+                ComputedHeight - BorderThickness.Vertical,
                 BorderRadius.TopLeft,
                 bgColor
             );
         }
 
         // Content area
-        float contentX = ComputedX + Padding.Left + BorderWidth;
-        float contentY = ComputedY + Padding.Top + BorderWidth;
-        float contentWidth = ComputedWidth - Padding.Horizontal - BorderWidth * 2;
-        float contentHeight = ComputedHeight - Padding.Vertical - BorderWidth * 2;
+        float contentX = ComputedX + Padding.Left + BorderThickness.Left;
+        float contentY = ComputedY + Padding.Top + BorderThickness.Top;
+        float contentWidth = ComputedWidth - Padding.Horizontal - BorderThickness.Horizontal;
+        float contentHeight = ComputedHeight - Padding.Vertical - BorderThickness.Vertical;
         float lineHeight = FontSize * LineHeightFactor;
 
         renderer.PushScissor(contentX, contentY, contentWidth, contentHeight);
@@ -899,8 +899,8 @@ public class Editor : TextBox<Editor>, IScrollable
 
         EnsureWrappedLines();
 
-        float contentX = ComputedX + Padding.Left + BorderWidth;
-        float contentY = ComputedY + Padding.Top + BorderWidth;
+        float contentX = ComputedX + Padding.Left + BorderThickness.Left;
+        float contentY = ComputedY + Padding.Top + BorderThickness.Top;
         float lineHeight = FontSize * LineHeightFactor;
 
         // Determine which visual line was clicked
@@ -953,14 +953,14 @@ public class Editor : TextBox<Editor>, IScrollable
         bool showHoriz = NeedsHorizontalScrollbar;
         float horizBarHeight = showHoriz ? ScrollbarWidth + 2 : 0;
 
-        float viewportHeight = ComputedHeight - Padding.Vertical - BorderWidth * 2 - horizBarHeight;
+        float viewportHeight = ComputedHeight - Padding.Vertical - BorderThickness.Vertical - horizBarHeight;
         float contentHeight = ContentHeight;
 
         // Vertical scrollbar
         if (contentHeight > viewportHeight)
         {
-            float scrollbarX = ComputedX + ComputedWidth - ScrollbarWidth - BorderWidth - 2;
-            float scrollbarY = ComputedY + Padding.Top + BorderWidth;
+            float scrollbarX = ComputedX + ComputedWidth - ScrollbarWidth - BorderThickness.Right - 2;
+            float scrollbarY = ComputedY + Padding.Top + BorderThickness.Top;
             float scrollbarHeight = viewportHeight;
 
             renderer.DrawRoundedRect(scrollbarX, scrollbarY, ScrollbarWidth, scrollbarHeight,
@@ -979,11 +979,11 @@ public class Editor : TextBox<Editor>, IScrollable
         // Horizontal scrollbar
         if (showHoriz)
         {
-            float viewportWidth = ComputedWidth - Padding.Horizontal - BorderWidth * 2 - ScrollbarWidth - 4;
+            float viewportWidth = ComputedWidth - Padding.Horizontal - BorderThickness.Horizontal - ScrollbarWidth - 4;
             float contentWidth  = ContentWidth;
 
-            float scrollbarY = ComputedY + ComputedHeight - BorderWidth - ScrollbarWidth - 2;
-            float scrollbarX = ComputedX + Padding.Left + BorderWidth;
+            float scrollbarY = ComputedY + ComputedHeight - BorderThickness.Bottom - ScrollbarWidth - 2;
+            float scrollbarX = ComputedX + Padding.Left + BorderThickness.Left;
             float scrollbarWidth = viewportWidth;
 
             renderer.DrawRoundedRect(scrollbarX, scrollbarY, scrollbarWidth, ScrollbarWidth,
@@ -1020,13 +1020,13 @@ public class Editor : TextBox<Editor>, IScrollable
 
         bool showHoriz = NeedsHorizontalScrollbar;
         float horizBarHeight = showHoriz ? ScrollbarWidth + 2 : 0;
-        float viewportHeight = ComputedHeight - Padding.Vertical - BorderWidth * 2 - horizBarHeight;
+        float viewportHeight = ComputedHeight - Padding.Vertical - BorderThickness.Vertical - horizBarHeight;
         float contentHeight = ContentHeight;
 
         if (contentHeight > viewportHeight)
         {
-            float scrollbarX = ComputedX + ComputedWidth - ScrollbarWidth - BorderWidth - 2;
-            float scrollbarY = ComputedY + Padding.Top + BorderWidth;
+            float scrollbarX = ComputedX + ComputedWidth - ScrollbarWidth - BorderThickness.Right - 2;
+            float scrollbarY = ComputedY + Padding.Top + BorderThickness.Top;
             float scrollbarHeight = viewportHeight;
 
             float viewportRatio = Math.Min(1.0f, viewportHeight / contentHeight);
@@ -1047,10 +1047,10 @@ public class Editor : TextBox<Editor>, IScrollable
     {
         if (!NeedsHorizontalScrollbar) return false;
 
-        float viewportWidth = ComputedWidth - Padding.Horizontal - BorderWidth * 2 - ScrollbarWidth - 4;
+        float viewportWidth = ComputedWidth - Padding.Horizontal - BorderThickness.Horizontal - ScrollbarWidth - 4;
         float contentWidth  = ContentWidth;
-        float scrollbarY    = ComputedY + ComputedHeight - BorderWidth - ScrollbarWidth - 2;
-        float scrollbarX    = ComputedX + Padding.Left + BorderWidth;
+        float scrollbarY    = ComputedY + ComputedHeight - BorderThickness.Bottom - ScrollbarWidth - 2;
+        float scrollbarX    = ComputedX + Padding.Left + BorderThickness.Left;
         float scrollbarWidth = viewportWidth;
 
         float viewportRatio = Math.Min(1.0f, viewportWidth / contentWidth);
@@ -1069,14 +1069,14 @@ public class Editor : TextBox<Editor>, IScrollable
 
         bool showHoriz = NeedsHorizontalScrollbar;
         float horizBarHeight = showHoriz ? ScrollbarWidth + 2 : 0;
-        float viewportHeight = ComputedHeight - Padding.Vertical - BorderWidth * 2 - horizBarHeight;
+        float viewportHeight = ComputedHeight - Padding.Vertical - BorderThickness.Vertical - horizBarHeight;
         float contentHeight = ContentHeight;
 
         // Vertical track
         if (contentHeight > viewportHeight)
         {
-            float scrollbarX = ComputedX + ComputedWidth - ScrollbarWidth - BorderWidth - 2;
-            float scrollbarY = ComputedY + Padding.Top + BorderWidth;
+            float scrollbarX = ComputedX + ComputedWidth - ScrollbarWidth - BorderThickness.Right - 2;
+            float scrollbarY = ComputedY + Padding.Top + BorderThickness.Top;
             float scrollbarHeight = viewportHeight;
 
             if (position.X >= scrollbarX && position.X <= scrollbarX + ScrollbarWidth &&
@@ -1087,9 +1087,9 @@ public class Editor : TextBox<Editor>, IScrollable
         // Horizontal track
         if (showHoriz)
         {
-            float scrollbarY = ComputedY + ComputedHeight - BorderWidth - ScrollbarWidth - 2;
-            float scrollbarX = ComputedX + Padding.Left + BorderWidth;
-            float scrollbarWidth = ComputedWidth - Padding.Horizontal - BorderWidth * 2 - ScrollbarWidth - 4;
+            float scrollbarY = ComputedY + ComputedHeight - BorderThickness.Bottom - ScrollbarWidth - 2;
+            float scrollbarX = ComputedX + Padding.Left + BorderThickness.Left;
+            float scrollbarWidth = ComputedWidth - Padding.Horizontal - BorderThickness.Horizontal - ScrollbarWidth - 4;
 
             if (position.X >= scrollbarX && position.X <= scrollbarX + scrollbarWidth &&
                 position.Y >= scrollbarY && position.Y <= scrollbarY + ScrollbarWidth)
@@ -1135,7 +1135,7 @@ public class Editor : TextBox<Editor>, IScrollable
                 if (_isDraggingThumb)
                 {
                     float horizBarHeight = NeedsHorizontalScrollbar ? ScrollbarWidth + 2 : 0;
-                    float viewportHeight = ComputedHeight - Padding.Vertical - BorderWidth * 2 - horizBarHeight;
+                    float viewportHeight = ComputedHeight - Padding.Vertical - BorderThickness.Vertical - horizBarHeight;
                     float contentHeight = ContentHeight;
                     float thumbHeight = Math.Max(20, viewportHeight * Math.Min(1.0f, viewportHeight / contentHeight));
                     float availableTravel = viewportHeight - thumbHeight;
@@ -1151,7 +1151,7 @@ public class Editor : TextBox<Editor>, IScrollable
                 }
                 if (_isDraggingHorizThumb)
                 {
-                    float viewportWidth = ComputedWidth - Padding.Horizontal - BorderWidth * 2 - (ShowScrollbar ? ScrollbarWidth + 4 : 0);
+                    float viewportWidth = ComputedWidth - Padding.Horizontal - BorderThickness.Horizontal - (ShowScrollbar ? ScrollbarWidth + 4 : 0);
                     float contentWidth  = ContentWidth;
                     float thumbWidth = Math.Max(20, viewportWidth * Math.Min(1.0f, viewportWidth / contentWidth));
                     float availableTravel = viewportWidth - thumbWidth;

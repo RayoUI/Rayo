@@ -17,7 +17,7 @@ public class ShadowEffectRenderer : IEffectRenderer
 
         float maxBlur = Math.Max(0f, shadow.BlurRadius);
         float spread = shadow.Spread;
-        var cornerRadius = element.BorderRadius;
+        var cornerRadius = element.VisualCornerRadius;
 
         if (maxBlur <= 0f)
         {
@@ -105,7 +105,7 @@ public class InnerShadowEffectRenderer : IEffectRenderer
    element.ComputedY + shadow.OffsetY,
          element.ComputedWidth,
    element.ComputedHeight,
-    element.BorderRadius.TopLeft,
+    element.VisualCornerRadius.TopLeft,
    shadow.BlurRadius,
   shadowColor
  );
@@ -142,7 +142,7 @@ public class GlowEffectRenderer : IEffectRenderer
               element.ComputedY - expansion,
                           element.ComputedWidth + expansion * 2,
               element.ComputedHeight + expansion * 2,
-                     element.BorderRadius.TopLeft + expansion,
+                     element.VisualCornerRadius.TopLeft + expansion,
                 glowColor
              );
         }

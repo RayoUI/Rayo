@@ -126,8 +126,8 @@ public sealed class FontSymbolsApp : Component
             .Width(104)
             .Height(112)
             .Background(new Color(25, 28, 35))
-            .BorderColor(new Color(47, 54, 67))
-            .BorderWidth(1)
+            .BorderBrush(new Color(47, 54, 67))
+            .BorderThickness(1)
             .BorderRadius(new CornerRadius(6))
             .Padding(new Thickness(10))
             .Content(

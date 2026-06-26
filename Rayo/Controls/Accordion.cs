@@ -13,7 +13,7 @@ using System.Collections.Generic;
 /// Expandable content section with header
 /// Uses Icon control for chevron indicators
 /// </summary>
-public class Expander : CompositeView<Expander>
+public class Expander : BorderCompositeView<Expander>
 {
     private HStack? _headerContainer;
     private Icon? _chevronIcon;
@@ -66,15 +66,6 @@ public class Expander : CompositeView<Expander>
     } = Color.White;
     #endregion
 
-    #region BorderColor
-    [PaintProperty]
-    public Brush BorderColor
-    {
-        get => field;
-        set => this.SetProperty(ref field, value, () => _contentFrame?.BorderColor(value.PrimaryColor));
-    } = new Color(220, 220, 220);
-    #endregion
-
     #region TextColor
     [PaintProperty]
     public Brush TextColor
@@ -82,15 +73,6 @@ public class Expander : CompositeView<Expander>
         get => field;
         set => this.SetProperty(ref field, value, () => { UpdateHeaderVisuals(); });
     } = Color.Black;
-    #endregion
-
-    #region BorderWidth
-    [PaintProperty]
-    public float BorderWidth
-    {
-        get => field;
-        set => this.SetProperty(ref field, value, () => _contentFrame?.BorderWidth(value));
-    } = 1;
     #endregion
 
     #region HeaderPadding
@@ -185,17 +167,33 @@ public class Expander : CompositeView<Expander>
     // Constructors and methods
     public Expander()
     {
+        BorderBrush = new Color(220, 220, 220);
+        BorderThickness = 1;
         BuildComponents();
     }
 
     public Expander(string header, VisualElement? content = null)
     {
+        BorderBrush = new Color(220, 220, 220);
+        BorderThickness = 1;
         BuildComponents();
         Header = header;
         if (content != null)
         {
             Content = content;
         }
+    }
+
+    protected override void OnBorderBrushChanged()
+    {
+        base.OnBorderBrushChanged();
+        _contentFrame?.BorderBrush(BorderBrush.PrimaryColor);
+    }
+
+    protected override void OnBorderThicknessChanged()
+    {
+        base.OnBorderThicknessChanged();
+        _contentFrame?.BorderThickness(BorderThickness);
     }
 
     private void BuildComponents()
@@ -240,8 +238,8 @@ public class Expander : CompositeView<Expander>
 
         _contentFrame = new Frame();
         _contentFrame.Background = ContentBackground;
-        _contentFrame.BorderColor = BorderColor.PrimaryColor;
-        _contentFrame.BorderWidth = BorderWidth;
+        _contentFrame.BorderBrush = BorderBrush.PrimaryColor;
+        _contentFrame.BorderThickness = BorderThickness;
         _contentFrame.Padding = ContentPadding;
         _contentFrame.BorderRadius = new CornerRadius(0, 0, 8, 8);
         _contentFrame.IsVisible(false);

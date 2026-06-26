@@ -11,31 +11,11 @@ using Rayo.Rendering.Graphics.VectorGraphics;
 /// Frame container similar to MAUI Frame - wraps a single content element with background, border, and padding.
 /// Inherits from ContentView (single child) following MAUI architecture.
 /// </summary>
-public class Frame : ContentView<Frame>, IPointerHandler
+public class Frame : BorderContentView<Frame>, IPointerHandler
 {
     // =========================================================================
     // FRAME-SPECIFIC PROPERTIES
     // =========================================================================
-
-    #region Border
-    private Brush _borderColor = Color.Transparent;
-    private float _borderWidth = 0;
-
-    [PaintProperty]
-    public Brush BorderColor
-    {
-        get => _borderColor;
-        set => this.SetProperty(ref _borderColor, value);
-    }
-
-    [LayoutProperty]
-    public float BorderWidth
-    {
-        get => _borderWidth;
-        set => this.SetProperty(ref _borderWidth, value);
-    }
-    #endregion
-
 
     // =========================================================================
     // CONSTRUCTORS
@@ -120,11 +100,11 @@ public class Frame : ContentView<Frame>, IPointerHandler
             // Calculate space available for content
             // When frameWidth/frameHeight is 0 (size-to-content mode), pass infinity to content
             float measureWidth = frameWidth > 0
-                ? Math.Max(0, frameWidth - Padding.Horizontal - BorderWidth * 2 - Content.Margin.Horizontal)
+                ? Math.Max(0, frameWidth - Padding.Horizontal - BorderThickness.Horizontal - Content.Margin.Horizontal)
                 : float.PositiveInfinity;
 
             float measureHeight = frameHeight > 0
-                ? Math.Max(0, frameHeight - Padding.Vertical - BorderWidth * 2 - Content.Margin.Vertical)
+                ? Math.Max(0, frameHeight - Padding.Vertical - BorderThickness.Vertical - Content.Margin.Vertical)
                 : float.PositiveInfinity;
 
             Content.MeasureUpdate(measureWidth, measureHeight);
@@ -153,13 +133,13 @@ public class Frame : ContentView<Frame>, IPointerHandler
 
         if (!HasExplicitWidth && frameWidth > 0 && HorizontalAlignment == HorizontalAlignment.Stretch && Content != null)
         {
-            float minWidth = measuredContentWidth + Padding.Horizontal + BorderWidth * 2;
+            float minWidth = measuredContentWidth + Padding.Horizontal + BorderThickness.Horizontal;
             frameWidth = Math.Max(frameWidth, minWidth);
         }
 
         if (!HasExplicitHeight && frameHeight > 0 && VerticalAlignment == VerticalAlignment.Stretch && Content != null)
         {
-            float minHeight = measuredContentHeight + Padding.Vertical + BorderWidth * 2;
+            float minHeight = measuredContentHeight + Padding.Vertical + BorderThickness.Vertical;
             frameHeight = Math.Max(frameHeight, minHeight);
         }
 
@@ -167,16 +147,16 @@ public class Frame : ContentView<Frame>, IPointerHandler
         if (frameWidth == 0)
         {
             frameWidth = Content != null
-                ? measuredContentWidth + Padding.Horizontal + BorderWidth * 2
-                : Padding.Horizontal + BorderWidth * 2;
+                ? measuredContentWidth + Padding.Horizontal + BorderThickness.Horizontal
+                : Padding.Horizontal + BorderThickness.Horizontal;
         }
 
         // HEIGHT: If frameHeight is 0 (size-to-content), calculate from content
         if (frameHeight == 0)
         {
             frameHeight = Content != null
-                ? measuredContentHeight + Padding.Vertical + BorderWidth * 2
-                : Padding.Vertical + BorderWidth * 2;
+                ? measuredContentHeight + Padding.Vertical + BorderThickness.Vertical
+                : Padding.Vertical + BorderThickness.Vertical;
         }
 
         // =========================================================================
@@ -213,10 +193,10 @@ public class Frame : ContentView<Frame>, IPointerHandler
         if (Content == null) return;
 
         // Calculate content area
-            float contentX = x + Padding.Left + BorderWidth + Content.Margin.Left;
-            float contentY = y + Padding.Top + BorderWidth + Content.Margin.Top;
-            float contentWidth = Math.Max(0, width - Padding.Horizontal - BorderWidth * 2 - Content.Margin.Horizontal);
-            float contentHeight = Math.Max(0, height - Padding.Vertical - BorderWidth * 2 - Content.Margin.Vertical);
+            float contentX = x + Padding.Left + BorderThickness.Left + Content.Margin.Left;
+            float contentY = y + Padding.Top + BorderThickness.Top + Content.Margin.Top;
+            float contentWidth = Math.Max(0, width - Padding.Horizontal - BorderThickness.Horizontal - Content.Margin.Horizontal);
+            float contentHeight = Math.Max(0, height - Padding.Vertical - BorderThickness.Vertical - Content.Margin.Vertical);
 
         // Get content's desired size (already measured in Measure phase)
         float childWidth = Content.DesiredWidth > 0 ? Content.DesiredWidth : Content.Width;
@@ -288,13 +268,13 @@ public class Frame : ContentView<Frame>, IPointerHandler
         float bgHeight = ComputedHeight;
         float bgRadiusAdjust = 0;
 
-        if (BorderWidth > 0 && BorderColor.PrimaryColor.A > 0)
+        if (BorderThickness.Left > 0 && BorderBrush.PrimaryColor.A > 0)
         {
-            bgX += BorderWidth;
-            bgY += BorderWidth;
-            bgWidth -= BorderWidth * 2;
-            bgHeight -= BorderWidth * 2;
-            bgRadiusAdjust = BorderWidth;
+            bgX += BorderThickness.Left;
+            bgY += BorderThickness.Top;
+            bgWidth -= BorderThickness.Horizontal;
+            bgHeight -= BorderThickness.Vertical;
+            bgRadiusAdjust = BorderThickness.Left;
         }
 
         // Render background
@@ -334,7 +314,7 @@ public class Frame : ContentView<Frame>, IPointerHandler
 
     protected override void OnAfterRender(IRenderer renderer)
     {
-        if (BorderWidth > 0 && BorderColor.PrimaryColor.A > 0)
+        if (BorderThickness.Left > 0 && BorderBrush.PrimaryColor.A > 0)
         {
             bool uniformRadius = BorderRadius.TopLeft == BorderRadius.TopRight &&
                                  BorderRadius.TopRight == BorderRadius.BottomRight &&
@@ -344,23 +324,23 @@ public class Frame : ContentView<Frame>, IPointerHandler
             {
                 renderer.DrawRoundedRectOutline(
                     ComputedX, ComputedY, ComputedWidth, ComputedHeight,
-                    BorderRadius.TopLeft, BorderWidth, BorderColor
+                    BorderRadius.TopLeft, BorderThickness.Left, BorderBrush.PrimaryColor
                 );
             }
             else
             {
-                float halfBorder = BorderWidth / 2f;
+                float halfBorder = BorderThickness.Left / 2f;
                 var borderPath = VectorPath.RoundedRectangle(
                     ComputedX + halfBorder,
                     ComputedY + halfBorder,
-                    ComputedWidth - BorderWidth,
-                    ComputedHeight - BorderWidth,
+                    ComputedWidth - BorderThickness.Horizontal,
+                    ComputedHeight - BorderThickness.Vertical,
                     Math.Max(0, BorderRadius.TopLeft - halfBorder),
                     Math.Max(0, BorderRadius.TopRight - halfBorder),
                     Math.Max(0, BorderRadius.BottomRight - halfBorder),
                     Math.Max(0, BorderRadius.BottomLeft - halfBorder)
                 );
-                renderer.DrawPathStroke(borderPath, BorderColor, BorderWidth);
+                renderer.DrawPathStroke(borderPath, BorderBrush.PrimaryColor, BorderThickness.Left);
             }
         }
     }

@@ -14,7 +14,7 @@ using Rayo.Rendering.Brushes;
 /// </summary>
 public class SdlViewApp : Component
 {
-    // ── Reactive state ────────────────────────────────────────────────────────
+    // -- Reactive state --------------------------------------------------------
 
     private readonly Signal<float>        _animSpeed;
     private readonly Signal<bool>         _animate;
@@ -44,7 +44,7 @@ public class SdlViewApp : Component
         _speedLabel = UseComputed(() => $"Speed: {_animSpeed.Value:F1}x");
     }
 
-    // ── Build ─────────────────────────────────────────────────────────────────
+    // -- Build -----------------------------------------------------------------
 
     public override VisualElement Build() =>
         new VStack()
@@ -57,7 +57,7 @@ public class SdlViewApp : Component
                 BuildControlPanel()
             );
 
-    // ── Header ────────────────────────────────────────────────────────────────
+    // -- Header ----------------------------------------------------------------
 
     private static VisualElement BuildHeader() =>
         new VStack()
@@ -73,12 +73,12 @@ public class SdlViewApp : Component
                     .Foreground(new Color(140, 144, 168))
             );
 
-    // ── Scene area ────────────────────────────────────────────────────────────
+    // -- Scene area ------------------------------------------------------------
 
     private VisualElement BuildSceneArea() =>
         new Frame()
             .BorderRadius(10)
-            .BorderColor(new Color(50, 55, 80))
+            .BorderBrush(new Color(50, 55, 80))
             .Margin(new Thickness(16, 8))
             .HorizontalAlignment(HorizontalAlignment.Stretch)
             .VerticalAlignment(VerticalAlignment.Stretch)
@@ -94,7 +94,7 @@ public class SdlViewApp : Component
                     .ColorMode(_colorMode)
             );
 
-    // ── Control panel ─────────────────────────────────────────────────────────
+    // -- Control panel ---------------------------------------------------------
 
     private VisualElement BuildControlPanel() =>
         new VStack()

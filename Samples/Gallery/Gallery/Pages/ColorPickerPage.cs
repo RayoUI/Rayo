@@ -123,8 +123,8 @@ public class ColorPickerPage : Component
             .HorizontalAlignment(HorizontalAlignment.Stretch)
             .BorderRadius(12)
             .Background(colorState)
-            .BorderWidth(1)
-            .BorderColor(new Color(255, 255, 255, 25))
+            .BorderThickness(1)
+            .BorderBrush(new Color(255, 255, 255, 25))
             .Padding(new Thickness(16))
             .Content(
                 new VStack()
@@ -147,16 +147,16 @@ public class ColorPickerPage : Component
             .Size(40)
             .BorderRadius(10)
             .Background(colorState)
-            .BorderWidth(1)
-            .BorderColor(new Color(255, 255, 255, 30));
+            .BorderThickness(1)
+            .BorderBrush(new Color(255, 255, 255, 30));
 
         var launcherContent = new Frame()
             .HorizontalAlignment(HorizontalAlignment.Stretch)
             .Padding(new Thickness(14, 12))
             .Background(new Color(35, 35, 40))
             .BorderRadius(new CornerRadius(10))
-            .BorderColor(new Color(255, 255, 255, 20))
-            .BorderWidth(1)
+            .BorderBrush(new Color(255, 255, 255, 20))
+            .BorderThickness(1)
             .Content(
                 new HStack()
                     .Spacing(12)

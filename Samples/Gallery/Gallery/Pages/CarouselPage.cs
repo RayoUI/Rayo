@@ -51,7 +51,7 @@ public class CarouselPage : Component
                         .NavigationButtonBackground(new Color(0, 0, 0, 0.38f))
                         .NavigationButtonHoverBackground(new Color(0, 0, 0, 0.58f))
                         .SlideBackground(new Color(24, 26, 32))
-                        .BorderColor(new Color(76, 82, 96))
+                        .BorderBrush(new Color(76, 82, 96))
                         .IndicatorSelectedColor(new Color(34, 197, 94))
                         .AddSlides(
                             CreateImageSlide("Robot", "Assets/Images/robot.png", "Uniform image content inside a slide."),

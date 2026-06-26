@@ -12,7 +12,7 @@ namespace Rayo.DevTool.Controls;
 /// All bars (Events / Layout / Render phases) are drawn directly via IRenderer
 /// without constructing any child element tree.
 /// </summary>
-public class FrameTimelineChart : View<FrameTimelineChart>
+public class FrameTimelineChart : BorderView<FrameTimelineChart>
 {
     private static readonly Color ColorEvents = new(200,  60,  60);
     private static readonly Color ColorLayout = new( 59, 130, 246);

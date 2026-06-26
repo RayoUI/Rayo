@@ -159,10 +159,13 @@ public class ToDoList(SignalList<TodoItem> tasks, Action<TodoItem> onDelete) : C
 
         RebuildList();
 
-        return new ScrollView()
-            .Content(stack)
+        return new Frame()
             .Background(new Color(40, 40, 40))
-            .BorderRadius(8);
+            .BorderRadius(8)
+            .Content(
+                new ScrollView()
+                    .Content(stack)
+            );
     }
 
     private void RebuildList()

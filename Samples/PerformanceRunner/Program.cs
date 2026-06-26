@@ -230,7 +230,7 @@ internal sealed class BenchmarkEditorPage : Component
             .FontSize(14)
             .Background(new Color(16, 18, 24))
             .TextColor(new Color(200, 224, 255))
-            .BorderColor(new Color(50, 58, 74))
+            .BorderBrush(new Color(50, 58, 74))
             .WordWrap(false)
             .Text(BuildEditorText());
 
@@ -283,7 +283,7 @@ internal sealed class BenchmarkWrappedEditorPage : Component
             .FontSize(14)
             .Background(new Color(16, 18, 24))
             .TextColor(new Color(235, 239, 255))
-            .BorderColor(new Color(50, 58, 74))
+            .BorderBrush(new Color(50, 58, 74))
             .WordWrap(true)
             .Text(BuildWrappedEditorText());
 
@@ -336,14 +336,14 @@ internal sealed class BenchmarkStylesPage : Component
     [
         new Style<Frame>(".bench-card")
             .Background(new Color(28, 32, 44))
-            .BorderColor(new Color(46, 54, 72))
-            .BorderWidth(1f)
+            .BorderBrush(new Color(46, 54, 72))
+            .BorderThickness(1f)
             .BorderRadius(12f),
 
         new Style<Frame>(".bench-card.active")
             .Background(new Color(42, 54, 78))
-            .BorderColor(new Color(104, 154, 255))
-            .BorderWidth(2f),
+            .BorderBrush(new Color(104, 154, 255))
+            .BorderThickness(2f),
 
         new Style<Frame>(".bench-card.accent")
             .Background(new Color(46, 36, 62)),

@@ -16,7 +16,7 @@ using IRenderer = Rayo.Rendering.IRenderer;
 /// - ITappable for tap gesture support
 /// - IGestureRecognizerHost for gesture recognizers
 /// </summary>
-public class RadioButton : Rayo.Core.View<RadioButton>,
+public class RadioButton : BorderView<RadioButton>,
     IPointerHandler,           // Modern unified pointer events
     ITappable,                 // Tap gesture support
     IGestureRecognizerHost     // Hosts gesture recognizers
@@ -82,15 +82,6 @@ public class RadioButton : Rayo.Core.View<RadioButton>,
     } = Color.White;
     #endregion
 
-    #region BorderColor
-    [PaintProperty]
-    public Brush BorderColor
-    {
-        get => field;
-        set => this.SetProperty(ref field, value);
-    } = new Color(100, 100, 100);
-    #endregion
-
     #region CircleSize
     public float CircleSize
     {
@@ -105,15 +96,6 @@ public class RadioButton : Rayo.Core.View<RadioButton>,
         get => field;
         set => this.SetProperty(ref field, value);
     } = 10;
-    #endregion
-
-    #region BorderWidth
-    [LayoutProperty]
-    public float BorderWidth
-    {
-        get => field;
-        set => this.SetProperty(ref field, value);
-    } = 2;
     #endregion
 
     #region CirclePadding
@@ -196,6 +178,9 @@ public class RadioButton : Rayo.Core.View<RadioButton>,
 
     public RadioButton()
     {
+        BorderBrush = new Color(100, 100, 100);
+        BorderThickness = 2;
+
         // Setup gesture recognizers
         _tapRecognizer = new TapRecognizer(
             maxMovementThreshold: 15f,
@@ -315,7 +300,7 @@ public class RadioButton : Rayo.Core.View<RadioButton>,
 
         if (!IsChecked)
         {
-            renderer.DrawCircleOutline(circleCenterX, circleCenterY, circleRadius, BorderWidth, BorderColor);
+            renderer.DrawCircleOutline(circleCenterX, circleCenterY, circleRadius, BorderThickness.Left, BorderBrush.PrimaryColor);
         }
         else
         {

@@ -9,7 +9,7 @@ using Rayo.Rendering.Brushes;
 /// <summary>
 /// Card component - Content container with optional header and footer
 /// </summary>
-public class Card : Rayo.Core.CompositeView<Card>
+public class Card : BorderCompositeView<Card>
 {
     private Frame? _cardFrame;
     private VStack? _layout;
@@ -59,24 +59,6 @@ public class Card : Rayo.Core.CompositeView<Card>
             _footerFrame?.Background(value);
         });
     } = new Color(245, 245, 245);
-    #endregion
-
-    #region BorderColor
-    [PaintProperty]
-    public Brush BorderColor
-    {
-        get => field;
-        set => this.SetProperty(ref field, value, () => _cardFrame?.BorderColor(value.PrimaryColor));
-    } = new Color(220, 220, 220);
-    #endregion
-
-    #region BorderWidth
-    [PaintProperty]
-    public float BorderWidth
-    {
-        get => field;
-        set => this.SetProperty(ref field, value, () => _cardFrame?.BorderWidth(value));
-    } = 1;
     #endregion
 
     #region CornerRadius
@@ -173,19 +155,32 @@ public class Card : Rayo.Core.CompositeView<Card>
     public Card()
     {
         Background = Color.White;
+        BorderBrush = new Color(220, 220, 220);
+        BorderThickness = 1;
         BuildComponents();
+    }
+
+    protected override void OnBorderBrushChanged()
+    {
+        base.OnBorderBrushChanged();
+        _cardFrame?.BorderBrush(BorderBrush.PrimaryColor);
+    }
+
+    protected override void OnBorderThicknessChanged()
+    {
+        base.OnBorderThicknessChanged();
+        _cardFrame?.BorderThickness(BorderThickness);
     }
 
     private void BuildComponents()
     {
         _layout = new VStack();
-        _layout.BorderRadius(CornerRadius);
         _layout.Spacing(0);
 
         _cardFrame = (Frame)new Frame()
             .Background(Background)
-            .BorderColor(BorderColor.PrimaryColor)
-            .BorderWidth(BorderWidth)
+            .BorderBrush(BorderBrush.PrimaryColor)
+            .BorderThickness(BorderThickness)
             .BorderRadius(CornerRadius);
         _cardFrame.Content(_layout);
 
@@ -274,11 +269,8 @@ public class Card : Rayo.Core.CompositeView<Card>
 
         if (first == null)
         {
-            _layout.BorderRadius(CornerRadius);
             return;
         }
-
-        _layout.BorderRadius(CornerRadius.None);
 
         foreach (var Frame in new Frame?[] { _headerFrame, _contentFrame, _footerFrame })
         {

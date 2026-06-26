@@ -364,7 +364,7 @@ public class ButtonPage : Component
 
     private VisualElement CreateGradientButtonsSection()
     {
-        // Row 1: Linear gradients — horizontal direction
+        // Row 1: Linear gradients ï¿½ horizontal direction
         var sunsetBtn = new Button()
             .Text("Sunset")
             .Width(120).Height(42)
@@ -375,7 +375,7 @@ public class ButtonPage : Component
                 new Color(255, 114, 78), new Color(255, 215, 30)))
             .PressedBackground(LinearGradientBrush.Horizontal(
                 new Color(210, 60, 20), new Color(210, 155, 0)))
-            .BorderWidth(0);
+            .BorderThickness(0);
 
         var oceanBtn = new Button()
             .Text("Ocean")
@@ -387,7 +387,7 @@ public class ButtonPage : Component
                 new Color(30, 218, 255), new Color(30, 134, 255)))
             .PressedBackground(LinearGradientBrush.Horizontal(
                 new Color(0, 158, 205), new Color(0, 80, 200)))
-            .BorderWidth(0);
+            .BorderThickness(0);
 
         var forestBtn = new Button()
             .Text("Forest")
@@ -399,9 +399,9 @@ public class ButtonPage : Component
                 new Color(106, 220, 120), new Color(49, 162, 93)))
             .PressedBackground(LinearGradientBrush.Horizontal(
                 new Color(56, 164, 71), new Color(10, 110, 50)))
-            .BorderWidth(0);
+            .BorderThickness(0);
 
-        // Row 2: Linear gradients — vertical direction
+        // Row 2: Linear gradients ï¿½ vertical direction
         var skyBtn = new Button()
             .Text("Sky")
             .Width(120).Height(42)
@@ -412,7 +412,7 @@ public class ButtonPage : Component
                 new Color(155, 220, 255), new Color(50, 120, 220)))
             .PressedBackground(LinearGradientBrush.Vertical(
                 new Color(100, 170, 210), new Color(10, 70, 160)))
-            .BorderWidth(0)
+            .BorderThickness(0)
             .TextColor(new Color(10, 30, 80));
 
         var auroraBrush = new LinearGradientBrush(
@@ -433,7 +433,7 @@ public class ButtonPage : Component
             .BorderRadius(8)
             .Background(auroraBrush)
             .HoverBackground(auroraHoverBrush)
-            .BorderWidth(0);
+            .BorderThickness(0);
 
         // Row 3: Diagonal & radial
         var neonBtn = new Button()
@@ -446,7 +446,7 @@ public class ButtonPage : Component
                 new Color(255, 40, 160), new Color(110, 30, 255)))
             .PressedBackground(LinearGradientBrush.Diagonal(
                 new Color(200, 0, 90), new Color(50, 0, 200)))
-            .BorderWidth(0);
+            .BorderThickness(0);
 
         var glowBtn = new Button()
             .Text("Glow")
@@ -458,7 +458,7 @@ public class ButtonPage : Component
                 new Color(255, 245, 140), new Color(220, 100, 20)))
             .PressedBackground(new RadialGradientBrush(
                 new Color(200, 175, 50), new Color(150, 50, 0)))
-            .BorderWidth(0)
+            .BorderThickness(0)
             .TextColor(new Color(80, 30, 0));
 
         var cosmicBtn = new Button()
@@ -475,7 +475,7 @@ public class ButtonPage : Component
                 new GradientStop(new Color(150, 20, 210), 0.4f),
                 new GradientStop(new Color(255, 90, 150), 1f))
             { StartPoint = new(0, 0.5f), EndPoint = new(1, 0.5f) })
-            .BorderWidth(0);
+            .BorderThickness(0);
 
         return Helper.CreateExampleSection("Gradient Brushes",
             new VStack()
@@ -499,8 +499,8 @@ public class ButtonPage : Component
         var Frame = new Frame();
         Frame.Background(Color.Transparent);
         Frame.BorderRadius(8);
-        Frame.BorderWidth(2);
-        Frame.BorderColor(borderColor);
+        Frame.BorderThickness(2);
+        Frame.BorderBrush(borderColor);
         Frame.Padding(new Thickness(16, 10));
         Frame.Content(
             new Label(text)

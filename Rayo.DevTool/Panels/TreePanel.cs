@@ -56,7 +56,7 @@ public class TreeFrame : Component
                 ids.Count > 0 ? new Color(245, 158, 11, 0.18f) : Color.Transparent))
             .HoverBackground(new Color(255, 255, 255, 0.1f))
             .PressedBackground(new Color(245, 158, 11, 0.3f))
-            .BorderWidth(0)
+            .BorderThickness(0)
             .BorderRadius(new CornerRadius(4))
             .OnTapped(() => _state.ClearLayoutOutlines());
 
@@ -274,7 +274,7 @@ public class TreeFrame : Component
                 .Background(Color.Transparent)
                 .HoverBackground(new Color(255, 255, 255, 0.1f))
                 .PressedBackground(new Color(255, 255, 255, 0.16f))
-                .BorderWidth(0)
+                .BorderThickness(0)
                 .Padding(new Thickness(4))
                 .BorderRadius(new CornerRadius(3))
             : new Frame().Width(20).Height(20);
@@ -302,7 +302,7 @@ public class TreeFrame : Component
             .Background(Color.Transparent)
             .HoverBackground(Color.Transparent)
             .PressedBackground(Color.Transparent)
-            .BorderWidth(0);
+            .BorderThickness(0);
 
         titleButton.Tapped += _ => SelectNode();
 
@@ -327,7 +327,7 @@ public class TreeFrame : Component
                     ids.Contains(node.Id) ? new Color(147, 197, 253) : new Color(50, 52, 60)))
                 .HoverBackground(new Color(191, 219, 254))
                 .PressedBackground(new Color(191, 219, 254))
-                .BorderWidth(0)
+                .BorderThickness(0)
                 .BorderRadius(new CornerRadius(6))
                 .VerticalAlignment(VerticalAlignment.Center)
                 .OnTapped(() => _state.ToggleLayoutOutline(node.Id))
@@ -453,7 +453,7 @@ public class TreeFrame : Component
         {
             _onSelect = onSelect;
             _onHoverChanged = onHoverChanged;
-            BorderWidth = 0;
+            BorderThickness = 0;
             Padding = new Thickness(0);
         }
 

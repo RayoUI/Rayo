@@ -13,7 +13,7 @@ using IRenderer = Rayo.Rendering.IRenderer;
 /// <summary>
 /// Group of adjacent selectable buttons, similar to segmented controls and Bootstrap button groups.
 /// </summary>
-public class ButtonGroup : CompositeView<ButtonGroup>
+public class ButtonGroup : BorderCompositeView<ButtonGroup>
 {
     private readonly List<ButtonGroupItem> _buttons = [];
 
@@ -102,15 +102,6 @@ public class ButtonGroup : CompositeView<ButtonGroup>
     } = 6f;
     #endregion
 
-    #region BorderWidth
-    [PaintProperty]
-    public float BorderWidth
-    {
-        get => field;
-        set => this.SetProperty(ref field, MathF.Max(0f, value), RebuildButtons);
-    } = 1f;
-    #endregion
-
     #region Background
     [PaintProperty]
     public new Brush Background
@@ -147,18 +138,9 @@ public class ButtonGroup : CompositeView<ButtonGroup>
     } = new Color(37, 99, 235);
     #endregion
 
-    #region BorderColor
+    #region SelectedBorderBrush
     [PaintProperty]
-    public Brush BorderColor
-    {
-        get => field;
-        set => this.SetProperty(ref field, value, RefreshButtonStates);
-    } = new Color(203, 213, 225);
-    #endregion
-
-    #region SelectedBorderColor
-    [PaintProperty]
-    public Brush SelectedBorderColor
+    public Brush SelectedBorderBrush
     {
         get => field;
         set => this.SetProperty(ref field, value, RefreshButtonStates);
@@ -191,6 +173,20 @@ public class ButtonGroup : CompositeView<ButtonGroup>
     public ButtonGroup()
     {
         Cursor = CursorShape.Hand;
+        BorderThickness = 1f;
+        BorderBrush = new Color(203, 213, 225);
+    }
+
+    protected override void OnBorderBrushChanged()
+    {
+        base.OnBorderBrushChanged();
+        RefreshButtonStates();
+    }
+
+    protected override void OnBorderThicknessChanged()
+    {
+        base.OnBorderThicknessChanged();
+        RebuildButtons();
     }
 
     public ButtonGroup AddItem(string item)
@@ -243,9 +239,9 @@ public class ButtonGroup : CompositeView<ButtonGroup>
             }
         }
 
-        if (_buttons.Count > 1 && BorderWidth > 0)
+        if (_buttons.Count > 1 && BorderThickness.Left > 0)
         {
-            float overlap = BorderWidth * (_buttons.Count - 1);
+            float overlap = BorderThickness.Left * (_buttons.Count - 1);
             if (Orientation == Orientation.Horizontal)
             {
                 desiredWidth -= overlap;
@@ -296,7 +292,7 @@ public class ButtonGroup : CompositeView<ButtonGroup>
 
         if (Orientation == Orientation.Horizontal)
         {
-            float fixedWidth = _buttons.Sum(button => button.DesiredWidth) - BorderWidth * MathF.Max(0, _buttons.Count - 1);
+            float fixedWidth = _buttons.Sum(button => button.DesiredWidth) - BorderThickness.Left * MathF.Max(0, _buttons.Count - 1);
             float extraWidth = MathF.Max(0, arrangedWidth - fixedWidth) / _buttons.Count;
             float currentX = arrangedX;
 
@@ -304,12 +300,12 @@ public class ButtonGroup : CompositeView<ButtonGroup>
             {
                 float buttonWidth = button.DesiredWidth + extraWidth;
                 button.ArrangeUpdate(currentX, arrangedY, buttonWidth, arrangedHeight);
-                currentX += MathF.Max(0, buttonWidth - BorderWidth);
+                currentX += MathF.Max(0, buttonWidth - BorderThickness.Left);
             }
         }
         else
         {
-            float fixedHeight = _buttons.Sum(button => button.DesiredHeight) - BorderWidth * MathF.Max(0, _buttons.Count - 1);
+            float fixedHeight = _buttons.Sum(button => button.DesiredHeight) - BorderThickness.Left * MathF.Max(0, _buttons.Count - 1);
             float extraHeight = MathF.Max(0, arrangedHeight - fixedHeight) / _buttons.Count;
             float currentY = arrangedY;
 
@@ -317,7 +313,7 @@ public class ButtonGroup : CompositeView<ButtonGroup>
             {
                 float buttonHeight = button.DesiredHeight + extraHeight;
                 button.ArrangeUpdate(arrangedX, currentY, arrangedWidth, buttonHeight);
-                currentY += MathF.Max(0, buttonHeight - BorderWidth);
+                currentY += MathF.Max(0, buttonHeight - BorderThickness.Top);
             }
         }
     }
@@ -396,7 +392,7 @@ public class ButtonGroup : CompositeView<ButtonGroup>
             : new CornerRadius(first ? radius : 0, first ? radius : 0, last ? radius : 0, last ? radius : 0);
     }
 
-    private sealed class ButtonGroupItem : View<ButtonGroupItem>,
+    private sealed class ButtonGroupItem : BorderView<ButtonGroupItem>,
         IPointerHandler,
         ITappable,
         IGestureRecognizerHost
@@ -485,7 +481,7 @@ public class ButtonGroup : CompositeView<ButtonGroup>
         {
             Brush background = GetBackground();
             Brush foreground = _isSelected ? _owner.SelectedTextColor : _owner.TextColor;
-            Brush border = _isSelected ? _owner.SelectedBorderColor : _owner.BorderColor;
+            Brush border = _isSelected ? _owner.SelectedBorderBrush : _owner.BorderBrush;
 
             var path = VectorPath.RoundedRectangle(
                 ComputedX,
@@ -498,9 +494,9 @@ public class ButtonGroup : CompositeView<ButtonGroup>
                 BorderRadius.BottomLeft);
 
             renderer.DrawPath(path, background);
-            if (_owner.BorderWidth > 0)
+            if (_owner.BorderThickness.Left > 0)
             {
-                renderer.DrawPathStroke(path, border, _owner.BorderWidth);
+                renderer.DrawPathStroke(path, border.PrimaryColor, _owner.BorderThickness.Left);
             }
 
             if (!string.IsNullOrEmpty(Text))

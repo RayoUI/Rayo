@@ -49,28 +49,28 @@ public class SearchBar : CompositeView<SearchBar>,
     } = "Search...";
     #endregion
 
-    #region BorderColor
+    #region BorderBrush
     [PaintProperty]
-    public Brush BorderColor
+    public Brush BorderBrush
     {
         get => field;
         set => this.SetProperty(ref field, value, () =>
         {
             if (_container != null && !IsFocused)
-                _container.BorderColor = value.PrimaryColor;
+                _container.BorderBrush = value.PrimaryColor;
         });
     } = new Color(100, 100, 100);
     #endregion
 
-    #region FocusedBorderColor
+    #region FocusedBorderBrush
     [PaintProperty]
-    public Brush FocusedBorderColor
+    public Brush FocusedBorderBrush
     {
         get => field;
         set => this.SetProperty(ref field, value, () =>
         {
             if (_container != null && IsFocused)
-                _container.BorderColor = value.PrimaryColor;
+                _container.BorderBrush = value.PrimaryColor;
         });
     } = new Color(59, 130, 246);
     #endregion
@@ -202,8 +202,8 @@ public class SearchBar : CompositeView<SearchBar>,
             Placeholder = Placeholder,
             Background = Color.Transparent,
             FocusBackground = Color.Transparent,
-            FocusBorderColor = Color.Transparent,
-            BorderWidth = 0,
+            FocusBorderBrush = Color.Transparent,
+            BorderThickness = 0,
             TextColor = TextColor.PrimaryColor,
             PlaceholderColor = PlaceholderColor.PrimaryColor,
             HorizontalAlignment = HorizontalAlignment.Stretch,
@@ -235,7 +235,7 @@ public class SearchBar : CompositeView<SearchBar>,
             Background = Color.Transparent,
             HoverBackground = new Color(60, 60, 65),
             TextColor = IconColor.PrimaryColor,
-            BorderWidth = 0,
+            BorderThickness = 0,
             BorderRadius = new CornerRadius(12),
             IsVisible = false
         };
@@ -258,8 +258,8 @@ public class SearchBar : CompositeView<SearchBar>,
         _container = new Frame
         {
             Background = Background,
-            BorderColor = BorderColor.PrimaryColor,
-            BorderWidth = 1,
+            BorderBrush = BorderBrush.PrimaryColor,
+            BorderThickness = 1,
             BorderRadius = new CornerRadius(CornerRadius),
             HorizontalAlignment = HorizontalAlignment.Stretch,
             VerticalAlignment = VerticalAlignment.Stretch
@@ -274,7 +274,7 @@ public class SearchBar : CompositeView<SearchBar>,
         {
             _container.Background = Background;
             _container.BorderRadius = new CornerRadius(CornerRadius);
-            _container.BorderColor = (IsFocused ? FocusedBorderColor : BorderColor).PrimaryColor;
+            _container.BorderBrush = (IsFocused ? FocusedBorderBrush : BorderBrush).PrimaryColor;
         }
 
         if (_entry != null)
@@ -341,7 +341,7 @@ public class SearchBar : CompositeView<SearchBar>,
         IsFocused = true;
         if (_container != null)
         {
-            _container.BorderColor = FocusedBorderColor.PrimaryColor;
+            _container.BorderBrush = FocusedBorderBrush.PrimaryColor;
         }
         MarkNeedsPaint();
     }
@@ -351,7 +351,7 @@ public class SearchBar : CompositeView<SearchBar>,
         IsFocused = false;
         if (_container != null)
         {
-            _container.BorderColor = BorderColor.PrimaryColor;
+            _container.BorderBrush = BorderBrush.PrimaryColor;
         }
         MarkNeedsPaint();
     }

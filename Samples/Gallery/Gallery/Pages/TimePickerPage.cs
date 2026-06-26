@@ -21,8 +21,8 @@ public class TimePickerPage : Component
         dialogPreview.HorizontalAlignment(HorizontalAlignment.Stretch);
         dialogPreview.BorderRadius(12);
         dialogPreview.Background(new Color(38, 41, 52));
-        dialogPreview.BorderWidth(1);
-        dialogPreview.BorderColor(new Color(255, 255, 255, 25));
+        dialogPreview.BorderThickness(1);
+        dialogPreview.BorderBrush(new Color(255, 255, 255, 25));
         dialogPreview.Padding(new Thickness(16));
         dialogPreview.Content(
             new VStack()

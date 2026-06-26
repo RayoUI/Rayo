@@ -276,7 +276,7 @@ Bad:
 
 ```csharp
 [MeasureProperty]
-public Brush BorderColor { get; set; }
+public Brush BorderBrush { get; set; }
 ```
 
 This causes unnecessary layout work.

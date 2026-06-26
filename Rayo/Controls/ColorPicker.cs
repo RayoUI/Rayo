@@ -152,8 +152,8 @@ public class ColorPicker : Component, Rayo.Core.Interfaces.IGlobalPointerHandler
 
         Frame card = new Frame();
         card.Background(new Color(30, 30, 35));
-        card.BorderColor = new Color(50, 55, 65);
-        card.BorderWidth = 1;
+        card.BorderBrush = new Color(50, 55, 65);
+        card.BorderThickness = 1;
         card.BorderRadius(new CornerRadius(14));
         card.Padding(new Thickness(16));
         card.HorizontalAlignment = HorizontalAlignment.Center;
@@ -172,19 +172,19 @@ public class ColorPicker : Component, Rayo.Core.Interfaces.IGlobalPointerHandler
         var hsv = ToHsva(currentColor);
         bool suppressUpdates = false;
 
-        // ── Header ───────────────────────────────────────────────────────────
+        // -- Header -----------------------------------------------------------
         var header = new Label("Pick a color")
             .FontSize(18)
             .Foreground(Color.White);
 
-        // ── Preview card (mirrors TimePicker/DatePicker preview style) ────────
+        // -- Preview card (mirrors TimePicker/DatePicker preview style) --------
         var colorSwatch = new Frame();
         colorSwatch.Width = 40;
         colorSwatch.Height = 40;
         colorSwatch.BorderRadius(new CornerRadius(10));
         colorSwatch.Background = new SolidColorBrush(currentColor);
-        colorSwatch.BorderWidth = 1;
-        colorSwatch.BorderColor = new Color(255, 255, 255, 30);
+        colorSwatch.BorderThickness = 1;
+        colorSwatch.BorderBrush = new Color(255, 255, 255, 30);
 
         var previewHex = new Label(FormatHex(currentColor, _showAlpha))
             .FontSize(16)
@@ -217,7 +217,7 @@ public class ColorPicker : Component, Rayo.Core.Interfaces.IGlobalPointerHandler
             previewHex.Text(FormatHex(next, _showAlpha));
         }
 
-        // ── Sliders ───────────────────────────────────────────────────────────
+        // -- Sliders -----------------------------------------------------------
         var hueValueLabel = CreateValueLabel($"{hsv.H:0}\u00B0");
         var satValueLabel = CreateValueLabel($"{hsv.S * 100:0}%");
         var valValueLabel = CreateValueLabel($"{hsv.V * 100:0}%");
@@ -269,7 +269,7 @@ public class ColorPicker : Component, Rayo.Core.Interfaces.IGlobalPointerHandler
             UpdatePreview(color);
         });
 
-        // ── Selection surface (dark card wrapping gradient + sliders) ─────────
+        // -- Selection surface (dark card wrapping gradient + sliders) ---------
         var interactiveContent = new VStack().Spacing(14);
         interactiveContent.AddChild(new Label("Quick colors")
             .FontSize(12)
@@ -286,13 +286,13 @@ public class ColorPicker : Component, Rayo.Core.Interfaces.IGlobalPointerHandler
         var selectionSurface = new Frame();
         selectionSurface.Background(new Color(34, 36, 44));
         selectionSurface.BorderRadius(new CornerRadius(12));
-        selectionSurface.BorderWidth(1);
-        selectionSurface.BorderColor = new Color(50, 55, 65);
+        selectionSurface.BorderThickness(1);
+        selectionSurface.BorderBrush = new Color(50, 55, 65);
         selectionSurface.Padding(new Thickness(14));
         selectionSurface.HorizontalAlignment(HorizontalAlignment.Stretch);
         selectionSurface.Content(interactiveContent);
 
-        // ── Buttons ───────────────────────────────────────────────────────────
+        // -- Buttons -----------------------------------------------------------
         var cancelButton = new Button
         {
             Text = "Cancel",
@@ -300,7 +300,7 @@ public class ColorPicker : Component, Rayo.Core.Interfaces.IGlobalPointerHandler
             Height = 36,
             Background = new Color(45, 45, 52),
             HoverBackground = new Color(55, 55, 62),
-            BorderWidth = 0,
+            BorderThickness = 0,
             BorderRadius = new CornerRadius(6)
         };
         cancelButton.OnTapped(onCancel);
@@ -312,7 +312,7 @@ public class ColorPicker : Component, Rayo.Core.Interfaces.IGlobalPointerHandler
             Height = 36,
             Background = ColorDefault.Primary,
             HoverBackground = ColorDefault.Info,
-            BorderWidth = 0,
+            BorderThickness = 0,
             BorderRadius = new CornerRadius(6)
         };
         selectButton.OnTapped(() => onConfirm(currentColor));
@@ -325,7 +325,7 @@ public class ColorPicker : Component, Rayo.Core.Interfaces.IGlobalPointerHandler
         buttons.AddChild(cancelButton);
         buttons.AddChild(selectButton);
 
-        // ── Root content VStack ───────────────────────────────────────────────
+        // -- Root content VStack -----------------------------------------------
         var content = new VStack().Spacing(16);
         content.AddChild(header);
         content.AddChild(previewFrame);
@@ -528,8 +528,8 @@ public class ColorPicker : Component, Rayo.Core.Interfaces.IGlobalPointerHandler
             Width = 320;
             Height = 140;
             BorderRadius = new CornerRadius(0);
-            BorderWidth = 1;
-            BorderColor = new Color(255, 255, 255, 30);
+            BorderThickness = 1;
+            BorderBrush = new Color(255, 255, 255, 30);
 
             Background = CreateSpectrumBrush();
         }
@@ -550,14 +550,14 @@ public class ColorPicker : Component, Rayo.Core.Interfaces.IGlobalPointerHandler
                 ComputedHeight,
                 LinearGradientBrush.Vertical(Color.Transparent, BottomShadeOverlay));
 
-            if (BorderWidth > 0 && BorderColor.PrimaryColor.A > 0)
+            if (BorderThickness.Left > 0 && BorderBrush.PrimaryColor.A > 0)
             {
                 DrawDottedBorder(renderer);
             }
 
             if (_markerPosition is { } marker)
             {
-                float inset = Math.Max(0f, BorderWidth);
+                float inset = Math.Max(0f, BorderThickness.Left);
                 float sampleWidth = Math.Max(1f, ComputedWidth - inset * 2f);
                 float sampleHeight = Math.Max(1f, ComputedHeight - inset * 2f);
                 float markerX = ComputedX + inset + marker.X * sampleWidth;
@@ -570,8 +570,8 @@ public class ColorPicker : Component, Rayo.Core.Interfaces.IGlobalPointerHandler
 
         private void DrawDottedBorder(IRenderer renderer)
         {
-            var color = BorderColor.PrimaryColor;
-            float radius = Math.Max(1f, BorderWidth);
+            var color = BorderBrush.PrimaryColor;
+            float radius = Math.Max(1f, BorderThickness.Left);
             float step = radius * 4f;
             float left = ComputedX + radius;
             float right = ComputedX + ComputedWidth - radius;
@@ -639,12 +639,12 @@ public class ColorPicker : Component, Rayo.Core.Interfaces.IGlobalPointerHandler
             _isDragging = false;
         }
 
-        // ── IInputHandler — pointer capture for desktop drag ──────────────────
+        // -- IInputHandler � pointer capture for desktop drag ------------------
         // IPointerHandler only receives events while the cursor is over this element.
         // On desktop, moving outside the gradient rectangle during drag stops events.
         // Implementing IInputHandler causes EventManager to set _draggedElement = this
         // on mouse-down, which routes all subsequent MouseDrag events here regardless
-        // of where the cursor is — matching the behaviour of mobile touch capture.
+        // of where the cursor is � matching the behaviour of mobile touch capture.
 
         bool IInputHandler.CanHandleInput => true;
 
@@ -675,7 +675,7 @@ public class ColorPicker : Component, Rayo.Core.Interfaces.IGlobalPointerHandler
         {
             float width = Math.Max(1f, ComputedWidth > 0 ? ComputedWidth : Width);
             float height = Math.Max(1f, ComputedHeight > 0 ? ComputedHeight : Height);
-            float inset = Math.Max(0f, BorderWidth);
+            float inset = Math.Max(0f, BorderThickness.Left);
             float sampleWidth = Math.Max(1f, width - inset * 2f);
             float sampleHeight = Math.Max(1f, height - inset * 2f);
 

@@ -30,8 +30,8 @@ public class ToolbarView : Component
         var colorPreview = new Frame()
             .Size(34)
             .Background(_vm.PrimaryColor.Value)
-            .BorderColor(new Color(170, 170, 170))
-            .BorderWidth(1)
+            .BorderBrush(new Color(170, 170, 170))
+            .BorderThickness(1)
             .BorderRadius(new CornerRadius(4));
 
         var colorLauncher = new ColorPicker.ClickableFrame(() => ColorPicker.ShowDialog(
@@ -129,8 +129,8 @@ public class ToolbarView : Component
             .Background(new Color(245, 245, 245))
             .HoverBackground(new Color(220, 230, 245))
             .PressedBackground(new Color(190, 210, 240))
-            .BorderWidth(1)
-            .BorderColor(new Color(210, 210, 210))
+            .BorderThickness(1)
+            .BorderBrush(new Color(210, 210, 210))
             .Width(34)
             .Height(34)
             .BorderRadius(new CornerRadius(4))
@@ -147,7 +147,7 @@ public class ToolbarView : Component
             .Width(34)
             .Height(34)
             .BorderRadius(new CornerRadius(4))
-            .BorderWidth(1)
+            .BorderThickness(1)
             .OnTapped(() => _vm.Tool.Value = tool);
 
         ApplyToolButtonStyle(btn, tool == _vm.Tool.Value);
@@ -196,7 +196,7 @@ public class ToolbarView : Component
             btn.HoverBackground = new Color(80, 140, 230);
             btn.PressedBackground = new Color(40, 100, 190);
             btn.IconColor       = Color.White;
-            btn.BorderColor     = new Color(40, 100, 190);
+            btn.BorderBrush     = new Color(40, 100, 190);
         }
         else
         {
@@ -204,7 +204,7 @@ public class ToolbarView : Component
             btn.HoverBackground = new Color(220, 230, 245);
             btn.PressedBackground = new Color(190, 210, 240);
             btn.IconColor       = new Color(60, 60, 60);
-            btn.BorderColor     = new Color(210, 210, 210);
+            btn.BorderBrush     = new Color(210, 210, 210);
         }
         btn.MarkNeedsPaint();
     }
@@ -304,7 +304,7 @@ public class ToolbarView : Component
     {
         VisualElement? overlay = null;
 
-        // Default to the current computed dimensions (or 800×600 before first layout).
+        // Default to the current computed dimensions (or 800ï¿½600 before first layout).
         int initW = Math.Max(100, (int)(_canvas.CanvasWidth  > 0 ? _canvas.CanvasWidth  : _canvas.ComputedWidth));
         int initH = Math.Max(100, (int)(_canvas.CanvasHeight > 0 ? _canvas.CanvasHeight : _canvas.ComputedHeight));
 
@@ -340,7 +340,7 @@ public class ToolbarView : Component
                     new Label("Width").FontSize(12).Foreground(new Color(170, 170, 170)),
                     widthEntry
                 ),
-                new Label("×")
+                new Label("ï¿½")
                     .FontSize(18)
                     .Foreground(new Color(130, 130, 130))
                     .VerticalAlignment(VerticalAlignment.Bottom)
@@ -358,9 +358,9 @@ public class ToolbarView : Component
                 new HStack()
                     .Spacing(6)
                     .Children(
-                        MakePresetButton("800 × 600",   () => ApplyPreset(800,  600)),
-                        MakePresetButton("1280 × 720",  () => ApplyPreset(1280, 720)),
-                        MakePresetButton("1920 × 1080", () => ApplyPreset(1920, 1080))
+                        MakePresetButton("800 ï¿½ 600",   () => ApplyPreset(800,  600)),
+                        MakePresetButton("1280 ï¿½ 720",  () => ApplyPreset(1280, 720)),
+                        MakePresetButton("1920 ï¿½ 1080", () => ApplyPreset(1920, 1080))
                     )
             );
 
@@ -374,7 +374,7 @@ public class ToolbarView : Component
             .Background(new Color(60, 60, 65))
             .HoverBackground(new Color(75, 75, 82))
             .BorderRadius(new CornerRadius(4))
-            .BorderWidth(0)
+            .BorderThickness(0)
             .OnTapped(Close);
 
         var createButton = new Button()
@@ -384,16 +384,16 @@ public class ToolbarView : Component
             .HoverBackground(new Color(0, 140, 235))
             .PressedBackground(new Color(0, 100, 195))
             .BorderRadius(new CornerRadius(4))
-            .BorderWidth(0)
+            .BorderThickness(0)
             .OnTapped(Create);
 
-        // -- Dialog shell — matches Dialog.cs visual style ---------------------
+        // -- Dialog shell ï¿½ matches Dialog.cs visual style ---------------------
 
         var dialogBox = new Frame();
         dialogBox.Width(420);
         dialogBox.Background = new Color(45, 45, 48);
         dialogBox.BorderRadius(8);
-        dialogBox.BorderWidth = 1;
+        dialogBox.BorderThickness = 1;
         dialogBox.HorizontalAlignment = HorizontalAlignment.Center;
         dialogBox.VerticalAlignment   = VerticalAlignment.Center;
 
@@ -443,6 +443,6 @@ public class ToolbarView : Component
             .PressedBackground(new Color(45, 45, 52))
             .TextColor(new Color(200, 200, 205))
             .BorderRadius(new CornerRadius(4))
-            .BorderWidth(0)
+            .BorderThickness(0)
             .OnTapped(onTap);
 }

@@ -114,7 +114,7 @@ public class MainView : Component
             .Background(_currentRoute.Value == route ? new Color(62, 126, 214) : Color.Transparent)
             .HoverBackground(_currentRoute.Value == route ? new Color(62, 126, 214) : new Color(232, 238, 247))
             .PressedBackground(new Color(207, 219, 236))
-            .BorderWidth(0)
+            .BorderThickness(0)
             .BorderRadius(8)
             .OnTapped(() =>
             {

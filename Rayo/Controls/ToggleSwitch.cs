@@ -53,18 +53,18 @@ public class ToggleSwitch : Rayo.Core.View<ToggleSwitch>,
     } = Color.Transparent;
     #endregion
 
-    #region OnBorderColor
+    #region OnBorderBrush
     [PaintProperty]
-    public Brush OnBorderColor
+    public Brush OnBorderBrush
     {
         get => field;
         set => this.SetProperty(ref field, value);
     } = new Color(0, 120, 215);
     #endregion
 
-    #region OffBorderColor
+    #region OffBorderBrush
     [PaintProperty]
-    public Brush OffBorderColor
+    public Brush OffBorderBrush
     {
         get => field;
         set => this.SetProperty(ref field, value);
@@ -311,7 +311,7 @@ public class ToggleSwitch : Rayo.Core.View<ToggleSwitch>,
         float height = ComputedHeight;
 
         Brush backgroundColor = InterpolateColor(OffColor, OnColor, _animationProgress);
-        Brush borderColor = InterpolateColor(OffBorderColor, OnBorderColor, _animationProgress);
+        Brush borderColor = InterpolateColor(OffBorderBrush, OnBorderBrush, _animationProgress);
 
         float trackRadius = height / 2;
         renderer.DrawRoundedRect(x, y, width, height, trackRadius, backgroundColor);
@@ -333,7 +333,7 @@ public class ToggleSwitch : Rayo.Core.View<ToggleSwitch>,
 
     private Brush InterpolateColor(Brush from, Brush to, float t)
     {
-        // Gradient brushes can't be arithmetically interpolated — snap to the nearest state
+        // Gradient brushes can't be arithmetically interpolated � snap to the nearest state
         if (from.IsGradient || to.IsGradient)
             return t >= 0.5f ? to : from;
 

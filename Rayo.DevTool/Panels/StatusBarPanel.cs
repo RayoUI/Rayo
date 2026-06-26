@@ -55,8 +55,8 @@ public class StatusBarFrame : Component
             Background = new Color(48, 58, 72),
             HoverBackground = new Color(62, 74, 92),
             PressedBackground = new Color(42, 50, 64),
-            BorderColor = new Color(74, 88, 110),
-            BorderWidth = 1,
+            BorderBrush = new Color(74, 88, 110),
+            BorderThickness = 1,
             BorderRadius = new CornerRadius(3),
             IconColor = new Color(225, 232, 242)
         };

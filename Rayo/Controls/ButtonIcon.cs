@@ -25,7 +25,7 @@ using IRenderer = Rayo.Rendering.IRenderer;
 /// - ITappable for tap gesture support
 /// - IGestureRecognizerHost for gesture recognizers
 /// </summary>
-public class ButtonIcon : Rayo.Core.View<ButtonIcon>,
+public class ButtonIcon : BorderView<ButtonIcon>,
     IPointerHandler,           // Modern unified pointer events
     ITappable,                 // Tap gesture support
     IGestureRecognizerHost     // Hosts gesture recognizers
@@ -86,24 +86,6 @@ public class ButtonIcon : Rayo.Core.View<ButtonIcon>,
     }
     #endregion
 
-    #region BorderWidth
-    [LayoutProperty]
-    public float BorderWidth
-    {
-        get => field;
-        set => this.SetProperty(ref field, value);
-    }
-    #endregion
-
-    #region BorderColor
-    [PaintProperty]
-    public Brush BorderColor
-    {
-        get => field;
-        set => this.SetProperty(ref field, value);
-    }
-    #endregion
-
     #region IsHovered
     public new bool IsHovered
     {
@@ -159,8 +141,8 @@ public class ButtonIcon : Rayo.Core.View<ButtonIcon>,
         Background = new Color(70, 130, 180);
         HoverBackground = new Color(100, 150, 200);
         PressedBackground = new Color(50, 100, 150);
-        BorderWidth = 0;
-        BorderColor = new Color(40, 80, 120);
+        BorderThickness = 0;
+        BorderBrush = new Color(40, 80, 120);
 
         // Touch-friendly sizing
         // Minimum recommended size for touch: 44x44 (iOS HIG) or 48x48 (Material Design)
@@ -299,7 +281,7 @@ public class ButtonIcon : Rayo.Core.View<ButtonIcon>,
     {
         if (ComputedWidth <= 0 || ComputedHeight <= 0) return;
 
-        // Draw background — use DrawRoundedRect when corners are uniform so gradient
+        // Draw background ï¿½ use DrawRoundedRect when corners are uniform so gradient
         // brushes render properly. Fall back to DrawPath for non-uniform corner radii.
         bool uniformRadius = BorderRadius.TopLeft == BorderRadius.TopRight
                           && BorderRadius.TopLeft == BorderRadius.BottomRight
@@ -320,10 +302,10 @@ public class ButtonIcon : Rayo.Core.View<ButtonIcon>,
         }
 
         // Draw border if specified
-        if (BorderWidth > 0)
+        if (BorderThickness.Left > 0)
         {
             renderer.DrawRoundedRectOutline(ComputedX, ComputedY, ComputedWidth, ComputedHeight,
-                BorderRadius.TopLeft, BorderWidth, BorderColor);
+                BorderRadius.TopLeft, BorderThickness.Left, BorderBrush.PrimaryColor);
         }
 
         // Draw icon

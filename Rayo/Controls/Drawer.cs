@@ -22,7 +22,7 @@ public enum DrawerPosition
 /// <summary>
 /// Drawer - A slide-out Frame that appears from the edge of the screen with animation.
 /// </summary>
-public class Drawer : Rayo.Core.CompositeView<Drawer>, IFrameAnimation
+public class Drawer : BorderCompositeView<Drawer>, IFrameAnimation
 {
     private bool _isOpen = false;
 
@@ -129,24 +129,6 @@ public class Drawer : Rayo.Core.CompositeView<Drawer>, IFrameAnimation
     }
     #endregion
 
-    #region BorderColor
-    [PaintProperty]
-    public Brush BorderColor
-    {
-        get => field;
-        set => this.SetProperty(ref field, value);
-    }
-    #endregion
-
-    #region BorderWidth
-    [LayoutProperty]
-    public float BorderWidth
-    {
-        get => field;
-        set => this.SetProperty(ref field, value);
-    }
-    #endregion
-
     #region CornerRadius
     public CornerRadius CornerRadius
     {
@@ -207,8 +189,8 @@ public class Drawer : Rayo.Core.CompositeView<Drawer>, IFrameAnimation
 
         Background = new Color(30, 32, 40);
         OverlayColor = new Color(0, 0, 0, 0.5f);
-        BorderColor = new Color(60, 65, 80);
-        BorderWidth = 1;
+        BorderBrush = new Color(60, 65, 80);
+        BorderThickness = 1;
         CornerRadius = new CornerRadius(0);
         Width = 0;
         Height = 0;
@@ -525,8 +507,8 @@ internal class DrawerOverlay : Rayo.Core.CompositeView<DrawerOverlay>, Rayo.Core
 
         _drawerFrame = new Frame()
             .Background(_drawer.Background)
-            .BorderColor(_drawer.BorderColor.PrimaryColor)
-            .BorderWidth(_drawer.BorderWidth);
+            .BorderBrush(_drawer.BorderBrush.PrimaryColor)
+            .BorderThickness(_drawer.BorderThickness);
         _drawerFrame.Content(_contentContainer);
         _drawerFrame.BorderRadius = _drawer.GetDrawerCornerRadius();
         _drawerFrame.ClipToBounds = true;

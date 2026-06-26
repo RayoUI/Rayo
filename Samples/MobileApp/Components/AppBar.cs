@@ -101,7 +101,7 @@ public class AppBar : Component
             .Background(Color.Transparent)
             .HoverBackground(new Color(43, 63, 94))
             .PressedBackground(new Color(16, 27, 43))
-            .BorderWidth(0)
+            .BorderThickness(0)
             .OnTapped(onTapped);
     }
 
@@ -140,8 +140,8 @@ public class AppBar : Component
             .Y(y)
             .Width(menuWidth)
             .Background(new Color(45, 55, 72))
-            .BorderColor(new Color(76, 89, 112))
-            .BorderWidth(1)
+            .BorderBrush(new Color(76, 89, 112))
+            .BorderThickness(1)
             .BorderRadius(8)
             .Padding(new Thickness(6))
             .HorizontalAlignment(HorizontalAlignment.Left)

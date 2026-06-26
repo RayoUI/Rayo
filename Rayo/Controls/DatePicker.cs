@@ -13,7 +13,7 @@ using System.Globalization;
 /// DatePicker component - Calendar-based date selection.
 /// Uses IPointerHandler for modern pointer event handling.
 /// </summary>
-public class DatePicker : Rayo.Core.CompositeView<DatePicker>,
+public class DatePicker : BorderCompositeView<DatePicker>,
     Rayo.Core.Input.IPointerHandler,
     IGlobalPointerHandler
 {
@@ -36,15 +36,6 @@ public class DatePicker : Rayo.Core.CompositeView<DatePicker>,
     private static DatePicker? _currentlyOpenDatePicker;
 
     // Styling
-    #region BorderColor
-    [PaintProperty]
-    public Brush BorderColor
-    {
-        get => field;
-        set => this.SetProperty(ref field, value);
-    } = new Color(100, 100, 100);
-    #endregion
-
     #region HeaderColor
     public Brush HeaderColor
     {
@@ -105,8 +96,8 @@ public class DatePicker : Rayo.Core.CompositeView<DatePicker>,
     } = new Color(30, 30, 35);
     #endregion
 
-    #region CalendarBorderColor
-    public Brush CalendarBorderColor
+    #region CalendarBorderBrush
+    public Brush CalendarBorderBrush
     {
         get => field;
         set => this.SetProperty(ref field, value);
@@ -240,6 +231,8 @@ public class DatePicker : Rayo.Core.CompositeView<DatePicker>,
         Background = new Color(40, 40, 45);
         Width = 240;
         Height = 44;
+        BorderBrush = new Color(100, 100, 100);
+        BorderThickness = 1;
         BuildComponents();
 
         // Add the date button as a child so it's part of the UI tree
@@ -247,6 +240,18 @@ public class DatePicker : Rayo.Core.CompositeView<DatePicker>,
         {
             AddChild(_dateButton);
         }
+    }
+
+    protected override void OnBorderBrushChanged()
+    {
+        base.OnBorderBrushChanged();
+        _dateButton?.BorderBrush(BorderBrush);
+    }
+
+    protected override void OnBorderThicknessChanged()
+    {
+        base.OnBorderThicknessChanged();
+        _dateButton?.BorderThickness(BorderThickness);
     }
 
     private void BuildComponents()
@@ -282,8 +287,8 @@ public class DatePicker : Rayo.Core.CompositeView<DatePicker>,
         _dateButton = new Frame
         {
             Background = Background,
-            BorderColor = BorderColor,
-            BorderWidth = 1,
+            BorderBrush = BorderBrush,
+            BorderThickness = BorderThickness,
             Padding = new Thickness(14, 6, 14, 6),
             HorizontalAlignment = HorizontalAlignment.Stretch,
             VerticalAlignment = VerticalAlignment.Stretch,
@@ -472,8 +477,8 @@ public class DatePicker : Rayo.Core.CompositeView<DatePicker>,
         var selectionSurface = new Frame();
         selectionSurface.Background(new Color(34, 36, 44));
         selectionSurface.BorderRadius(new CornerRadius(12));
-        selectionSurface.BorderWidth(1);
-        selectionSurface.BorderColor(CalendarBorderColor);
+        selectionSurface.BorderThickness(1);
+        selectionSurface.BorderBrush(CalendarBorderBrush);
         selectionSurface.Width(308);
         selectionSurface.Padding(new Thickness(0, 0, 0, 8));
         selectionSurface.HorizontalAlignment(HorizontalAlignment.Left);
@@ -500,7 +505,7 @@ public class DatePicker : Rayo.Core.CompositeView<DatePicker>,
             Background = new Color(45, 45, 52),
             HoverBackground = new Color(55, 55, 62),
             TextColor = Color.White,
-            BorderWidth = 0,
+            BorderThickness = 0,
             BorderRadius = new CornerRadius(6),
             Width = 100,
             Height = 36
@@ -525,8 +530,8 @@ public class DatePicker : Rayo.Core.CompositeView<DatePicker>,
         // -- Outer picker frame (same style as TimePicker's outer frame) ------
         var pickerFrame = new Frame()
             .Background(CalendarBackground)
-            .BorderColor(CalendarBorderColor)
-            .BorderWidth(1)
+            .BorderBrush(CalendarBorderBrush)
+            .BorderThickness(1)
             .BorderRadius(new CornerRadius(14))
             .Padding(new Thickness(16))
             .HorizontalAlignment(HorizontalAlignment.Center);
@@ -577,7 +582,7 @@ public class DatePicker : Rayo.Core.CompositeView<DatePicker>,
 
                 if (cellIndex < startDayOfWeek || currentDay > daysInMonth)
                 {
-                    // Empty / out-of-range cell — transparent placeholder keeps the row height.
+                    // Empty / out-of-range cell ï¿½ transparent placeholder keeps the row height.
                     dayFrame = new Frame()
                         .Width(40)
                         .Height(40)
@@ -605,7 +610,7 @@ public class DatePicker : Rayo.Core.CompositeView<DatePicker>,
                         TextColor = fgColor,
                         HoverBackground = HoverColor,
                         PressedBackground = HoverColor,
-                        BorderWidth = 0,
+                        BorderThickness = 0,
                         BorderRadius = new CornerRadius(8)
                     };
                     button.Tapped += (args) => SelectDay(day);

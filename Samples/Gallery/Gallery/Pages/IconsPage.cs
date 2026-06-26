@@ -72,8 +72,8 @@ public class IconsPage : Component
     {
         return new Frame()
             .Background(new Color(29, 32, 38))
-            .BorderColor(new Color(48, 54, 64))
-            .BorderWidth(1)
+            .BorderBrush(new Color(48, 54, 64))
+            .BorderThickness(1)
             .BorderRadius(new CornerRadius(6))
             .Padding(new Thickness(10))
             .HorizontalAlignment(HorizontalAlignment.Stretch)

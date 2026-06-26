@@ -10,7 +10,7 @@ using System;
 /// <summary>
 /// Stepper component - Increment/decrement control for numeric values
 /// </summary>
-public class Stepper : Rayo.Core.CompositeView<Stepper>
+public class Stepper : BorderCompositeView<Stepper>
 {
     private Frame? _container;
     private Button? _decrementButton;
@@ -88,15 +88,6 @@ public class Stepper : Rayo.Core.CompositeView<Stepper>
     } = "0";
     #endregion
 
-    #region BorderColor
-    [PaintProperty]
-    public Brush BorderColor
-    {
-        get => field;
-        set => this.SetProperty(ref field, value);
-    } = new Color(100, 100, 100);
-    #endregion
-
     #region ButtonColor
     public Brush ButtonColor
     {
@@ -163,12 +154,26 @@ public class Stepper : Rayo.Core.CompositeView<Stepper>
         Background = new Color(40, 40, 45);
         Width = 140;
         Height = 36;
+        BorderBrush = new Color(100, 100, 100);
+        BorderThickness = 1;
         BuildComponents();
 
         if (_container != null)
         {
             AddChild(_container);
         }
+    }
+
+    protected override void OnBorderBrushChanged()
+    {
+        base.OnBorderBrushChanged();
+        _container?.BorderBrush(BorderBrush.PrimaryColor);
+    }
+
+    protected override void OnBorderThicknessChanged()
+    {
+        base.OnBorderThicknessChanged();
+        _container?.BorderThickness(BorderThickness);
     }
 
     private void BuildComponents()
@@ -186,7 +191,7 @@ public class Stepper : Rayo.Core.CompositeView<Stepper>
             HoverBackground = ButtonHoverColor,
             TextColor = TextColor,
             FontSize = 18,
-            BorderWidth = 0,
+            BorderThickness = 0,
             BorderRadius = Orientation == Orientation.Horizontal
                 ? new CornerRadius(CornerRadius, 0, 0, CornerRadius)
                 : new CornerRadius(0, 0, CornerRadius, CornerRadius)
@@ -221,7 +226,7 @@ public class Stepper : Rayo.Core.CompositeView<Stepper>
             HoverBackground = ButtonHoverColor,
             TextColor = TextColor,
             FontSize = 18,
-            BorderWidth = 0,
+            BorderThickness = 0,
             BorderRadius = Orientation == Orientation.Horizontal
                 ? new CornerRadius(0, CornerRadius, CornerRadius, 0)
                 : new CornerRadius(CornerRadius, CornerRadius, 0, 0)
@@ -261,8 +266,8 @@ public class Stepper : Rayo.Core.CompositeView<Stepper>
         _container = new Frame
         {
             Background = Background,
-            BorderColor = BorderColor.PrimaryColor,
-            BorderWidth = 1,
+            BorderBrush = BorderBrush.PrimaryColor,
+            BorderThickness = BorderThickness,
             BorderRadius = new CornerRadius(CornerRadius),
             HorizontalAlignment = HorizontalAlignment.Stretch,
             VerticalAlignment = VerticalAlignment.Stretch

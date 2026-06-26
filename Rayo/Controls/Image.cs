@@ -36,7 +36,7 @@ public enum StretchMode
 /// Componente para mostrar imágenes desde archivos locales, URLs de red o streams
 /// Migrated to new MAUI-like architecture: inherits from View<Image>
 /// </summary>
-public class Image : Rayo.Core.View<Image>
+public class Image : BorderView<Image>
 {
     #region Source
     [LayoutProperty]

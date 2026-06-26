@@ -108,7 +108,7 @@ public class AnimationPage : Component
                             .Background(new Color(59, 130, 246))
                             .HoverBackground(new Color(79, 150, 255))
                             .TextColor(Color.White)
-                            .BorderWidth(0)
+                            .BorderThickness(0)
                             .Padding(new Thickness(20, 12, 20, 12))
                             .OnTapped(PlayAllAnimations),
 
@@ -117,7 +117,7 @@ public class AnimationPage : Component
                             .Background(new Color(100, 105, 120))
                             .HoverBackground(new Color(120, 125, 140))
                             .TextColor(Color.White)
-                            .BorderWidth(0)
+                            .BorderThickness(0)
                             .Padding(new Thickness(20, 12, 20, 12))
                             .OnTapped(ResetAllAnimations),
 
@@ -166,7 +166,7 @@ public class AnimationPage : Component
                             .Background(new Color(59, 130, 246))
                             .HoverBackground(new Color(79, 150, 255))
                             .TextColor(Color.White)
-                            .BorderWidth(0)
+                            .BorderThickness(0)
                             .Padding(new Thickness(12, 8, 12, 8))
                             .OnTapped(() => PlayAnimation(demoState)),
 
@@ -175,7 +175,7 @@ public class AnimationPage : Component
                             .Background(new Color(100, 105, 120))
                             .HoverBackground(new Color(120, 125, 140))
                             .TextColor(Color.White)
-                            .BorderWidth(0)
+                            .BorderThickness(0)
                             .Padding(new Thickness(12, 8, 12, 8))
                             .OnTapped(() => ResetAnimation(demoState))
                     )

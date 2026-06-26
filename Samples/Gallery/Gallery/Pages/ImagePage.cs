@@ -135,8 +135,8 @@ public class ImagePage : Component
                 new Frame()
                     .Size(new Size(100, 80))
                     .Background(new Color(45, 48, 58))
-                    .BorderColor(new Color(70, 75, 90))
-                    .BorderWidth(1)
+                    .BorderBrush(new Color(70, 75, 90))
+                    .BorderThickness(1)
                     .Content(
                         new Image()
                             .Source("Assets/Images/robot.png")

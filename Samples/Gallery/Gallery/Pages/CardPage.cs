@@ -112,8 +112,8 @@ public class CardPage : Component
                                     new Card()
                                         .Width(200)
                                         .Shadow(Shadow.None)
-                                        .BorderColor(ColorDefault.Primary)
-                                        .BorderWidth(2)
+                                        .BorderBrush(ColorDefault.Primary)
+                                        .BorderThickness(2)
                                         .Header(
                                             new Label("Custom Border")
                                                 .FontSize(14)
@@ -135,7 +135,7 @@ public class CardPage : Component
                                         .Width(200)
                                         .Background(new Color(240, 249, 255))
                                         .HeaderBackground(new Color(59, 130, 246))
-                                        .BorderColor(new Color(59, 130, 246))
+                                        .BorderBrush(new Color(59, 130, 246))
                                         .Header(
                                             new Label("Info Card")
                                                 .FontSize(14)
@@ -150,7 +150,7 @@ public class CardPage : Component
                                         .Width(200)
                                         .Background(new Color(240, 253, 244))
                                         .HeaderBackground(new Color(34, 197, 94))
-                                        .BorderColor(new Color(34, 197, 94))
+                                        .BorderBrush(new Color(34, 197, 94))
                                         .Header(
                                             new Label("Success Card")
                                                 .FontSize(14)
@@ -165,7 +165,7 @@ public class CardPage : Component
                                         .Width(200)
                                         .Background(new Color(254, 242, 242))
                                         .HeaderBackground(new Color(239, 68, 68))
-                                        .BorderColor(new Color(239, 68, 68))
+                                        .BorderBrush(new Color(239, 68, 68))
                                         .Header(
                                             new Label("Error Card")
                                                 .FontSize(14)

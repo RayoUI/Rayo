@@ -1,4 +1,4 @@
-﻿# Style Engine — Reference
+﻿# Style Engine � Reference
 
 Rayo's CSS-inspired style engine. Lets you declare visual rules applied to element subtrees, with full reactive support: styles are re-applied automatically when the window is resized, element state changes, the OS theme changes, and more.
 
@@ -7,11 +7,11 @@ Rayo's CSS-inspired style engine. Lets you declare visual rules applied to eleme
 ## Table of Contents
 
 1. [Core concepts](#1-core-concepts)
-2. [StyleSheet — rule collection](#2-stylesheet--rule-collection)
+2. [StyleSheet � rule collection](#2-stylesheet--rule-collection)
 3. [Selectors](#3-selectors)
 4. [Specificity](#4-specificity)
 5. [Property setters](#5-property-setters)
-6. [Conditions — When()](#6-conditions--when)
+6. [Conditions � When()](#6-conditions--when)
    - 6.1 [Element state (StyleTrigger)](#61-element-state-styletrigger)
    - 6.2 [Named breakpoints](#62-named-breakpoints)
    - 6.3 [Predicate breakpoints](#63-predicate-breakpoints)
@@ -34,10 +34,10 @@ Rayo's CSS-inspired style engine. Lets you declare visual rules applied to eleme
 12. [Applying styles](#12-applying-styles)
     - 12.1 [Global styles (app-level)](#121-global-styles-app-level)
     - 12.2 [Component styles (UserControl)](#122-component-styles-usercontrol)
-    - 12.3 [StyleEngine — manual application](#123-styleengine--manual-application)
-    - 12.4 [GetComputedStyle — debugging](#124-getcomputedstyle--debugging)
+    - 12.3 [StyleEngine � manual application](#123-styleengine--manual-application)
+    - 12.4 [GetComputedStyle � debugging](#124-getcomputedstyle--debugging)
 13. [Application priority](#13-application-priority)
-14. [Reactivity — when styles are re-applied](#14-reactivity--when-styles-are-re-applied)
+14. [Reactivity � when styles are re-applied](#14-reactivity--when-styles-are-re-applied)
 15. [Quick API reference](#15-quick-api-reference)
 
 ---
@@ -51,23 +51,23 @@ A style is an instance of `Style<T>` where `T` is the target element type. Each 
 - **Conditional setters** applied only when a condition is true (state, breakpoint, platform, etc.).
 
 ```csharp
-// Type selector — targets all Button elements
+// Type selector � targets all Button elements
 new Style<Button>()
     .Height(36)
     .BorderRadius(8)
 
-// Class selector — only buttons with class "primary"
+// Class selector � only buttons with class "primary"
 new Style<Button>(".primary")
     .Background(new Color(0, 120, 212))
 
-// Id selector — a single element with id "submit"
+// Id selector � a single element with id "submit"
 new Style<Button>("#submit")
     .Background(new Color(0, 180, 80))
 ```
 
 ---
 
-## 2. StyleSheet — rule collection
+## 2. StyleSheet � rule collection
 
 `StyleSheet` is an ordered list of `StyleRule` objects. Supports C# 12 collection-expression syntax:
 
@@ -156,7 +156,7 @@ Use `[NotFluent]` on a class or property when you intentionally want to exclude 
 
 ---
 
-## 6. Conditions — When()
+## 6. Conditions � When()
 
 All `When()` overloads accept an `Action<Style<T>>` lambda where the conditional setters are declared. Conditional setters **accumulate on top of** the base setters rather than replacing them.
 
@@ -171,7 +171,7 @@ new Style<Button>()
     .Background(new Color(0, 120, 212))
     .When(StyleTrigger.Hover,    s => s.Background(new Color(0, 100, 190)))
     .When(StyleTrigger.Pressed,  s => s.Background(new Color(0,  80, 160)))
-    .When(StyleTrigger.Focused,  s => s.BorderWidth(2))
+    .When(StyleTrigger.Focused,  s => s.BorderThickness(2))
     .When(StyleTrigger.Disabled, s => s.Background(new Color(150, 150, 150)))
 ```
 
@@ -199,10 +199,10 @@ new Style<Label>()
 | Breakpoint | Window width range |
 |------------|--------------------|
 | `XSmall`   | < 480 px           |
-| `Small`    | 480 – 767 px       |
-| `Medium`   | 768 – 1023 px      |
-| `Large`    | 1024 – 1439 px     |
-| `XLarge`   | ≥ 1440 px          |
+| `Small`    | 480 � 767 px       |
+| `Medium`   | 768 � 1023 px      |
+| `Large`    | 1024 � 1439 px     |
+| `XLarge`   | = 1440 px          |
 
 Breakpoint styles are re-applied automatically every time the window crosses a threshold. This includes maximize/restore on Windows.
 
@@ -253,7 +253,7 @@ new Style<Button>()
 
 Detects whether the OS uses dark or light mode (equivalent to CSS `prefers-color-scheme`). Re-evaluated automatically every ~5 seconds.
 
-**Detection:** Windows — `AppsUseLightTheme` registry key. Other OS — falls back to `Light`.
+**Detection:** Windows � `AppsUseLightTheme` registry key. Other OS � falls back to `Light`.
 
 ```csharp
 new Style<Label>(".scheme-status")
@@ -283,7 +283,7 @@ new Style<HStack>(".toolbar")
 | Value       | Condition                          |
 |-------------|------------------------------------|
 | `Portrait`  | Window height > window width       |
-| `Landscape` | Window width ≥ window height       |
+| `Landscape` | Window width = window height       |
 
 ### 6.7 Screen density
 
@@ -299,9 +299,9 @@ new Style<Image>()
 | Value        | DPI range         |
 |--------------|-------------------|
 | `Low`        | < 96 dpi          |
-| `Normal`     | 96 – 143 dpi      |
-| `High`       | 144 – 191 dpi     |
-| `ExtraHigh`  | ≥ 192 dpi         |
+| `Normal`     | 96 � 143 dpi      |
+| `High`       | 144 � 191 dpi     |
+| `ExtraHigh`  | = 192 dpi         |
 
 ---
 
@@ -310,11 +310,11 @@ new Style<Image>()
 ### 7.1 ChildOf / DescendantOf
 
 ```csharp
-// CSS: Panel > Button — only Buttons that are direct children of Panel
+// CSS: Panel > Button � only Buttons that are direct children of Panel
 new Style<Button>().ChildOf<Panel>()
     .Margin(new Thickness(4))
 
-// CSS: Card Button — Buttons at any nesting level inside Card
+// CSS: Card Button � Buttons at any nesting level inside Card
 new Style<Button>().DescendantOf<Card>()
     .BorderRadius(12)
 ```
@@ -322,11 +322,11 @@ new Style<Button>().DescendantOf<Card>()
 ### 7.2 SiblingOf / ImmediateSiblingOf
 
 ```csharp
-// CSS: Label ~ Button — Buttons that share a parent with any Label
+// CSS: Label ~ Button � Buttons that share a parent with any Label
 new Style<Button>().SiblingOf<Label>()
     .Margin(new Thickness(left: 8))
 
-// CSS: Label + Button — Button immediately preceded by a Label
+// CSS: Label + Button � Button immediately preceded by a Label
 new Style<Button>().ImmediateSiblingOf<Label>()
     .Margin(new Thickness(left: 4))
 ```
@@ -345,7 +345,7 @@ new Style<Label>(".item").FirstChild()
 new Style<Label>(".item").LastChild()
     .Foreground(new Color(220, 80, 160))
 
-// CSS: li:nth-child(2) — matches the 2nd, 4th, 6th… child
+// CSS: li:nth-child(2) � matches the 2nd, 4th, 6th� child
 new Style<Label>(".item").NthChild(2)
     .Background(new Color(50, 50, 62))
 ```
@@ -353,17 +353,17 @@ new Style<Label>(".item").NthChild(2)
 ### 7.4 Not()
 
 ```csharp
-// CSS: .item:not(.excluded) — all .item elements except those that also have .excluded
+// CSS: .item:not(.excluded) � all .item elements except those that also have .excluded
 new Style<Label>(".item")
     .Not(".excluded")
     .Foreground(new Color(80, 200, 120))
 
-// CSS: :not(#header) — elements without that specific id
+// CSS: :not(#header) � elements without that specific id
 new Style<Label>()
     .Not("#header")
     .FontSize(14)
 
-// By type — excludes a specific subtype
+// By type � excludes a specific subtype
 new Style<VisualElement>()
     .Not<Button>()
     .Margin(new Thickness(4))
@@ -413,7 +413,7 @@ new Style<Label>(".danger")
     .Important()
 
 new Style<Label>(".danger.override")
-    .Foreground(new Color(80, 200, 120))       // would normally win — but not here
+    .Foreground(new Color(80, 200, 120))       // would normally win � but not here
 ```
 
 ---
@@ -430,7 +430,7 @@ var tokens = new StyleTokens()
     .Set("--radius",     8f)
     .Set("--spacing",    16f);
 
-// Computed tokens — evaluated lazily on each Get(), not at Set() time
+// Computed tokens � evaluated lazily on each Get(), not at Set() time
 tokens
     .Set("--primary-dim",  t => t.Get<Color>("--primary").WithAlpha(0.6f))
     .Set("--large-radius", t => t.Get<float>("--radius") * 2f);
@@ -529,7 +529,7 @@ Controls whether rules declared in a `UserControl` cascade into nested `UserCont
 ```csharp
 public class MyComponent : UserControl
 {
-    // Default: Global — rules propagate to all descendants
+    // Default: Global � rules propagate to all descendants
     protected override StyleScope StyleScope => StyleScope.Global;
 
     // Local: rules stop at nested UserControl boundaries
@@ -586,7 +586,7 @@ public class MyCard : UserControl
 }
 ```
 
-### 12.3 StyleEngine — manual application
+### 12.3 StyleEngine � manual application
 
 ```csharp
 // Apply all rules in sheet to the subtree rooted at root
@@ -596,7 +596,7 @@ StyleEngine.Apply(sheet, root);
 StyleEngine.Apply(sheet, root, StyleScope.Local);
 ```
 
-### 12.4 GetComputedStyle — debugging
+### 12.4 GetComputedStyle � debugging
 
 Returns the list of rules that would be applied to an element, including whether each one matched.
 
@@ -625,7 +625,7 @@ Rules are sorted and applied in the following order (last write wins on property
 4. `Important()` rules are applied at the very end, regardless of specificity or source.
 
 ```
-Low priority ────────────────────────────── High priority
+Low priority ------------------------------ High priority
 
   Global,    type selector   (spec 1)
   Global,    class selector  (spec 11)
@@ -638,7 +638,7 @@ Low priority ──────────────────────�
 
 ---
 
-## 14. Reactivity — when styles are re-applied
+## 14. Reactivity � when styles are re-applied
 
 The engine re-applies styles automatically in the following situations:
 
@@ -660,7 +660,7 @@ Color-scheme polling occurs every ~300 frames (~5 seconds at 60 FPS).
 
 ## 15. Quick API reference
 
-### Style\<T\> — Selectors
+### Style\<T\> � Selectors
 
 ```csharp
 new Style<T>()                          // type selector
@@ -678,12 +678,12 @@ Style.Class<T>("class")                 // factory: class selector
 .FirstChild()                           // :first-child
 .LastChild()                            // :last-child
 .NthChild(step)                         // :nth-child(n), 1-based
-.Not("#id")                             // :not — exclude by id
-.Not(".class")                          // :not — exclude by class
-.Not<TExclude>()                        // :not — exclude by type
+.Not("#id")                             // :not � exclude by id
+.Not(".class")                          // :not � exclude by class
+.Not<TExclude>()                        // :not � exclude by type
 ```
 
-### Style\<T\> — Conditions
+### Style\<T\> � Conditions
 
 ```csharp
 .When(StyleTrigger.Hover,    s => ...)  // :hover
@@ -692,10 +692,10 @@ Style.Class<T>("class")                 // factory: class selector
 .When(StyleTrigger.Disabled, s => ...)  // :disabled
 
 .When(Breakpoint.XSmall, s => ...)     // < 480 px
-.When(Breakpoint.Small,  s => ...)     // 480–767 px
-.When(Breakpoint.Medium, s => ...)     // 768–1023 px
-.When(Breakpoint.Large,  s => ...)     // 1024–1439 px
-.When(Breakpoint.XLarge, s => ...)     // ≥ 1440 px
+.When(Breakpoint.Small,  s => ...)     // 480�767 px
+.When(Breakpoint.Medium, s => ...)     // 768�1023 px
+.When(Breakpoint.Large,  s => ...)     // 1024�1439 px
+.When(Breakpoint.XLarge, s => ...)     // = 1440 px
 
 .When(w => w < 600, s => ...)          // custom width predicate (pixels)
 
@@ -717,11 +717,11 @@ Style.Class<T>("class")                 // factory: class selector
 .When(ScreenDensity.ExtraHigh, s => ...)
 ```
 
-### Style\<T\> — Composition
+### Style\<T\> � Composition
 
 ```csharp
 .Set(element => ...)                    // free setter (any property)
-.Extend(otherStyle)                     // @extend — copy base setters
+.Extend(otherStyle)                     // @extend � copy base setters
 .WithTransition(durationMs)             // animate state changes (Out Quad default)
 .WithTransition(durationMs, easing)     // animate with custom easing function
 .Important()                            // !important

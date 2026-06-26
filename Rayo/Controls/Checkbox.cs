@@ -201,8 +201,6 @@ public class Checkbox : Rayo.Core.View<Checkbox>,
 
     public Checkbox()
     {
-        BorderRadius = new CornerRadius(4);
-
         // Setup gesture recognizers
         _tapRecognizer = new TapRecognizer(
             maxMovementThreshold: 15f,

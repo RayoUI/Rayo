@@ -92,8 +92,8 @@ public class ToolbarFrame : Component
             Background = new Color(40, 40, 46),
             HoverBackground = new Color(55, 55, 62),
             PressedBackground = new Color(32, 32, 38),
-            BorderColor = new Color(60, 60, 68),
-            BorderWidth = 1,
+            BorderBrush = new Color(60, 60, 68),
+            BorderThickness = 1,
             BorderRadius = new CornerRadius(3),
             IconColor = new Color(220, 220, 230)
         };

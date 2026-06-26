@@ -60,7 +60,7 @@ public class DrawerPage : Component
                                         .Background(new Color(59, 130, 246))
                                         .HoverBackground(new Color(79, 150, 255))
                                         .TextColor(Color.White)
-                                        .BorderWidth(0)
+                                        .BorderThickness(0)
                                         .Padding(new Thickness(16, 10, 16, 10))
                                         .OnTapped(() => _leftDrawer?.Open()),
 
@@ -69,7 +69,7 @@ public class DrawerPage : Component
                                         .Background(new Color(34, 197, 94))
                                         .HoverBackground(new Color(54, 217, 114))
                                         .TextColor(Color.White)
-                                        .BorderWidth(0)
+                                        .BorderThickness(0)
                                         .Padding(new Thickness(16, 10, 16, 10))
                                         .OnTapped(() => _rightDrawer?.Open()),
 
@@ -78,7 +78,7 @@ public class DrawerPage : Component
                                         .Background(new Color(168, 85, 247))
                                         .HoverBackground(new Color(188, 105, 255))
                                         .TextColor(Color.White)
-                                        .BorderWidth(0)
+                                        .BorderThickness(0)
                                         .Padding(new Thickness(16, 10, 16, 10))
                                         .OnTapped(() => _topDrawer?.Open()),
 
@@ -87,7 +87,7 @@ public class DrawerPage : Component
                                         .Background(new Color(249, 115, 22))
                                         .HoverBackground(new Color(255, 135, 42))
                                         .TextColor(Color.White)
-                                        .BorderWidth(0)
+                                        .BorderThickness(0)
                                         .Padding(new Thickness(16, 10, 16, 10))
                                         .OnTapped(() => _bottomDrawer?.Open())
                                 )
@@ -150,7 +150,7 @@ public class DrawerPage : Component
                     .Background(new Color(239, 68, 68))
                     .HoverBackground(new Color(255, 88, 88))
                     .TextColor(Color.White)
-                    .BorderWidth(0)
+                    .BorderThickness(0)
                     .HorizontalAlignment(HorizontalAlignment.Stretch)
                     .Padding(new Thickness(12, 10, 12, 10))
                     .OnTapped(() => Drawer.CloseCurrentDrawer())
@@ -178,7 +178,7 @@ public class DrawerPage : Component
                             .Background(new Color(239, 68, 68))
                             .HoverBackground(new Color(255, 88, 88))
                             .TextColor(Color.White)
-                            .BorderWidth(0)
+                            .BorderThickness(0)
                             .Padding(new Thickness(12, 8, 12, 8))
                             .OnTapped(() => Drawer.CloseCurrentDrawer())
                     ),
@@ -208,7 +208,7 @@ public class DrawerPage : Component
             .Background(bgColor)
             .HoverBackground(hoverColor)
             .TextColor(Color.White)
-            .BorderWidth(0)
+            .BorderThickness(0)
             .BorderRadius(8)
             .HorizontalAlignment(HorizontalAlignment.Stretch)
             .Padding(new Thickness(12, 10, 12, 10));
@@ -221,7 +221,7 @@ public class DrawerPage : Component
             .Background(new Color(55, 60, 75))
             .HoverBackground(new Color(70, 75, 90))
             .TextColor(Color.White)
-            .BorderWidth(0)
+            .BorderThickness(0)
             .Padding(new Thickness(16, 12, 16, 12));
     }
 

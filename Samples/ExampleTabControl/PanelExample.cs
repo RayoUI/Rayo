@@ -18,8 +18,8 @@ internal class PanelExample : IUIBuilder
                     .Margin(new Thickness(100, 10, 10, 10))
                     .Background(new Color(147, 197, 253))
                     .Size(new Size(200, 200))
-                    .BorderColor(Color.Black)
-                    .BorderWidth(8)
+                    .BorderBrush(Color.Black)
+                    .BorderThickness(8)
                     .BorderRadius(16)
             );
 }

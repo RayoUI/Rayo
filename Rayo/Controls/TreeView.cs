@@ -585,7 +585,7 @@ internal class TreeNodeView : CompositeView<TreeNodeView>
                 float checkboxX = ComputedX + ComputedWidth - checkboxSize - 8f;
                 float checkboxY = centerY - checkboxSize / 2f;
 
-                Brush checkboxColor = node.IsChecked ? treeView.SelectedColor : treeView.BorderColor;
+                Brush checkboxColor = node.IsChecked ? treeView.SelectedColor : treeView.BorderBrush;
                 renderer.DrawRoundedRect(checkboxX, checkboxY, checkboxSize, checkboxSize, 3, checkboxColor);
 
                 if (node.IsChecked)
@@ -611,7 +611,7 @@ internal class TreeNodeView : CompositeView<TreeNodeView>
 /// TreeView component - Hierarchical data display with expand/collapse
 /// Extended with icon support, customization, and modern events
 /// </summary>
-public class TreeView : CompositeView<TreeView>
+public class TreeView : BorderCompositeView<TreeView>
 {
     public List<TreeNode> RootNodes
     {
@@ -637,13 +637,6 @@ public class TreeView : CompositeView<TreeView>
             ApplyStyles();
         }
     }
-    [PaintProperty]
-    public Brush BorderColor
-    {
-        get => field;
-        set => this.SetProperty(ref field, value, ApplyStyles);
-    } = new Color(220, 220, 220);
-
     [PaintProperty]
     public Brush SelectedColor
     {
@@ -686,13 +679,6 @@ public class TreeView : CompositeView<TreeView>
         set => this.SetProperty(ref field, value, UpdateNodeVisuals);
     } = new Color(150, 150, 150);
 
-    [LayoutProperty]
-    public float BorderWidth
-    {
-        get => field;
-        set => this.SetProperty(ref field, value, ApplyStyles);
-    } = 1;
-    
     [LayoutProperty]
     public float ItemHeight
     {
@@ -808,7 +794,22 @@ public class TreeView : CompositeView<TreeView>
     public TreeView()
     {
         Background = Color.White;
+        BorderBrush = new Color(220, 220, 220);
+        BorderThickness = 1;
         BuildComponents();
+        ApplyStyles();
+    }
+
+    protected override void OnBorderBrushChanged()
+    {
+        base.OnBorderBrushChanged();
+        ApplyStyles();
+        UpdateNodeVisuals();
+    }
+
+    protected override void OnBorderThicknessChanged()
+    {
+        base.OnBorderThicknessChanged();
         ApplyStyles();
     }
 
@@ -822,8 +823,8 @@ public class TreeView : CompositeView<TreeView>
 
         _rootFrame = new Frame()
             .Background(Background)
-            .BorderColor(BorderColor.PrimaryColor)
-            .BorderWidth(BorderWidth)
+            .BorderBrush(BorderBrush.PrimaryColor)
+            .BorderThickness(BorderThickness)
             .HorizontalAlignment(HorizontalAlignment.Stretch)
             .VerticalAlignment(VerticalAlignment.Stretch)
             .Content(_scrollView);
@@ -835,8 +836,8 @@ public class TreeView : CompositeView<TreeView>
     {
         _rootFrame?
             .Background(Background)
-            .BorderColor(BorderColor.PrimaryColor)
-            .BorderWidth(BorderWidth);
+            .BorderBrush(BorderBrush.PrimaryColor)
+            .BorderThickness(BorderThickness);
     }
 
     private void UpdateNodeVisuals()
