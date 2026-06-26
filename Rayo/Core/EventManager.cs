@@ -136,6 +136,7 @@ public class EventManager
 
         // Process time-based gestures (long-press, double-tap timeout)
         ProcessGestureDetectors();
+        ClearHoverStatesIfMouseLeftWindow();
 
         if (_keyboard == null || _focusedElement == null) return false;
 
@@ -673,8 +674,14 @@ public class EventManager
     /// Clears hover state from all currently hovered elements.
     /// Called when an overlay blocks input to the main tree.
     /// </summary>
-    private void ClearHoverStates()
+    public void ClearHoverStates()
     {
+        if (_hoveredElements.Count == 0)
+        {
+            ApplyMouseCursor(CursorShape.Default);
+            return;
+        }
+
         foreach (var hoverable in _hoveredElements)
         {
             if (hoverable is Rayo.Core.Input.IPointerHandler pointerHandler)
@@ -690,6 +697,30 @@ public class EventManager
             _needsRenderThisFrame = true;
         }
         _hoveredElements.Clear();
+        ApplyMouseCursor(CursorShape.Default);
+        _tree.MarkNeedsRender();
+    }
+
+    private void ClearHoverStatesIfMouseLeftWindow()
+    {
+        if (_mouse == null || _tree.Root == null || _hoveredElements.Count == 0)
+        {
+            return;
+        }
+
+        var position = _mouse.Position;
+        var rootWidth = _tree.Root.ComputedWidth;
+        var rootHeight = _tree.Root.ComputedHeight;
+
+        if (rootWidth <= 0 || rootHeight <= 0)
+        {
+            return;
+        }
+
+        if (position.X < 0 || position.Y < 0 || position.X >= rootWidth || position.Y >= rootHeight)
+        {
+            ClearHoverStates();
+        }
     }
 
     private void OnMouseDown(IMouse mouse, MouseButton button)
@@ -1576,6 +1607,7 @@ public class EventManager
         }
 
         SetFocus(null);
+        ClearHoverStates();
         _draggedElement = null;
     }
 

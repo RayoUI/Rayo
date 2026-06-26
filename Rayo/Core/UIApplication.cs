@@ -521,6 +521,7 @@ public class UIApplication : IDisposable
         _window.Resize += OnResize;
         _window.Closing += OnClosing;
         _window.Update += OnUpdate;
+        _window.FocusChanged += OnFocusChanged;
 
         // Apply startup location after window creation
         if (config.StartupLocation == WindowStartupLocation.CenterScreen)
@@ -713,6 +714,14 @@ public class UIApplication : IDisposable
     {
         _lastPolledSize = size;
         ApplyWindowSize(size);
+    }
+
+    private void OnFocusChanged(bool focused)
+    {
+        if (!focused)
+        {
+            _eventManager.ClearHoverStates();
+        }
     }
 
     private void ApplyWindowSize(Vector2D<int> size)
