@@ -62,13 +62,17 @@ public class DatePickerPage : Component
             .Children(
                 Helper.CreatePageHeader("DatePicker", "Calendar-based date selection"),
 
-                Helper.CreateExampleSection("Basic DatePicker",
+                Helper.CreateExampleSection("Popup DatePicker",
                     new VStack()
                         .Spacing(15)
                         .Children(
+                            new Label("The calendar opens next to the field and flips above it when space is limited.")
+                                .FontSize(13)
+                                .Foreground(ColorDefault.Secondary),
                             new DatePicker()
                                 .Width(240)
                                 .HorizontalAlignment(HorizontalAlignment.Left)
+                                .DisplayMode(PickerDisplayMode.Popup)
                                 .SelectedDate(DateTime.Today)
                                 .OnDateChanged(date => selectedDate.Value = date),
 

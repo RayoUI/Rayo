@@ -1,22 +1,28 @@
 ﻿namespace Rayo.Controls;
 
 /// <summary>
-/// Defines how picker-style components display their UI (floating Frame vs dialog).
+/// Defines how picker-style components display their selection UI.
 /// </summary>
 public enum PickerDisplayMode
 {
     /// <summary>
-    /// Automatically selects the best mode: floating on desktop, dialog on mobile.
+    /// Uses the control's default presentation.
     /// </summary>
     Auto,
 
     /// <summary>
-    /// Displays the picker as a floating Frame anchored near the control.
+    /// Displays the picker in a compact popup anchored near its trigger.
     /// </summary>
-    Floating,
+    Popup,
 
     /// <summary>
     /// Displays the picker inside a modal dialog overlay.
     /// </summary>
-    Dialog
+    Dialog,
+
+    /// <summary>
+    /// Legacy name for <see cref="Popup"/>.
+    /// </summary>
+    [System.Obsolete("Use PickerDisplayMode.Popup instead.")]
+    Floating = Popup
 }

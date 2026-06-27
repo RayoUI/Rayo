@@ -34,6 +34,11 @@ public class TimePicker : BorderCompositeView<TimePicker>,
     private Action<TimeSpan>? _dialogConfirmed;
     private Action? _dialogCanceled;
 
+    /// <summary>
+    /// Gets or sets how the time selector is presented. Auto preserves the dialog presentation.
+    /// </summary>
+    public PickerDisplayMode DisplayMode { get; set; } = PickerDisplayMode.Auto;
+
     // Track the currently open timepicker globally
     private static TimePicker? _currentlyOpenTimePicker;
 
@@ -333,7 +338,9 @@ public class TimePicker : BorderCompositeView<TimePicker>,
         _commitSelection = false;
 
         _pickerFrame = BuildPicker();
-        _dialogOverlay = BuildDialogOverlay(_pickerFrame);
+        _dialogOverlay = UsesPopupPresentation()
+            ? BuildPopupOverlay(_pickerFrame)
+            : BuildDialogOverlay(_pickerFrame);
 
         Rayo.Core.OverlayManager.AddOverlay(_dialogOverlay);
         Rayo.Core.OverlayManager.EventManager?.RegisterGlobalPointerHandler(this);
@@ -347,7 +354,7 @@ public class TimePicker : BorderCompositeView<TimePicker>,
         _isOpen = false;
         _pickerFrame = null;
         _dialogOverlay = null;
-        if (!_commitSelection && !_isRebuilding)
+        if (!_commitSelection && !_isRebuilding && !UsesPopupPresentation())
         {
             SelectedTime = _originalSelectedTime;
         }
@@ -395,10 +402,16 @@ public class TimePicker : BorderCompositeView<TimePicker>,
         var picker = new TimePicker();
         picker.SelectedTime = initialTime;
         configure?.Invoke(picker);
+        picker.DisplayMode = PickerDisplayMode.Dialog;
         picker._dialogConfirmed = onConfirm;
         picker._dialogCanceled = onCancel;
         picker.OpenPicker();
         return picker;
+    }
+
+    private bool UsesPopupPresentation()
+    {
+        return DisplayMode == PickerDisplayMode.Popup;
     }
 
     private Frame BuildDialogOverlay(VisualElement content)
@@ -412,6 +425,13 @@ public class TimePicker : BorderCompositeView<TimePicker>,
         content.VerticalAlignment = VerticalAlignment.Center;
         overlay.Content(content);
         return overlay;
+    }
+
+    private Frame BuildPopupOverlay(Frame popup)
+    {
+        popup.HorizontalAlignment = HorizontalAlignment.Left;
+        popup.VerticalAlignment = VerticalAlignment.Top;
+        return new AnchoredPopup(this, popup);
     }
 
     public void TogglePicker()
@@ -515,6 +535,13 @@ public class TimePicker : BorderCompositeView<TimePicker>,
         selectionSurface.BorderBrush(PickerBorderBrush);
         selectionSurface.HorizontalAlignment(HorizontalAlignment.Left);
         selectionSurface.Content(selectionArea);
+
+        // Popup mode uses the interactive selection surface directly. The
+        // adjacent field already displays the selected time.
+        if (UsesPopupPresentation())
+        {
+            return selectionSurface;
+        }
 
         var cancelButton = new Button
         {

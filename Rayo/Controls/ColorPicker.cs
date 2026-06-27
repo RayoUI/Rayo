@@ -26,6 +26,8 @@ public class ColorPicker : Component, Rayo.Core.Interfaces.IGlobalPointerHandler
     private bool _isOpen;
     private VisualElement? _activeOverlay;
     private Frame? _dialogCard;
+    private VisualElement? _popupAnchor;
+    private Action<Color>? _popupColorChanged;
     private Action<Color>? _dialogConfirmed;
     private Action? _dialogCanceled;
 
@@ -62,6 +64,11 @@ public class ColorPicker : Component, Rayo.Core.Interfaces.IGlobalPointerHandler
     }
 
     /// <summary>
+    /// Gets or sets whether the picker uses the full dialog or compact popup presentation.
+    /// </summary>
+    public PickerDisplayMode DisplayMode { get; set; } = PickerDisplayMode.Dialog;
+
+    /// <summary>
     /// Raised when the picker commits a new color.
     /// </summary>
     public event Action<Color>? ColorChanged;
@@ -78,11 +85,25 @@ public class ColorPicker : Component, Rayo.Core.Interfaces.IGlobalPointerHandler
     {
         ClosePicker();
 
-        _activeOverlay = BuildDialogOverlay(ConfirmSelection, CancelSelection);
+        _activeOverlay = DisplayMode == PickerDisplayMode.Popup && _popupAnchor != null
+            ? BuildPopupOverlay(_popupAnchor)
+            : BuildDialogOverlay(ConfirmSelection, CancelSelection);
 
         _isOpen = true;
         Rayo.Core.OverlayManager.AddOverlay(_activeOverlay);
         Rayo.Core.OverlayManager.EventManager?.RegisterGlobalPointerHandler(this);
+    }
+
+    /// <summary>
+    /// Opens this picker in compact popup mode beside the supplied anchor.
+    /// </summary>
+    public void OpenPopup(VisualElement anchor)
+    {
+        ArgumentNullException.ThrowIfNull(anchor);
+        ClosePicker();
+        _popupAnchor = anchor;
+        DisplayMode = PickerDisplayMode.Popup;
+        OpenPicker();
     }
 
     public void ClosePicker()
@@ -99,6 +120,8 @@ public class ColorPicker : Component, Rayo.Core.Interfaces.IGlobalPointerHandler
         _isOpen = false;
         _activeOverlay = null;
         _dialogCard = null;
+        _popupAnchor = null;
+        _popupColorChanged = null;
 
         Rayo.Core.OverlayManager.EventManager?.UnregisterGlobalPointerHandler(this);
     }
@@ -138,9 +161,36 @@ public class ColorPicker : Component, Rayo.Core.Interfaces.IGlobalPointerHandler
             SelectedColor = initialColor
         };
         configure?.Invoke(picker);
+        picker.DisplayMode = PickerDisplayMode.Dialog;
         picker._dialogConfirmed = onConfirm;
         picker._dialogCanceled = onCancel;
         picker.OpenPicker();
+        return picker;
+    }
+
+    /// <summary>
+    /// Opens a compact color picker popup anchored to a custom trigger.
+    /// <paramref name="onChanged"/> is invoked after every color interaction.
+    /// </summary>
+    public static ColorPicker ShowPopup(
+        VisualElement anchor,
+        Color initialColor,
+        Action<Color> onChanged,
+        Action? onCancel = null,
+        Action<ColorPicker>? configure = null)
+    {
+        ArgumentNullException.ThrowIfNull(anchor);
+
+        var picker = new ColorPicker
+        {
+            SelectedColor = initialColor,
+            DisplayMode = PickerDisplayMode.Popup,
+            _popupAnchor = anchor,
+            _popupColorChanged = onChanged,
+            _dialogCanceled = onCancel
+        };
+        configure?.Invoke(picker);
+        picker.OpenPopup(anchor);
         return picker;
     }
 
@@ -165,6 +215,146 @@ public class ColorPicker : Component, Rayo.Core.Interfaces.IGlobalPointerHandler
         card.Content(BuildPickerContent(onConfirm, onCancel));
         overlay.Content(card);
         return overlay;
+    }
+
+    private VisualElement BuildPopupOverlay(VisualElement anchor)
+    {
+        var popupSurface = BuildCompactPickerContent();
+        _dialogCard = popupSurface;
+        return new AnchoredPopup(anchor, popupSurface);
+    }
+
+    private Frame BuildCompactPickerContent()
+    {
+        var currentColor = _colorState.Value;
+        var hsv = ToHsva(currentColor);
+        bool suppressUpdates = false;
+        GradientSwatchFrame? gradientSampler = null;
+
+        var redEntry = CreateChannelEntry(ToByte(currentColor.R));
+        var greenEntry = CreateChannelEntry(ToByte(currentColor.G));
+        var blueEntry = CreateChannelEntry(ToByte(currentColor.B));
+        EntryNumber? alphaEntry = _showAlpha ? CreateChannelEntry(ToByte(currentColor.A)) : null;
+
+        void UpdatePreview(Color next, bool synchronizeGradientMarker = true)
+        {
+            currentColor = Normalize(next);
+            hsv = ToHsva(currentColor);
+
+            if (synchronizeGradientMarker)
+            {
+                gradientSampler?.SetMarkerForColor(currentColor);
+            }
+
+            suppressUpdates = true;
+            redEntry.Value = ToByte(currentColor.R);
+            greenEntry.Value = ToByte(currentColor.G);
+            blueEntry.Value = ToByte(currentColor.B);
+            if (alphaEntry != null)
+            {
+                alphaEntry.Value = ToByte(currentColor.A);
+            }
+            suppressUpdates = false;
+
+            SetSelectedColor(currentColor, true);
+            _popupColorChanged?.Invoke(currentColor);
+        }
+
+        void ApplyChannels()
+        {
+            if (suppressUpdates)
+            {
+                return;
+            }
+
+            float r = (float)redEntry.Value / 255f;
+            float g = (float)greenEntry.Value / 255f;
+            float b = (float)blueEntry.Value / 255f;
+            float a = alphaEntry != null ? (float)alphaEntry.Value / 255f : 1f;
+            UpdatePreview(new Color(r, g, b, a));
+        }
+
+        redEntry.ValueChanged += _ => ApplyChannels();
+        greenEntry.ValueChanged += _ => ApplyChannels();
+        blueEntry.ValueChanged += _ => ApplyChannels();
+        if (alphaEntry != null)
+        {
+            alphaEntry.ValueChanged += _ => ApplyChannels();
+        }
+
+        gradientSampler = new GradientSwatchFrame(color =>
+        {
+            UpdatePreview(
+                new Color(color.R, color.G, color.B, currentColor.A),
+                synchronizeGradientMarker: false);
+        }, 332, 150);
+        gradientSampler.SetMarkerForColor(currentColor);
+
+        var hueStrip = new HueStripFrame(hsv.H, hue =>
+        {
+            var currentHsv = ToHsva(currentColor);
+            UpdatePreview(FromHsva(hue, currentHsv.S, currentHsv.V, currentHsv.A));
+        });
+
+        var channels = new HStack()
+            .Spacing(8)
+            .Children(
+                BuildChannelField("R", redEntry),
+                BuildChannelField("G", greenEntry),
+                BuildChannelField("B", blueEntry));
+        if (alphaEntry != null)
+        {
+            channels.AddChild(BuildChannelField("A", alphaEntry));
+        }
+
+        var content = new VStack()
+            .Spacing(12)
+            .Children(gradientSampler!, hueStrip, channels);
+
+        return new Frame()
+            .Width(352)
+            .Background(RayoThemes.Current.Colors.Surface)
+            .BorderBrush(RayoThemes.Current.Colors.Border)
+            .BorderThickness(1)
+            .BorderRadius(new CornerRadius(10))
+            .Padding(new Thickness(10))
+            .HorizontalAlignment(HorizontalAlignment.Left)
+            .VerticalAlignment(VerticalAlignment.Top)
+            .Content(content);
+    }
+
+    private static EntryNumber CreateChannelEntry(int value)
+    {
+        var entry = new EntryNumber(value)
+        {
+            Width = 72,
+            Height = 36,
+            Minimum = 0,
+            Maximum = 255,
+            AllowDecimal = false,
+            AllowNegative = false,
+            ValueFormat = "0",
+            DragIncrement = 1,
+            DragPixelsPerStep = 8
+        };
+        return entry;
+    }
+
+    private static VisualElement BuildChannelField(string label, EntryNumber entry)
+    {
+        return new VStack()
+            .Spacing(3)
+            .Children(
+                entry,
+                new Label(label)
+                    .FontSize(11)
+                    .Foreground(RayoThemes.Current.Colors.OnDisabled)
+                    .HorizontalAlignment(HorizontalAlignment.Center));
+    }
+
+    private static int ToByte(float channel)
+    {
+        return (int)MathF.Round(Clamp01(channel) * 255f);
     }
 
     private VisualElement BuildPickerContent(Action<Color> onConfirm, Action onCancel)
@@ -348,6 +538,15 @@ public class ColorPicker : Component, Rayo.Core.Interfaces.IGlobalPointerHandler
 
         if (insideCard) return true;
 
+        if (_popupAnchor != null &&
+            position.X >= _popupAnchor.ComputedX &&
+            position.X <= _popupAnchor.ComputedX + _popupAnchor.ComputedWidth &&
+            position.Y >= _popupAnchor.ComputedY &&
+            position.Y <= _popupAnchor.ComputedY + _popupAnchor.ComputedHeight)
+        {
+            return true;
+        }
+
         CancelSelection();
         return false;
     }
@@ -520,12 +719,12 @@ public class ColorPicker : Component, Rayo.Core.Interfaces.IGlobalPointerHandler
         private bool _isDragging;
         private Vector2? _markerPosition;
 
-        public GradientSwatchFrame(Action<Color> onColorPicked)
+        public GradientSwatchFrame(Action<Color> onColorPicked, float width = 320, float height = 140)
         {
             _onColorPicked = onColorPicked;
 
-            Width = 320;
-            Height = 140;
+            Width = width;
+            Height = height;
             BorderRadius = new CornerRadius(0);
             BorderThickness = 1;
             BorderBrush = RayoThemes.Current.Colors.Border;
@@ -564,6 +763,63 @@ public class ColorPicker : Component, Rayo.Core.Interfaces.IGlobalPointerHandler
 
                 renderer.DrawCircleOutline(markerX, markerY, 7f, 3f, new Color(0, 0, 0, 180));
                 renderer.DrawCircleOutline(markerX, markerY, 6f, 2f, Color.White);
+            }
+        }
+
+        /// <summary>
+        /// Positions the marker at the point whose rendered gradient color most
+        /// closely represents the supplied RGB value.
+        /// </summary>
+        public void SetMarkerForColor(Color color)
+        {
+            const int coarseSteps = 32;
+            const int refinementRadius = 6;
+            float bestDistance = float.MaxValue;
+            var bestPosition = Vector2.Zero;
+
+            for (int y = 0; y <= coarseSteps; y++)
+            {
+                float normalizedY = y / (float)coarseSteps;
+                for (int x = 0; x <= coarseSteps; x++)
+                {
+                    float normalizedX = x / (float)coarseSteps;
+                    EvaluateCandidate(color, normalizedX, normalizedY, ref bestDistance, ref bestPosition);
+                }
+            }
+
+            float refinementStep = 1f / (coarseSteps * 8f);
+            var refinementCenter = bestPosition;
+            for (int y = -refinementRadius; y <= refinementRadius; y++)
+            {
+                float normalizedY = Math.Clamp(refinementCenter.Y + y * refinementStep, 0f, 1f);
+                for (int x = -refinementRadius; x <= refinementRadius; x++)
+                {
+                    float normalizedX = Math.Clamp(refinementCenter.X + x * refinementStep, 0f, 1f);
+                    EvaluateCandidate(color, normalizedX, normalizedY, ref bestDistance, ref bestPosition);
+                }
+            }
+
+            _markerPosition = bestPosition;
+            MarkNeedsPaint();
+        }
+
+        private void EvaluateCandidate(
+            Color target,
+            float normalizedX,
+            float normalizedY,
+            ref float bestDistance,
+            ref Vector2 bestPosition)
+        {
+            var candidate = GetColorAt(normalizedX, normalizedY);
+            float deltaR = candidate.R - target.R;
+            float deltaG = candidate.G - target.G;
+            float deltaB = candidate.B - target.B;
+            float distance = deltaR * deltaR + deltaG * deltaG + deltaB * deltaB;
+
+            if (distance < bestDistance)
+            {
+                bestDistance = distance;
+                bestPosition = new Vector2(normalizedX, normalizedY);
             }
         }
 
@@ -683,11 +939,20 @@ public class ColorPicker : Component, Rayo.Core.Interfaces.IGlobalPointerHandler
 
             _markerPosition = new Vector2(normalizedX, normalizedY);
 
-            var baseColor = Background.GetColorAt(normalizedX, 0.5f);
-            var lightened = BlendOver(baseColor, TopLightOverlay.WithAlpha(TopLightOverlay.A * (1f - normalizedY)));
-            var shaded = BlendOver(lightened, BottomShadeOverlay.WithAlpha(BottomShadeOverlay.A * normalizedY));
+            var shaded = GetColorAt(normalizedX, normalizedY);
             _onColorPicked(shaded);
             MarkNeedsPaint();
+        }
+
+        private Color GetColorAt(float normalizedX, float normalizedY)
+        {
+            var baseColor = Background.GetColorAt(normalizedX, 0.5f);
+            var lightened = BlendOver(
+                baseColor,
+                TopLightOverlay.WithAlpha(TopLightOverlay.A * (1f - normalizedY)));
+            return BlendOver(
+                lightened,
+                BottomShadeOverlay.WithAlpha(BottomShadeOverlay.A * normalizedY));
         }
 
         private static Color BlendOver(Color destination, Color source)
@@ -708,7 +973,7 @@ public class ColorPicker : Component, Rayo.Core.Interfaces.IGlobalPointerHandler
                 outputAlpha);
         }
 
-        private static LinearGradientBrush CreateSpectrumBrush()
+        internal static LinearGradientBrush CreateSpectrumBrush()
         {
             return new LinearGradientBrush
             {
@@ -725,6 +990,78 @@ public class ColorPicker : Component, Rayo.Core.Interfaces.IGlobalPointerHandler
                     GradientStop.At(1.0f, new Color(204, 0, 255))
                 }
             };
+        }
+    }
+
+    private sealed class HueStripFrame : Frame, IPointerHandler, IInputHandler
+    {
+        private readonly Action<float> _onHueChanged;
+        private bool _isDragging;
+        private float _hue;
+
+        public HueStripFrame(float hue, Action<float> onHueChanged)
+        {
+            _hue = Math.Clamp(hue, 0f, 360f);
+            _onHueChanged = onHueChanged;
+            Width = 250;
+            Height = 18;
+            BorderRadius = new CornerRadius(4);
+            Background = GradientSwatchFrame.CreateSpectrumBrush();
+        }
+
+        public override void Render(IRenderer renderer)
+        {
+            base.Render(renderer);
+            float markerX = ComputedX + (_hue / 360f) * ComputedWidth;
+            float markerY = ComputedY + ComputedHeight / 2f;
+            renderer.DrawCircleOutline(markerX, markerY, 7f, 3f, new Color(0, 0, 0, 180));
+            renderer.DrawCircleOutline(markerX, markerY, 6f, 2f, Color.White);
+        }
+
+        public void OnPointerPressed(PointerEventArgs e)
+        {
+            _isDragging = true;
+            Sample(e.LocalPosition.X);
+        }
+
+        public void OnPointerMoved(PointerEventArgs e)
+        {
+            if (_isDragging)
+            {
+                Sample(e.LocalPosition.X);
+            }
+        }
+
+        public void OnPointerReleased(PointerEventArgs e) => _isDragging = false;
+        public void OnPointerCanceled(PointerEventArgs e) => _isDragging = false;
+
+        bool IInputHandler.CanHandleInput => true;
+
+        bool IInputHandler.HandleInput(InputEventArgs args)
+        {
+            switch (args.EventType)
+            {
+                case InputEventType.MouseDown:
+                    _isDragging = true;
+                    Sample(args.Position.X - ComputedX);
+                    return true;
+                case InputEventType.MouseDrag when _isDragging:
+                    Sample(args.Position.X - ComputedX);
+                    return true;
+                case InputEventType.MouseUp:
+                    _isDragging = false;
+                    return false;
+                default:
+                    return false;
+            }
+        }
+
+        private void Sample(float localX)
+        {
+            float width = Math.Max(1f, ComputedWidth > 0 ? ComputedWidth : Width);
+            _hue = Math.Clamp(localX / width, 0f, 1f) * 360f;
+            _onHueChanged(_hue);
+            MarkNeedsPaint();
         }
     }
 

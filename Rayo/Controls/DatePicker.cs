@@ -29,10 +29,16 @@ public class DatePicker : BorderCompositeView<DatePicker>,
     private HStack? _inputContent;
     private Frame? _calendarFrame;
     private DateTime _originalSelectedDate;
+    private DateTime _pendingSelectedDate;
     private bool _commitSelection;
     private Frame? _dialogOverlay;
     private Action<DateTime>? _dialogConfirmed;
     private Action? _dialogCanceled;
+
+    /// <summary>
+    /// Gets or sets how the calendar is presented. Auto preserves the dialog presentation.
+    /// </summary>
+    public PickerDisplayMode DisplayMode { get; set; } = PickerDisplayMode.Auto;
 
     // Track the currently open datepicker globally to close it when another opens
     private static DatePicker? _currentlyOpenDatePicker;
@@ -352,6 +358,7 @@ public class DatePicker : BorderCompositeView<DatePicker>,
         if (!_isRebuildingCalendar)
         {
             _originalSelectedDate = SelectedDate;
+            _pendingSelectedDate = SelectedDate;
         }
         _commitSelection = false;
 
@@ -360,7 +367,9 @@ public class DatePicker : BorderCompositeView<DatePicker>,
             _displayMonth = new DateTime(SelectedDate.Year, SelectedDate.Month, 1);
         }
         _calendarFrame = BuildCalendar();
-        _dialogOverlay = BuildDialogOverlay();
+        _dialogOverlay = UsesPopupPresentation()
+            ? BuildPopupOverlay()
+            : BuildDialogOverlay();
 
         Rayo.Core.OverlayManager.AddOverlay(_dialogOverlay);
         Rayo.Core.OverlayManager.EventManager?.RegisterGlobalPointerHandler(this);
@@ -375,7 +384,7 @@ public class DatePicker : BorderCompositeView<DatePicker>,
         _calendarFrame = null;
         _dialogOverlay = null;
 
-        if (!_commitSelection && !_isRebuildingCalendar)
+        if (!_commitSelection && !_isRebuildingCalendar && !UsesPopupPresentation())
         {
             SelectedDate = _originalSelectedDate;
         }
@@ -425,10 +434,16 @@ public class DatePicker : BorderCompositeView<DatePicker>,
         var picker = new DatePicker();
         picker.SelectedDate = initialDate;
         configure?.Invoke(picker);
+        picker.DisplayMode = PickerDisplayMode.Dialog;
         picker._dialogConfirmed = onConfirm;
         picker._dialogCanceled = onCancel;
         picker.OpenCalendar();
         return picker;
+    }
+
+    private bool UsesPopupPresentation()
+    {
+        return DisplayMode == PickerDisplayMode.Popup;
     }
 
     public void ToggleCalendar()
@@ -441,13 +456,16 @@ public class DatePicker : BorderCompositeView<DatePicker>,
 
     private Frame BuildCalendar()
     {
+        bool isPopup = UsesPopupPresentation();
+
         // -- Month navigation header ------------------------------------------
         var prevButton = new ButtonIcon(Icons.ChevronLeft)
             .Variant(ButtonVariant.Ghost)
             .IconSize(14)
             .IconColor(HeaderTextColor)
             .BorderRadius(new CornerRadius(4))
-            .Size(30);
+            .Padding(new Thickness(0))
+            .Size(isPopup ? 28 : 30);
         prevButton.OnTapped(() => PreviousMonth());
 
         var monthLabel = new Label
@@ -462,18 +480,27 @@ public class DatePicker : BorderCompositeView<DatePicker>,
             .IconSize(14)
             .IconColor(HeaderTextColor)
             .BorderRadius(new CornerRadius(4))
-            .Size(30);
+            .Padding(new Thickness(0))
+            .Size(isPopup ? 28 : 30);
         nextButton.OnTapped(() => NextMonth());
 
-        var headerContent = new HStack { Spacing = 8, Alignment = Alignment.Center };
+        var headerContent = new HStack
+        {
+            Spacing = 8,
+            Alignment = Alignment.Center,
+            JustifyContent = JustifyContent.SpaceBetween,
+            HorizontalAlignment = HorizontalAlignment.Stretch
+        };
         headerContent.AddChild(prevButton);
         headerContent.AddChild(monthLabel);
         headerContent.AddChild(nextButton);
 
         var monthHeader = new Frame();
-        monthHeader.Height(56);
+        monthHeader.Height(isPopup ? 46 : 56);
         monthHeader.Background(HeaderColor);
-        monthHeader.Padding(new Thickness(16, 12, 16, 12));
+        monthHeader.Padding(isPopup
+            ? new Thickness(12, 8, 12, 8)
+            : new Thickness(16, 12, 16, 12));
         monthHeader.BorderRadius(new CornerRadius(12, 12, 0, 0));
         monthHeader.Content(headerContent);
 
@@ -482,14 +509,18 @@ public class DatePicker : BorderCompositeView<DatePicker>,
         {
             Spacing = 0,
             Alignment = Alignment.Center,
-            Padding = new Thickness(14, 8, 14, 4)
+            Padding = isPopup
+                ? new Thickness(12, 6, 12, 2)
+                : new Thickness(14, 8, 14, 4)
         };
 
         string[] dayNames = { "S", "M", "T", "W", "T", "F", "S" };
         foreach (var day in dayNames)
         {
             var dayLabel = new Label { Text = day, Foreground = MutedTextColor, FontSize = 12 };
-            var dayFrame = new Frame().Width(36).Height(26);
+            var dayFrame = new Frame()
+                .Width(36)
+                .Height(isPopup ? 22 : 26);
             dayFrame.Content(dayLabel);
             dayHeaders.AddChild(dayFrame);
         }
@@ -508,51 +539,85 @@ public class DatePicker : BorderCompositeView<DatePicker>,
         selectionSurface.BorderRadius(new CornerRadius(12));
         selectionSurface.BorderThickness(1);
         selectionSurface.BorderBrush(CalendarBorderBrush);
-        selectionSurface.Width(308);
-        selectionSurface.Padding(new Thickness(0, 0, 0, 8));
+        selectionSurface.Width(isPopup ? 278 : 308);
+        selectionSurface.Padding(isPopup
+            ? new Thickness(0, 0, 0, 6)
+            : new Thickness(0, 0, 0, 8));
         selectionSurface.HorizontalAlignment(HorizontalAlignment.Left);
         selectionSurface.Content(calendarContent);
 
-        // -- Preview of selected date (mirrors TimePicker preview) ------------
-        var previewLabel = new Label
+        // Popup mode uses the calendar surface directly. The field beside it
+        // already shows the selected value, so an outer card and title only add
+        // unnecessary size and visual duplication.
+        if (isPopup)
         {
-            Text = SelectedDate.ToString(DateFormat),
-            Foreground = TextColor,
-            FontSize = 20
-        };
-        var previewFrame = new Frame();
-        previewFrame.Background(HoverColor);
-        previewFrame.BorderRadius(new CornerRadius(12));
-        previewFrame.Padding(new Thickness(16, 12, 16, 12));
-        previewFrame.HorizontalAlignment(HorizontalAlignment.Left);
-        previewFrame.Content(previewLabel);
-
-        // -- Cancel button ----------------------------------------------------
-        var cancelButton = new Button
-        {
-            Text = "Cancel",
-            Variant = ButtonVariant.Secondary,
-            BorderThickness = 0,
-            BorderRadius = new CornerRadius(6),
-            Width = 100,
-            Height = 36
-        };
-        cancelButton.Tapped += (_) => CancelSelection();
-
-        var buttons = new HStack()
-            .Spacing(10)
-            .JustifyContent(JustifyContent.End)
-            .VerticalAlignment(VerticalAlignment.Top)
-            .HorizontalAlignment(HorizontalAlignment.Right);
-        buttons.AddChild(cancelButton);
+            return selectionSurface;
+        }
 
         // -- Main content VStack ----------------------------------------------
         var content = new VStack { Spacing = 16 };
         content.HorizontalAlignment(HorizontalAlignment.Left);
-        content.AddChild(new Label("Pick a date") { Foreground = TextColor, FontSize = 18 });
-        content.AddChild(previewFrame);
+        content.AddChild(new Label("Pick a date")
+        {
+            Foreground = TextColor,
+            FontSize = 18,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            TextHorizontalAlignment = HorizontalAlignment.Center
+        });
+
+        HStack? buttons = null;
+        if (!UsesPopupPresentation())
+        {
+            var previewLabel = new Label
+            {
+                Text = _pendingSelectedDate.ToString(DateFormat),
+                Foreground = TextColor,
+                FontSize = 20
+            };
+            var previewFrame = new Frame()
+                .Background(HoverColor)
+                .BorderRadius(new CornerRadius(12))
+                .Padding(new Thickness(16, 12, 16, 12))
+                .HorizontalAlignment(HorizontalAlignment.Left)
+                .Content(previewLabel);
+
+            var cancelButton = new Button
+            {
+                Text = "Cancel",
+                Variant = ButtonVariant.Secondary,
+                BorderThickness = 0,
+                BorderRadius = new CornerRadius(6),
+                Width = 100,
+                Height = 36
+            };
+            cancelButton.Tapped += (_) => CancelSelection();
+
+            var okButton = new Button
+            {
+                Text = "OK",
+                Variant = ButtonVariant.Primary,
+                BorderThickness = 0,
+                BorderRadius = new CornerRadius(6),
+                Width = 100,
+                Height = 36
+            };
+            okButton.Tapped += (_) => ConfirmSelection(_pendingSelectedDate);
+
+            buttons = new HStack()
+                .Spacing(10)
+                .JustifyContent(JustifyContent.End)
+                .VerticalAlignment(VerticalAlignment.Top)
+                .HorizontalAlignment(HorizontalAlignment.Right);
+            buttons.AddChild(cancelButton);
+            buttons.AddChild(okButton);
+            content.AddChild(previewFrame);
+        }
+
         content.AddChild(selectionSurface);
-        content.AddChild(buttons);
+        if (buttons != null)
+        {
+            content.AddChild(buttons);
+        }
 
         // -- Outer picker frame (same style as TimePicker's outer frame) ------
         var pickerFrame = new Frame()
@@ -580,9 +645,20 @@ public class DatePicker : BorderCompositeView<DatePicker>,
         return overlay;
     }
 
+    private Frame BuildPopupOverlay()
+    {
+        var popup = _calendarFrame!;
+        popup.HorizontalAlignment = HorizontalAlignment.Left;
+        popup.VerticalAlignment = VerticalAlignment.Top;
+        return new AnchoredPopup(this, popup);
+    }
+
     private VisualElement BuildDaysGrid()
     {
         var grid = new VStack { Spacing = 0 };
+        bool isPopup = UsesPopupPresentation();
+        float cellWidth = isPopup ? 36 : 40;
+        float cellHeight = isPopup ? 34 : 40;
 
         DateTime firstDay = new DateTime(_displayMonth.Year, _displayMonth.Month, 1);
         int daysInMonth = DateTime.DaysInMonth(_displayMonth.Year, _displayMonth.Month);
@@ -590,16 +666,18 @@ public class DatePicker : BorderCompositeView<DatePicker>,
 
         int currentDay = 1;
 
-        // Always render exactly 6 rows so the grid has a fixed height regardless
-        // of how many rows the current month needs (4, 5, or 6). Trailing cells
-        // in unused rows are rendered as invisible placeholders.
-        for (int row = 0; row < 6; row++)
+        int weekCount = isPopup
+            ? (startDayOfWeek + daysInMonth + 6) / 7
+            : 6;
+        for (int row = 0; row < weekCount; row++)
         {
             var weekRow = new HStack
             {
                 Spacing = 0,
                 Alignment = Alignment.Center,
-                Padding = new Thickness(14, 2, 14, 2)
+                Padding = isPopup
+                    ? new Thickness(12, 1, 12, 1)
+                    : new Thickness(14, 2, 14, 2)
             };
 
             for (int col = 0; col < 7; col++)
@@ -611,14 +689,17 @@ public class DatePicker : BorderCompositeView<DatePicker>,
                 {
                     // Empty / out-of-range cell � transparent placeholder keeps the row height.
                     dayFrame = new Frame()
-                        .Width(40)
-                        .Height(40)
+                        .Width(cellWidth)
+                        .Height(cellHeight)
                         .Background(Color.Transparent);
                 }
                 else
                 {
                     DateTime cellDate = new DateTime(_displayMonth.Year, _displayMonth.Month, currentDay);
-                    bool isSelected = cellDate.Date == SelectedDate.Date;
+                    DateTime selectedDate = UsesPopupPresentation()
+                        ? SelectedDate
+                        : _pendingSelectedDate;
+                    bool isSelected = cellDate.Date == selectedDate.Date;
                     bool isToday = cellDate.Date == DateTime.Today;
 
                     Brush bgColor = isSelected ? SelectedDateColor :
@@ -631,20 +712,21 @@ public class DatePicker : BorderCompositeView<DatePicker>,
                     var button = new Button
                     {
                         Text = currentDay.ToString(),
-                        Width = 40,
-                        Height = 40,
+                        Width = cellWidth,
+                        Height = cellHeight,
                         Background = bgColor,
                         TextColor = fgColor,
                         HoverBackground = HoverColor,
                         PressedBackground = HoverColor,
                         BorderThickness = 0,
-                        BorderRadius = new CornerRadius(8)
+                        BorderRadius = new CornerRadius(8),
+                        Padding = new Thickness(0)
                     };
                     button.Tapped += (args) => SelectDay(day);
 
                     dayFrame = new Frame()
-                        .Width(40)
-                        .Height(40);
+                        .Width(cellWidth)
+                        .Height(cellHeight);
                     dayFrame.Content(button);
 
                     currentDay++;
@@ -661,7 +743,15 @@ public class DatePicker : BorderCompositeView<DatePicker>,
 
     private void SelectDay(int day)
     {
-        ConfirmSelection(new DateTime(_displayMonth.Year, _displayMonth.Month, day));
+        var selectedDate = new DateTime(_displayMonth.Year, _displayMonth.Month, day);
+        if (UsesPopupPresentation())
+        {
+            ConfirmSelection(selectedDate);
+            return;
+        }
+
+        _pendingSelectedDate = selectedDate;
+        RebuildCalendar();
     }
 
     private sealed class DialogOverlayFrame : Frame, Rayo.Core.Input.IPointerHandler

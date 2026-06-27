@@ -38,16 +38,16 @@ public class ColorPickerPage : Component
             .Spacing(20)
             .Padding(new Thickness(20))
             .Children(
-                Helper.CreatePageHeader("ColorPicker", "Dialog-driven color selection with HSV sliders, palette swatches, and optional alpha support"),
+                Helper.CreatePageHeader("ColorPicker", "Compact popup and dialog color selection with optional alpha support"),
 
-                Helper.CreateExampleSection("Basic Picker",
+                Helper.CreateExampleSection("Compact Popup",
                     new VStack()
                         .Spacing(12)
                         .Children(
-                            new Label("Open the modal picker from a preview Frame and update state from the confirm callback.")
+                            new Label("Open a compact picker beside the swatch, with gradient, hue, and RGB controls.")
                                 .FontSize(13)
                                 .Foreground(ColorDefault.Secondary),
-                            CreateColorLauncher("Primary color", "Modal dialog", basicColorState),
+                            CreateColorLauncher("Primary color", "Compact popup", basicColorState),
                             new Label()
                                 .FontSize(14)
                                 .Foreground(ColorDefault.Info)
@@ -60,7 +60,7 @@ public class ColorPickerPage : Component
                         .Spacing(16)
                         .Wrap(true)
                         .Children(
-                            CreateVariantCard("Preset value", "Start the dialog with your brand or theme color.",
+                            CreateVariantCard("Preset value", "Start the popup with your brand or theme color.",
                                 CreateColorLauncher("Brand color", "Includes alpha", variantColorState)),
                             CreateVariantCard("Hide alpha", "Leave only RGB controls for opaque palettes.",
                                 CreateColorLauncher("Opaque color", "RGB only", noAlphaColorState, showAlpha: false))
@@ -178,7 +178,9 @@ public class ColorPickerPage : Component
                     )
             );
 
-        return new ColorPicker.ClickableFrame(() => ColorPicker.ShowDialog(
+        ColorPicker.ClickableFrame? launcher = null;
+        launcher = new ColorPicker.ClickableFrame(() => ColorPicker.ShowPopup(
+                launcher!,
                 colorState.Value,
                 color => colorState.Value = color,
                 configure: picker => picker.ShowAlpha = showAlpha))
@@ -186,6 +188,7 @@ public class ColorPickerPage : Component
             .HoverBackground(new Color(255, 255, 255, 0.08f))
             .HorizontalAlignment(HorizontalAlignment.Stretch)
             .Content(launcherContent);
+        return launcher;
     }
 
     private static string FormatHex(Color color)

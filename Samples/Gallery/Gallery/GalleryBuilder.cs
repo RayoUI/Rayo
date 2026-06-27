@@ -491,6 +491,7 @@ public class GalleryBuilder : Component
             ("HStack", "Layout"),
             ("VStack", "Layout"),
             ("LStack", "Layout"),
+            ("AnchoredPopup", "Layout"),
 
             // Navigation
             ("Menu", "Navigation"),
@@ -635,6 +636,7 @@ public class GalleryBuilder : Component
             "Themes" => new ThemePage(ApplyTheme),
             "ColorPicker" => new ColorPickerPage(),
             "PathPicker" => new PathPickerPage(),
+            "AnchoredPopup" => new AnchoredPopupPage(),
             "Drawer" => new DrawerPage(),
             "SideBar" => new SideBarPage(),
             "TreeView" => new TreeViewPage(),

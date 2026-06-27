@@ -60,13 +60,17 @@ public class TimePickerPage : Component
             .Children(
                 Helper.CreatePageHeader("TimePicker", "Time selection with hour/minute/AM-PM"),
 
-                Helper.CreateExampleSection("Basic TimePicker (12-hour format)",
+                Helper.CreateExampleSection("Popup TimePicker (12-hour format)",
                     new VStack()
                         .Spacing(15)
                         .Children(
+                            new Label("Popup mode keeps the selector anchored to the time field.")
+                                .FontSize(13)
+                                .Foreground(ColorDefault.Secondary),
                             new TimePicker()
                                 .Width(200)
                                 .HorizontalAlignment(HorizontalAlignment.Left)
+                                .DisplayMode(PickerDisplayMode.Popup)
                                 .OnTimeChanged(time => selectedTime.Value = time),
 
                             new Label()
