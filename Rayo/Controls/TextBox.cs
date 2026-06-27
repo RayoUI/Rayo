@@ -192,6 +192,19 @@ public abstract class TextBox<T> : BorderView<T>, IInputHandler, IFocusable, Ray
     } = 14;
     #endregion
 
+    #region TextHorizontalAlignment
+    /// <summary>
+    /// Horizontal alignment used by single-line text, selection, and cursor rendering.
+    /// Multiline editors continue to use left alignment.
+    /// </summary>
+    [PaintProperty]
+    public HorizontalAlignment TextHorizontalAlignment
+    {
+        get => field;
+        set => this.SetProperty(ref field, value);
+    } = HorizontalAlignment.Left;
+    #endregion
+
     #region SelectionBackground
     [PaintProperty]
     public Brush SelectionBackground
@@ -243,6 +256,7 @@ public abstract class TextBox<T> : BorderView<T>, IInputHandler, IFocusable, Ray
     private DateTime _lastCursorActivityTime = DateTime.UtcNow;
     protected bool _cursorVisible = true;
     private const int CursorBlinkIntervalMs = 530;  // Standard Windows caret blink rate
+    private const float CaretWidth = 2f;
     private readonly object _cursorBlinkTimerLock = new();
     private Timer? _cursorBlinkTimer;
     private volatile bool _cursorBlinkActive;
@@ -1291,7 +1305,8 @@ public abstract class TextBox<T> : BorderView<T>, IInputHandler, IFocusable, Ray
                     // Single-line selection rendering (original logic)
                     float selectionStartX = GetSingleLinePrefixWidth(selStart);
                     float selectionWidth = GetSingleLinePrefixWidth(selEnd) - selectionStartX;
-                    float selectionX = contentX + selectionStartX - _scrollOffsetX;
+                    float alignmentOffset = GetSingleLineAlignmentOffset(contentWidth);
+                    float selectionX = contentX + alignmentOffset + selectionStartX - _scrollOffsetX;
                     float selectionY = contentY;
                     float selectionHeight = contentHeight;
 
@@ -1339,7 +1354,8 @@ public abstract class TextBox<T> : BorderView<T>, IInputHandler, IFocusable, Ray
                     // Medir la altura real del texto para centrarlo correctamente
                     var textSize = renderer.MeasureText(processedText, FontSize);
 
-                    float textX = contentX - _scrollOffsetX;
+                    float alignmentOffset = GetHorizontalAlignmentOffset(contentWidth, textSize.X);
+                    float textX = contentX + alignmentOffset - _scrollOffsetX;
                     // Centrar verticalmente en el �rea de contenido
                     float textY = contentY + (contentHeight - textSize.Y) / 2;
 
@@ -1365,12 +1381,15 @@ public abstract class TextBox<T> : BorderView<T>, IInputHandler, IFocusable, Ray
                 }
                 else
                 {
-                    cursorX = contentX + GetCursorOffsetWithinLine(_cursorPosition) - _scrollOffsetX;
+                    float alignmentOffset = GetSingleLineAlignmentOffset(contentWidth);
+                    cursorX = contentX + alignmentOffset + GetCursorOffsetWithinLine(_cursorPosition) - _scrollOffsetX;
                     cursorY = contentY;
                     cursorHeight = contentHeight;
                 }
 
-                renderer.DrawRect(cursorX, cursorY, 2, cursorHeight, TextColor);
+                float maxCursorX = Math.Max(contentX, contentX + contentWidth - CaretWidth);
+                cursorX = Math.Clamp(cursorX, contentX, maxCursorX);
+                renderer.DrawRect(cursorX, cursorY, CaretWidth, cursorHeight, TextColor);
             }
         }
         finally
@@ -1753,7 +1772,9 @@ public abstract class TextBox<T> : BorderView<T>, IInputHandler, IFocusable, Ray
         else
         {
             // Single line (l�gica original)
-            float localX = mouseX - contentX + _scrollOffsetX;
+            float contentWidth = ComputedWidth - Padding.Horizontal - BorderThickness.Horizontal;
+            float alignmentOffset = GetSingleLineAlignmentOffset(contentWidth);
+            float localX = mouseX - contentX - alignmentOffset + _scrollOffsetX;
 
             if (localX <= 0)
             {
@@ -1862,6 +1883,27 @@ public abstract class TextBox<T> : BorderView<T>, IInputHandler, IFocusable, Ray
         {
             _scrollOffsetX = Math.Max(0, cursorX - 10);
         }
+    }
+
+    private float GetSingleLineAlignmentOffset(float contentWidth)
+    {
+        EnsureSingleLinePrefixCache();
+        return GetHorizontalAlignmentOffset(contentWidth, _singleLineWidth);
+    }
+
+    private float GetHorizontalAlignmentOffset(float contentWidth, float textWidth)
+    {
+        if (textWidth >= contentWidth)
+        {
+            return 0;
+        }
+
+        return TextHorizontalAlignment switch
+        {
+            HorizontalAlignment.Center => (contentWidth - textWidth) / 2f,
+            HorizontalAlignment.Right => Math.Max(0, contentWidth - textWidth - CaretWidth),
+            _ => 0
+        };
     }
 
     private static VectorPath CreateRoundedRectPath(float x, float y, float width, float height, CornerRadius radius)

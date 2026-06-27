@@ -180,6 +180,24 @@ public class EntryPage : Component
                         )
                 ),
 
+                Helper.CreateExampleSection("Text Alignment",
+                    new VStack()
+                        .Spacing(10)
+                        .Children(
+                            new Entry("Left aligned")
+                                .Width(350)
+                                .TextHorizontalAlignment(HorizontalAlignment.Left),
+
+                            new Entry("Center aligned")
+                                .Width(350)
+                                .TextHorizontalAlignment(HorizontalAlignment.Center),
+
+                            new Entry("Right aligned")
+                                .Width(350)
+                                .TextHorizontalAlignment(HorizontalAlignment.Right)
+                        )
+                ),
+
                 Helper.CreateExampleSection("Form Example",
                     new VStack()
                         .Spacing(12)

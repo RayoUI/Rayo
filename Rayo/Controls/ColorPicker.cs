@@ -335,7 +335,8 @@ public class ColorPicker : Component, Rayo.Core.Interfaces.IGlobalPointerHandler
             AllowNegative = false,
             ValueFormat = "0",
             DragIncrement = 1,
-            DragPixelsPerStep = 8
+            DragPixelsPerStep = 8,
+            TextHorizontalAlignment = HorizontalAlignment.Center
         };
         return entry;
     }
