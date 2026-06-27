@@ -237,7 +237,7 @@ public class DevToolAgent : IDisposable, IGlobalPointerHandler
                 GetTreeRequest => HandleGetTree(),
                 GetOverlaysRequest => HandleGetOverlays(),
                 GetPropertiesRequest req => HandleGetProperties(req),
-                SetPropertyRequest req => HandleSetProperty(req),
+                SetPropertyRequest req => await HandleSetPropertyAsync(req),
                 HighlightElementRequest req => HandleHighlight(req),
                 SetLayoutOutlineRequest req => HandleSetLayoutOutline(req),
                 SetInspectModeRequest req => HandleSetInspectMode(req),
@@ -562,7 +562,36 @@ public class DevToolAgent : IDisposable, IGlobalPointerHandler
         };
     }
 
-    private ResultResponse HandleSetProperty(SetPropertyRequest request)
+    private async Task<ResultResponse> HandleSetPropertyAsync(SetPropertyRequest request)
+    {
+        var app = UIApplication.Current;
+        if (app == null)
+            return ApplyPropertyValue(request);
+
+        var completion = new TaskCompletionSource<ResultResponse>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+
+        app.RunOnMainThread(() =>
+        {
+            try
+            {
+                completion.TrySetResult(ApplyPropertyValue(request));
+            }
+            catch (Exception ex)
+            {
+                completion.TrySetResult(new ResultResponse
+                {
+                    Success = false,
+                    Error = ex.Message,
+                    RequestId = request.Id
+                });
+            }
+        });
+
+        return await completion.Task;
+    }
+
+    private ResultResponse ApplyPropertyValue(SetPropertyRequest request)
     {
         var element = GetElementById(request.ElementId);
         if (element == null)

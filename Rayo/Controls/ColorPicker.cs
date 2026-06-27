@@ -226,7 +226,9 @@ public class ColorPicker : Component, Rayo.Core.Interfaces.IGlobalPointerHandler
 
     private Frame BuildCompactPickerContent()
     {
-        var currentColor = _colorState.Value;
+        var currentColor = _showAlpha
+            ? _colorState.Value
+            : _colorState.Value.WithAlpha(1f);
         var hsv = ToHsva(currentColor);
         bool suppressUpdates = false;
         GradientSwatchFrame? gradientSampler = null;

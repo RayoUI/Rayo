@@ -4,6 +4,7 @@ using Rayo.Layout;
 using Rayo.Rendering;
 using Rayo.Reactivity;
 using Rayo.DevTool.Frames;
+using Rayo.Styling;
 
 namespace Rayo.DevTool;
 
@@ -12,6 +13,21 @@ public class DevToolUI : Component
     // Static so the same instance survives hot-reload rebuilds of the DevTool UI itself.
     // The live TCP connection is preserved across reloads.
     private static readonly DevToolState _state = new();
+
+    protected override void OnInit()
+    {
+        UIApplication.ThemeChanged += HandleThemeChanged;
+    }
+
+    protected override void OnDispose()
+    {
+        UIApplication.ThemeChanged -= HandleThemeChanged;
+    }
+
+    private void HandleThemeChanged(Theme _)
+    {
+        Rebuild();
+    }
 
     public override VisualElement Build()
     {

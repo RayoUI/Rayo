@@ -29,10 +29,10 @@ public class TreeFrame : Component
             .Size(30)
             .IconSize(20)
             .IconColor(_state.IsHighlightEnabled.Map(enabled => 
-                enabled ? new Color(59, 130, 246) : new Color(160, 160, 160)))
+                enabled ? DevToolTheme.Colors.Primary : DevToolTheme.Colors.OnDisabled))
             .Background(_state.IsHighlightEnabled.Map(enabled =>
-                enabled ? new Color(59, 130, 246, 0.2f) : Color.Transparent))
-            .HoverBackground(new Color(255, 255, 255, 0.1f))
+                enabled ? DevToolTheme.Colors.Primary.WithAlpha(0.2f) : Color.Transparent))
+            .HoverBackground(DevToolTheme.Colors.SurfaceHover)
             .OnTapped(() =>
             {
                 _state.IsHighlightEnabled.Value = !_state.IsHighlightEnabled.Value;
@@ -51,17 +51,17 @@ public class TreeFrame : Component
             .Size(30)
             .IconSize(16)
             .IconColor(_state.LayoutOutlineElementIds.Map(ids =>
-                ids.Count > 0 ? new Color(245, 158, 11) : new Color(110, 110, 118)))
+                ids.Count > 0 ? DevToolTheme.Colors.Warning : DevToolTheme.Colors.OnDisabled))
             .Background(_state.LayoutOutlineElementIds.Map(ids =>
-                ids.Count > 0 ? new Color(245, 158, 11, 0.18f) : Color.Transparent))
-            .HoverBackground(new Color(255, 255, 255, 0.1f))
-            .PressedBackground(new Color(245, 158, 11, 0.3f))
+                ids.Count > 0 ? DevToolTheme.Colors.Warning.WithAlpha(0.18f) : Color.Transparent))
+            .HoverBackground(DevToolTheme.Colors.SurfaceHover)
+            .PressedBackground(DevToolTheme.Colors.SurfacePressed)
             .BorderThickness(0)
             .BorderRadius(new CornerRadius(4))
             .OnTapped(() => _state.ClearLayoutOutlines());
 
         var header = new Frame()
-            .Background(new Color(40, 40, 45))
+            .Background(DevToolTheme.Colors.SurfaceHover)
             .Height(30)
             .HorizontalAlignment(HorizontalAlignment.Stretch)
             .Content(
@@ -83,7 +83,7 @@ public class TreeFrame : Component
         var treeScroll = new ScrollView()
             .VerticalAlignment(VerticalAlignment.Stretch)
             .HorizontalAlignment(HorizontalAlignment.Stretch)
-            .VerticalScrollBarVisibility(ScrollBarVisibility.Always)
+            .VerticalScrollBarVisibility(ScrollBarVisibility.Auto)
             .HorizontalScrollBarVisibility(ScrollBarVisibility.Disabled)
             .ShowScrollbars(true)
             .Content(treeContent);
@@ -93,7 +93,7 @@ public class TreeFrame : Component
 
         return new Frame()
             .Width(350)
-            .Background(new Color(28, 28, 32))
+            .Background(DevToolTheme.Colors.Background)
             .VerticalAlignment(VerticalAlignment.Stretch)
             .Content(
                 new Grid()
@@ -113,7 +113,7 @@ public class TreeFrame : Component
             .HorizontalAlignment(HorizontalAlignment.Stretch);
 
         var mainTreeHeader = new Label("Main Tree")
-            .Foreground(new Color(120, 180, 255))
+            .Foreground(DevToolTheme.Colors.Primary)
             .FontSize(11)
             .Margin(new Thickness(left: 10))
             .Padding(new Thickness(0, 0, 0, 4));
@@ -124,7 +124,7 @@ public class TreeFrame : Component
             .HorizontalAlignment(HorizontalAlignment.Stretch);
 
         var overlaysHeader = new Label("Overlays")
-            .Foreground(new Color(255, 180, 120))
+            .Foreground(DevToolTheme.Colors.Warning)
             .FontSize(11)
             .Margin(new Thickness(left: 10))
             .Padding(new Thickness(0, 12, 0, 4));
@@ -135,10 +135,10 @@ public class TreeFrame : Component
             .HorizontalAlignment(HorizontalAlignment.Stretch);
 
         var emptyLabel = new Label("No connection or empty tree")
-            .Foreground(ColorDefault.Secondary)
+            .Foreground(DevToolTheme.Colors.OnDisabled)
             .FontSize(12);
 
-        _state.RootNode.Subscribe(root =>
+        void UpdateRoot(ElementNode? root)
         {
             _nodeRows.Clear();
             mainTreeContainer.ClearChildren();
@@ -160,9 +160,9 @@ public class TreeFrame : Component
             }
 
             mainTreeContainer.MarkNeedsLayout();
-        });
+        }
 
-        _state.OverlayNodes.Subscribe(overlays =>
+        void UpdateOverlays(List<ElementNode> overlays)
         {
             overlaysContainer.ClearChildren();
 
@@ -183,7 +183,10 @@ public class TreeFrame : Component
             }
 
             overlaysContainer.MarkNeedsLayout();
-        });
+        }
+
+        _state.RootNode.Subscribe(UpdateRoot);
+        _state.OverlayNodes.Subscribe(UpdateOverlays);
 
         mainTreeHeader.IsVisible = false;
         mainTreeContainer.IsVisible = false;
@@ -195,6 +198,9 @@ public class TreeFrame : Component
         container.AddChild(mainTreeContainer);
         container.AddChild(overlaysHeader);
         container.AddChild(overlaysContainer);
+
+        UpdateRoot(_state.RootNode.Value);
+        UpdateOverlays(_state.OverlayNodes.Value);
 
         return container;
     }
@@ -258,11 +264,11 @@ public class TreeFrame : Component
         {
             if (_state.SelectedElementId.Value == node.Id)
             {
-                return new Color(59, 130, 246, 0.3f);
+                return DevToolTheme.Colors.Primary.WithAlpha(0.3f);
             }
 
             return _state.HoveredElementId.Value == node.Id
-                ? new Color(255, 255, 255, 0.08f)
+                ? DevToolTheme.Colors.SurfaceHover
                 : Color.Transparent;
         });
         ButtonIcon? chevronButton = null;
@@ -270,10 +276,10 @@ public class TreeFrame : Component
             ? chevronButton = new ButtonIcon(isExpanded.Value ? Icons.ChevronDown : Icons.ChevronRight)
                 .Size(20)
                 .IconSize(12)
-                .IconColor(new Color(160, 160, 160))
+                .IconColor(DevToolTheme.Colors.OnDisabled)
                 .Background(Color.Transparent)
-                .HoverBackground(new Color(255, 255, 255, 0.1f))
-                .PressedBackground(new Color(255, 255, 255, 0.16f))
+                .HoverBackground(DevToolTheme.Colors.SurfaceHover)
+                .PressedBackground(DevToolTheme.Colors.SurfacePressed)
                 .BorderThickness(0)
                 .Padding(new Thickness(4))
                 .BorderRadius(new CornerRadius(3))
@@ -295,7 +301,7 @@ public class TreeFrame : Component
             .TextAlignment(HorizontalAlignment.Left)
             .Padding(new Thickness(0, 3, 0, 3))
             .Text(displayText)
-            .TextColor(hasInvalidDimensions ? new Color(245, 158, 11) : new Color(200, 200, 200))
+            .TextColor(hasInvalidDimensions ? DevToolTheme.Colors.Warning : DevToolTheme.Colors.OnSurface)
             .FontSize(12)
             .HorizontalAlignment(HorizontalAlignment.Stretch)
             .VerticalAlignment(VerticalAlignment.Top)
@@ -321,12 +327,12 @@ public class TreeFrame : Component
                 .Text($"{node.Children.Count}")
                 .FontSize(9)
                 .TextColor(_state.LayoutOutlineElementIds.Map(ids =>
-                    ids.Contains(node.Id) ? new Color(15, 23, 42) : Color.White))
+                    ids.Contains(node.Id) ? DevToolTheme.Colors.OnPrimary : DevToolTheme.Colors.OnSurface))
                 .Padding(new Thickness(4, 1))
                 .Background(_state.LayoutOutlineElementIds.Map(ids =>
-                    ids.Contains(node.Id) ? new Color(147, 197, 253) : new Color(50, 52, 60)))
-                .HoverBackground(new Color(191, 219, 254))
-                .PressedBackground(new Color(191, 219, 254))
+                    ids.Contains(node.Id) ? DevToolTheme.Colors.Primary : DevToolTheme.Colors.SurfacePressed))
+                .HoverBackground(DevToolTheme.Colors.PrimaryHover)
+                .PressedBackground(DevToolTheme.Colors.PrimaryPressed)
                 .BorderThickness(0)
                 .BorderRadius(new CornerRadius(6))
                 .VerticalAlignment(VerticalAlignment.Center)

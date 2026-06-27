@@ -153,6 +153,8 @@ public class TabControl : CompositeView<TabControl>, IFrameAnimation
         {
             if (_contentFrame != null)
                 _contentFrame.Background = value;
+            if (_root != null)
+                _root.Background = value;
         });
     } = Color.Transparent;
     #endregion
@@ -318,6 +320,9 @@ public class TabControl : CompositeView<TabControl>, IFrameAnimation
 
     private void RefreshHeadersForStyleChange()
     {
+        if (_headerOverlay != null)
+            _headerOverlay.Background = TabBackground;
+
         if (!_isApplyingThemeStyle)
             RebuildHeaders();
     }
@@ -549,6 +554,7 @@ public class TabControl : CompositeView<TabControl>, IFrameAnimation
         _scrollForwardButton.IsVisible = false;
 
         _headerOverlay = new OverlayPanel();
+        _headerOverlay.Background = TabBackground;
         if (isHorizontal)
         {
             _headerOverlay.Height = headerCrossSize;
@@ -572,6 +578,7 @@ public class TabControl : CompositeView<TabControl>, IFrameAnimation
         };
 
         _root = BuildRoot();
+        _root.Background = ContentBackground;
         AddChild(_root);
 
         RebuildHeaders();

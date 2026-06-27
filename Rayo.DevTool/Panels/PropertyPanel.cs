@@ -4,8 +4,6 @@ using Rayo.DevTool.Shared.Protocol;
 using Rayo.Layout;
 using Rayo.Reactivity;
 using Rayo.Rendering;
-using Rayo.Rendering.Brushes;
-using static Rayo.Core.UIHelpers;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -26,7 +24,7 @@ public class PropertyFrame : Component
     public override VisualElement Build()
     {
         return new Frame()
-            .Background(new Color(28, 28, 32))
+            .Background(DevToolTheme.Colors.Background)
             .HorizontalAlignment(HorizontalAlignment.Stretch)
             .VerticalAlignment(VerticalAlignment.Stretch)
             .Content(
@@ -50,7 +48,7 @@ public class PropertyFrame : Component
             .VerticalAlignment(VerticalAlignment.Stretch)
             .JustifyContent(JustifyContent.Start);
 
-        _state.Properties.Subscribe(props =>
+        void UpdateProperties(List<PropertyInfo> props)
         {
             container.ClearChildren();
 
@@ -58,7 +56,7 @@ public class PropertyFrame : Component
             {
                 container.AddChild(
                     new Label("Select an element to view properties")
-                        .Foreground(ColorDefault.Secondary)
+                        .Foreground(DevToolTheme.Colors.OnDisabled)
                         .FontSize(12)
                 );
                 container.MarkNeedsLayout();
@@ -80,27 +78,30 @@ public class PropertyFrame : Component
             }
 
             container.MarkNeedsLayout();
-        });
+        }
+
+        _state.Properties.Subscribe(UpdateProperties);
+        UpdateProperties(_state.Properties.Value);
 
         return container;
     }
 
     private static VisualElement BuildCategoryHeader(string? category) =>
         new Frame()
-            .Background(new Color(36, 36, 42))
+            .Background(DevToolTheme.Colors.SurfaceHover)
             .Padding(new Thickness(6, 5, 4, 3))
             .HorizontalAlignment(HorizontalAlignment.Stretch)
             .Content(
                 new Label(category ?? "")
                     .FontSize(10)
-                    .Foreground(new Color(150, 150, 170))
+                    .Foreground(DevToolTheme.Colors.OnDisabled)
             );
 
     private static VisualElement BuildSeparator() =>
         new Frame()
             .Height(1)
             .HorizontalAlignment(HorizontalAlignment.Stretch)
-            .Background(new Color(45, 45, 52));
+            .Background(DevToolTheme.Colors.Border);
 
     // -------------------------------------------------------------------------
     // Property row � two-column layout: fixed label | stretching value
@@ -119,7 +120,7 @@ public class PropertyFrame : Component
                 // Left column: property name � fixed width, clipped
                 new Label(prop.Name)
                     .Padding(new Thickness(6, 4))
-                    .Foreground(new Color(156, 220, 254))
+                    .Foreground(DevToolTheme.Colors.Primary)
                     .FontSize(11),
                 0, 0)
             .AddChild(
@@ -171,7 +172,7 @@ public class PropertyFrame : Component
 
         return new Label(FormatValue(value))
             .FontSize(11)
-            .Foreground(new Color(180, 180, 190))
+            .Foreground(DevToolTheme.Colors.OnSurface)
             .HorizontalAlignment(HorizontalAlignment.Stretch);
     }
 
@@ -184,7 +185,7 @@ public class PropertyFrame : Component
             .IsChecked(GetValueAsBool(prop.Value))
             .OnChanged(async checkedState =>
             {
-                await _state.Client.SetPropertyAsync(elementId, prop.Name, checkedState);
+                await SetPropertyValueAsync(elementId, prop, checkedState);
             });
 
     private VisualElement BuildNumberEditor(PropertyInfo prop, string elementId)
@@ -211,7 +212,7 @@ public class PropertyFrame : Component
              .OnValueChanged(async value =>
              {
                  var v = ClampToBounds((float)value, bounds);
-                 await _state.Client.SetPropertyAsync(elementId, prop.Name, v);
+                 await SetPropertyValueAsync(elementId, prop, v);
              });
         return entry;
     }
@@ -226,7 +227,7 @@ public class PropertyFrame : Component
             .FontSize(11)
             .OnTextChanged(async text =>
             {
-                await _state.Client.SetPropertyAsync(elementId, prop.Name, text);
+                await SetPropertyValueAsync(elementId, prop, text);
             });
     }
 
@@ -248,8 +249,8 @@ public class PropertyFrame : Component
                     .FontSize(11)
                     .OnTextChanged(async text =>
                     {
-                        if (ParseHexColor(text, out var newColor))
-                            await _state.Client.SetPropertyAsync(elementId, prop.Name, newColor);
+                        if (ParseHexColor(text, out _))
+                            await SetPropertyValueAsync(elementId, prop, text);
                     })
             );
     }
@@ -258,41 +259,45 @@ public class PropertyFrame : Component
     {
         var hex = prop.Value?.ToString() ?? "#FFFFFFFF";
         ParseHexColor(hex, out var color);
+        var previewColor = new Signal<Color>(color);
 
         var swatch = new Frame()
-            .Size(16)
-            .Background(new SolidColorBrush(color))
+            .Width(20)
+            .Height(20)
+            .Background(previewColor)
+            .BorderBrush(DevToolTheme.Colors.Border)
+            .BorderThickness(1)
+            .HorizontalAlignment(HorizontalAlignment.Left)
+            .VerticalAlignment(VerticalAlignment.Center)
             .BorderRadius(new CornerRadius(2));
 
         var valueLabel = new Label(hex)
             .FontSize(11)
-            .Foreground(new Color(180, 180, 190))
+            .Foreground(DevToolTheme.Colors.OnSurface)
             .HorizontalAlignment(HorizontalAlignment.Stretch)
             .VerticalAlignment(VerticalAlignment.Center);
 
         var button = new Button()
             .Text("...")
+            .Variant(ButtonVariant.Secondary)
             .Width(40)
             .Height(26)
-            .FontSize(10)
-            .Background(new Color(40, 40, 46))
-            .HoverBackground(new Color(55, 55, 62))
-            .BorderBrush(new Color(60, 60, 68))
-            .BorderThickness(1)
-            .BorderRadius(new CornerRadius(2));
+            .FontSize(10);
 
         button.OnTapped(() =>
         {
-            ColorPicker.ShowDialog(
+            ColorPicker.ShowPopup(
+                button,
                 color,
                 selectedColor =>
                 {
                     color = selectedColor;
                     var nextHex = ToHexColor(selectedColor);
-                    swatch.Background(new SolidColorBrush(selectedColor));
+                    previewColor.Value = selectedColor;
                     valueLabel.Text(nextHex);
-                    _ = _state.Client.SetPropertyAsync(elementId, prop.Name, selectedColor);
-                });
+                    _ = SetPropertyValueAsync(elementId, prop, nextHex);
+                },
+                configure: picker => picker.ShowAlpha = false);
         });
 
         return new HStack()
@@ -316,12 +321,7 @@ public class PropertyFrame : Component
         var comboBox = new ComboBox()
             .Items(enumValues)
             .ItemTextAlignment(HorizontalAlignment.Left)
-            .HorizontalAlignment(HorizontalAlignment.Stretch)
-            .Background(new Color(40, 40, 46))
-            .BorderBrush(new Color(60, 60, 68))
-            .TextColor(Color.White)
-            .HoverColor(new Color(55, 55, 62))
-            .SelectedColor(ColorDefault.Primary);
+            .HorizontalAlignment(HorizontalAlignment.Stretch);
 
         // Set initial selection index (after Items is assigned so count is correct)
         if (initialIndex >= 0 && initialIndex < enumValues.Count)
@@ -330,7 +330,7 @@ public class PropertyFrame : Component
         comboBox.SelectionChanged += async (selectedIndex) =>
         {
             if (selectedIndex >= 0 && selectedIndex < enumValues.Count)
-                await _state.Client.SetPropertyAsync(elementId, prop.Name, enumValues[selectedIndex]);
+                await SetPropertyValueAsync(elementId, prop, enumValues[selectedIndex]);
         };
 
         return comboBox;
@@ -341,10 +341,10 @@ public class PropertyFrame : Component
         var t = ParseThickness(prop.Value);
 
         return BuildFourValueEditor(
-            FloatEntry("L", t.Left, false, v => { t = new Thickness(v, t.Top, t.Right, t.Bottom);   _ = _state.Client.SetPropertyAsync(elementId, prop.Name, t); }),
-            FloatEntry("T", t.Top, false, v => { t = new Thickness(t.Left, v, t.Right, t.Bottom);   _ = _state.Client.SetPropertyAsync(elementId, prop.Name, t); }),
-            FloatEntry("B", t.Bottom, false, v => { t = new Thickness(t.Left, t.Top, t.Right, v);      _ = _state.Client.SetPropertyAsync(elementId, prop.Name, t); }),
-            FloatEntry("R", t.Right, false, v => { t = new Thickness(t.Left, t.Top, v, t.Bottom);     _ = _state.Client.SetPropertyAsync(elementId, prop.Name, t); })
+            FloatEntry("L", t.Left, false, v => { t = new Thickness(v, t.Top, t.Right, t.Bottom);   _ = SetPropertyValueAsync(elementId, prop, t); }),
+            FloatEntry("T", t.Top, false, v => { t = new Thickness(t.Left, v, t.Right, t.Bottom);   _ = SetPropertyValueAsync(elementId, prop, t); }),
+            FloatEntry("B", t.Bottom, false, v => { t = new Thickness(t.Left, t.Top, t.Right, v);      _ = SetPropertyValueAsync(elementId, prop, t); }),
+            FloatEntry("R", t.Right, false, v => { t = new Thickness(t.Left, t.Top, v, t.Bottom);     _ = SetPropertyValueAsync(elementId, prop, t); })
         );
     }
 
@@ -353,16 +353,33 @@ public class PropertyFrame : Component
         var r = ParseCornerRadius(prop.Value);
 
         return BuildFourValueEditor(
-            FloatEntry("TL", r.TopLeft, false, v => { r = new CornerRadius(v, r.TopRight, r.BottomRight, r.BottomLeft);     _ = _state.Client.SetPropertyAsync(elementId, prop.Name, r); }),
-            FloatEntry("TR", r.TopRight, false, v => { r = new CornerRadius(r.TopLeft, v, r.BottomRight, r.BottomLeft);      _ = _state.Client.SetPropertyAsync(elementId, prop.Name, r); }),
-            FloatEntry("BL", r.BottomLeft, false, v => { r = new CornerRadius(r.TopLeft, r.TopRight, r.BottomRight, v);        _ = _state.Client.SetPropertyAsync(elementId, prop.Name, r); }),
-            FloatEntry("BR", r.BottomRight, false, v => { r = new CornerRadius(r.TopLeft, r.TopRight, v, r.BottomLeft);         _ = _state.Client.SetPropertyAsync(elementId, prop.Name, r); })
+            FloatEntry("TL", r.TopLeft, false, v => { r = new CornerRadius(v, r.TopRight, r.BottomRight, r.BottomLeft);     _ = SetPropertyValueAsync(elementId, prop, r); }),
+            FloatEntry("TR", r.TopRight, false, v => { r = new CornerRadius(r.TopLeft, v, r.BottomRight, r.BottomLeft);      _ = SetPropertyValueAsync(elementId, prop, r); }),
+            FloatEntry("BL", r.BottomLeft, false, v => { r = new CornerRadius(r.TopLeft, r.TopRight, r.BottomRight, v);        _ = SetPropertyValueAsync(elementId, prop, r); }),
+            FloatEntry("BR", r.BottomRight, false, v => { r = new CornerRadius(r.TopLeft, r.TopRight, v, r.BottomLeft);         _ = SetPropertyValueAsync(elementId, prop, r); })
         );
     }
 
     // -------------------------------------------------------------------------
     // Helpers
     // -------------------------------------------------------------------------
+
+    private async Task<bool> SetPropertyValueAsync(
+        string elementId,
+        PropertyInfo property,
+        object remoteValue,
+        object? localValue = null)
+    {
+        var previousValue = property.Value;
+        var nextLocalValue = localValue ?? remoteValue;
+        property.Value = nextLocalValue;
+
+        var success = await _state.Client.SetPropertyAsync(elementId, property.Name, remoteValue);
+        if (!success && Equals(property.Value, nextLocalValue))
+            property.Value = previousValue;
+
+        return success;
+    }
 
     /// <summary>Two-by-two layout used by editors with four related numeric values.</summary>
     private static VisualElement BuildFourValueEditor(
@@ -414,7 +431,7 @@ public class PropertyFrame : Component
             .AddChild(
                 new Label(label)
                     .FontSize(11)
-                    .Foreground(new Color(140, 140, 160))
+                    .Foreground(DevToolTheme.Colors.OnDisabled)
                     .VerticalAlignment(VerticalAlignment.Center),
                 0, 0)
             .AddChild(miniEntry, 0, 1);

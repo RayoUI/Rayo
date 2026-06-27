@@ -1,6 +1,7 @@
 ﻿using Rayo.Core;
 using Rayo.Reactivity;
 using Rayo.Rendering;
+using Rayo.Styling;
 using Rayo.DevTool.Shared.Protocol;
 using System.Collections.Generic;
 using System.Linq;
@@ -14,10 +15,10 @@ namespace Rayo.DevTool.Controls;
 /// </summary>
 public class FrameTimelineChart : BorderView<FrameTimelineChart>
 {
-    private static readonly Color ColorEvents = new(200,  60,  60);
-    private static readonly Color ColorLayout = new( 59, 130, 246);
-    private static readonly Color ColorRender = new( 34, 197,  94);
-    private static readonly Color ColorEmpty  = new( 80,  80, 100);
+    private Color _colorEvents;
+    private Color _colorLayout;
+    private Color _colorRender;
+    private Color _colorEmpty;
 
     #region Frames
     /// <summary>
@@ -30,6 +31,16 @@ public class FrameTimelineChart : BorderView<FrameTimelineChart>
         set => this.SetProperty(ref field, value);
     }
     #endregion
+
+    protected override void OnThemeApplied(Theme theme)
+    {
+        base.OnThemeApplied(theme);
+        _colorEvents = theme.Colors.Danger;
+        _colorLayout = theme.Colors.Primary;
+        _colorRender = theme.Colors.Success;
+        _colorEmpty = theme.Colors.OnDisabled;
+        MarkNeedsPaint();
+    }
 
     protected override void Measure(float availableWidth, float availableHeight)
     {
@@ -63,7 +74,7 @@ public class FrameTimelineChart : BorderView<FrameTimelineChart>
                 placeholder,
                 x + (width  - textSize.X) / 2f,
                 y + (height - textSize.Y) / 2f,
-                ColorEmpty, 11);
+                _colorEmpty, 11);
             return;
         }
 
@@ -96,9 +107,9 @@ public class FrameTimelineChart : BorderView<FrameTimelineChart>
             float measH = f.MeasMs > 0 ? Math.Max(f.MeasMs / commonMax * maxBarH, 1f) : 0f;
             float rendH = f.RendMs > 0 ? Math.Max(f.RendMs / commonMax * maxBarH, 1f) : 0f;
 
-            if (evtH  > 0) renderer.DrawRect(groupX,          bottom - evtH,  barW, evtH,  ColorEvents);
-            if (measH > 0) renderer.DrawRect(groupX + barW,   bottom - measH, barW, measH, ColorLayout);
-            if (rendH > 0) renderer.DrawRect(groupX + barW*2, bottom - rendH, barW, rendH, ColorRender);
+            if (evtH  > 0) renderer.DrawRect(groupX,          bottom - evtH,  barW, evtH,  _colorEvents);
+            if (measH > 0) renderer.DrawRect(groupX + barW,   bottom - measH, barW, measH, _colorLayout);
+            if (rendH > 0) renderer.DrawRect(groupX + barW*2, bottom - rendH, barW, rendH, _colorRender);
         }
     }
 }

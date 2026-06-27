@@ -20,7 +20,7 @@ public class StatusBarFrame : Component
     {
         return new Frame()
             .Background(_state.IsConsoleMaximized.Map(maximized =>
-                maximized ? new Color(30, 30, 35) : new Color(36, 42, 52)))
+                maximized ? DevToolTheme.Colors.SurfaceHover : DevToolTheme.Colors.Surface))
             .Padding(new Thickness(10, 5))
             .Height(30)
             .HorizontalAlignment(HorizontalAlignment.Stretch)
@@ -32,7 +32,8 @@ public class StatusBarFrame : Component
                         new Label()
                             .Text(_state.ConnectionStatus)
                             .FontSize(11)
-                            .Foreground(_state.IsConnected.Map(c => c ? ColorDefault.Success : ColorDefault.Secondary)),
+                            .Foreground(_state.IsConnected.Map(c =>
+                                c ? DevToolTheme.Colors.Success : DevToolTheme.Colors.OnDisabled)),
 
                         new Frame().HorizontalAlignment(HorizontalAlignment.Stretch), // Flexible space
 
@@ -52,13 +53,9 @@ public class StatusBarFrame : Component
             Height = 22,
             IconSize = 13,
             Padding = new Thickness(5),
-            Background = new Color(48, 58, 72),
-            HoverBackground = new Color(62, 74, 92),
-            PressedBackground = new Color(42, 50, 64),
-            BorderBrush = new Color(74, 88, 110),
             BorderThickness = 1,
             BorderRadius = new CornerRadius(3),
-            IconColor = new Color(225, 232, 242)
+            Variant = ButtonVariant.Ghost
         };
     }
 }

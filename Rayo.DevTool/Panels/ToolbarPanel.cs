@@ -2,6 +2,7 @@
 using Rayo.Core;
 using Rayo.Layout;
 using Rayo.Rendering;
+using Rayo.Styling;
 using static Rayo.Core.UIHelpers;
 
 namespace Rayo.DevTool.Frames;
@@ -18,7 +19,7 @@ public class ToolbarFrame : Component
     public override VisualElement Build()
     {
         return new Frame()
-            .Background(new Color(35, 35, 40))
+            .Background(DevToolTheme.Colors.Surface)
             .Padding(new Thickness(10, 8))
             .VerticalAlignment(VerticalAlignment.Top)
             .HorizontalAlignment(HorizontalAlignment.Stretch)
@@ -29,7 +30,7 @@ public class ToolbarFrame : Component
                     .Height(30)
                     .Children(
                         new Label("Host:")
-                            .Foreground(ColorDefault.Secondary),
+                            .Foreground(DevToolTheme.Colors.OnDisabled),
 
                         new Entry()
                             .Text(_state.Host.Value)
@@ -38,7 +39,7 @@ public class ToolbarFrame : Component
                             .OnTextChanged(text => _state.Host.Value = text),
 
                         new Label("Port:")
-                            .Foreground(ColorDefault.Secondary),
+                            .Foreground(DevToolTheme.Colors.OnDisabled),
 
                         new Entry()
                             .Text(_state.Port.Value.ToString())
@@ -49,7 +50,7 @@ public class ToolbarFrame : Component
 
                         new Button()
                             .Text(_state.IsConnected.Map(c => c ? "Disconnect" : "Connect"))
-                            .Background(_state.IsConnected.Map(c => c ? ColorDefault.Danger : ColorDefault.Success))
+                            .Variant(_state.IsConnected.Map(c => c ? ButtonVariant.Danger : ButtonVariant.Primary))
                             .Width(100)
                             .OnTapped(async () =>
                             {
@@ -65,13 +66,14 @@ public class ToolbarFrame : Component
 
                         new Button()
                             .Text("Refresh")
-                            .Background(ColorDefault.Primary)
+                            .Variant(ButtonVariant.Primary)
                             .Width(80)
                             .OnTapped(async () => await _state.RefreshTreeAsync()),
 
                         new Frame()
                             .HorizontalAlignment(HorizontalAlignment.Stretch),
 
+                        BuildThemeButton(),
                         BuildSettingsButton()
 
                         //new Label()
@@ -79,6 +81,38 @@ public class ToolbarFrame : Component
                         //    .Foreground(_state.IsConnected.Map(c => c ? ColorDefault.Success : ColorDefault.Secondary))
                     )
             );
+    }
+
+    private VisualElement BuildThemeButton()
+    {
+        var app = UIApplication.Current;
+        var isDark = app?.ActiveTheme == RayoThemes.Dark;
+        var button = new ButtonIcon(isDark ? Icons.Sun : Icons.Moon)
+        {
+            Width = 30,
+            Height = 30,
+            IconSize = 15,
+            Padding = new Thickness(6),
+            BorderThickness = 1,
+            BorderRadius = new CornerRadius(3),
+            Variant = ButtonVariant.Ghost
+        };
+
+        button.Tapped += _ =>
+        {
+            var currentApp = UIApplication.Current;
+            if (currentApp == null)
+                return;
+
+            currentApp.UseTheme(
+                currentApp.ActiveTheme == RayoThemes.Dark
+                    ? RayoThemes.Light
+                    : RayoThemes.Dark);
+        };
+
+        return button.WithTooltip(isDark
+            ? "Switch to light theme"
+            : "Switch to dark theme");
     }
 
     private VisualElement BuildSettingsButton()
@@ -89,13 +123,9 @@ public class ToolbarFrame : Component
             Height = 30,
             IconSize = 15,
             Padding = new Thickness(6),
-            Background = new Color(40, 40, 46),
-            HoverBackground = new Color(55, 55, 62),
-            PressedBackground = new Color(32, 32, 38),
-            BorderBrush = new Color(60, 60, 68),
             BorderThickness = 1,
             BorderRadius = new CornerRadius(3),
-            IconColor = new Color(220, 220, 230)
+            Variant = ButtonVariant.Ghost
         };
 
         button.Tapped += _ => ShowSettingsDialog();
@@ -110,11 +140,7 @@ public class ToolbarFrame : Component
         {
             IsChecked = _state.ShowComputedProperties.Value,
             FontSize = 13,
-            BoxSize = 16,
-            LabelColor = new Color(220, 220, 230),
-            Background = new Color(38, 38, 44),
-            HoverBackground = new Color(48, 48, 56),
-            CheckedBackground = new Color(34, 197, 94)
+            BoxSize = 16
         };
 
         showComputed.Changed += value => _state.ShowComputedProperties.Value = value;

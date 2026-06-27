@@ -39,7 +39,7 @@ public class PerformanceFrame : Component
     // -------------------------------------------------------------------------
     private VisualElement BuildCurrentStats() =>
         new Frame()
-            .Background(new Color(28, 28, 32))
+            .Background(DevToolTheme.Colors.Surface)
             .Padding(new Thickness(10, 8))
             .HorizontalAlignment(HorizontalAlignment.Stretch)
             .Content(
@@ -54,7 +54,7 @@ public class PerformanceFrame : Component
                             .Children(
                                 new Label("Current Frame")
                                     .FontSize(11)
-                                    .Foreground(new Color(120, 120, 140)),
+                                    .Foreground(DevToolTheme.Colors.OnDisabled),
                                 ClearButton(() => _state.PerformanceStats.Value = null)
                             ),
                         // Row 1 — FPS + frame time
@@ -74,10 +74,10 @@ public class PerformanceFrame : Component
                                 StatCell("Measured", _state.PerformanceStats.Map(s => $"{s?.ElemMeasured}")),
                                 StatCell("L-Dirty",  _state.PerformanceStats.Map(s => $"{s?.LayoutDirty}"),
                                     _state.PerformanceStats.Map(s => (s?.LayoutDirty ?? 0) > 0
-                                        ? new Color(220, 80, 80) : new Color(160, 220, 160))),
+                                        ? DevToolTheme.Colors.Danger : DevToolTheme.Colors.Success)),
                                 StatCell("P-Dirty",  _state.PerformanceStats.Map(s => $"{s?.PaintDirty}"),
                                     _state.PerformanceStats.Map(s => (s?.PaintDirty ?? 0) > 0
-                                        ? new Color(220, 160, 60) : new Color(160, 220, 160)))
+                                        ? DevToolTheme.Colors.Warning : DevToolTheme.Colors.Success))
                             )
                     )
             );
@@ -89,12 +89,12 @@ public class PerformanceFrame : Component
         var valLabel = new Label()
             .Text(value)
             .FontSize(13)
-            .Foreground(color ?? new Signal<Color>(new Color(200, 220, 200)));
+            .Foreground(color ?? new Signal<Color>(DevToolTheme.Colors.OnSurface));
 
         return new VStack()
             .Spacing(2)
             .Children(
-                new Label(label).FontSize(9).Foreground(new Color(100, 100, 120)),
+                new Label(label).FontSize(9).Foreground(DevToolTheme.Colors.OnDisabled),
                 valLabel
             );
     }
@@ -104,7 +104,7 @@ public class PerformanceFrame : Component
     // -------------------------------------------------------------------------
     private VisualElement BuildOverlayToggles() =>
         new Frame()
-            .Background(new Color(32, 32, 38))
+            .Background(DevToolTheme.Colors.SurfaceHover)
             .Padding(new Thickness(10, 8))
             .HorizontalAlignment(HorizontalAlignment.Stretch)
             .VerticalAlignment(VerticalAlignment.Top)
@@ -115,7 +115,7 @@ public class PerformanceFrame : Component
                     .Children(
                         new Label("In-App Overlays")
                             .FontSize(11)
-                            .Foreground(new Color(120, 120, 140)),
+                            .Foreground(DevToolTheme.Colors.OnDisabled),
                         new HStack()
                             .HorizontalAlignment(HorizontalAlignment.Stretch)
                             .JustifyContent(JustifyContent.SpaceBetween)
@@ -130,7 +130,7 @@ public class PerformanceFrame : Component
                                     ),
                                 new Button()
                                     .Text("Clear All")
-                                    .Background(new Color(80, 30, 30))
+                                    .Variant(ButtonVariant.Danger)
                                     .Height(26)
                                     .FontSize(11)
                                     .OnTapped(async () =>
@@ -147,7 +147,7 @@ public class PerformanceFrame : Component
     private static VisualElement ClearButton(Action onTap) =>
         new Button()
             .Text("Clear")
-            .Background(new Color(80, 30, 30))
+            .Variant(ButtonVariant.Danger)
             .Height(20)
             .FontSize(10)
             .Width(50)
@@ -158,8 +158,7 @@ public class PerformanceFrame : Component
     {
         return new Button()
             .Text(state.Map(on => $"{label}: {(on ? "ON" : "OFF")}"))
-            .Background(state.Map(on =>
-                on ? new Color(34, 197, 94) : new Color(55, 55, 70)))
+            .Variant(state.Map(on => on ? ButtonVariant.Primary : ButtonVariant.Secondary))
             .Height(26)
             .FontSize(11)
             .OnTapped(() => { state.Value = !state.Value; });
@@ -170,7 +169,7 @@ public class PerformanceFrame : Component
     // -------------------------------------------------------------------------
     private VisualElement BuildTimeline() =>
         new Frame()
-            .Background(new Color(24, 24, 28))
+            .Background(DevToolTheme.Colors.Surface)
             .Padding(new Thickness(10, 8))
             .HorizontalAlignment(HorizontalAlignment.Stretch)
             .Content(
@@ -180,11 +179,11 @@ public class PerformanceFrame : Component
                     .Children(
                         new Label("Frame Timeline  (last 120 frames)")
                             .FontSize(11)
-                            .Foreground(new Color(120, 120, 140)),
+                            .Foreground(DevToolTheme.Colors.OnDisabled),
                         new FrameTimelineChart()
                             .Height(80)
                             .HorizontalAlignment(HorizontalAlignment.Stretch)
-                            .Background(new Color(18, 18, 22))
+                            .Background(DevToolTheme.Colors.Background)
                             .BorderRadius(4f)
                             .Frames(_state.PerformanceStats.Map(s => s?.Frames ?? new List<FrameStatsDto>())),
                         BuildTimelineLegend()
@@ -195,9 +194,9 @@ public class PerformanceFrame : Component
         new HStack()
             .Spacing(14)
             .Children(
-                LegendDot(new Color(34, 197, 94),  "Render"),
-                LegendDot(new Color(59, 130, 246), "Layout"),
-                LegendDot(new Color(200, 60, 60),  "Events")
+                LegendDot(DevToolTheme.Colors.Success, "Render"),
+                LegendDot(DevToolTheme.Colors.Primary, "Layout"),
+                LegendDot(DevToolTheme.Colors.Danger, "Events")
             );
 
     private static VisualElement LegendDot(Color color, string label) =>
@@ -206,7 +205,7 @@ public class PerformanceFrame : Component
             .Alignment(Alignment.Center)
             .Children(
                 new Frame().Width(8).Height(8).Background(color).BorderRadius(2f),
-                new Label(label).FontSize(10).Foreground(new Color(140, 140, 160))
+                new Label(label).FontSize(10).Foreground(DevToolTheme.Colors.OnDisabled)
             );
 
     // -------------------------------------------------------------------------
@@ -214,7 +213,7 @@ public class PerformanceFrame : Component
     // -------------------------------------------------------------------------
     private VisualElement BuildDirtyLog() =>
         new Frame()
-            .Background(new Color(20, 20, 25))
+            .Background(DevToolTheme.Colors.Surface)
             .Padding(new Thickness(10, 8))
             .HorizontalAlignment(HorizontalAlignment.Stretch)
             .Content(
@@ -228,10 +227,10 @@ public class PerformanceFrame : Component
                             .Children(
                                 new Label("Dirty Log  (last 150 entries)")
                                     .FontSize(11)
-                                    .Foreground(new Color(120, 120, 140)),
+                                    .Foreground(DevToolTheme.Colors.OnDisabled),
                                 new Button()
                                     .Text("Clear")
-                                    .Background(new Color(80, 30, 30))
+                                    .Variant(ButtonVariant.Danger)
                                     .Height(20)
                                     .FontSize(10)
                                     .Width(50)
@@ -243,7 +242,7 @@ public class PerformanceFrame : Component
                                     })
                             ),
                         new Frame()
-                            .Background(new Color(15, 15, 20))
+                            .Background(DevToolTheme.Colors.Background)
                             .BorderRadius(4f)
                             .Padding(new Thickness(6, 4))
                             .HorizontalAlignment(HorizontalAlignment.Stretch)
@@ -259,14 +258,14 @@ public class PerformanceFrame : Component
         {
             return new Label("No dirty events recorded.")
                 .FontSize(11)
-                .Foreground(new Color(80, 80, 100));
+                .Foreground(DevToolTheme.Colors.OnDisabled);
         }
 
         var rows = new List<VisualElement>();
         // Show newest entries at top
         foreach (var entry in ((IEnumerable<DirtyEntryDto>)log).Reverse().Take(80))
         {
-            var typeColor  = entry.IsLayout ? new Color(220, 100, 80) : new Color(220, 180, 60);
+            var typeColor  = entry.IsLayout ? DevToolTheme.Colors.Danger : DevToolTheme.Colors.Warning;
             var kindLabel  = entry.IsLayout ? "Layout" : "Paint";
             var nameStr    = string.IsNullOrEmpty(entry.ElementId)
                 ? entry.ElementType
@@ -280,7 +279,7 @@ public class PerformanceFrame : Component
                 .Children(
                     new Label(entry.Timestamp)
                         .FontSize(9)
-                        .Foreground(new Color(80, 80, 100))
+                        .Foreground(DevToolTheme.Colors.OnDisabled)
                         .Width(72),
                     new Label(kindLabel)
                         .FontSize(10)
@@ -288,7 +287,7 @@ public class PerformanceFrame : Component
                         .Width(42),
                     new Label(nameStr)
                         .FontSize(10)
-                        .Foreground(new Color(180, 190, 200))
+                        .Foreground(DevToolTheme.Colors.OnSurface)
                 ));
         }
 

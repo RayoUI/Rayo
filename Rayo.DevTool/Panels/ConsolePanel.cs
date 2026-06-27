@@ -22,7 +22,7 @@ public class ConsoleFrame : Component
     public override VisualElement Build()
     {
         var header = new Frame()
-            .Background(new Color(40, 40, 45))
+            .Background(DevToolTheme.Colors.SurfaceHover)
             .Padding(new Thickness(2))
             .Height(28)
             .HorizontalAlignment(HorizontalAlignment.Stretch)
@@ -37,7 +37,7 @@ public class ConsoleFrame : Component
                         new Label("Console")
                             .Padding(new Thickness(left: 5))
                             .FontSize(14)
-                            .Foreground(Color.White),
+                            .Foreground(DevToolTheme.Colors.OnSurface),
 
                         new Frame()
                             .HorizontalAlignment(HorizontalAlignment.Stretch),
@@ -60,7 +60,7 @@ public class ConsoleFrame : Component
             );
 
         return new Grid()
-            .Background(new Color(20, 20, 25))
+            .Background(DevToolTheme.Colors.Background)
             .VerticalAlignment(VerticalAlignment.Stretch)
             .HorizontalAlignment(HorizontalAlignment.Stretch)
             .Rows(GridLength.Auto, GridLength.Star)
@@ -77,13 +77,9 @@ public class ConsoleFrame : Component
             Height = 20,
             IconSize = 12,
             Padding = new Thickness(4),
-            Background = new Color(60, 60, 65),
-            HoverBackground = new Color(74, 74, 82),
-            PressedBackground = new Color(48, 48, 54),
-            BorderBrush = new Color(75, 75, 82),
             BorderThickness = 1,
             BorderRadius = new CornerRadius(3),
-            IconColor = new Color(230, 230, 235)
+            Variant = ButtonVariant.Ghost
         };
     }
 
@@ -95,18 +91,18 @@ public class ConsoleFrame : Component
             .HorizontalAlignment(HorizontalAlignment.Stretch)
             .VerticalAlignment(VerticalAlignment.Top);
 
-        _state.Logs.Subscribe(logs =>
+        void UpdateLogs(List<LogMessage> logs)
         {
             container.ClearChildren();
             foreach (var log in logs)
             {
                 var color = log.Level switch
                 {
-                    "Error" => ColorDefault.Danger,
-                    "Warning" => ColorDefault.Warning,
-                    "Info" => ColorDefault.Secondary,
-                    "Trace" => new Color(150, 150, 150),
-                    _ => Color.White
+                    "Error" => DevToolTheme.Colors.Danger,
+                    "Warning" => DevToolTheme.Colors.Warning,
+                    "Info" => DevToolTheme.Colors.Info,
+                    "Trace" => DevToolTheme.Colors.OnDisabled,
+                    _ => DevToolTheme.Colors.OnSurface
                 };
 
                 container.AddChild(
@@ -121,13 +117,16 @@ public class ConsoleFrame : Component
                                         .FontSize(10)
                                         .Width(60),
                                     new Label(log.Message)
-                                        .Foreground(new Color(220, 220, 220))
+                                        .Foreground(DevToolTheme.Colors.OnSurface)
                                         .FontSize(11)
                                 )
                         )
                 );
             }
-        });
+        }
+
+        _state.Logs.Subscribe(UpdateLogs);
+        UpdateLogs(_state.Logs.Value);
 
         return container;
     }
