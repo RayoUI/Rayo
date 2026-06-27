@@ -75,6 +75,12 @@ internal sealed class GalleryPageHost : Frame
 
     private void CaptureElement(VisualElement element, GalleryColorRole inheritedContext, bool adaptAccents)
     {
+        // Composite/theme-aware controls own their internal styling. Reflectively
+        // assigning their paint properties can trigger structural rebuilds during
+        // the render frame and can also overwrite transient visual state.
+        if (element is TabControl or DataGrid or Checkbox)
+            return;
+
         var properties = element.GetType()
             .GetProperties(BindingFlags.Instance | BindingFlags.Public)
             .Where(property =>

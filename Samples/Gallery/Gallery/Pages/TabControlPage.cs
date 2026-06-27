@@ -28,11 +28,9 @@ public class TabControlPage : Component
                                     new VStack()
                                         .Spacing(10)
                                         .Children(
-                                            new Label("Home Tab Content")
-                                                .FontSize(18)
-                                                .Foreground(GalleryPalette.OnSurface),
-                                            new Label("This is the home tab. You can add any content here.")
-                                                .Foreground(ColorDefault.Secondary)
+                                            new PaletteLabel("Home Tab Content", colors => colors.OnSurface)
+                                                .FontSize(18),
+                                            new PaletteLabel("This is the home tab. You can add any content here.", colors => colors.OnDisabled)
                                         )
                                 )
                         )
@@ -43,15 +41,11 @@ public class TabControlPage : Component
                                     new VStack()
                                         .Spacing(10)
                                         .Children(
-                                            new Label("Profile Information")
-                                                .FontSize(18)
-                                                .Foreground(GalleryPalette.OnSurface),
-                                            new Label("Name: John Doe")
-                                                .Foreground(ColorDefault.Info),
-                                            new Label("Email: john@example.com")
-                                                .Foreground(ColorDefault.Info),
-                                            new Label("Role: Developer")
-                                                .Foreground(ColorDefault.Info)
+                                            new PaletteLabel("Profile Information", colors => colors.OnSurface)
+                                                .FontSize(18),
+                                            new PaletteLabel("Name: John Doe", colors => colors.Info),
+                                            new PaletteLabel("Email: john@example.com", colors => colors.Info),
+                                            new PaletteLabel("Role: Developer", colors => colors.Info)
                                         )
                                 )
                         )
@@ -62,9 +56,8 @@ public class TabControlPage : Component
                                     new VStack()
                                         .Spacing(10)
                                         .Children(
-                                            new Label("Settings")
-                                                .FontSize(18)
-                                                .Foreground(GalleryPalette.OnSurface),
+                                            new PaletteLabel("Settings", colors => colors.OnSurface)
+                                                .FontSize(18),
                                             new Checkbox("Enable notifications"),
                                             new Checkbox("Dark mode"),
                                             new Checkbox("Auto-save")
@@ -97,24 +90,21 @@ public class TabControlPage : Component
                             new Frame()
                                 .Padding(new Thickness(20))
                                 .Content(
-                                    new Label("Dashboard content goes here")
-                                        .Foreground(GalleryPalette.OnSurface)
+                                    new PaletteLabel("Dashboard content goes here", colors => colors.OnSurface)
                                 )
                         )
                         .AddTab("Analytics",
                             new Frame()
                                 .Padding(new Thickness(20))
                                 .Content(
-                                    new Label("Analytics charts and graphs")
-                                        .Foreground(GalleryPalette.OnSurface)
+                                    new PaletteLabel("Analytics charts and graphs", colors => colors.OnSurface)
                                 )
                         )
                         .AddTab("Reports",
                             new Frame()
                                 .Padding(new Thickness(20))
                                 .Content(
-                                    new Label("Reports and data exports")
-                                        .Foreground(GalleryPalette.OnSurface)
+                                    new PaletteLabel("Reports and data exports", colors => colors.OnSurface)
                                 )
                         );
     }
@@ -144,9 +134,8 @@ public class TabControlPage : Component
         return new VStack()
             .Spacing(8)
             .Children(
-                new Label(title)
-                    .FontSize(14)
-                    .Foreground(ColorDefault.Secondary),
+                new PaletteLabel(title, colors => colors.OnDisabled)
+                    .FontSize(14),
                 CreatePositionedTabControl(position)
             );
     }
@@ -185,11 +174,9 @@ public class TabControlPage : Component
                 new VStack()
                     .Spacing(6)
                     .Children(
-                        new Label(heading)
-                            .FontSize(16)
-                            .Foreground(GalleryPalette.OnSurface),
-                        new Label(description)
-                            .Foreground(ColorDefault.Secondary)
+                        new PaletteLabel(heading, colors => colors.OnSurface)
+                            .FontSize(16),
+                        new PaletteLabel(description, colors => colors.OnDisabled)
                     )
             );
     }

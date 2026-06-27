@@ -57,19 +57,19 @@ public class AbsolutePage : Component
                             new Frame()
                                 .AbsolutePosition(50, 30)
                                 .Size(new Size(120, 120))
-                                .Background(new Color(59, 130, 246, 0.8f))
+                                .Background(Color.Red)
                                 .BorderRadius(12),
 
                             new Frame()
                                 .AbsolutePosition(100, 50)
                                 .Size(new Size(120, 120))
-                                .Background(new Color(168, 85, 247, 0.8f))
+                                .Background(Color.Blue)
                                 .BorderRadius(12),
 
                             new Frame()
                                 .AbsolutePosition(150, 70)
                                 .Size(new Size(120, 120))
-                                .Background(new Color(236, 72, 153, 0.8f))
+                                .Background(Color.Yellow)
                                 .BorderRadius(12)
                         )
                 ),

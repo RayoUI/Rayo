@@ -219,10 +219,11 @@ public class DataGrid : BorderCompositeView<DataGrid>
     protected override void OnThemeApplied(Theme theme)
     {
         var palette = theme.Colors;
-        SetThemeValue(nameof(HeaderBackground), (Brush)palette.SurfacePressed, value => HeaderBackground = value);
-        SetThemeValue(nameof(HeaderTextColor), (Brush)palette.OnSurface, value => HeaderTextColor = value);
-        SetThemeValue(nameof(HeaderHoverBackground), (Brush)palette.SurfaceHover, value => HeaderHoverBackground = value);
-        SetThemeValue(nameof(HeaderPressedBackground), (Brush)palette.SurfacePressed, value => HeaderPressedBackground = value);
+        var header = theme.Buttons.Secondary;
+        SetThemeValue(nameof(HeaderBackground), (Brush)header.Background, value => HeaderBackground = value);
+        SetThemeValue(nameof(HeaderTextColor), (Brush)header.Foreground, value => HeaderTextColor = value);
+        SetThemeValue(nameof(HeaderHoverBackground), (Brush)header.HoverBackground, value => HeaderHoverBackground = value);
+        SetThemeValue(nameof(HeaderPressedBackground), (Brush)header.PressedBackground, value => HeaderPressedBackground = value);
         SetThemeValue(nameof(RowBackground), (Brush)palette.Surface, value => RowBackground = value);
         SetThemeValue(nameof(AlternateRowColor), (Brush)palette.SurfaceHover, value => AlternateRowColor = value);
         SetThemeValue(nameof(SelectedRowColor), (Brush)palette.Primary, value => SelectedRowColor = value);
@@ -354,6 +355,7 @@ public class DataGrid : BorderCompositeView<DataGrid>
 
             // Use Button directly as header cell for clickable sorting
             var headerCell = new Button();
+            headerCell.Variant(ButtonVariant.Secondary);
             headerCell.Text(displayText);
             headerCell.TextColor(HeaderTextColor);
             headerCell.FontSize(14);
@@ -572,7 +574,25 @@ public class DataGrid : BorderCompositeView<DataGrid>
         renderer.DrawRoundedRect(ComputedX, ComputedY, ComputedWidth, ComputedHeight, BorderRadius.TopLeft, RowBackground);
 
         if (_grid != null)
-            RenderSubtree(_grid, renderer);
+        {
+            renderer.PushRoundedClip(
+                ComputedX,
+                ComputedY,
+                ComputedWidth,
+                ComputedHeight,
+                BorderRadius.TopLeft,
+                BorderRadius.TopRight,
+                BorderRadius.BottomRight,
+                BorderRadius.BottomLeft);
+            try
+            {
+                RenderSubtree(_grid, renderer);
+            }
+            finally
+            {
+                renderer.PopRoundedClip();
+            }
+        }
 
         if (BorderBrush.PrimaryColor.A > 0)
         {

@@ -254,7 +254,12 @@ public class Checkbox : Rayo.Core.View<Checkbox>,
         SetThemeValue(nameof(PressedBackground), (Brush)palette.SurfacePressed, value => PressedBackground = value);
         SetThemeValue(nameof(CheckedBackground), (Brush)palette.Primary, value => CheckedBackground = value);
         SetThemeValue(nameof(CheckmarkColor), (Brush)palette.OnPrimary, value => CheckmarkColor = value);
-        SetThemeValue(nameof(LabelColor), (Brush)palette.OnSurface, value => LabelColor = value);
+        var surface = palette.Surface;
+        float luminance = 0.2126f * surface.R + 0.7152f * surface.G + 0.0722f * surface.B;
+        SetThemeValue(
+            nameof(LabelColor),
+            (Brush)(luminance > 0.5f ? Color.Black : Color.White),
+            value => LabelColor = value);
         SetThemeValue(nameof(BoxBorderBrush), (Brush)palette.Border, value => BoxBorderBrush = value);
     }
 
