@@ -47,13 +47,13 @@ public class FlexPage : Component
             .Children(
                 Helper.CreateSectionTitle("Direction"),
                 Helper.CreateExampleSection("Row (left to right)",
-                    new Frame().Height(80).Background(new Color(30, 30, 35)).Padding(new Thickness(10)).Content(flex1)
+                    new Frame().Height(80).Background(GalleryPalette.Surface).Padding(new Thickness(10)).Content(flex1)
                 ),
                 Helper.CreateExampleSection("Column (top to bottom)",
-                    new Frame().Height(200).Background(new Color(30, 30, 35)).Padding(new Thickness(10)).Content(flex2)
+                    new Frame().Height(200).Background(GalleryPalette.Surface).Padding(new Thickness(10)).Content(flex2)
                 ),
                 Helper.CreateExampleSection("Row Reverse",
-                    new Frame().Height(80).Background(new Color(30, 30, 35)).Padding(new Thickness(10)).Content(flex3)
+                    new Frame().Height(80).Background(GalleryPalette.Surface).Padding(new Thickness(10)).Content(flex3)
                 )
             );
     }
@@ -90,10 +90,10 @@ public class FlexPage : Component
             .Children(
                 Helper.CreateSectionTitle("Wrap"),
                 Helper.CreateExampleSection("NoWrap (overflow)",
-                    new Frame().Height(80).Background(new Color(30, 30, 35)).Padding(new Thickness(10)).Content(flex1)
+                    new Frame().Height(80).Background(GalleryPalette.Surface).Padding(new Thickness(10)).Content(flex1)
                 ),
                 Helper.CreateExampleSection("Wrap (multiple lines)",
-                    new Frame().Background(new Color(30, 30, 35)).Padding(new Thickness(10)).Content(flex2)
+                    new Frame().Background(GalleryPalette.Surface).Padding(new Thickness(10)).Content(flex2)
                 )
             );
     }
@@ -122,7 +122,7 @@ public class FlexPage : Component
 
         return new Frame()
             .Height(80)
-            .Background(new Color(30, 30, 35))
+            .Background(GalleryPalette.Surface)
             .Padding(new Thickness(10))
             .Content(flex);
     }
@@ -149,7 +149,7 @@ public class FlexPage : Component
 
         return new Frame()
             .Height(120)
-            .Background(new Color(30, 30, 35))
+            .Background(GalleryPalette.Surface)
             .Padding(new Thickness(10))
             .Content(flex);
     }
@@ -183,10 +183,10 @@ public class FlexPage : Component
             .Children(
                 Helper.CreateSectionTitle("Grow & Shrink"),
                 Helper.CreateExampleSection("Flex Grow (0, 1, 2)",
-                    new Frame().Height(80).Background(new Color(30, 30, 35)).Padding(new Thickness(10)).Content(flex1)
+                    new Frame().Height(80).Background(GalleryPalette.Surface).Padding(new Thickness(10)).Content(flex1)
                 ),
                 Helper.CreateExampleSection("Flex Order (visual order: 2, 3, 1)",
-                    new Frame().Height(80).Background(new Color(30, 30, 35)).Padding(new Thickness(10)).Content(flex2)
+                    new Frame().Height(80).Background(GalleryPalette.Surface).Padding(new Thickness(10)).Content(flex2)
                 )
             );
     }
@@ -199,7 +199,7 @@ public class FlexPage : Component
             .AlignItems(Rayo.Layout.Alignment.Center)
             .Padding(new Thickness(15));
 
-        headerFlex.AddChild(new Label("Flex App").FontSize(18).Foreground(Color.White));
+        headerFlex.AddChild(new PaletteLabel("Flex App", colors => colors.OnPrimary).FontSize(18));
         headerFlex.AddChild(
             new HStack().Spacing(8).Children(
                 CreateButtonIcon("?", new Color(100, 100, 120)),
@@ -229,11 +229,11 @@ public class FlexPage : Component
                 Helper.CreateExampleSection("Responsive Card Layout",
                     new Frame()
                         .Height(300)
-                        .Background(new Color(30, 30, 35))
+                        .Background(GalleryPalette.Surface)
                         .Content(
                             new VStack().Children(
-                                new Frame().Background(new Color(20, 20, 25)).Height(60).Content(headerFlex),
-                                new ScrollView(contentFlex).Background(new Color(30, 30, 35))
+                                new PaletteFrame(colors => colors.Primary).Height(60).Content(headerFlex),
+                                new ScrollView(contentFlex).Background(GalleryPalette.Surface)
                             )
                         )
                 )
@@ -252,7 +252,7 @@ public class FlexPage : Component
                     .HorizontalAlignment(HorizontalAlignment.Center)
                     .VerticalAlignment(VerticalAlignment.Center)
                     .TextHorizontalAlignment(HorizontalAlignment.Center)
-                    .Foreground(Color.White)
+                    .Foreground(GalleryPalette.OnSurface)
                     .FontSize(14)
             );
     }
@@ -267,8 +267,8 @@ public class FlexPage : Component
             .Padding(new Thickness(15))
             .Content(
                 new VStack().Spacing(8).Children(
-                    new Label(title).FontSize(14).Foreground(Color.White),
-                    new Label("Lorem ipsum dolor sit amet").FontSize(11).Foreground(new Color(200, 200, 200))
+                    new Label(title).FontSize(14).Foreground(GalleryPalette.OnSurface),
+                    new Label("Lorem ipsum dolor sit amet").FontSize(11).Foreground(GalleryPalette.Muted)
                 )
             );
     }
@@ -286,7 +286,7 @@ public class FlexPage : Component
                     .VerticalAlignment(VerticalAlignment.Stretch)
                     .TextHorizontalAlignment(HorizontalAlignment.Center)
                     .TextVerticalAlignment(VerticalAlignment.Center)
-                    .Foreground(Color.White)
+                    .Foreground(GalleryPalette.OnSurface)
                     .FontSize(16)
             );
     }

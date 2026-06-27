@@ -29,7 +29,7 @@ public class VStackPage : Component
                 Helper.CreateExampleSection("Alignment - Horizontal Center",
                     new Frame()
                         .Width(300)
-                        .Background(new Color(30, 30, 35))
+                        .Background(GalleryPalette.Surface)
                         .Content(
                             new VStack()
                                 .Spacing(15)
@@ -45,7 +45,7 @@ public class VStackPage : Component
                 Helper.CreateExampleSection("Alignment - Vertical End",
                     new Frame()
                         .Height(200)
-                        .Background(new Color(30, 30, 35))
+                        .Background(GalleryPalette.Surface)
                         .Content(
                             new VStack()
                                 .Spacing(10)
@@ -61,9 +61,9 @@ public class VStackPage : Component
                     new VStack()
                         .Spacing(15)
                         .Children(
-                            new Label("Email Address").Foreground(Color.White),
+                            new Label("Email Address").Foreground(GalleryPalette.OnSurface),
                             new Entry().Placeholder("Enter email...").Width(250),
-                            new Label("Password").Foreground(Color.White),
+                            new Label("Password").Foreground(GalleryPalette.OnSurface),
                             new Entry().Placeholder("Enter password...").IsPassword(true).Width(250),
                             new Button().Text("Login").Width(100).Background(new Color(59, 130, 246))
                         )

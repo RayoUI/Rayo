@@ -9,6 +9,7 @@ using Rayo.Rendering;
 using Rayo.Rendering.Brushes;
 using System.Collections.Generic;
 using System.Linq;
+using Rayo.Styling;
 
 /// <summary>
 /// Column definition for DataGrid
@@ -83,6 +84,8 @@ public class DataGrid : BorderCompositeView<DataGrid>
     private ScrollView? _scrollView;
     private VirtualizedDataGridRowsPanel? _rowsPanel;
     private readonly List<float> _columnWeights = new();
+    private readonly List<Button> _headerCells = new();
+    private Frame? _headerSpacer;
     private const float ScrollbarSpacerWidth = 8f; // Match ScrollView's default ScrollbarWidth
 
     // Styling
@@ -90,12 +93,8 @@ public class DataGrid : BorderCompositeView<DataGrid>
     public Rendering.Brushes.Brush HeaderBackground
     {
         get => field;
-        set
-        {
-            field = value;
-            MarkNeedsPaint();
-        }
-    } = new Color(45, 48, 58);
+        set => this.SetProperty(ref field, value, MarkNeedsPaint);
+    } = Color.Transparent;
     #endregion
 
     #region HeaderTextColor
@@ -103,19 +102,15 @@ public class DataGrid : BorderCompositeView<DataGrid>
     {
         get => field;
         set => this.SetProperty(ref field, value);
-    } = Color.White;
+    } = Color.Transparent;
     #endregion
 
     #region RowBackground
     public Rendering.Brushes.Brush RowBackground
     {
         get => field;
-        set
-        {
-            field = value;
-            MarkNeedsPaint();
-        }
-    } = new Color(30, 32, 40);
+        set => this.SetProperty(ref field, value, MarkNeedsPaint);
+    } = Color.Transparent;
     #endregion
 
     #region AlternateRowColor
@@ -124,7 +119,7 @@ public class DataGrid : BorderCompositeView<DataGrid>
     {
         get => field;
         set => this.SetProperty(ref field, value);
-    } = new Color(35, 37, 45);
+    } = Color.Transparent;
     #endregion
 
     #region SelectedRowColor
@@ -132,7 +127,7 @@ public class DataGrid : BorderCompositeView<DataGrid>
     {
         get => field;
         set => this.SetProperty(ref field, value);
-    } = new Color(59, 130, 246);
+    } = Color.Transparent;
     #endregion
 
     #region SelectedTextColor
@@ -140,7 +135,7 @@ public class DataGrid : BorderCompositeView<DataGrid>
     {
         get => field;
         set => this.SetProperty(ref field, value);
-    } = Color.White;
+    } = Color.Transparent;
     #endregion
 
     #region GridLineColor
@@ -148,8 +143,32 @@ public class DataGrid : BorderCompositeView<DataGrid>
     {
         get => field;
         set => this.SetProperty(ref field, value);
-    } = new Color(50, 55, 65);
+    } = Color.Transparent;
     #endregion
+
+    public Brush RowTextColor
+    {
+        get => field;
+        set => this.SetProperty(ref field, value);
+    } = Color.Transparent;
+
+    public Brush RowPressedBackground
+    {
+        get => field;
+        set => this.SetProperty(ref field, value);
+    } = Color.Transparent;
+
+    public Brush HeaderHoverBackground
+    {
+        get => field;
+        set => this.SetProperty(ref field, value);
+    } = Color.Transparent;
+
+    public Brush HeaderPressedBackground
+    {
+        get => field;
+        set => this.SetProperty(ref field, value);
+    } = Color.Transparent;
 
     #region RowHeight
     public float RowHeight
@@ -190,11 +209,52 @@ public class DataGrid : BorderCompositeView<DataGrid>
 
     public DataGrid()
     {
+        InitializeTheme();
         Width = 600;
         Height = 400;
-        BorderBrush = new Color(50, 55, 65);
         BorderRadius = new CornerRadius(8);
         BuildGrid();
+    }
+
+    protected override void OnThemeApplied(Theme theme)
+    {
+        var palette = theme.Colors;
+        SetThemeValue(nameof(HeaderBackground), (Brush)palette.SurfacePressed, value => HeaderBackground = value);
+        SetThemeValue(nameof(HeaderTextColor), (Brush)palette.OnSurface, value => HeaderTextColor = value);
+        SetThemeValue(nameof(HeaderHoverBackground), (Brush)palette.SurfaceHover, value => HeaderHoverBackground = value);
+        SetThemeValue(nameof(HeaderPressedBackground), (Brush)palette.SurfacePressed, value => HeaderPressedBackground = value);
+        SetThemeValue(nameof(RowBackground), (Brush)palette.Surface, value => RowBackground = value);
+        SetThemeValue(nameof(AlternateRowColor), (Brush)palette.SurfaceHover, value => AlternateRowColor = value);
+        SetThemeValue(nameof(SelectedRowColor), (Brush)palette.Primary, value => SelectedRowColor = value);
+        SetThemeValue(nameof(SelectedTextColor), (Brush)palette.OnPrimary, value => SelectedTextColor = value);
+        SetThemeValue(nameof(RowTextColor), (Brush)palette.OnSurface, value => RowTextColor = value);
+        SetThemeValue(nameof(RowPressedBackground), (Brush)palette.SurfacePressed, value => RowPressedBackground = value);
+        SetThemeValue(nameof(GridLineColor), (Brush)palette.Border, value => GridLineColor = value);
+        SetThemeValue(nameof(BorderBrush), (Brush)palette.Border, value => BorderBrush = value);
+
+        RefreshThemeVisuals();
+    }
+
+    private void RefreshThemeVisuals()
+    {
+        ApplyGridStyling();
+
+        for (int index = 0; index < _headerCells.Count && index < Columns.Count; index++)
+        {
+            var headerCell = _headerCells[index];
+            var column = Columns[index];
+            headerCell.TextColor = HeaderTextColor;
+            headerCell.Background = HeaderBackground;
+            headerCell.HoverBackground = column.CanSort ? HeaderHoverBackground : HeaderBackground;
+            headerCell.PressedBackground = column.CanSort ? HeaderPressedBackground : HeaderBackground;
+            headerCell.BorderBrush = BorderBrush;
+        }
+
+        if (_headerSpacer != null)
+            _headerSpacer.Background = HeaderBackground;
+
+        _rowsPanel?.RefreshVisibleRows();
+        MarkNeedsPaint();
     }
 
     private void BuildGrid()
@@ -235,6 +295,8 @@ public class DataGrid : BorderCompositeView<DataGrid>
         float savedScrollOffset = _scrollView?.VerticalScrollOffset ?? 0;
 
         _grid.ClearChildren();
+        _headerCells.Clear();
+        _headerSpacer = null;
         _grid.RowDefinitions.Clear();
         _grid.ColumnDefinitions.Clear();
         UpdateColumnWeights();
@@ -296,8 +358,8 @@ public class DataGrid : BorderCompositeView<DataGrid>
             headerCell.TextColor(HeaderTextColor);
             headerCell.FontSize(14);
             headerCell.Background(HeaderBackground);
-            headerCell.HoverBackground(column.CanSort ? (Rendering.Brushes.Brush)new Color(58, 58, 70) : HeaderBackground);
-            headerCell.PressedBackground(column.CanSort ? (Rendering.Brushes.Brush)new Color(68, 68, 80) : HeaderBackground);
+            headerCell.HoverBackground(column.CanSort ? HeaderHoverBackground : HeaderBackground);
+            headerCell.PressedBackground(column.CanSort ? HeaderPressedBackground : HeaderBackground);
             headerCell.BorderBrush(BorderBrush);
             headerCell.BorderThickness(1);
             headerCell.BorderRadius(0);
@@ -312,16 +374,17 @@ public class DataGrid : BorderCompositeView<DataGrid>
                 headerCell.OnTapped(() => SortByColumn(column.PropertyName));
             }
 
+            _headerCells.Add(headerCell);
             _grid.AddChild(headerCell, 0, col);
         }
 
         // Add scrollbar spacer element in header row
-        var scrollbarSpacer = new Frame();
-        scrollbarSpacer.Background = HeaderBackground;
-        scrollbarSpacer.Height = HeaderHeight;
-        scrollbarSpacer.HorizontalAlignment = HorizontalAlignment.Stretch;
-        scrollbarSpacer.VerticalAlignment = VerticalAlignment.Stretch;
-        _grid.AddChild(scrollbarSpacer, 0, Columns.Count);
+        _headerSpacer = new Frame();
+        _headerSpacer.Background = HeaderBackground;
+        _headerSpacer.Height = HeaderHeight;
+        _headerSpacer.HorizontalAlignment = HorizontalAlignment.Stretch;
+        _headerSpacer.VerticalAlignment = VerticalAlignment.Stretch;
+        _grid.AddChild(_headerSpacer, 0, Columns.Count);
     }
 
     private void BuildDataRows()
@@ -357,8 +420,8 @@ public class DataGrid : BorderCompositeView<DataGrid>
         Brush rowBg = isSelected ? SelectedRowColor :
                      (AlternatingRows && rowIndex % 2 == 1) ? AlternateRowColor :
                      RowBackground;
-        var textColor = isSelected ? SelectedTextColor : new Color(225, 229, 238);
-        var pressedBackground = isSelected ? SelectedRowColor : new Color(50, 55, 65);
+        var textColor = isSelected ? SelectedTextColor : RowTextColor;
+        var pressedBackground = isSelected ? SelectedRowColor : RowPressedBackground;
         var borderBrush = ShowGridLines ? GridLineColor : Color.Transparent;
         float borderWidth = ShowGridLines ? 1 : 0;
 
@@ -508,12 +571,32 @@ public class DataGrid : BorderCompositeView<DataGrid>
     {
         renderer.DrawRoundedRect(ComputedX, ComputedY, ComputedWidth, ComputedHeight, BorderRadius.TopLeft, RowBackground);
 
-        _grid?.Render(renderer);
+        if (_grid != null)
+            RenderSubtree(_grid, renderer);
 
         if (BorderBrush.PrimaryColor.A > 0)
         {
             renderer.DrawRoundedRectOutline(ComputedX, ComputedY, ComputedWidth, ComputedHeight, BorderRadius.TopLeft, 1, BorderBrush);
         }
+    }
+
+    protected internal override bool RendersChildrenManually => true;
+
+    private static void RenderSubtree(VisualElement element, IRenderer renderer)
+    {
+        if (!element.IsVisible)
+            return;
+
+        element.InvokeOnBeforeRender(renderer);
+        element.Render(renderer);
+
+        if (!element.RendersChildrenManually)
+        {
+            foreach (var child in element.GetChildrenByZIndex())
+                RenderSubtree(child, renderer);
+        }
+
+        element.InvokeOnAfterRender(renderer);
     }
 }
 

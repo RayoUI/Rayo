@@ -20,9 +20,8 @@ public class SideBarPage : Component
 
     public override VisualElement Build()
     {
-        var contentLabel = new Label("Select an item from the sidebar")
-            .FontSize(16)
-            .Foreground(new Color(180, 185, 195));
+        var contentLabel = new PaletteLabel("Select an item from the sidebar", colors => colors.OnDisabled)
+            .FontSize(16);
 
         UseSubscription(_selectedItem, item =>
         {
@@ -58,8 +57,7 @@ public class SideBarPage : Component
                                 .AddItem("Settings", "S"),
 
                             // Content area
-                            new Frame()
-                                .Background(new Color(20, 22, 28))
+                            new PaletteFrame(colors => colors.Background)
                                 .HorizontalAlignment(HorizontalAlignment.Stretch)
                                 .VerticalAlignment(VerticalAlignment.Stretch)
                                 .Padding(new Thickness(20))
@@ -67,13 +65,11 @@ public class SideBarPage : Component
                                     new VStack()
                                         .Spacing(12)
                                         .Children(
-                                            new Label("Content Area")
-                                                .FontSize(18)
-                                                .Foreground(Color.White),
+                                            new PaletteLabel("Content Area", colors => colors.OnBackground)
+                                                .FontSize(18),
                                             contentLabel,
-                                            new Label("Click the < button in the sidebar to collapse it.")
+                                            new PaletteLabel("Click the < button in the sidebar to collapse it.", colors => colors.OnDisabled)
                                                 .FontSize(13)
-                                                .Foreground(new Color(120, 125, 140))
                                         )
                                 )
                         )
@@ -86,24 +82,13 @@ public class SideBarPage : Component
                         .Children(
                             new SideBar()
                                 .ExpandedWidth(220)
-                                .Background(new Color(15, 23, 42))
-                                .ItemColors(
-                                    Color.Transparent,
-                                    new Color(30, 41, 59),
-                                    new Color(14, 165, 233)
-                                )
-                                .TextColors(
-                                    new Color(148, 163, 184),
-                                    Color.White
-                                )
                                 .SelectedKey("Analytics")
                                 .Header(
                                     new Frame()
                                         .Padding(new Thickness(16, 20, 16, 20))
                                         .Content(
-                                            new Label("ACME Inc")
+                                            new PaletteLabel("ACME Inc", colors => colors.OnBackground)
                                                 .FontSize(18)
-                                                .Foreground(Color.White)
                                         )
                                 )
                                 .AddItem("Overview", "O")
@@ -116,24 +101,20 @@ public class SideBarPage : Component
                                         .Content(
                                             new Button()
                                                 .Text("Logout")
-                                                .Background(new Color(239, 68, 68))
-                                                .HoverBackground(new Color(255, 88, 88))
-                                                .TextColor(Color.White)
+                                                .Variant(ButtonVariant.Danger)
                                                 .BorderThickness(0)
                                                 .HorizontalAlignment(HorizontalAlignment.Stretch)
                                                 .Padding(new Thickness(12, 8, 12, 8))
                                         )
                                 ),
 
-                            new Frame()
-                                .Background(new Color(30, 41, 59))
+                            new PaletteFrame(colors => colors.SurfaceHover)
                                 .HorizontalAlignment(HorizontalAlignment.Stretch)
                                 .VerticalAlignment(VerticalAlignment.Stretch)
                                 .Padding(new Thickness(20))
                                 .Content(
-                                    new Label("Dashboard Content")
+                                    new PaletteLabel("Dashboard Content", colors => colors.OnSurface)
                                         .FontSize(16)
-                                        .Foreground(Color.White)
                                 )
                         )
                 ),
@@ -160,10 +141,10 @@ public class SideBarPage : Component
             .Children(
                 new Label("*")
                     .FontSize(14)
-                    .Foreground(new Color(59, 130, 246)),
+                    .Foreground(GalleryPalette.Primary),
                 new Label(text)
                     .FontSize(14)
-                    .Foreground(new Color(180, 185, 195))
+                    .Foreground(GalleryPalette.Muted)
             );
     }
 }

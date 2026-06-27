@@ -8,6 +8,7 @@ using Rayo.Rendering;
 using Rayo.Rendering.Brushes;
 using System;
 using System.Globalization;
+using Rayo.Styling;
 
 /// <summary>
 /// DatePicker component - Calendar-based date selection.
@@ -24,6 +25,7 @@ public class DatePicker : BorderCompositeView<DatePicker>,
     // Visual components
     private Frame? _dateButton;
     private Label? _dateText;
+    private ButtonIcon? _calendarIcon;
     private HStack? _inputContent;
     private Frame? _calendarFrame;
     private DateTime _originalSelectedDate;
@@ -41,7 +43,7 @@ public class DatePicker : BorderCompositeView<DatePicker>,
     {
         get => field;
         set => this.SetProperty(ref field, value);
-    } = new Color(59, 130, 246);
+    } = Color.Transparent;
     #endregion
 
     #region SelectedDateColor
@@ -49,7 +51,7 @@ public class DatePicker : BorderCompositeView<DatePicker>,
     {
         get => field;
         set => this.SetProperty(ref field, value);
-    } = new Color(59, 130, 246);
+    } = Color.Transparent;
     #endregion
 
     #region TodayColor
@@ -57,7 +59,7 @@ public class DatePicker : BorderCompositeView<DatePicker>,
     {
         get => field;
         set => this.SetProperty(ref field, value);
-    } = new Color(100, 150, 255);
+    } = Color.Transparent;
     #endregion
 
     #region HoverColor
@@ -65,7 +67,7 @@ public class DatePicker : BorderCompositeView<DatePicker>,
     {
         get => field;
         set => this.SetProperty(ref field, value);
-    } = new Color(50, 50, 55);
+    } = Color.Transparent;
     #endregion
 
     #region TextColor
@@ -73,7 +75,7 @@ public class DatePicker : BorderCompositeView<DatePicker>,
     {
         get => field;
         set => this.SetProperty(ref field, value);
-    } = Color.White;
+    } = Color.Transparent;
     #endregion
 
     #region HeaderTextColor
@@ -81,19 +83,15 @@ public class DatePicker : BorderCompositeView<DatePicker>,
     {
         get => field;
         set => this.SetProperty(ref field, value);
-    } = Color.White;
+    } = Color.Transparent;
     #endregion
 
     #region CalendarBackground
     public Rendering.Brushes.Brush CalendarBackground
     {
         get => field;
-        set
-        {
-            field = value;
-            MarkNeedsPaint();
-        }
-    } = new Color(30, 30, 35);
+        set => this.SetProperty(ref field, value, MarkNeedsPaint);
+    } = Color.Transparent;
     #endregion
 
     #region CalendarBorderBrush
@@ -101,7 +99,7 @@ public class DatePicker : BorderCompositeView<DatePicker>,
     {
         get => field;
         set => this.SetProperty(ref field, value);
-    } = new Color(50, 55, 65);
+    } = Color.Transparent;
     #endregion
 
     #region MutedTextColor
@@ -109,7 +107,7 @@ public class DatePicker : BorderCompositeView<DatePicker>,
     {
         get => field;
         set => this.SetProperty(ref field, value);
-    } = new Color(128, 128, 128);
+    } = Color.Transparent;
     #endregion
 
     #region FieldCornerRadius
@@ -228,10 +226,9 @@ public class DatePicker : BorderCompositeView<DatePicker>,
 
     public DatePicker()
     {
-        Background = new Color(40, 40, 45);
+        InitializeTheme();
         Width = 240;
         Height = 44;
-        BorderBrush = new Color(100, 100, 100);
         BorderThickness = 1;
         BuildComponents();
 
@@ -240,6 +237,27 @@ public class DatePicker : BorderCompositeView<DatePicker>,
         {
             AddChild(_dateButton);
         }
+    }
+
+    protected override void OnThemeApplied(Theme theme)
+    {
+        var palette = theme.Colors;
+        SetThemeValue(nameof(Background), (Brush)palette.Surface, value => Background = value);
+        SetThemeValue(nameof(HeaderColor), (Brush)palette.Primary, value => HeaderColor = value);
+        SetThemeValue(nameof(SelectedDateColor), (Brush)palette.Primary, value => SelectedDateColor = value);
+        SetThemeValue(nameof(TodayColor), (Brush)palette.Info, value => TodayColor = value);
+        SetThemeValue(nameof(HoverColor), (Brush)palette.SurfaceHover, value => HoverColor = value);
+        SetThemeValue(nameof(TextColor), (Brush)palette.OnSurface, value => TextColor = value);
+        SetThemeValue(nameof(HeaderTextColor), (Brush)palette.OnPrimary, value => HeaderTextColor = value);
+        SetThemeValue(nameof(CalendarBackground), (Brush)palette.Surface, value => CalendarBackground = value);
+        SetThemeValue(nameof(CalendarBorderBrush), (Brush)palette.Border, value => CalendarBorderBrush = value);
+        SetThemeValue(nameof(MutedTextColor), (Brush)palette.OnDisabled, value => MutedTextColor = value);
+        SetThemeValue(nameof(BorderBrush), (Brush)palette.Border, value => BorderBrush = value);
+
+        ApplyInputAppearance();
+
+        if (_isOpen)
+            RebuildCalendar();
     }
 
     protected override void OnBorderBrushChanged()
@@ -264,15 +282,13 @@ public class DatePicker : BorderCompositeView<DatePicker>,
             HorizontalAlignment = HorizontalAlignment.Stretch
         };
 
-        var calendarIcon = new ButtonIcon(Icons.Calendar)
+        _calendarIcon = new ButtonIcon(Icons.Calendar)
+            .Variant(ButtonVariant.Ghost)
             .IconSize(18)
             .IconColor(MutedTextColor)
-            .Background(new Color(45, 50, 67))
-            .HoverBackground(new Color(55, 60, 77))
-            .PressedBackground(new Color(35, 40, 57))
             .BorderRadius(new CornerRadius(6))
             .Size(32);
-        calendarIcon.OnTapped(() => ToggleCalendar());
+        _calendarIcon.OnTapped(() => ToggleCalendar());
 
         _inputContent = new HStack
         {
@@ -282,7 +298,7 @@ public class DatePicker : BorderCompositeView<DatePicker>,
             HorizontalAlignment = HorizontalAlignment.Stretch
         };
         _inputContent.AddChild(_dateText);
-        _inputContent.AddChild(calendarIcon);
+        _inputContent.AddChild(_calendarIcon);
 
         _dateButton = new Frame
         {
@@ -295,6 +311,23 @@ public class DatePicker : BorderCompositeView<DatePicker>,
             BorderRadius = new CornerRadius(FieldCornerRadius)
         };
         _dateButton.Content(_inputContent);
+    }
+
+    private void ApplyInputAppearance()
+    {
+        if (_dateText != null)
+            _dateText.Foreground = TextColor;
+
+        if (_calendarIcon != null)
+        {
+            _calendarIcon.IconColor = MutedTextColor;
+        }
+
+        if (_dateButton != null)
+        {
+            _dateButton.Background = Background;
+            _dateButton.BorderBrush = BorderBrush;
+        }
     }
 
     private void UpdateDateText()
@@ -410,11 +443,9 @@ public class DatePicker : BorderCompositeView<DatePicker>,
     {
         // -- Month navigation header ------------------------------------------
         var prevButton = new ButtonIcon(Icons.ChevronLeft)
+            .Variant(ButtonVariant.Ghost)
             .IconSize(14)
             .IconColor(HeaderTextColor)
-            .Background(Color.Transparent)
-            .HoverBackground(new Color(255, 255, 255, 0.15f))
-            .PressedBackground(new Color(255, 255, 255, 0.25f))
             .BorderRadius(new CornerRadius(4))
             .Size(30);
         prevButton.OnTapped(() => PreviousMonth());
@@ -427,11 +458,9 @@ public class DatePicker : BorderCompositeView<DatePicker>,
         };
 
         var nextButton = new ButtonIcon(Icons.ChevronRight)
+            .Variant(ButtonVariant.Ghost)
             .IconSize(14)
             .IconColor(HeaderTextColor)
-            .Background(Color.Transparent)
-            .HoverBackground(new Color(255, 255, 255, 0.15f))
-            .PressedBackground(new Color(255, 255, 255, 0.25f))
             .BorderRadius(new CornerRadius(4))
             .Size(30);
         nextButton.OnTapped(() => NextMonth());
@@ -475,7 +504,7 @@ public class DatePicker : BorderCompositeView<DatePicker>,
         calendarContent.AddChild(daysGrid);
 
         var selectionSurface = new Frame();
-        selectionSurface.Background(new Color(34, 36, 44));
+        selectionSurface.Background(CalendarBackground);
         selectionSurface.BorderRadius(new CornerRadius(12));
         selectionSurface.BorderThickness(1);
         selectionSurface.BorderBrush(CalendarBorderBrush);
@@ -488,11 +517,11 @@ public class DatePicker : BorderCompositeView<DatePicker>,
         var previewLabel = new Label
         {
             Text = SelectedDate.ToString(DateFormat),
-            Foreground = Color.White,
+            Foreground = TextColor,
             FontSize = 20
         };
         var previewFrame = new Frame();
-        previewFrame.Background(new Color(37, 39, 48));
+        previewFrame.Background(HoverColor);
         previewFrame.BorderRadius(new CornerRadius(12));
         previewFrame.Padding(new Thickness(16, 12, 16, 12));
         previewFrame.HorizontalAlignment(HorizontalAlignment.Left);
@@ -502,9 +531,7 @@ public class DatePicker : BorderCompositeView<DatePicker>,
         var cancelButton = new Button
         {
             Text = "Cancel",
-            Background = new Color(45, 45, 52),
-            HoverBackground = new Color(55, 55, 62),
-            TextColor = Color.White,
+            Variant = ButtonVariant.Secondary,
             BorderThickness = 0,
             BorderRadius = new CornerRadius(6),
             Width = 100,
@@ -522,7 +549,7 @@ public class DatePicker : BorderCompositeView<DatePicker>,
         // -- Main content VStack ----------------------------------------------
         var content = new VStack { Spacing = 16 };
         content.HorizontalAlignment(HorizontalAlignment.Left);
-        content.AddChild(new Label("Pick a date") { Foreground = Color.White, FontSize = 18 });
+        content.AddChild(new Label("Pick a date") { Foreground = TextColor, FontSize = 18 });
         content.AddChild(previewFrame);
         content.AddChild(selectionSurface);
         content.AddChild(buttons);
@@ -598,7 +625,7 @@ public class DatePicker : BorderCompositeView<DatePicker>,
                                    isToday ? TodayColor :
                                    (Brush)Color.Transparent;
 
-                    Brush fgColor = isSelected ? (Brush)Color.White : TextColor;
+                    Brush fgColor = isSelected ? (Brush)RayoThemes.Current.Colors.OnPrimary : TextColor;
 
                     int day = currentDay; // Capture for closure
                     var button = new Button

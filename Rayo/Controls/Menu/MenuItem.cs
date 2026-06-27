@@ -6,6 +6,7 @@ using Rayo.Layout;
 using Rayo.Rendering;
 using Rayo.Rendering.Brushes;
 using Rayo.Reactivity;
+using Rayo.Styling;
 
 public readonly record struct MenuItemIconOptions(IconData Icon, Brush Color, float? Size = null, float? Spacing = null);
 
@@ -39,7 +40,7 @@ public class MenuItem : Component
     {
         get => field;
         set => this.SetProperty(ref field, value, Rebuild);
-    } = new Color(200, 205, 215);
+    } = Color.Transparent;
     #endregion
 
     #region IconSize
@@ -87,21 +88,19 @@ public class MenuItem : Component
     {
         _text = text;
         _onClick = onClick;
+        IconColor = RayoThemes.Current.Colors.OnDisabled;
     }
 
     public override VisualElement Build()
     {
         var button = new Button();
         button.Text(IconData == null ? _text : string.Empty);
-        button.Background(Color.Transparent);
-        button.TextColor(Color.White);
+        button.Variant(ButtonVariant.Ghost);
         button.FontSize(12);
         button.Padding(new Thickness(15, 5));
         button.HorizontalAlignment(HorizontalAlignment.Stretch);
         button.TextAlignment(TextAlignment);
         button.BorderRadius(0);
-        button.HoverBackground(new Color(0, 122, 204));
-        button.PressedBackground(new Color(0, 100, 180));
         button.OnTapped(() => {
             _onClick?.Invoke();
         });
@@ -114,7 +113,7 @@ public class MenuItem : Component
 
             var label = new Label(_text)
                 .FontSize(12)
-                .Foreground(Color.White)
+                .Foreground(RayoThemes.Current.Colors.OnSurface)
                 .HorizontalAlignment(HorizontalAlignment.Left)
                 .SetInputTransparent(true);
 
@@ -179,7 +178,7 @@ internal class MenuItemClickableFrame : Frame, Rayo.Core.Input.IPointerHandler
     {
         if (e.PointerType == Rayo.Core.Input.PointerType.Mouse)
         {
-            _innerFrame.Background(new Color(0, 122, 204));
+            _innerFrame.Background(RayoThemes.Current.Colors.Primary);
             MarkNeedsPaint();
         }
     }
@@ -197,7 +196,7 @@ internal class MenuItemClickableFrame : Frame, Rayo.Core.Input.IPointerHandler
     public void OnPointerPressed(Rayo.Core.Input.PointerEventArgs e)
     {
         _isPressed = true;
-        _innerFrame.Background(new Color(0, 100, 180));
+        _innerFrame.Background(RayoThemes.Current.Colors.PrimaryPressed);
         MarkNeedsPaint();
     }
 
@@ -206,7 +205,7 @@ internal class MenuItemClickableFrame : Frame, Rayo.Core.Input.IPointerHandler
         if (_isPressed)
         {
             _isPressed = false;
-            _innerFrame.Background(new Color(0, 122, 204));
+            _innerFrame.Background(RayoThemes.Current.Colors.Primary);
             MarkNeedsPaint();
             _onClick?.Invoke();
         }

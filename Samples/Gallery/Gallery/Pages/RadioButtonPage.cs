@@ -20,7 +20,7 @@ public class RadioButtonPage : Component
 
                 Helper.CreateExampleSection("Basic Radio Group",
                     new Frame()
-                        .Background(new Color(40, 40, 50))
+                        .Background(GalleryPalette.Surface)
                         .BorderRadius(8)
                         .Padding(new Thickness(16))
                         .Content(
@@ -48,7 +48,7 @@ public class RadioButtonPage : Component
                         .Spacing(30)
                         .Children(
                             new Frame()
-                                .Background(new Color(40, 40, 50))
+                                .Background(GalleryPalette.Surface)
                                 .BorderRadius(8)
                                 .Padding(new Thickness(16))
                                 .Content(
@@ -66,7 +66,7 @@ public class RadioButtonPage : Component
                                 ),
 
                             new Frame()
-                                .Background(new Color(40, 40, 50))
+                                .Background(GalleryPalette.Surface)
                                 .BorderRadius(8)
                                 .Padding(new Thickness(16))
                                 .Content(
@@ -90,7 +90,7 @@ public class RadioButtonPage : Component
 
                 Helper.CreateExampleSection("With Event Handler",
                     new Frame()
-                        .Background(new Color(40, 40, 50))
+                        .Background(GalleryPalette.Surface)
                         .BorderRadius(8)
                         .Padding(new Thickness(16))
                         .Content(

@@ -6,6 +6,7 @@ using Rayo.Core.Input.Gestures;
 using Rayo.Reactivity;
 using Rayo.Rendering;
 using Rayo.Rendering.Brushes;
+using Rayo.Styling;
 using IRenderer = Rayo.Rendering.IRenderer;
 
 /// <summary>
@@ -22,11 +23,13 @@ public class Checkbox : Rayo.Core.View<Checkbox>,
 {
     // Backing fields for generated/reactive properties
     private string _label = "";
-    private Brush _background = new Color(40, 40, 40);
-    private Brush _checkedBackground = new Color(59, 130, 246);
-    private Brush _hoverBackground = new Color(50, 50, 50);
-    private Brush _checkmarkColor = Color.White;
-    private Brush _labelColor = Color.White;
+    private Brush _background = Color.Transparent;
+    private Brush _checkedBackground = Color.Transparent;
+    private Brush _hoverBackground = Color.Transparent;
+    private Brush _pressedBackground = Color.Transparent;
+    private Brush _checkmarkColor = Color.Transparent;
+    private Brush _labelColor = Color.Transparent;
+    private Brush _boxBorderBrush = Color.Transparent;
     private float _boxSize = 20f;
     private float _labelSpacing = 10f;
 
@@ -36,6 +39,24 @@ public class Checkbox : Rayo.Core.View<Checkbox>,
     {
         get => _label;
         set => this.SetProperty(ref _label, value);
+    }
+    #endregion
+
+    #region BoxBorderBrush
+    [PaintProperty]
+    public Brush BoxBorderBrush
+    {
+        get => _boxBorderBrush;
+        set => this.SetProperty(ref _boxBorderBrush, value);
+    }
+    #endregion
+
+    #region PressedBackground
+    [PaintProperty]
+    public Brush PressedBackground
+    {
+        get => _pressedBackground;
+        set => this.SetProperty(ref _pressedBackground, value, UpdateVisualState);
     }
     #endregion
 
@@ -201,6 +222,8 @@ public class Checkbox : Rayo.Core.View<Checkbox>,
 
     public Checkbox()
     {
+        InitializeTheme();
+
         // Setup gesture recognizers
         _tapRecognizer = new TapRecognizer(
             maxMovementThreshold: 15f,
@@ -221,6 +244,18 @@ public class Checkbox : Rayo.Core.View<Checkbox>,
     private void Toggle()
     {
         IsChecked = !IsChecked;
+    }
+
+    protected override void OnThemeApplied(Theme theme)
+    {
+        var palette = theme.Colors;
+        SetThemeValue(nameof(Background), (Brush)palette.Surface, value => Background = value);
+        SetThemeValue(nameof(HoverBackground), (Brush)palette.SurfaceHover, value => HoverBackground = value);
+        SetThemeValue(nameof(PressedBackground), (Brush)palette.SurfacePressed, value => PressedBackground = value);
+        SetThemeValue(nameof(CheckedBackground), (Brush)palette.Primary, value => CheckedBackground = value);
+        SetThemeValue(nameof(CheckmarkColor), (Brush)palette.OnPrimary, value => CheckmarkColor = value);
+        SetThemeValue(nameof(LabelColor), (Brush)palette.OnSurface, value => LabelColor = value);
+        SetThemeValue(nameof(BoxBorderBrush), (Brush)palette.Border, value => BoxBorderBrush = value);
     }
 
     // =========================================================================
@@ -266,7 +301,7 @@ public class Checkbox : Rayo.Core.View<Checkbox>,
 
     private void UpdateVisualState()
     {
-        _currentBackground = IsPressed ? new Color(30, 30, 30) :
+        _currentBackground = IsPressed ? PressedBackground :
                            IsHovered ? HoverBackground :
                            (IsChecked ? CheckedBackground : Background);
     }
@@ -305,6 +340,10 @@ public class Checkbox : Rayo.Core.View<Checkbox>,
 
         // Draw checkbox box using precomputed background
         renderer.DrawRoundedRect(boxX, boxY, BoxSize, BoxSize, 4, _currentBackground);
+        if (!IsChecked)
+        {
+            renderer.DrawRoundedRectOutline(boxX, boxY, BoxSize, BoxSize, 4, 1, BoxBorderBrush);
+        }
 
         // Dibujar X si está checked
         if (IsChecked)

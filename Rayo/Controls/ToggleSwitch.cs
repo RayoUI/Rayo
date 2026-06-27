@@ -7,6 +7,7 @@ using Rayo.Core.Input.Gestures;
 using Rayo.Reactivity;
 using Rayo.Rendering;
 using Rayo.Rendering.Brushes;
+using Rayo.Styling;
 
 /// <summary>
 /// Toggle switch component for ON/OFF states.
@@ -41,7 +42,7 @@ public class ToggleSwitch : Rayo.Core.View<ToggleSwitch>,
     {
         get => field;
         set => this.SetProperty(ref field, value);
-    } = new Color(0, 120, 215);
+    } = Color.Transparent;
     #endregion
 
     #region OffColor
@@ -59,7 +60,7 @@ public class ToggleSwitch : Rayo.Core.View<ToggleSwitch>,
     {
         get => field;
         set => this.SetProperty(ref field, value);
-    } = new Color(0, 120, 215);
+    } = Color.Transparent;
     #endregion
 
     #region OffBorderBrush
@@ -68,7 +69,7 @@ public class ToggleSwitch : Rayo.Core.View<ToggleSwitch>,
     {
         get => field;
         set => this.SetProperty(ref field, value);
-    } = new Color(150, 150, 150);
+    } = Color.Transparent;
     #endregion
 
     #region ThumbColor
@@ -77,7 +78,7 @@ public class ToggleSwitch : Rayo.Core.View<ToggleSwitch>,
     {
         get => field;
         set => this.SetProperty(ref field, value);
-    } = new Color(240, 240, 240);
+    } = Color.Transparent;
     #endregion
 
     #region SwitchWidth
@@ -187,6 +188,7 @@ public class ToggleSwitch : Rayo.Core.View<ToggleSwitch>,
     // =========================================================================
     public ToggleSwitch()
     {
+        InitializeTheme();
         Width = 50;
         Height = 26;
 
@@ -198,6 +200,16 @@ public class ToggleSwitch : Rayo.Core.View<ToggleSwitch>,
         );
         _tapRecognizer.TapDetected += OnTapDetected;
         GestureRecognizers.Add(_tapRecognizer);
+    }
+
+    protected override void OnThemeApplied(Theme theme)
+    {
+        var palette = theme.Colors;
+        SetThemeValue(nameof(OnColor), (Brush)palette.Primary, value => OnColor = value);
+        SetThemeValue(nameof(OffColor), (Brush)palette.SurfacePressed, value => OffColor = value);
+        SetThemeValue(nameof(OnBorderBrush), (Brush)palette.PrimaryPressed, value => OnBorderBrush = value);
+        SetThemeValue(nameof(OffBorderBrush), (Brush)palette.Border, value => OffBorderBrush = value);
+        SetThemeValue(nameof(ThumbColor), (Brush)palette.OnPrimary, value => ThumbColor = value);
     }
 
     // =========================================================================

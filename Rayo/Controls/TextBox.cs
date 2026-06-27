@@ -8,6 +8,7 @@ using Rayo.Reactivity;
 using Rayo.Rendering;
 using Rayo.Rendering.Brushes;
 using Rayo.Rendering.Graphics.VectorGraphics;
+using Rayo.Styling;
 using IRenderer = Rayo.Rendering.IRenderer;
 
 /// <summary>
@@ -125,7 +126,7 @@ public abstract class TextBox<T> : BorderView<T>, IInputHandler, IFocusable, Ray
     {
         get => field;
         set => this.SetProperty(ref field, value);
-    } = new Color(40, 40, 40);
+    } = Color.Transparent;
     #endregion
 
     #region FocusBackground
@@ -134,7 +135,7 @@ public abstract class TextBox<T> : BorderView<T>, IInputHandler, IFocusable, Ray
     {
         get => field;
         set => this.SetProperty(ref field, value);
-    } = new Color(50, 50, 50);
+    } = Color.Transparent;
     #endregion
 
     #region TextColor
@@ -143,7 +144,7 @@ public abstract class TextBox<T> : BorderView<T>, IInputHandler, IFocusable, Ray
     {
         get => field;
         set => this.SetProperty(ref field, value);
-    } = Color.White;
+    } = Color.Transparent;
     #endregion
 
     #region PlaceholderColor
@@ -152,7 +153,7 @@ public abstract class TextBox<T> : BorderView<T>, IInputHandler, IFocusable, Ray
     {
         get => field;
         set => this.SetProperty(ref field, value);
-    } = new Color(120, 120, 120);
+    } = Color.Transparent;
     #endregion
 
     #region FocusBorderBrush
@@ -161,7 +162,7 @@ public abstract class TextBox<T> : BorderView<T>, IInputHandler, IFocusable, Ray
     {
         get => field;
         set => this.SetProperty(ref field, value);
-    } = new Color(59, 130, 246);
+    } = Color.Transparent;
     #endregion
 
     #region IsPassword
@@ -197,7 +198,7 @@ public abstract class TextBox<T> : BorderView<T>, IInputHandler, IFocusable, Ray
     {
         get => field;
         set => this.SetProperty(ref field, value);
-    } = new Color(0, 120, 215);
+    } = Color.Transparent;
     #endregion
 
     // =========================================================================
@@ -276,11 +277,23 @@ public abstract class TextBox<T> : BorderView<T>, IInputHandler, IFocusable, Ray
 
     public TextBox()
     {
+        InitializeTheme();
         // Remove hardcoded size - let it size dynamically
         Padding = new Thickness(10, 6, 10, 6);
-        BorderBrush = new Color(70, 70, 70);
         BorderThickness = 2;
         BorderRadius = new CornerRadius(4);
+    }
+
+    protected override void OnThemeApplied(Theme theme)
+    {
+        var palette = theme.Colors;
+        SetThemeValue(nameof(Background), (Brush)palette.Surface, value => Background = value);
+        SetThemeValue(nameof(FocusBackground), (Brush)palette.SurfaceHover, value => FocusBackground = value);
+        SetThemeValue(nameof(TextColor), (Brush)palette.OnSurface, value => TextColor = value);
+        SetThemeValue(nameof(PlaceholderColor), (Brush)palette.OnDisabled, value => PlaceholderColor = value);
+        SetThemeValue(nameof(FocusBorderBrush), (Brush)palette.Focus, value => FocusBorderBrush = value);
+        SetThemeValue(nameof(SelectionBackground), (Brush)palette.Primary, value => SelectionBackground = value);
+        SetThemeValue(nameof(BorderBrush), (Brush)palette.Border, value => BorderBrush = value);
     }
 
     // =========================================================================

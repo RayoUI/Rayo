@@ -42,7 +42,7 @@ public class EditorPage : Component
                                 .OnTextChanged(text => notes.Value = text),
 
                             new Frame()
-                                .Background(new Color(40, 40, 50))
+                                .Background(GalleryPalette.Surface)
                                 .BorderRadius(6)
                                 .Padding(new Thickness(12))
                                 .Content(
@@ -108,7 +108,7 @@ public class EditorPage : Component
                                 .Text(readOnlyText.Value)
                                 .Width(500)
                                 .Height(120)
-                                .Background(new Color(35, 35, 40))
+                                .Background(GalleryPalette.Surface)
                                 .TextColor(new Color(180, 180, 190))
                         )
                 ),
@@ -146,7 +146,7 @@ public class EditorPage : Component
                                 .Height(120)
                                 .Placeholder("No border style...")
                                 .BorderThickness(0)
-                                .Background(new Color(30, 30, 35))
+                                .Background(GalleryPalette.Surface)
                         )
                 ),
 
@@ -166,7 +166,7 @@ public class EditorPage : Component
                             new Label()
                                 .Text("Useful for input validation and limiting content size")
                                 .FontSize(12)
-                                .Foreground(new Color(140, 145, 160))
+                                .Foreground(GalleryPalette.Muted)
                         )
                 ),
 
@@ -194,7 +194,7 @@ public class EditorPage : Component
                         .Children(
                             new Label("Feedback Form:")
                                 .FontSize(16)
-                                .Foreground(Color.White),
+                                .Foreground(GalleryPalette.OnSurface),
 
                             new VStack()
                                 .Spacing(10)
@@ -238,7 +238,7 @@ public class EditorPage : Component
                                 .AutoSize(true)
                                 .Width(500)
                                 .Placeholder("This editor will grow as you type (when AutoSize is implemented)...")
-                                .Background(new Color(35, 35, 40)),
+                                .Background(GalleryPalette.Surface),
 
                             new Label()
                                 .Text("Note: AutoSize feature may require additional implementation")

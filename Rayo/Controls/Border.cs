@@ -4,6 +4,7 @@ using Rayo.Core;
 using Rayo.Reactivity;
 using Rayo.Rendering;
 using Rayo.Rendering.Brushes;
+using Rayo.Styling;
 
 /// <summary>
 /// Border component - Container with configurable border and optional shadow
@@ -26,8 +27,18 @@ public class Border : ContentView<Border>
     {
         get => field;
         set => this.SetProperty(ref field, value);
-    } = new Color(100, 100, 100);
+    } = Color.Transparent;
     #endregion
+
+    public Border()
+    {
+        InitializeTheme();
+    }
+
+    protected override void OnThemeApplied(Theme theme)
+    {
+        SetThemeValue(nameof(BorderBrush), (Brush)theme.Colors.Border, value => BorderBrush = value);
+    }
 
     #region BorderThickness
     [LayoutProperty]
@@ -65,9 +76,7 @@ public class Border : ContentView<Border>
     } = null;
     #endregion
 
-    public Border() { }
-
-    public Border(VisualElement content)
+    public Border(VisualElement content) : this()
     {
         Content = content;
     }

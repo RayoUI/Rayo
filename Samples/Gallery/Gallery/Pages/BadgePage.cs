@@ -3,6 +3,7 @@ using Rayo.Controls;
 using Rayo.Core;
 using Rayo.Layout;
 using Rayo.Rendering;
+using Rayo.Styling;
 
 namespace Gallery.Pages;
 
@@ -21,21 +22,16 @@ public class BadgePage : Component
                         .Spacing(16)
                         .Alignment(Alignment.Center)
                         .Children(
-                            new Badge("New")
-                                .Background(new Color(59, 130, 246)),
+                            new PaletteBadge("New", colors => colors.Primary, colors => colors.OnPrimary),
 
-                            new Badge("Sale")
-                                .Background(new Color(239, 68, 68)),
+                            new PaletteBadge("Sale", colors => colors.Danger, colors => colors.OnDanger),
 
                             new Badge("Pro")
                                 .Background(new Color(168, 85, 247)),
 
-                            new Badge("Beta")
-                                .Background(new Color(234, 179, 8))
-                                .TextColor(Color.Black),
+                            new PaletteBadge("Beta", colors => colors.Warning, colors => colors.OnWarning),
 
-                            new Badge("Free")
-                                .Background(new Color(34, 197, 94))
+                            new PaletteBadge("Free", colors => colors.Success, colors => colors.OnSuccess)
                         )
                 ),
 
@@ -61,34 +57,31 @@ public class BadgePage : Component
                                 .Spacing(8)
                                 .Alignment(Alignment.Center)
                                 .Children(
-                                    new Badge("Solid")
-                                        .Variant(BadgeVariant.Solid)
-                                        .Background(new Color(59, 130, 246)),
+                                    new PaletteBadge("Solid", colors => colors.Primary, colors => colors.OnPrimary)
+                                        .Variant(BadgeVariant.Solid),
                                     new Label("Solid")
                                         .FontSize(11)
-                                        .Foreground(new Color(140, 145, 160))
+                                        .Foreground(GalleryPalette.Muted)
                                 ),
                             new VStack()
                                 .Spacing(8)
                                 .Alignment(Alignment.Center)
                                 .Children(
-                                    new Badge("Outline")
-                                        .Variant(BadgeVariant.Outline)
-                                        .Background(new Color(59, 130, 246)),
+                                    new PaletteBadge("Outline", colors => colors.Primary, colors => colors.OnPrimary)
+                                        .Variant(BadgeVariant.Outline),
                                     new Label("Outline")
                                         .FontSize(11)
-                                        .Foreground(new Color(140, 145, 160))
+                                        .Foreground(GalleryPalette.Muted)
                                 ),
                             new VStack()
                                 .Spacing(8)
                                 .Alignment(Alignment.Center)
                                 .Children(
-                                    new Badge("Subtle")
-                                        .Variant(BadgeVariant.Subtle)
-                                        .Background(new Color(59, 130, 246)),
+                                    new PaletteBadge("Subtle", colors => colors.Primary, colors => colors.OnPrimary)
+                                        .Variant(BadgeVariant.Subtle),
                                     new Label("Subtle")
                                         .FontSize(11)
-                                        .Foreground(new Color(140, 145, 160))
+                                        .Foreground(GalleryPalette.Muted)
                                 )
                         )
                 ),
@@ -102,34 +95,31 @@ public class BadgePage : Component
                                 .Spacing(8)
                                 .Alignment(Alignment.Center)
                                 .Children(
-                                    new Badge("Small")
-                                        .BadgeSize(BadgeSize.Small)
-                                        .Background(new Color(59, 130, 246)),
+                                    new PaletteBadge("Small", colors => colors.Primary, colors => colors.OnPrimary)
+                                        .BadgeSize(BadgeSize.Small),
                                     new Label("Small")
                                         .FontSize(11)
-                                        .Foreground(new Color(140, 145, 160))
+                                        .Foreground(GalleryPalette.Muted)
                                 ),
                             new VStack()
                                 .Spacing(8)
                                 .Alignment(Alignment.Center)
                                 .Children(
-                                    new Badge("Medium")
-                                        .BadgeSize(BadgeSize.Medium)
-                                        .Background(new Color(59, 130, 246)),
+                                    new PaletteBadge("Medium", colors => colors.Primary, colors => colors.OnPrimary)
+                                        .BadgeSize(BadgeSize.Medium),
                                     new Label("Medium")
                                         .FontSize(11)
-                                        .Foreground(new Color(140, 145, 160))
+                                        .Foreground(GalleryPalette.Muted)
                                 ),
                             new VStack()
                                 .Spacing(8)
                                 .Alignment(Alignment.Center)
                                 .Children(
-                                    new Badge("Large")
-                                        .BadgeSize(BadgeSize.Large)
-                                        .Background(new Color(59, 130, 246)),
+                                    new PaletteBadge("Large", colors => colors.Primary, colors => colors.OnPrimary)
+                                        .BadgeSize(BadgeSize.Large),
                                     new Label("Large")
                                         .FontSize(11)
-                                        .Foreground(new Color(140, 145, 160))
+                                        .Foreground(GalleryPalette.Muted)
                                 )
                         )
                 ),
@@ -143,34 +133,31 @@ public class BadgePage : Component
                                 .Spacing(8)
                                 .Alignment(Alignment.Center)
                                 .Children(
-                                    new Badge("Rounded")
-                                        .Shape(BadgeShape.Rounded)
-                                        .Background(new Color(34, 197, 94)),
+                                    new PaletteBadge("Rounded", colors => colors.Success, colors => colors.OnSuccess)
+                                        .Shape(BadgeShape.Rounded),
                                     new Label("Rounded")
                                         .FontSize(11)
-                                        .Foreground(new Color(140, 145, 160))
+                                        .Foreground(GalleryPalette.Muted)
                                 ),
                             new VStack()
                                 .Spacing(8)
                                 .Alignment(Alignment.Center)
                                 .Children(
-                                    new Badge("Square")
-                                        .Shape(BadgeShape.Square)
-                                        .Background(new Color(34, 197, 94)),
+                                    new PaletteBadge("Square", colors => colors.Success, colors => colors.OnSuccess)
+                                        .Shape(BadgeShape.Square),
                                     new Label("Square")
                                         .FontSize(11)
-                                        .Foreground(new Color(140, 145, 160))
+                                        .Foreground(GalleryPalette.Muted)
                                 ),
                             new VStack()
                                 .Spacing(8)
                                 .Alignment(Alignment.Center)
                                 .Children(
-                                    new Badge("5")
-                                        .Shape(BadgeShape.Circle)
-                                        .Background(new Color(34, 197, 94)),
+                                    new PaletteBadge("5", colors => colors.Success, colors => colors.OnSuccess)
+                                        .Shape(BadgeShape.Circle),
                                     new Label("Circle")
                                         .FontSize(11)
-                                        .Foreground(new Color(140, 145, 160))
+                                        .Foreground(GalleryPalette.Muted)
                                 )
                         )
                 ),
@@ -184,31 +171,31 @@ public class BadgePage : Component
                                 .Spacing(8)
                                 .Alignment(Alignment.Center)
                                 .Children(
-                                    new Badge().Dot(true).BadgeSize(BadgeSize.Small)
-                                        .Background(new Color(239, 68, 68)),
+                                    new PaletteBadge("", colors => colors.Danger, colors => colors.OnDanger)
+                                        .Dot(true).BadgeSize(BadgeSize.Small),
                                     new Label("Small")
                                         .FontSize(11)
-                                        .Foreground(new Color(140, 145, 160))
+                                        .Foreground(GalleryPalette.Muted)
                                 ),
                             new VStack()
                                 .Spacing(8)
                                 .Alignment(Alignment.Center)
                                 .Children(
-                                    new Badge().Dot(true).BadgeSize(BadgeSize.Medium)
-                                        .Background(new Color(34, 197, 94)),
+                                    new PaletteBadge("", colors => colors.Success, colors => colors.OnSuccess)
+                                        .Dot(true).BadgeSize(BadgeSize.Medium),
                                     new Label("Medium")
                                         .FontSize(11)
-                                        .Foreground(new Color(140, 145, 160))
+                                        .Foreground(GalleryPalette.Muted)
                                 ),
                             new VStack()
                                 .Spacing(8)
                                 .Alignment(Alignment.Center)
                                 .Children(
-                                    new Badge().Dot(true).BadgeSize(BadgeSize.Large)
-                                        .Background(new Color(59, 130, 246)),
+                                    new PaletteBadge("", colors => colors.Primary, colors => colors.OnPrimary)
+                                        .Dot(true).BadgeSize(BadgeSize.Large),
                                     new Label("Large")
                                         .FontSize(11)
-                                        .Foreground(new Color(140, 145, 160))
+                                        .Foreground(GalleryPalette.Muted)
                                 )
                         )
                 ),
@@ -218,10 +205,10 @@ public class BadgePage : Component
                         .Spacing(32)
                         .Alignment(Alignment.Center)
                         .Children(
-                            CreateBadgedIcon(Icons.Email, 5, new Color(239, 68, 68)),
-                            CreateBadgedIcon(Icons.Notification, 12, new Color(59, 130, 246)),
-                            CreateBadgedIcon(Icons.Folder, 99, new Color(34, 197, 94)),
-                            CreateBadgedIconDot(Icons.Settings, new Color(234, 179, 8)),
+                            CreateBadgedIcon(Icons.Email, 5, colors => colors.Danger, colors => colors.OnDanger),
+                            CreateBadgedIcon(Icons.Notification, 12, colors => colors.Primary, colors => colors.OnPrimary),
+                            CreateBadgedIcon(Icons.Folder, 99, colors => colors.Success, colors => colors.OnSuccess),
+                            CreateBadgedIconDot(Icons.Settings, colors => colors.Warning, colors => colors.OnWarning),
                             CreateBadgedButton("Messages", 3)
                         )
                 ),
@@ -230,10 +217,10 @@ public class BadgePage : Component
                     new HStack()
                         .Spacing(12)
                         .Children(
-                            new Badge("Primary").Background(new Color(59, 130, 246)),
-                            new Badge("Success").Background(new Color(34, 197, 94)),
-                            new Badge("Warning").Background(new Color(234, 179, 8)).TextColor(Color.Black),
-                            new Badge("Danger").Background(new Color(239, 68, 68)),
+                            new PaletteBadge("Primary", colors => colors.Primary, colors => colors.OnPrimary),
+                            new PaletteBadge("Success", colors => colors.Success, colors => colors.OnSuccess),
+                            new PaletteBadge("Warning", colors => colors.Warning, colors => colors.OnWarning),
+                            new PaletteBadge("Danger", colors => colors.Danger, colors => colors.OnDanger),
                             new Badge("Purple").Background(new Color(168, 85, 247)),
                             new Badge("Pink").Background(new Color(236, 72, 153)),
                             new Badge("Cyan").Background(new Color(6, 182, 212))
@@ -248,62 +235,60 @@ public class BadgePage : Component
             .Spacing(6)
             .Alignment(Alignment.Center)
             .Children(
-                new Badge()
-                    .Count(count)
-                    .ShowZero(showZero)
-                    .Background(new Color(239, 68, 68)),
+                new PaletteBadge(count, colors => colors.Danger, colors => colors.OnDanger)
+                    .ShowZero(showZero),
                 new Label(count.ToString())
                     .FontSize(11)
-                    .Foreground(new Color(140, 145, 160))
+                    .Foreground(GalleryPalette.Muted)
             );
     }
 
-    private VisualElement CreateBadgedIcon(IconData icon, int count, Color badgeColor)
+    private VisualElement CreateBadgedIcon(
+        IconData icon,
+        int count,
+        Func<ColorPalette, Color> badgeColor,
+        Func<ColorPalette, Color> textColor)
     {
         return new BadgeContainer()
             .Content(
-                new Frame()
+                new PaletteFrame(colors => colors.SurfaceHover)
                     .Size(new Size(48, 48))
-                    .Background(new Color(45, 48, 58))
                     .BorderRadius(8)
                     .Content(
-                        new Icon(icon)
+                        new PaletteIcon(icon, colors => colors.OnSurface)
                             .Size(new Size(24, 24))
-                            .Color(Color.White)
                             .HorizontalAlignment(HorizontalAlignment.Center)
                             .VerticalAlignment(VerticalAlignment.Center)
                     )
             )
             .Badge(
-                new Badge()
-                    .Count(count)
-                    .Background(badgeColor)
+                new PaletteBadge(count, badgeColor, textColor)
                     .BadgeSize(BadgeSize.Small)
             )
             .BadgeHorizontalPosition(HorizontalAlignment.Right)
             .BadgeVerticalPosition(VerticalAlignment.Top);
     }
 
-    private VisualElement CreateBadgedIconDot(IconData icon, Color badgeColor)
+    private VisualElement CreateBadgedIconDot(
+        IconData icon,
+        Func<ColorPalette, Color> badgeColor,
+        Func<ColorPalette, Color> textColor)
     {
         return new BadgeContainer()
             .Content(
-                new Frame()
+                new PaletteFrame(colors => colors.SurfaceHover)
                     .Size(new Size(48, 48))
-                    .Background(new Color(45, 48, 58))
                     .BorderRadius(8)
                     .Content(
-                        new Icon(icon)
+                        new PaletteIcon(icon, colors => colors.OnSurface)
                             .Size(24)
-                            .Color(Color.White)
                             .HorizontalAlignment(HorizontalAlignment.Center)
                             .VerticalAlignment(VerticalAlignment.Center)
                     )
             )
             .Badge(
-                new Badge()
+                new PaletteBadge("", badgeColor, textColor)
                     .Dot(true)
-                    .Background(badgeColor)
             )
             .BadgeHorizontalPosition(HorizontalAlignment.Right)
             .BadgeVerticalPosition(VerticalAlignment.Top);
@@ -315,16 +300,12 @@ public class BadgePage : Component
             .Content(
                 new Button()
                     .Text(text)
-                    .Background(new Color(55, 60, 75))
-                    .HoverBackground(new Color(70, 75, 90))
-                    .TextColor(Color.White)
+                    .Variant(ButtonVariant.Secondary)
                     .BorderThickness(0)
                     .Padding(new Thickness(16, 10, 16, 10))
             )
             .Badge(
-                new Badge()
-                    .Count(count)
-                    .Background(new Color(239, 68, 68))
+                new PaletteBadge(count, colors => colors.Danger, colors => colors.OnDanger)
                     .BadgeSize(BadgeSize.Small)
             )
             .BadgeHorizontalPosition(HorizontalAlignment.Right)

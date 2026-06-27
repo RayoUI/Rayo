@@ -3,6 +3,7 @@
 using Rayo.Core;
 using Rayo.Layout;
 using Rayo.Rendering;
+using Rayo.Styling;
 using System.Collections.Generic;
 
 /// <summary>
@@ -265,13 +266,14 @@ internal class ToastNotification : Frame
         _onDismiss = onDismiss;
 
         // Set colors based on type
+        var palette = RayoThemes.Current.Colors;
         var (bgColor, iconText, textColor) = type switch
         {
-            ToastType.Info => (new Color((byte)33, (byte)150, (byte)243), "ℹ", Color.White),
-            ToastType.Success => (new Color((byte)76, (byte)175, (byte)80), "✓", Color.White),
-            ToastType.Warning => (new Color((byte)255, (byte)152, (byte)0), "⚠", Color.White),
-            ToastType.Error => (new Color((byte)244, (byte)67, (byte)54), "✕", Color.White),
-            _ => (new Color((byte)100, (byte)100, (byte)100), "ℹ", Color.White)
+            ToastType.Info => (palette.Info, "ℹ", palette.OnInfo),
+            ToastType.Success => (palette.Success, "✓", palette.OnSuccess),
+            ToastType.Warning => (palette.Warning, "⚠", palette.OnWarning),
+            ToastType.Error => (palette.Danger, "✕", palette.OnDanger),
+            _ => (palette.Secondary, "ℹ", palette.OnSecondary)
         };
 
 

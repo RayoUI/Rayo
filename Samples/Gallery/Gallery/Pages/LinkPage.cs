@@ -13,7 +13,7 @@ public class LinkPage : Component
     public override VisualElement Build()
     {
         _statusLabel = new Label("Status: no link activated")
-            .Foreground(new Color(90, 90, 90))
+            .Foreground(GalleryPalette.Muted)
             .FontSize(13);
 
         return new VStack()
@@ -43,7 +43,7 @@ public class LinkPage : Component
                                 .Alignment(Alignment.Center)
                                 .Children(
                                     new Label("Need help?")
-                                        .Foreground(new Color(70, 70, 70)),
+                                        .Foreground(GalleryPalette.Muted),
                                     new Link("Contact support")
                                         .OpenUrlOnTap(false)
                                         .OnActivated(_ => _statusLabel?.Text("Status: support link activated"))

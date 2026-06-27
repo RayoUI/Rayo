@@ -30,7 +30,7 @@ public class ImagePage : Component
                                         .Size(new Size(120, 120)),
                                     new Label("robot.png")
                                         .FontSize(12)
-                                        .Foreground(new Color(140, 145, 160))
+                                        .Foreground(GalleryPalette.Muted)
                                 ),
                             new VStack()
                                 .Spacing(8)
@@ -41,7 +41,7 @@ public class ImagePage : Component
                                         .Size(new Size(120, 120)),
                                     new Label("super_robot.png")
                                         .FontSize(12)
-                                        .Foreground(new Color(140, 145, 160))
+                                        .Foreground(GalleryPalette.Muted)
                                 )
                         )
                 ),
@@ -113,7 +113,7 @@ public class ImagePage : Component
             .Children(
                 new Frame()
                     .Size(new Size(64, 64))
-                    .Background(new Color(45, 48, 58))
+                    .Background(GalleryPalette.SurfaceHover)
                     .BorderRadius(8)
                     .Content(
                         image
@@ -122,7 +122,7 @@ public class ImagePage : Component
                     ),
                 new Label(label)
                     .FontSize(11)
-                    .Foreground(new Color(140, 145, 160))
+                    .Foreground(GalleryPalette.Muted)
             );
     }
 
@@ -134,8 +134,8 @@ public class ImagePage : Component
             .Children(
                 new Frame()
                     .Size(new Size(100, 80))
-                    .Background(new Color(45, 48, 58))
-                    .BorderBrush(new Color(70, 75, 90))
+                    .Background(GalleryPalette.SurfaceHover)
+                    .BorderBrush(GalleryPalette.Border)
                     .BorderThickness(1)
                     .Content(
                         new Image()
@@ -145,7 +145,7 @@ public class ImagePage : Component
                     ),
                 new Label(label)
                     .FontSize(12)
-                    .Foreground(new Color(140, 145, 160))
+                    .Foreground(GalleryPalette.Muted)
             );
     }
 
@@ -168,7 +168,7 @@ public class ImagePage : Component
                 image,
                 new Label(label)
                     .FontSize(11)
-                    .Foreground(new Color(140, 145, 160))
+                    .Foreground(GalleryPalette.Muted)
             );
     }
 
@@ -184,7 +184,7 @@ public class ImagePage : Component
                     .Stretch(StretchMode.Uniform),
                 new Label($"{size}x{size}")
                     .FontSize(11)
-                    .Foreground(new Color(140, 145, 160))
+                    .Foreground(GalleryPalette.Muted)
             );
     }
 }

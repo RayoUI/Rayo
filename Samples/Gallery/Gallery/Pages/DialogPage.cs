@@ -73,17 +73,17 @@ public class DialogPage : Component
                                 .Children(
                                     CreateDialogButton(
                                         "Profile Card",
-                                        new Color(59, 130, 246),
+                                        GalleryPalette.Primary,
                                         () => ShowCustomDialog("User profile", CreateProfileContent())),
 
                                     CreateDialogButton(
                                         "Preferences",
-                                        new Color(34, 197, 94),
+                                        GalleryPalette.Success,
                                         () => ShowCustomDialog("Notification preferences", CreatePreferencesContent())),
 
                                     CreateDialogButton(
                                         "Deployment",
-                                        new Color(168, 85, 247),
+                                        GalleryPalette.Info,
                                         () => ShowCustomDialog("Deployment status", CreateDeploymentContent()))
                                 )
                         )
@@ -166,7 +166,7 @@ public class DialogPage : Component
             .Background(background)
             .HoverBackground(Lighten(background, 24))
             .PressedBackground(Darken(background, 24))
-            .TextColor(Color.White)
+            .TextColor(GalleryPalette.OnPrimary)
             .BorderThickness(0)
             .BorderRadius(6)
             .Padding(new Thickness(16, 10, 16, 10))
@@ -191,11 +191,11 @@ public class DialogPage : Component
                             .Width(48)
                             .Height(48)
                             .BorderRadius(24)
-                            .Background(new Color(59, 130, 246))
+                            .Background(GalleryPalette.Primary)
                             .Content(
                                 new Label("AR")
                                     .FontSize(16)
-                                    .Foreground(Color.White)
+                                    .Foreground(GalleryPalette.OnPrimary)
                                     .HorizontalAlignment(HorizontalAlignment.Center)
                                     .VerticalAlignment(VerticalAlignment.Center)),
 
@@ -204,7 +204,7 @@ public class DialogPage : Component
                             .Children(
                                 new Label("Ana Ramos")
                                     .FontSize(16)
-                                    .Foreground(Color.White),
+                                    .Foreground(GalleryPalette.OnSurface),
                                 new Label("Product designer")
                                     .FontSize(13)
                                     .Foreground(ColorDefault.Secondary)
@@ -213,7 +213,7 @@ public class DialogPage : Component
 
                 new Label("Last active: 4 minutes ago\nRole: Editor\nStatus: Ready for review")
                     .FontSize(14)
-                    .Foreground(new Color(205, 210, 220))
+                    .Foreground(GalleryPalette.Muted)
             );
     }
 
@@ -243,7 +243,7 @@ public class DialogPage : Component
             .Children(
                 new Label("Publishing Gallery preview")
                     .FontSize(15)
-                    .Foreground(Color.White),
+                    .Foreground(GalleryPalette.OnSurface),
 
                 new ProgressBar()
                     .Value(72)
@@ -287,7 +287,7 @@ public class DialogPage : Component
             .Children(
                 new Label("Project name")
                     .FontSize(14)
-                    .Foreground(Color.White),
+                    .Foreground(GalleryPalette.OnSurface),
 
                 new Entry()
                     .Height(40)
@@ -359,7 +359,7 @@ public class DialogPage : Component
                     .Foreground(ColorDefault.Primary),
                 new Label(text)
                     .FontSize(14)
-                    .Foreground(new Color(180, 185, 195))
+                    .Foreground(GalleryPalette.Muted)
             );
     }
 

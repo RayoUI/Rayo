@@ -9,6 +9,7 @@ using Rayo.Rendering;
 using Rayo.Rendering.Brushes;
 using System.Collections.Generic;
 using IRenderer = Rayo.Rendering.IRenderer;
+using Rayo.Styling;
 
 /// <summary>
 /// Lightweight list item - simpler than Button for better performance.
@@ -144,7 +145,7 @@ public class ListView<T> : Rayo.Core.CompositeView<ListView<T>>, IInputHandler, 
     {
         get => field;
         set => this.SetProperty(ref field, value, RebuildItems);
-    } = new Color(40, 40, 45);
+    } = Color.Transparent;
     #endregion
 
     #region ItemHoverBackground
@@ -152,7 +153,7 @@ public class ListView<T> : Rayo.Core.CompositeView<ListView<T>>, IInputHandler, 
     {
         get => field;
         set => this.SetProperty(ref field, value, RebuildItems);
-    } = new Color(50, 50, 55);
+    } = Color.Transparent;
     #endregion
 
     #region ItemSelectedBackground
@@ -160,7 +161,23 @@ public class ListView<T> : Rayo.Core.CompositeView<ListView<T>>, IInputHandler, 
     {
         get => field;
         set => this.SetProperty(ref field, value, RebuildItems);
-    } = new Color(59, 130, 246);
+    } = Color.Transparent;
+    #endregion
+
+    #region ItemTextColor
+    public Brush ItemTextColor
+    {
+        get => field;
+        set => this.SetProperty(ref field, value, RebuildItems);
+    } = Color.Transparent;
+    #endregion
+
+    #region ItemSelectedTextColor
+    public Brush ItemSelectedTextColor
+    {
+        get => field;
+        set => this.SetProperty(ref field, value, RebuildItems);
+    } = Color.Transparent;
     #endregion
 
     #region ItemHeight
@@ -285,6 +302,7 @@ public class ListView<T> : Rayo.Core.CompositeView<ListView<T>>, IInputHandler, 
 
     public ListView()
     {
+        InitializeTheme();
         Items = new List<T>();
         HorizontalAlignment = HorizontalAlignment.Stretch;
         VerticalAlignment = VerticalAlignment.Stretch;
@@ -293,6 +311,16 @@ public class ListView<T> : Rayo.Core.CompositeView<ListView<T>>, IInputHandler, 
         _scrollView.Content(_itemsPanel);
         AddChild(_scrollView);
         RebuildItems();
+    }
+
+    protected override void OnThemeApplied(Theme theme)
+    {
+        var palette = theme.Colors;
+        SetThemeValue(nameof(ItemBackground), (Brush)palette.Surface, value => ItemBackground = value);
+        SetThemeValue(nameof(ItemHoverBackground), (Brush)palette.SurfaceHover, value => ItemHoverBackground = value);
+        SetThemeValue(nameof(ItemSelectedBackground), (Brush)palette.Primary, value => ItemSelectedBackground = value);
+        SetThemeValue(nameof(ItemTextColor), (Brush)palette.OnSurface, value => ItemTextColor = value);
+        SetThemeValue(nameof(ItemSelectedTextColor), (Brush)palette.OnPrimary, value => ItemSelectedTextColor = value);
     }
 
     #endregion
@@ -359,6 +387,7 @@ public class ListView<T> : Rayo.Core.CompositeView<ListView<T>>, IInputHandler, 
             DisplayFunc(item),
             itemBg,
             hoverBg,
+            isSelected ? ItemSelectedTextColor : ItemTextColor,
             ItemHeight,
             () => SelectedIndex = index);
     }
@@ -725,7 +754,7 @@ internal sealed class RecyclableListViewItem : ListViewItem
     public RecyclableListViewItem()
     {
         _label = new Label();
-        _label.Foreground = Color.White;
+        _label.Foreground = Color.Transparent;
         _label.Padding = new Thickness(12, 0);
         _label.TextVerticalAlignment = VerticalAlignment.Center;
         _label.HorizontalAlignment = HorizontalAlignment.Stretch;
@@ -736,9 +765,10 @@ internal sealed class RecyclableListViewItem : ListViewItem
         Content = _label;
     }
 
-    public void Bind(string text, Brush normalBackground, Brush hoverBackground, float height, Action onTap)
+    public void Bind(string text, Brush normalBackground, Brush hoverBackground, Brush textColor, float height, Action onTap)
     {
         _label.Text(text);
+        _label.Foreground = textColor;
         NormalBackground = normalBackground;
         HoverBackground = hoverBackground;
         PressedBackground = hoverBackground;

@@ -8,6 +8,7 @@ using Rayo.Reactivity;
 using Rayo.Rendering;
 using Rayo.Rendering.Brushes;
 using System.Diagnostics;
+using Rayo.Styling;
 using IRenderer = Rayo.Rendering.IRenderer;
 
 /// <summary>
@@ -53,7 +54,7 @@ public class Link : View<Link>,
     {
         get => field;
         set => this.SetProperty(ref field, value);
-    } = new Color(37, 99, 235);
+    } = Color.Transparent;
     #endregion
 
     #region HoverColor
@@ -62,7 +63,7 @@ public class Link : View<Link>,
     {
         get => field;
         set => this.SetProperty(ref field, value);
-    } = new Color(29, 78, 216);
+    } = Color.Transparent;
     #endregion
 
     #region PressedColor
@@ -71,7 +72,7 @@ public class Link : View<Link>,
     {
         get => field;
         set => this.SetProperty(ref field, value);
-    } = new Color(30, 64, 175);
+    } = Color.Transparent;
     #endregion
 
     #region VisitedColor
@@ -80,7 +81,7 @@ public class Link : View<Link>,
     {
         get => field;
         set => this.SetProperty(ref field, value);
-    } = new Color(109, 40, 217);
+    } = Color.Transparent;
     #endregion
 
     #region IsVisited
@@ -135,6 +136,7 @@ public class Link : View<Link>,
 
     public Link()
     {
+        InitializeTheme();
         Padding = new Thickness(0);
         Cursor = CursorShape.Hand;
 
@@ -144,6 +146,15 @@ public class Link : View<Link>,
             doubleTapWindowMs: 300);
         _tapRecognizer.TapDetected += OnTapDetected;
         GestureRecognizers.Add(_tapRecognizer);
+    }
+
+    protected override void OnThemeApplied(Theme theme)
+    {
+        var palette = theme.Colors;
+        SetThemeValue(nameof(NormalColor), (Brush)palette.Primary, value => NormalColor = value);
+        SetThemeValue(nameof(HoverColor), (Brush)palette.PrimaryHover, value => HoverColor = value);
+        SetThemeValue(nameof(PressedColor), (Brush)palette.PrimaryPressed, value => PressedColor = value);
+        SetThemeValue(nameof(VisitedColor), (Brush)palette.Info, value => VisitedColor = value);
     }
 
     public Link(string text) : this()

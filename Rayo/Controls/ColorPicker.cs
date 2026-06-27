@@ -8,6 +8,7 @@ using Rayo.Layout;
 using Rayo.Reactivity;
 using Rayo.Rendering;
 using Rayo.Rendering.Brushes;
+using Rayo.Styling;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Numerics;
@@ -30,7 +31,7 @@ public class ColorPicker : Component, Rayo.Core.Interfaces.IGlobalPointerHandler
 
     public ColorPicker()
     {
-        var initial = new Color(59, 130, 246);
+        var initial = RayoThemes.Current.Colors.Primary;
         _colorState = new Signal<Color>(initial);
     }
 
@@ -151,8 +152,8 @@ public class ColorPicker : Component, Rayo.Core.Interfaces.IGlobalPointerHandler
         overlay.VerticalAlignment(VerticalAlignment.Stretch);
 
         Frame card = new Frame();
-        card.Background(new Color(30, 30, 35));
-        card.BorderBrush = new Color(50, 55, 65);
+        card.Background(RayoThemes.Current.Colors.Surface);
+        card.BorderBrush = RayoThemes.Current.Colors.Border;
         card.BorderThickness = 1;
         card.BorderRadius(new CornerRadius(14));
         card.Padding(new Thickness(16));
@@ -175,7 +176,7 @@ public class ColorPicker : Component, Rayo.Core.Interfaces.IGlobalPointerHandler
         // -- Header -----------------------------------------------------------
         var header = new Label("Pick a color")
             .FontSize(18)
-            .Foreground(Color.White);
+            .Foreground(RayoThemes.Current.Colors.OnSurface);
 
         // -- Preview card (mirrors TimePicker/DatePicker preview style) --------
         var colorSwatch = new Frame();
@@ -184,15 +185,15 @@ public class ColorPicker : Component, Rayo.Core.Interfaces.IGlobalPointerHandler
         colorSwatch.BorderRadius(new CornerRadius(10));
         colorSwatch.Background = new SolidColorBrush(currentColor);
         colorSwatch.BorderThickness = 1;
-        colorSwatch.BorderBrush = new Color(255, 255, 255, 30);
+        colorSwatch.BorderBrush = RayoThemes.Current.Colors.Border;
 
         var previewHex = new Label(FormatHex(currentColor, _showAlpha))
             .FontSize(16)
-            .Foreground(Color.White);
+            .Foreground(RayoThemes.Current.Colors.OnSurface);
 
         var previewSubLabel = new Label("Selected color")
             .FontSize(12)
-            .Foreground(ColorDefault.Secondary);
+            .Foreground(RayoThemes.Current.Colors.OnDisabled);
 
         var previewInfo = new VStack()
             .Spacing(2)
@@ -205,7 +206,7 @@ public class ColorPicker : Component, Rayo.Core.Interfaces.IGlobalPointerHandler
             .Children(colorSwatch, previewInfo);
 
         var previewFrame = new Frame();
-        previewFrame.Background(new Color(37, 39, 48));
+        previewFrame.Background(RayoThemes.Current.Colors.SurfaceHover);
         previewFrame.BorderRadius(new CornerRadius(12));
         previewFrame.Padding(new Thickness(16, 12, 16, 12));
         previewFrame.HorizontalAlignment(HorizontalAlignment.Stretch);
@@ -273,7 +274,7 @@ public class ColorPicker : Component, Rayo.Core.Interfaces.IGlobalPointerHandler
         var interactiveContent = new VStack().Spacing(14);
         interactiveContent.AddChild(new Label("Quick colors")
             .FontSize(12)
-            .Foreground(ColorDefault.Secondary));
+            .Foreground(RayoThemes.Current.Colors.OnDisabled));
         interactiveContent.AddChild(gradientSampler);
         interactiveContent.AddChild(BuildSliderSection("Hue", hueSlider, hueValueLabel));
         interactiveContent.AddChild(BuildSliderSection("Saturation", satSlider, satValueLabel));
@@ -284,10 +285,10 @@ public class ColorPicker : Component, Rayo.Core.Interfaces.IGlobalPointerHandler
         }
 
         var selectionSurface = new Frame();
-        selectionSurface.Background(new Color(34, 36, 44));
+        selectionSurface.Background(RayoThemes.Current.Colors.Surface);
         selectionSurface.BorderRadius(new CornerRadius(12));
         selectionSurface.BorderThickness(1);
-        selectionSurface.BorderBrush = new Color(50, 55, 65);
+        selectionSurface.BorderBrush = RayoThemes.Current.Colors.Border;
         selectionSurface.Padding(new Thickness(14));
         selectionSurface.HorizontalAlignment(HorizontalAlignment.Stretch);
         selectionSurface.Content(interactiveContent);
@@ -298,8 +299,7 @@ public class ColorPicker : Component, Rayo.Core.Interfaces.IGlobalPointerHandler
             Text = "Cancel",
             Width = 100,
             Height = 36,
-            Background = new Color(45, 45, 52),
-            HoverBackground = new Color(55, 55, 62),
+            Variant = ButtonVariant.Secondary,
             BorderThickness = 0,
             BorderRadius = new CornerRadius(6)
         };
@@ -310,8 +310,7 @@ public class ColorPicker : Component, Rayo.Core.Interfaces.IGlobalPointerHandler
             Text = "Select",
             Width = 100,
             Height = 36,
-            Background = ColorDefault.Primary,
-            HoverBackground = ColorDefault.Info,
+            Variant = ButtonVariant.Primary,
             BorderThickness = 0,
             BorderRadius = new CornerRadius(6)
         };
@@ -366,14 +365,14 @@ public class ColorPicker : Component, Rayo.Core.Interfaces.IGlobalPointerHandler
     {
         return new Label(text)
             .FontSize(12)
-            .Foreground(ColorDefault.Secondary);
+            .Foreground(RayoThemes.Current.Colors.OnDisabled);
     }
 
     private static VisualElement BuildSliderSection(string title, Slider slider, Label valueLabel)
     {
         var titleLabel = new Label(title)
             .FontSize(12)
-            .Foreground(ColorDefault.Secondary);
+            .Foreground(RayoThemes.Current.Colors.OnDisabled);
 
         var headerRow = new HStack()
             .JustifyContent(JustifyContent.SpaceBetween);
@@ -529,7 +528,7 @@ public class ColorPicker : Component, Rayo.Core.Interfaces.IGlobalPointerHandler
             Height = 140;
             BorderRadius = new CornerRadius(0);
             BorderThickness = 1;
-            BorderBrush = new Color(255, 255, 255, 30);
+            BorderBrush = RayoThemes.Current.Colors.Border;
 
             Background = CreateSpectrumBrush();
         }

@@ -30,7 +30,7 @@ public class TabControlPage : Component
                                         .Children(
                                             new Label("Home Tab Content")
                                                 .FontSize(18)
-                                                .Foreground(Color.White),
+                                                .Foreground(GalleryPalette.OnSurface),
                                             new Label("This is the home tab. You can add any content here.")
                                                 .Foreground(ColorDefault.Secondary)
                                         )
@@ -45,7 +45,7 @@ public class TabControlPage : Component
                                         .Children(
                                             new Label("Profile Information")
                                                 .FontSize(18)
-                                                .Foreground(Color.White),
+                                                .Foreground(GalleryPalette.OnSurface),
                                             new Label("Name: John Doe")
                                                 .Foreground(ColorDefault.Info),
                                             new Label("Email: john@example.com")
@@ -64,7 +64,7 @@ public class TabControlPage : Component
                                         .Children(
                                             new Label("Settings")
                                                 .FontSize(18)
-                                                .Foreground(Color.White),
+                                                .Foreground(GalleryPalette.OnSurface),
                                             new Checkbox("Enable notifications"),
                                             new Checkbox("Dark mode"),
                                             new Checkbox("Auto-save")
@@ -98,7 +98,7 @@ public class TabControlPage : Component
                                 .Padding(new Thickness(20))
                                 .Content(
                                     new Label("Dashboard content goes here")
-                                        .Foreground(Color.White)
+                                        .Foreground(GalleryPalette.OnSurface)
                                 )
                         )
                         .AddTab("Analytics",
@@ -106,7 +106,7 @@ public class TabControlPage : Component
                                 .Padding(new Thickness(20))
                                 .Content(
                                     new Label("Analytics charts and graphs")
-                                        .Foreground(Color.White)
+                                        .Foreground(GalleryPalette.OnSurface)
                                 )
                         )
                         .AddTab("Reports",
@@ -114,7 +114,7 @@ public class TabControlPage : Component
                                 .Padding(new Thickness(20))
                                 .Content(
                                     new Label("Reports and data exports")
-                                        .Foreground(Color.White)
+                                        .Foreground(GalleryPalette.OnSurface)
                                 )
                         );
     }
@@ -187,7 +187,7 @@ public class TabControlPage : Component
                     .Children(
                         new Label(heading)
                             .FontSize(16)
-                            .Foreground(Color.White),
+                            .Foreground(GalleryPalette.OnSurface),
                         new Label(description)
                             .Foreground(ColorDefault.Secondary)
                     )

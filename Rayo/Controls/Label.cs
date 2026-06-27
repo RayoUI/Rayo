@@ -6,6 +6,7 @@ using Rayo.Reactivity;
 using Rayo.Rendering;
 using Rayo.Rendering.Brushes;
 using Rayo.Rendering.Graphics.VectorGraphics;
+using Rayo.Styling;
 using IRenderer = Rayo.Rendering.IRenderer;
 
 /// <summary>
@@ -34,7 +35,7 @@ public class Label : BorderView<Label>
     {
         get => field;
         set => this.SetProperty(ref field, value);
-    } = Color.White;
+    } = Color.Transparent;
     #endregion
 
     #region Background
@@ -180,6 +181,12 @@ public class Label : BorderView<Label>
 
     public Label()
     {
+        InitializeTheme();
+    }
+
+    protected override void OnThemeApplied(Theme theme)
+    {
+        SetThemeValue(nameof(Foreground), (Brush)theme.Colors.OnSurface, value => Foreground = value);
     }
 
     public Label(string text) : this()

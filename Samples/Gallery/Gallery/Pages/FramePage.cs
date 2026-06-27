@@ -37,21 +37,21 @@ public class FramePage : Component
         var frame1 = new Frame();
         frame1.Width(300);
         frame1.Height(100);
-        frame1.Background(new Color(40, 40, 50));
-        frame1.BorderBrush(new Color(100, 100, 120));
+        frame1.Background(GalleryPalette.Surface);
+        frame1.BorderBrush(GalleryPalette.Border);
         frame1.BorderThickness(2);
         frame1.BorderRadius(8);
         frame1.Padding(new Thickness(20));
         frame1.Content(
             new Label("This is content inside a Frame")
-                .Foreground(Color.White)
+                .Foreground(GalleryPalette.OnSurface)
                 .FontSize(14)
         );
 
         var frame2 = new Frame();
         frame2.Width(300);
         frame2.Height(100);
-        frame2.Background(new Color(59, 130, 246));
+        frame2.Background(GalleryPalette.Primary);
         frame2.BorderRadius(12);
         frame2.Padding(new Thickness(20));
         frame2.Content(
@@ -60,7 +60,7 @@ public class FramePage : Component
                 .Children(
                     new Label("Styled Frame")
                         .FontSize(16)
-                        .Foreground(Color.White),
+                        .Foreground(GalleryPalette.OnPrimary),
                     new Label("With padding and rounded corners")
                         .FontSize(12)
                         .Foreground(new Color(220, 220, 255))
@@ -84,7 +84,7 @@ public class FramePage : Component
         {
             itemsStack.AddChild(
                 new Frame()
-                    .Background(new Color(50, 50, 60))
+                    .Background(GalleryPalette.SurfaceHover)
                     .BorderRadius(6)
                     .Padding(new Thickness(12))
                     .Content(
@@ -95,17 +95,17 @@ public class FramePage : Component
                                 new Frame()
                                     .Width(40)
                                     .Height(40)
-                                    .Background(new Color(59, 130, 246))
+                                    .Background(GalleryPalette.Primary)
                                     .BorderRadius(20),
                                 new VStack()
                                     .Spacing(4)
                                     .Children(
                                         new Label($"Item {i}")
                                             .FontSize(14)
-                                            .Foreground(Color.White),
+                                            .Foreground(GalleryPalette.OnSurface),
                                         new Label($"Description for item {i}")
                                             .FontSize(11)
-                                            .Foreground(new Color(180, 180, 180))
+                                            .Foreground(GalleryPalette.Muted)
                                     )
                             )
                     )
@@ -115,8 +115,8 @@ public class FramePage : Component
         var frame1 = new Frame();
         frame1.Width(400);
         frame1.Height(300);
-        frame1.Background(new Color(30, 30, 35));
-        frame1.BorderBrush(new Color(70, 70, 80));
+        frame1.Background(GalleryPalette.Surface);
+        frame1.BorderBrush(GalleryPalette.Border);
         frame1.BorderThickness(1);
         frame1.BorderRadius(10);
         frame1.Padding(new Thickness(12));
@@ -124,8 +124,8 @@ public class FramePage : Component
 
         var frame2 = new Frame();
         frame2.Width(400);
-        frame2.Background(new Color(30, 30, 35));
-        frame2.BorderBrush(new Color(70, 70, 80));
+        frame2.Background(GalleryPalette.Surface);
+        frame2.BorderBrush(GalleryPalette.Border);
         frame2.BorderThickness(1);
         frame2.BorderRadius(10);
         frame2.Padding(new Thickness(12));
@@ -134,9 +134,9 @@ public class FramePage : Component
                 new VStack()
                     .Spacing(8)
                     .Children(
-                        new Label("Smart Height").Foreground(Color.White).FontSize(16),
+                        new Label("Smart Height").Foreground(GalleryPalette.OnSurface).FontSize(16),
                         new Label("ScrollView automatically sizes to content (100-400px max)")
-                            .Foreground(new Color(180, 180, 180))
+                            .Foreground(GalleryPalette.Muted)
                             .FontSize(12),
                         CreateDummyList(10)
                     )
@@ -157,14 +157,14 @@ public class FramePage : Component
         var frame1 = new Frame();
         frame1.Width(150);
         frame1.Height(120);
-        frame1.Background(new Color(45, 55, 72));
-        frame1.BorderBrush(new Color(59, 130, 246));
+        frame1.Background(GalleryPalette.SurfaceHover);
+        frame1.BorderBrush(GalleryPalette.Primary);
         frame1.BorderThickness(3);
         frame1.BorderRadius(12);
         frame1.Padding(new Thickness(16));
         frame1.Content(
             new Label("Thick Border")
-                .Foreground(Color.White)
+                .Foreground(GalleryPalette.OnSurface)
                 .FontSize(13)
                 .VerticalAlignment(VerticalAlignment.Center)
                 .HorizontalAlignment(HorizontalAlignment.Center)
@@ -173,14 +173,14 @@ public class FramePage : Component
         var frame2 = new Frame();
         frame2.Width(150);
         frame2.Height(120);
-        frame2.Background(new Color(45, 55, 72));
-        frame2.BorderBrush(new Color(34, 197, 94));
+        frame2.Background(GalleryPalette.SurfaceHover);
+        frame2.BorderBrush(GalleryPalette.Success);
         frame2.BorderThickness(1);
         frame2.BorderRadius(4);
         frame2.Padding(new Thickness(16));
         frame2.Content(
             new Label("Thin Border")
-                .Foreground(Color.White)
+                .Foreground(GalleryPalette.OnSurface)
                 .FontSize(13)
                 .VerticalAlignment(VerticalAlignment.Center)
                 .HorizontalAlignment(HorizontalAlignment.Center)
@@ -194,7 +194,7 @@ public class FramePage : Component
         frame3.Padding(new Thickness(16));
         frame3.Content(
             new Label("No Border")
-                .Foreground(Color.White)
+                .Foreground(GalleryPalette.OnSurface)
                 .FontSize(13)
                 .VerticalAlignment(VerticalAlignment.Center)
                 .HorizontalAlignment(HorizontalAlignment.Center)
@@ -217,20 +217,20 @@ public class FramePage : Component
         var stretchFrame = new Frame();
         stretchFrame.Width(350);
         stretchFrame.Height(120);
-        stretchFrame.Background(new Color(30, 30, 35));
-        stretchFrame.BorderBrush(new Color(70, 70, 80));
+        stretchFrame.Background(GalleryPalette.Surface);
+        stretchFrame.BorderBrush(GalleryPalette.Border);
         stretchFrame.BorderThickness(1);
         stretchFrame.BorderRadius(8);
         stretchFrame.Padding(new Thickness(12));
         stretchFrame.Content(
             new Frame()
-                .Background(new Color(59, 130, 246))
+                .Background(GalleryPalette.Primary)
                 .BorderRadius(6)
                 .HorizontalAlignment(HorizontalAlignment.Stretch)
                 .VerticalAlignment(VerticalAlignment.Stretch)
                 .Content(
                     new Label("Content stretches to fill Frame")
-                        .Foreground(Color.White)
+                        .Foreground(GalleryPalette.OnPrimary)
                         .HorizontalAlignment(HorizontalAlignment.Center)
                         .VerticalAlignment(VerticalAlignment.Center)
                 )
@@ -259,7 +259,7 @@ public class FramePage : Component
     {
         var innerFrame = new Frame();
         innerFrame.Height(150);
-        innerFrame.Background(new Color(40, 40, 50));
+        innerFrame.Background(GalleryPalette.Surface);
         innerFrame.BorderRadius(8);
         innerFrame.Padding(new Thickness(12));
         innerFrame.Content(
@@ -270,15 +270,15 @@ public class FramePage : Component
                     "Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris. " +
                     "Duis aute irure dolor in reprehenderit in voluptate velit esse cillum."
                 )
-                .Foreground(new Color(200, 200, 200))
+                .Foreground(GalleryPalette.Muted)
                 .FontSize(13)
             )
         );
 
         var outerFrame = new Frame();
         outerFrame.Width(350);
-        outerFrame.Background(new Color(30, 30, 35));
-        outerFrame.BorderBrush(new Color(70, 70, 80));
+        outerFrame.Background(GalleryPalette.Surface);
+        outerFrame.BorderBrush(GalleryPalette.Border);
         outerFrame.BorderThickness(1);
         outerFrame.BorderRadius(12);
         outerFrame.Padding(new Thickness(20));
@@ -294,17 +294,17 @@ public class FramePage : Component
                             new Frame()
                                 .Width(50)
                                 .Height(50)
-                                .Background(new Color(59, 130, 246))
+                                .Background(GalleryPalette.Primary)
                                 .BorderRadius(25),
                             new VStack()
                                 .Spacing(4)
                                 .Children(
                                     new Label("User Name")
                                         .FontSize(16)
-                                        .Foreground(Color.White),
+                                        .Foreground(GalleryPalette.OnSurface),
                                     new Label("Online")
                                         .FontSize(12)
-                                        .Foreground(new Color(34, 197, 94))
+                                        .Foreground(GalleryPalette.Success)
                                 )
                         ),
 
@@ -318,7 +318,7 @@ public class FramePage : Component
                             new Button()
                                 .Text("Action 1")
                                 .Width(100)
-                                .Background(new Color(59, 130, 246)),
+                                .Background(GalleryPalette.Primary),
                             new Button()
                                 .Text("Action 2")
                                 .Width(100)
@@ -342,13 +342,13 @@ public class FramePage : Component
         var content = new Frame();
         content.Width(80);
         content.Height(60);
-        content.Background(new Color(59, 130, 246));
+        content.Background(GalleryPalette.Primary);
         content.BorderRadius(6);
         content.HorizontalAlignment(hAlign);
         content.VerticalAlignment(vAlign);
         content.Content(
             new Label(text)
-                .Foreground(Color.White)
+                .Foreground(GalleryPalette.OnPrimary)
                 .FontSize(11)
                 .HorizontalAlignment(HorizontalAlignment.Center)
                 .VerticalAlignment(VerticalAlignment.Center)
@@ -357,8 +357,8 @@ public class FramePage : Component
         var frame = new Frame();
         frame.Width(150);
         frame.Height(120);
-        frame.Background(new Color(30, 30, 35));
-        frame.BorderBrush(new Color(70, 70, 80));
+        frame.Background(GalleryPalette.Surface);
+        frame.BorderBrush(GalleryPalette.Border);
         frame.BorderThickness(1);
         frame.BorderRadius(8);
         frame.Padding(new Thickness(12));
@@ -373,12 +373,12 @@ public class FramePage : Component
         {
             stack.AddChild(
                 new Frame()
-                    .Background(new Color(50, 50, 60))
+                    .Background(GalleryPalette.SurfaceHover)
                     .BorderRadius(4)
                     .Padding(new Thickness(10))
                     .Content(
                         new Label($"List item {i}")
-                            .Foreground(Color.White)
+                            .Foreground(GalleryPalette.OnSurface)
                             .FontSize(12)
                     )
             );

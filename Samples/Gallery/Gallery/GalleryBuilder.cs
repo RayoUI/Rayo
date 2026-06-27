@@ -7,6 +7,8 @@ using Rayo.Core.Platform;
 using Rayo.Layout;
 using Rayo.Reactivity;
 using Rayo.Rendering;
+using Rayo.Rendering.Brushes;
+using Rayo.Styling;
 using Gallery.Pages;
 using Rayo;
 
@@ -16,12 +18,161 @@ namespace Gallery;
 /// Simple tappable navigation item - lighter than Button.
 /// Uses IPointerHandler for simple tap detection.
 /// </summary>
+internal sealed class PaletteFrame : Frame
+{
+    private readonly Func<ColorPalette, Color> _colorSelector;
+    private readonly Func<ColorPalette, Color>? _borderSelector;
+
+    public PaletteFrame(
+        Func<ColorPalette, Color> colorSelector,
+        Func<ColorPalette, Color>? borderSelector = null)
+    {
+        _colorSelector = colorSelector;
+        _borderSelector = borderSelector;
+        InitializeTheme();
+    }
+
+    protected override void OnThemeApplied(Theme theme)
+    {
+        SetThemeValue(nameof(Background), (Brush)_colorSelector(theme.Colors), value => Background = value);
+        if (_borderSelector != null)
+            SetThemeValue(nameof(BorderBrush), (Brush)_borderSelector(theme.Colors), value => BorderBrush = value);
+    }
+}
+
+internal sealed class PaletteLabel : Label
+{
+    private readonly Func<ColorPalette, Color> _colorSelector;
+
+    public PaletteLabel(string text, Func<ColorPalette, Color> colorSelector) : base(text)
+    {
+        _colorSelector = colorSelector;
+        ResetThemeValues();
+    }
+
+    protected override void OnThemeApplied(Theme theme)
+    {
+        if (_colorSelector == null)
+            return;
+
+        SetThemeValue(nameof(Foreground), (Brush)_colorSelector(theme.Colors), value => Foreground = value);
+    }
+
+}
+
+internal sealed class PaletteBorder : Border
+{
+    private readonly Func<ColorPalette, Color>? _backgroundSelector;
+    private readonly Func<ColorPalette, Color> _borderSelector;
+
+    public PaletteBorder(
+        Func<ColorPalette, Color> borderSelector,
+        Func<ColorPalette, Color>? backgroundSelector = null)
+    {
+        _borderSelector = borderSelector;
+        _backgroundSelector = backgroundSelector;
+        ResetThemeValues();
+    }
+
+    protected override void OnThemeApplied(Theme theme)
+    {
+        base.OnThemeApplied(theme);
+        if (_borderSelector == null)
+            return;
+
+        SetThemeValue(nameof(BorderBrush), (Brush)_borderSelector(theme.Colors), value => BorderBrush = value);
+        if (_backgroundSelector != null)
+            SetThemeValue(nameof(Background), (Brush)_backgroundSelector(theme.Colors), value => Background = value);
+    }
+}
+
+internal sealed class PaletteIcon : Icon
+{
+    private readonly Func<ColorPalette, Color> _colorSelector;
+
+    public PaletteIcon(IconData icon, Func<ColorPalette, Color> colorSelector)
+        : base(icon)
+    {
+        _colorSelector = colorSelector;
+        ResetThemeValues();
+    }
+
+    protected override void OnThemeApplied(Theme theme)
+    {
+        base.OnThemeApplied(theme);
+        if (_colorSelector != null)
+            SetThemeValue(nameof(Color), (Brush)_colorSelector(theme.Colors), value => Color = value);
+    }
+}
+
+internal sealed class PaletteBadge : Badge
+{
+    private readonly Func<ColorPalette, Color> _backgroundSelector;
+    private readonly Func<ColorPalette, Color> _textSelector;
+
+    public PaletteBadge(
+        string text,
+        Func<ColorPalette, Color> backgroundSelector,
+        Func<ColorPalette, Color> textSelector)
+        : base(text)
+    {
+        _backgroundSelector = backgroundSelector;
+        _textSelector = textSelector;
+        ResetThemeValues();
+    }
+
+    public PaletteBadge(
+        int count,
+        Func<ColorPalette, Color> backgroundSelector,
+        Func<ColorPalette, Color> textSelector)
+        : base(count)
+    {
+        _backgroundSelector = backgroundSelector;
+        _textSelector = textSelector;
+        ResetThemeValues();
+    }
+
+    protected override void OnThemeApplied(Theme theme)
+    {
+        base.OnThemeApplied(theme);
+        if (_backgroundSelector == null || _textSelector == null)
+            return;
+
+        var background = _backgroundSelector(theme.Colors);
+        SetThemeValue(nameof(Background), (Brush)background, value => Background = value);
+        SetThemeValue(nameof(BorderBrush), (Brush)background, value => BorderBrush = value);
+        SetThemeValue(nameof(TextColor), (Brush)_textSelector(theme.Colors), value => TextColor = value);
+    }
+}
+
+internal sealed class ThemeToggleButton : ButtonIcon
+{
+    public ThemeToggleButton()
+    {
+        HorizontalAlignment = HorizontalAlignment.Center;
+        VerticalAlignment = VerticalAlignment.Center;
+    }
+
+    protected override void OnThemeApplied(Theme theme)
+    {
+        base.OnThemeApplied(theme);
+        IconData = theme == RayoThemes.Dark ? Icons.Sun : Icons.Moon;
+    }
+}
+
 internal class NavItem : Frame, IPointerHandler
 {
     private Action? _onTap;
+    private Label? _label;
+    private bool _isSelected;
     private bool _isPressed;
     private System.Numerics.Vector2 _pressPosition;
     private const float TapThreshold = 15f;
+
+    public NavItem()
+    {
+        InitializeTheme();
+    }
 
     public void OnPointerEntered(PointerEventArgs e) { }
     public void OnPointerExited(PointerEventArgs e) { }
@@ -62,6 +213,33 @@ internal class NavItem : Frame, IPointerHandler
     {
         _onTap = handler;
         return this;
+    }
+
+    public NavItem Configure(Label label, bool isSelected)
+    {
+        _label = label;
+        base.Content = label;
+        SetSelected(isSelected);
+        return this;
+    }
+
+    public void SetSelected(bool isSelected)
+    {
+        _isSelected = isSelected;
+        ApplyAppearance(RayoThemes.Current);
+    }
+
+    protected override void OnThemeApplied(Theme theme)
+    {
+        ApplyAppearance(theme);
+    }
+
+    private void ApplyAppearance(Theme theme)
+    {
+        var palette = theme.Colors;
+        Background = _isSelected ? palette.Primary.WithAlpha(0.22f) : Color.Transparent;
+        if (_label != null)
+            _label.Foreground = _isSelected ? palette.Primary : palette.OnSurface;
     }
 
     private bool IsPointInside(System.Numerics.Vector2 point)
@@ -120,9 +298,8 @@ public class GalleryBuilder : Component
                 BuildSidebar(),
 
                 // Separator
-                new Frame()
+                new PaletteFrame(colors => colors.Border)
                     .Width(1)
-                    .Background(new Color(50, 50, 55))
                     .VerticalAlignment(VerticalAlignment.Stretch),
 
                 // Main Content Area - will stretch to fill remaining space
@@ -132,16 +309,24 @@ public class GalleryBuilder : Component
 
     private VisualElement BuildSidebar()
     {
-        var header = new Frame()
-            .Background(new Color(40, 40, 45))
+        var header = new PaletteFrame(colors => colors.SurfaceHover)
             .Padding(new Thickness(16, 12))
             .VerticalAlignment (VerticalAlignment.Top)
             .Content(
-                new Label("Rayo Gallery")
-                    .FontSize(16)
-                    .TextHorizontalAlignment(HorizontalAlignment.Center)
-                    .HorizontalAlignment (HorizontalAlignment.Center)
-                    .Foreground(Color.White)
+                new HStack()
+                    .Spacing(8)
+                    .Alignment(Alignment.Center)
+                    .JustifyContent(JustifyContent.Center)
+                    .HorizontalAlignment(HorizontalAlignment.Stretch)
+                    .Children(
+                        new PaletteLabel("Rayo Gallery", colors => colors.OnSurface)
+                            .FontSize(16),
+                        new ThemeToggleButton()
+                            .Variant(ButtonVariant.Ghost)
+                            .Size(34)
+                            .IconSize(17)
+                            .OnTapped(ToggleTheme)
+                    )
             );
 
         var navScroll = new ScrollView()
@@ -149,9 +334,8 @@ public class GalleryBuilder : Component
             .HorizontalAlignment(HorizontalAlignment.Stretch)
             .Content(BuildNavigationList());
 
-        return new Frame()
+        return new PaletteFrame(colors => colors.Background)
             .Width(220)
-            .Background(new Color(30, 30, 35))
             .VerticalAlignment(VerticalAlignment.Stretch)
             .Content(
                 new Grid()
@@ -172,7 +356,6 @@ public class GalleryBuilder : Component
         _navigationDrawer = new Drawer()
             .Position(DrawerPosition.Left)
             .DrawerWidth(280)
-            .Background(new Color(30, 30, 35))
             .Content(BuildDrawerContent());
 
         // Use Grid with proper separation: AppBar and content in separate rows (no overlap)
@@ -186,8 +369,7 @@ public class GalleryBuilder : Component
 
     private VisualElement BuildAppBar()
     {
-        return new Frame()
-            .Background(new Color(40, 40, 45))
+        return new PaletteFrame(colors => colors.SurfaceHover)
             .Padding(new Thickness(8, 8))
             .Height(56)
             .HorizontalAlignment(HorizontalAlignment.Stretch)
@@ -199,10 +381,9 @@ public class GalleryBuilder : Component
                         // Hamburger menu button
                         new ButtonIcon()
                             .IconData(Icons.Menu)
+                            .Variant(ButtonVariant.Ghost)
                             .Width(44)
                             .Height(44)
-                            .Background(Color.Transparent)
-                            .HoverBackground(new Color(60, 60, 65))
                             .BorderThickness(0)
                             .OnTapped(() =>
                             {
@@ -212,8 +393,9 @@ public class GalleryBuilder : Component
                         // Title
                         new Label()
                             .Text(_currentPage)
-                            .FontSize(18)
-                            .Foreground(Color.White)
+                            .FontSize(18),
+
+                        BuildCompactThemeButton()
                     )
             );
     }
@@ -222,8 +404,7 @@ public class GalleryBuilder : Component
     {
         bool useMobileLayout = PlatformDetector.IsMobile;
 
-        var header = new Frame()
-            .Background(new Color(45, 45, 50))
+        var header = new PaletteFrame(colors => colors.SurfaceHover)
             .Padding(useMobileLayout? new Thickness(0) : new Thickness(16, 20))
             .HorizontalAlignment(HorizontalAlignment.Stretch)
             .VerticalAlignment(VerticalAlignment.Top)
@@ -232,13 +413,11 @@ public class GalleryBuilder : Component
                 new VStack()
                     .Spacing(4)
                     .Children(
-                        new Label("Rayo")
+                        new PaletteLabel("Rayo", colors => colors.OnSurface)
                             .FontSize(20)
-                            .TextHorizontalAlignment(HorizontalAlignment.Center)
-                            .Foreground(Color.White),
-                        new Label("Component Gallery")
+                            .TextHorizontalAlignment(HorizontalAlignment.Center),
+                        new PaletteLabel("Component Gallery", colors => colors.OnDisabled)
                             .FontSize(12)
-                            .Foreground(new Color(150, 150, 150))
                     )
             );
 
@@ -329,6 +508,7 @@ public class GalleryBuilder : Component
             ("Animation", "Graphics"),
 
             // Styles
+            ("Themes", "Styles"),
             ("Styles", "Styles"),
         };
 
@@ -346,9 +526,8 @@ public class GalleryBuilder : Component
             {
                 currentCategory = category;
                 container.AddChild(
-                    new Label(category.ToUpper())
+                    new PaletteLabel(category.ToUpper(), colors => colors.OnDisabled)
                         .FontSize(10)
-                        .Foreground(new Color(120, 120, 120))
                         .Padding(new Thickness(8, 12, 8, 4))
                 );
             }
@@ -366,25 +545,15 @@ public class GalleryBuilder : Component
             .Padding(new Thickness(12, 10))
             .HorizontalAlignment(HorizontalAlignment.Stretch);
 
-        // Bind text color to selection state
-        UseSubscription(_currentPage, p =>
-        {
-            label.Foreground(p == pageName ? new Color(120, 180, 255) : new Color(200, 200, 200));
-        });
-        label.Foreground(_currentPage.Value == pageName ? new Color(120, 180, 255) : new Color(200, 200, 200));
-
         // Create NavItem and configure it
-        var navItem = new NavItem();
+        var navItem = new NavItem().Configure(label, _currentPage.Value == pageName);
         navItem.BorderRadius = new CornerRadius(6);
         navItem.HorizontalAlignment = HorizontalAlignment.Stretch;
-        navItem.Content(label);
 
-        // Bind background to selection state
         UseSubscription(_currentPage, p =>
         {
-            navItem.Background(p == pageName ? new Color(59, 130, 246, 0.3f) : Color.Transparent);
+            navItem.SetSelected(p == pageName);
         });
-        navItem.Background(_currentPage.Value == pageName ? new Color(59, 130, 246, 0.3f) : Color.Transparent);
 
         // Handle tap
         navItem.OnTap(() =>
@@ -410,20 +579,22 @@ public class GalleryBuilder : Component
     {
         bool useMobileLayout = PlatformDetector.IsMobile;
 
-        var contentFrame = new Frame()
-            .Background(new Color(25, 25, 30))
+        var contentFrame = new PaletteFrame(colors => colors.Background)
             .Padding(useMobileLayout ? new Thickness(0) : new Thickness(16))
             .HorizontalAlignment(HorizontalAlignment.Stretch)
             .VerticalAlignment(VerticalAlignment.Stretch);
 
+        var pageHost = new GalleryPageHost(GetPageContent);
+
         // Update content when page changes
         UseSubscription(_currentPage, page =>
         {
-            contentFrame.Content(GetPageContent(page));
+            pageHost.Show(page);
         });
 
         // Initial content
-        contentFrame.Content(GetPageContent(_currentPage.Value));
+        pageHost.Show(_currentPage.Value);
+        contentFrame.Content(pageHost);
 
         return contentFrame;
     }
@@ -461,6 +632,7 @@ public class GalleryBuilder : Component
             "Brushes" => new BrushesPage(),
             "Shadow" => new ShadowPage(),
             "Styles" => new StylesPage(),
+            "Themes" => new ThemePage(ApplyTheme),
             "ColorPicker" => new ColorPickerPage(),
             "PathPicker" => new PathPickerPage(),
             "Drawer" => new DrawerPage(),
@@ -496,5 +668,24 @@ public class GalleryBuilder : Component
             .Content(
                 pageContent
             );
+    }
+
+    private VisualElement BuildCompactThemeButton()
+    {
+        return new ThemeToggleButton()
+            .Variant(ButtonVariant.Ghost)
+            .Size(40)
+            .IconSize(18)
+            .OnTapped(ToggleTheme);
+    }
+
+    private void ToggleTheme()
+    {
+        ApplyTheme(RayoThemes.Current == RayoThemes.Dark ? RayoThemes.Light : RayoThemes.Dark);
+    }
+
+    private void ApplyTheme(Theme theme)
+    {
+        UIApplication.Current?.UseTheme(theme);
     }
 }

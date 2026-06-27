@@ -27,12 +27,12 @@ public class ButtonFloatPage : Component
                             new ButtonFloat(Icons.Add)
                                 .OnTapped(() => clickCount.Value++),
                             new ButtonFloat(Icons.Edit)
-                                .Background(new Color(34, 197, 94))
+                                .Background(GalleryPalette.Success)
                                 .HoverBackground(new Color(22, 163, 74))
                                 .PressedBackground(new Color(21, 128, 61))
                                 .OnTapped(() => clickCount.Value++),
                             new ButtonFloat(Icons.Save)
-                                .Background(new Color(234, 179, 8))
+                                .Background(GalleryPalette.Warning)
                                 .HoverBackground(new Color(202, 138, 4))
                                 .PressedBackground(new Color(161, 98, 7))
                                 .OnTapped(() => clickCount.Value++)
@@ -59,7 +59,7 @@ public class ButtonFloatPage : Component
 
                 Helper.CreateExampleSection("Code Example",
                     new Frame()
-                        .Background(new Color(30, 33, 42))
+                        .Background(GalleryPalette.Surface)
                         .BorderRadius(8)
                         .Padding(new Thickness(12))
                         .Content(
@@ -84,7 +84,7 @@ public class ButtonFloatPage : Component
     private VisualElement CreateFloatingPreview(Signal<int> clickCount)
     {
         var content = new Frame()
-            .Background(new Color(38, 42, 54))
+            .Background(GalleryPalette.Surface)
             .BorderRadius(10)
             .Padding(new Thickness(18))
             .HorizontalAlignment(HorizontalAlignment.Stretch)
@@ -95,11 +95,11 @@ public class ButtonFloatPage : Component
                     .Children(
                         new Label("Project Tasks")
                             .FontSize(18)
-                            .Foreground(Color.White),
+                            .Foreground(GalleryPalette.OnSurface),
                         new Label()
                             .Text(clickCount.Map(count => $"Floating button taps: {count}"))
                             .FontSize(14)
-                            .Foreground(new Color(147, 197, 253)),
+                            .Foreground(GalleryPalette.Primary),
                         CreateTaskRow("Design review", "Today"),
                         CreateTaskRow("API polish", "Tomorrow"),
                         CreateTaskRow("Release notes", "Friday")
@@ -121,7 +121,7 @@ public class ButtonFloatPage : Component
     private VisualElement CreateTaskRow(string title, string due)
     {
         return new Frame()
-            .Background(new Color(48, 54, 68))
+            .Background(GalleryPalette.SurfaceHover)
             .BorderRadius(8)
             .Padding(new Thickness(12, 10))
             .HorizontalAlignment(HorizontalAlignment.Stretch)
@@ -131,10 +131,10 @@ public class ButtonFloatPage : Component
                     .Children(
                         new Label(title)
                             .FontSize(14)
-                            .Foreground(new Color(229, 231, 235)),
+                            .Foreground(GalleryPalette.OnSurface),
                         new Label(due)
                             .FontSize(12)
-                            .Foreground(new Color(156, 163, 175))
+                            .Foreground(GalleryPalette.Muted)
                     )
             );
     }

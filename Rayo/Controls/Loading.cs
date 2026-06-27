@@ -8,6 +8,7 @@ using Rayo.Reactivity;
 using Rayo.Rendering;
 using Rayo.Rendering.Brushes;
 using System.Numerics;
+using Rayo.Styling;
 
 /// <summary>
 /// Loading spinner type
@@ -44,7 +45,7 @@ public class Loading : Rayo.Core.View<Loading>, IFrameAnimation, IFrameAnimation
     {
         get => field;
         set => this.SetProperty(ref field, value);
-    } = new Color(0, 120, 215);
+    } = Rayo.Rendering.Color.Transparent;
     #endregion
 
     #region StrokeWidth
@@ -88,7 +89,7 @@ public class Loading : Rayo.Core.View<Loading>, IFrameAnimation, IFrameAnimation
     {
         get => field;
         set => this.SetProperty(ref field, value);
-    } = new Color(100, 100, 100);
+    } = Rayo.Rendering.Color.Transparent;
     #endregion
 
     #region TextSize
@@ -101,7 +102,15 @@ public class Loading : Rayo.Core.View<Loading>, IFrameAnimation, IFrameAnimation
 
     public Loading()
     {
+        InitializeTheme();
         Size(40f);
+    }
+
+    protected override void OnThemeApplied(Theme theme)
+    {
+        var palette = theme.Colors;
+        SetThemeValue(nameof(Color), (Brush)palette.Primary, value => Color = value);
+        SetThemeValue(nameof(TextColor), (Brush)palette.OnDisabled, value => TextColor = value);
     }
 
     private void AdvanceAnimation(float deltaTime)
@@ -347,7 +356,7 @@ public class LoadingOverlay : Frame
     public LoadingOverlay()
     {
         // Semi-transparent backdrop
-        this.Background(new Color(255, 255, 255, 200));
+        this.Background(RayoThemes.Current.Colors.Surface.WithAlpha(0.78f));
     }
 
     public LoadingOverlay Show(string? text = null, SpinnerType type = SpinnerType.Circle)

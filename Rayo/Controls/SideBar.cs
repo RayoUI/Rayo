@@ -6,6 +6,7 @@ using Rayo.Layout;
 using Rayo.Reactivity;
 using Rayo.Rendering;
 using Rayo.Rendering.Brushes;
+using Rayo.Styling;
 
 /// <summary>
 /// Represents an item in the SideBar navigation
@@ -111,11 +112,7 @@ public class SideBar : BorderCompositeView<SideBar>
     public Rendering.Brushes.Brush ItemBackground
     {
         get => field;
-        set
-        {
-            field = value;
-            RebuildItems();
-        }
+        set => this.SetProperty(ref field, value, RebuildItems);
     } = Color.Transparent;
     #endregion
 
@@ -124,7 +121,7 @@ public class SideBar : BorderCompositeView<SideBar>
     {
         get => field;
         set => this.SetProperty(ref field, value, RebuildItems);
-    } = new Color(45, 48, 58);
+    } = Color.Transparent;
     #endregion
 
     #region ItemSelectedColor
@@ -132,7 +129,7 @@ public class SideBar : BorderCompositeView<SideBar>
     {
         get => field;
         set => this.SetProperty(ref field, value, RebuildItems);
-    } = new Color(59, 130, 246);
+    } = Color.Transparent;
     #endregion
 
     #region ItemTextColor
@@ -140,7 +137,7 @@ public class SideBar : BorderCompositeView<SideBar>
     {
         get => field;
         set => this.SetProperty(ref field, value, RebuildItems);
-    } = new Color(180, 185, 195);
+    } = Color.Transparent;
     #endregion
 
     #region ItemSelectedTextColor
@@ -148,7 +145,7 @@ public class SideBar : BorderCompositeView<SideBar>
     {
         get => field;
         set => this.SetProperty(ref field, value, RebuildItems);
-    } = Color.White;
+    } = Color.Transparent;
     #endregion
 
     #region ItemIconColor
@@ -156,7 +153,7 @@ public class SideBar : BorderCompositeView<SideBar>
     {
         get => field;
         set => this.SetProperty(ref field, value, RebuildItems);
-    } = new Color(140, 145, 160);
+    } = Color.Transparent;
     #endregion
 
     #region ItemSelectedIconColor
@@ -164,7 +161,7 @@ public class SideBar : BorderCompositeView<SideBar>
     {
         get => field;
         set => this.SetProperty(ref field, value, RebuildItems);
-    } = Color.White;
+    } = Color.Transparent;
     #endregion
 
     #region ItemBorderRadius
@@ -247,11 +244,24 @@ public class SideBar : BorderCompositeView<SideBar>
 
     public SideBar()
     {
-        Background = new Color(25, 27, 35);
-        BorderBrush = new Color(50, 55, 65);
+        InitializeTheme();
         BorderThickness = 1;
         Width = ExpandedWidth;
         BuildComponents();
+    }
+
+    protected override void OnThemeApplied(Theme theme)
+    {
+        var palette = theme.Colors;
+        SetThemeValue(nameof(Background), (Brush)palette.Background, value => Background = value);
+        SetThemeValue(nameof(ItemBackground), (Brush)Color.Transparent, value => ItemBackground = value);
+        SetThemeValue(nameof(ItemHoverColor), (Brush)palette.SurfaceHover, value => ItemHoverColor = value);
+        SetThemeValue(nameof(ItemSelectedColor), (Brush)palette.Primary, value => ItemSelectedColor = value);
+        SetThemeValue(nameof(ItemTextColor), (Brush)palette.OnDisabled, value => ItemTextColor = value);
+        SetThemeValue(nameof(ItemSelectedTextColor), (Brush)palette.OnPrimary, value => ItemSelectedTextColor = value);
+        SetThemeValue(nameof(ItemIconColor), (Brush)palette.OnDisabled, value => ItemIconColor = value);
+        SetThemeValue(nameof(ItemSelectedIconColor), (Brush)palette.OnPrimary, value => ItemSelectedIconColor = value);
+        SetThemeValue(nameof(BorderBrush), (Brush)palette.Border, value => BorderBrush = value);
     }
 
     protected override void OnBorderBrushChanged()

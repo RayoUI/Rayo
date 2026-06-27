@@ -19,7 +19,7 @@ public class LStackPage : Component
                 Helper.CreateExampleSection("Vertical Distribution (JustifyContent)",
                     new Frame()
                         .Height(250)
-                        .Background(new Color(30, 30, 35))
+                        .Background(GalleryPalette.Surface)
                         .Content(
                             new HStack()
                                 .HorizontalAlignment(HorizontalAlignment.Stretch)
@@ -37,7 +37,7 @@ public class LStackPage : Component
                 Helper.CreateExampleSection("Horizontal Alignment (Cross-Axis)",
                     new Frame()
                         .Height(200)
-                        .Background(new Color(30, 30, 35))
+                        .Background(GalleryPalette.Surface)
                         .Content(
                             new VStack()
                                 .HorizontalAlignment(HorizontalAlignment.Stretch)
@@ -59,8 +59,8 @@ public class LStackPage : Component
                             new Icon(Icons.Info).Size(32).Color(new Color(59, 130, 246)),
                             new VStack()
                                 .Children(
-                                    new Label("Information Title").FontSize(16).Foreground(Color.White),
-                                    new Label("This is a description inside a LStack.").FontSize(13).Foreground(new Color(180, 185, 195))
+                                    new Label("Information Title").FontSize(16).Foreground(GalleryPalette.OnSurface),
+                                    new Label("This is a description inside a LStack.").FontSize(13).Foreground(GalleryPalette.Muted)
                                 ),
                             new Button().Text("Dismiss").Margin(new Thickness(20, 0, 0, 0))
                         )
@@ -72,11 +72,11 @@ public class LStackPage : Component
     {
         return new VStack()
             .Children(
-                new Label(title).FontSize(10).HorizontalAlignment(HorizontalAlignment.Center).Foreground(new Color(150, 150, 150)),
+                new Label(title).FontSize(10).HorizontalAlignment(HorizontalAlignment.Center).Foreground(GalleryPalette.Muted),
                 new LStack()
                     .Orientation(Rayo.Layout.Orientation.Vertical)
                     .JustifyContent(justify)
-                    .Background(new Color(40, 40, 45))
+                    .Background(GalleryPalette.SurfaceHover)
                     .Margin(new Thickness(5))
                     .Children(
                         CreateSmallSquare(new Color(59, 130, 246)),
@@ -91,11 +91,11 @@ public class LStackPage : Component
         return new HStack()
             .Height(40)
             .Children(
-                new Label(title).Width(60).VerticalAlignment(VerticalAlignment.Center).Foreground(new Color(150, 150, 150)),
+                new Label(title).Width(60).VerticalAlignment(VerticalAlignment.Center).Foreground(GalleryPalette.Muted),
                 new LStack()
                     .Orientation(Rayo.Layout.Orientation.Vertical)
                     .Alignment(alignment)
-                    .Background(new Color(40, 40, 45))
+                    .Background(GalleryPalette.SurfaceHover)
                     .Children(
                         new Frame().Height(10).Width(30).Background(new Color(168, 85, 247)).BorderRadius(2)
                     )

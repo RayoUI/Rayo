@@ -37,7 +37,7 @@ public class LabelPage : Component
 
                             new Label("Extra large heading — 28px")
                                 .FontSize(28)
-                                .Foreground(Color.White)
+                                .Foreground(GalleryPalette.OnSurface)
                         )
                 ),
 
@@ -48,35 +48,35 @@ public class LabelPage : Component
                         .Children(
                             new Label("Thin (100)")
                                 .FontWeight(FontWeight.Thin)
-                                .Foreground(Color.White),
+                                .Foreground(GalleryPalette.OnSurface),
 
                             new Label("Light (300)")
                                 .FontWeight(FontWeight.Light)
-                                .Foreground(Color.White),
+                                .Foreground(GalleryPalette.OnSurface),
 
                             new Label("Normal (400) — default")
                                 .FontWeight(FontWeight.Normal)
-                                .Foreground(Color.White),
+                                .Foreground(GalleryPalette.OnSurface),
 
                             new Label("Medium (500)")
                                 .FontWeight(FontWeight.Medium)
-                                .Foreground(Color.White),
+                                .Foreground(GalleryPalette.OnSurface),
 
                             new Label("SemiBold (600)")
                                 .FontWeight(FontWeight.SemiBold)
-                                .Foreground(Color.White),
+                                .Foreground(GalleryPalette.OnSurface),
 
                             new Label("Bold (700) — simulated via double-draw when no bold font is registered")
                                 .FontWeight(FontWeight.Bold)
-                                .Foreground(Color.White),
+                                .Foreground(GalleryPalette.OnSurface),
 
                             new Label("ExtraBold (800)")
                                 .FontWeight(FontWeight.ExtraBold)
-                                .Foreground(Color.White),
+                                .Foreground(GalleryPalette.OnSurface),
 
                             new Label("Black (900)")
                                 .FontWeight(FontWeight.Black)
-                                .Foreground(Color.White)
+                                .Foreground(GalleryPalette.OnSurface)
                         )
                 ),
 
@@ -87,7 +87,7 @@ public class LabelPage : Component
                         .Children(
                             new Label("Normal style — default")
                                 .FontStyle(FontStyle.Normal)
-                                .Foreground(Color.White),
+                                .Foreground(GalleryPalette.OnSurface),
 
                             new Label("Italic — requires \"{FontFamily}-Italic\" registered in AssetManager")
                                 .FontStyle(FontStyle.Italic)
@@ -107,7 +107,7 @@ public class LabelPage : Component
                         .Children(
                             new Label("Underline")
                                 .TextDecorations(TextDecorations.Underline)
-                                .Foreground(Color.White),
+                                .Foreground(GalleryPalette.OnSurface),
 
                             new Label("Strikethrough — useful for deleted / discounted items")
                                 .TextDecorations(TextDecorations.Strikethrough)
@@ -115,7 +115,7 @@ public class LabelPage : Component
 
                             new Label("Overline")
                                 .TextDecorations(TextDecorations.Overline)
-                                .Foreground(Color.White),
+                                .Foreground(GalleryPalette.OnSurface),
 
                             new Label("Underline + Strikethrough combined")
                                 .TextDecorations(TextDecorations.Underline | TextDecorations.Strikethrough)
@@ -156,7 +156,7 @@ public class LabelPage : Component
                                         .FontSize(11)
                                         .FontWeight(FontWeight.Bold)
                                         .Background(ColorDefault.Success)
-                                        .Foreground(Color.White)
+                                        .Foreground(GalleryPalette.OnSuccess)
                                         .Padding(new Thickness(8, 3))
                                         .BorderRadius(4),
 
@@ -164,7 +164,7 @@ public class LabelPage : Component
                                         .FontSize(11)
                                         .FontWeight(FontWeight.Bold)
                                         .Background(ColorDefault.Danger)
-                                        .Foreground(Color.White)
+                                        .Foreground(GalleryPalette.OnDanger)
                                         .Padding(new Thickness(8, 3))
                                         .BorderRadius(4),
 
@@ -199,16 +199,16 @@ public class LabelPage : Component
                         .Children(
                             new Label("Register icon fonts in AssetManager and reference them by alias")
                                 .FontSize(12)
-                                .Foreground(new Color(140, 145, 160)),
+                                .Foreground(GalleryPalette.Muted),
 
                             new HStack()
                                 .Spacing(20)
                                 .Children(
-                                    CreateFontFamilyIcon("\uEA1C", "Heart",    new Color(239, 68, 68)),
-                                    CreateFontFamilyIcon("\uEA1D", "Star",     new Color(234, 179, 8)),
-                                    CreateFontFamilyIcon("\uEA44", "Home",     new Color(59, 130, 246)),
-                                    CreateFontFamilyIcon("\uEA54", "User",     new Color(168, 85, 247)),
-                                    CreateFontFamilyIcon("\uEA5E", "Search",   new Color(34, 197, 94)),
+                                    CreateFontFamilyIcon("\uEA1C", "Heart",    GalleryPalette.Danger),
+                                    CreateFontFamilyIcon("\uEA1D", "Star",     GalleryPalette.Warning),
+                                    CreateFontFamilyIcon("\uEA44", "Home",     GalleryPalette.Primary),
+                                    CreateFontFamilyIcon("\uEA54", "User",     GalleryPalette.Info),
+                                    CreateFontFamilyIcon("\uEA5E", "Search",   GalleryPalette.Success),
                                     CreateFontFamilyIcon("\uEA5F", "Settings", new Color(6, 182, 212)),
                                     CreateFontFamilyIcon("\uEB9F", "Close",    new Color(6, 182, 212))
                                 )
@@ -250,13 +250,13 @@ public class LabelPage : Component
                         .Children(
                             new Label("Label with background")
                                 .Background(ColorDefault.Primary)
-                                .Foreground(Color.White)
+                                .Foreground(GalleryPalette.OnPrimary)
                                 .Padding(new Thickness(8))
                                 .BorderRadius(4),
 
                             new Label("Pill badge")
                                 .Background(ColorDefault.Success)
-                                .Foreground(Color.White)
+                                .Foreground(GalleryPalette.OnSuccess)
                                 .Padding(new Thickness(12, 4))
                                 .BorderRadius(12),
 
@@ -265,18 +265,18 @@ public class LabelPage : Component
                                 .Children(
                                     new Label("\uEA1C")
                                         .FontFamily("Lineicons").FontSize(16)
-                                        .Background(new Color(239, 68, 68))
-                                        .Foreground(Color.White)
+                                        .Background(GalleryPalette.Danger)
+                                        .Foreground(GalleryPalette.OnDanger)
                                         .Padding(new Thickness(8)).BorderRadius(20),
                                     new Label("\uEA1D")
                                         .FontFamily("Lineicons").FontSize(16)
-                                        .Background(new Color(234, 179, 8))
-                                        .Foreground(Color.White)
+                                        .Background(GalleryPalette.Warning)
+                                        .Foreground(GalleryPalette.OnWarning)
                                         .Padding(new Thickness(8)).BorderRadius(20),
                                     new Label("\uE86C")
                                         .FontFamily("Lineicons").FontSize(16)
-                                        .Background(new Color(34, 197, 94))
-                                        .Foreground(Color.White)
+                                        .Background(GalleryPalette.Success)
+                                        .Foreground(GalleryPalette.OnSuccess)
                                         .Padding(new Thickness(8)).BorderRadius(20)
                                 )
                         )
@@ -309,7 +309,7 @@ public class LabelPage : Component
                 Helper.CreateExampleSection("Multiline Text",
                     new Label("Line 1\nLine 2\nLine 3\nMultiline text is supported using \\n")
                         .Width(400)
-                        .Background(new Color(40, 40, 50))
+                        .Background(GalleryPalette.Surface)
                         .Padding(new Thickness(12))
                         .BorderRadius(6)
                 )
@@ -324,18 +324,18 @@ public class LabelPage : Component
             .Spacing(4)
             .Children(
                 new Frame()
-                    .Background(new Color(40, 43, 55))
+                    .Background(GalleryPalette.Surface)
                     .BorderRadius(6)
                     .Padding(new Thickness(12))
                     .Content(
                         new Label(text)
                             .FontSize(13)
                             .LineHeight(lineHeight)
-                            .Foreground(Color.White)
+                            .Foreground(GalleryPalette.OnSurface)
                     ),
                 new Label($"×{lineHeight:F1}")
                     .FontSize(10)
-                    .Foreground(new Color(140, 145, 160))
+                    .Foreground(GalleryPalette.Muted)
                     .TextHorizontalAlignment(HorizontalAlignment.Center)
             );
     }
@@ -348,7 +348,7 @@ public class LabelPage : Component
             .Children(
                 new Frame()
                     .Size(new Size(48, 48))
-                    .Background(new Color(45, 48, 58))
+                    .Background(GalleryPalette.SurfaceHover)
                     .BorderRadius(8)
                     .Content(
                         new Label(unicode)
@@ -360,7 +360,7 @@ public class LabelPage : Component
                     ),
                 new Label(label)
                     .FontSize(10)
-                    .Foreground(new Color(140, 145, 160))
+                    .Foreground(GalleryPalette.Muted)
             );
     }
 
@@ -372,19 +372,19 @@ public class LabelPage : Component
             .Children(
                 new Frame()
                     .Size(new Size(size + 16, size + 16))
-                    .Background(new Color(45, 48, 58))
+                    .Background(GalleryPalette.SurfaceHover)
                     .BorderRadius(8)
                     .Content(
                         new Label(unicode)
                             .FontFamily("Lineicons")
                             .FontSize(size)
-                            .Foreground(new Color(234, 179, 8))
+                            .Foreground(GalleryPalette.Warning)
                             .HorizontalAlignment(HorizontalAlignment.Center)
                             .VerticalAlignment(VerticalAlignment.Center)
                     ),
                 new Label(label)
                     .FontSize(11)
-                    .Foreground(new Color(140, 145, 160))
+                    .Foreground(GalleryPalette.Muted)
             );
     }
 }

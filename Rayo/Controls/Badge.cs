@@ -6,6 +6,7 @@ using Rayo.Reactivity;
 using Rayo.Rendering;
 using Rayo.Rendering.Brushes;
 using Rayo.Rendering.Graphics.VectorGraphics;
+using Rayo.Styling;
 
 /// <summary>
 /// Badge variants for different visual styles
@@ -53,7 +54,7 @@ public class Badge : BorderCompositeView<Badge>
     private string _textValue = "";
     private int? _countValue = null;
     // Backing fields for reactive properties (previously generated)
-    private Brush _textColor = Color.White;
+    private Brush _textColor = Color.Transparent;
     private float _fontSize;
     private BadgeVariant _variant;
     private BadgeSize _badgeSize;
@@ -163,9 +164,6 @@ public class Badge : BorderCompositeView<Badge>
     public Badge()
     {
         // Initialize reactive properties
-        Background = new Color(239, 68, 68);
-        TextColor = Color.White;
-        BorderBrush = Background;
         BorderThickness = 0;
         FontSize = 12;
         Variant = BadgeVariant.Solid;
@@ -174,6 +172,7 @@ public class Badge : BorderCompositeView<Badge>
         MaxCount = 99;
         ShowZero = false;
         Dot = false;
+        InitializeTheme();
     }
 
     public Badge(string text) : this()
@@ -184,6 +183,14 @@ public class Badge : BorderCompositeView<Badge>
     public Badge(int count) : this()
     {
         _countValue = count;
+    }
+
+    protected override void OnThemeApplied(Theme theme)
+    {
+        var palette = theme.Colors;
+        SetThemeValue(nameof(Background), (Brush)palette.Danger, value => Background = value);
+        SetThemeValue(nameof(TextColor), (Brush)palette.OnDanger, value => TextColor = value);
+        SetThemeValue(nameof(BorderBrush), (Brush)palette.Danger, value => BorderBrush = value);
     }
 
 

@@ -8,7 +8,19 @@ using Rayo.Reactivity;
 using Rayo.Rendering;
 using Rayo.Rendering.Brushes;
 using Rayo.Rendering.Graphics.VectorGraphics;
+using Rayo.Styling;
 using IRenderer = Rayo.Rendering.IRenderer;
+
+/// <summary>
+/// Semantic visual variants supplied by the active theme.
+/// </summary>
+public enum ButtonVariant
+{
+    Primary,
+    Secondary,
+    Danger,
+    Ghost,
+}
 
 /// <summary>
 /// Modern button control with unified pointer event support (mouse, touch, pen).
@@ -45,13 +57,25 @@ public class Button : BorderView<Button>,
     }
     #endregion
 
+    #region Variant
+    /// <summary>
+    /// Selects the button color tokens from the active theme.
+    /// </summary>
+    [PaintProperty]
+    public ButtonVariant Variant
+    {
+        get => field;
+        set => this.SetProperty(ref field, value, ApplyActiveTheme);
+    } = ButtonVariant.Primary;
+    #endregion
+
     #region Background
     [PaintProperty]
     public new Brush Background
     {
         get => field;
         set => this.SetProperty(ref field, value, UpdateVisualState);
-    }
+    } = Color.Transparent;
     #endregion
 
     #region HoverBackground
@@ -60,7 +84,7 @@ public class Button : BorderView<Button>,
     {
         get => field;
         set => this.SetProperty(ref field, value, UpdateVisualState);
-    }
+    } = Color.Transparent;
     #endregion
 
     #region PressedBackground
@@ -69,7 +93,7 @@ public class Button : BorderView<Button>,
     {
         get => field;
         set => this.SetProperty(ref field, value, UpdateVisualState);
-    }
+    } = Color.Transparent;
     #endregion
 
     #region TextColor
@@ -78,7 +102,7 @@ public class Button : BorderView<Button>,
     {
         get => field;
         set => this.SetProperty(ref field, value);
-    }
+    } = Color.Transparent;
     #endregion
 
     #region FontSize
@@ -152,17 +176,16 @@ public class Button : BorderView<Button>,
     // INITIALIZATION
     // =========================================================================
 
+    /// <summary>
+    /// Creates a button initialized with the active application theme.
+    /// </summary>
     public Button()
     {
         // Initialize reactive properties (cannot use initializers on partial properties)
         Text = string.Empty;
         FontSize = 14;
-        Background = new Color(70, 130, 180);
-        HoverBackground = new Color(100, 150, 200);
-        PressedBackground = new Color(50, 100, 150);
-        TextColor = Color.White;
+        InitializeTheme();
         BorderThickness = 2;
-        BorderBrush = new Color(40, 80, 120);
 
         // Touch-friendly sizing
         // Minimum recommended size for touch: 44x44 (iOS HIG) or 48x48 (Material Design)
@@ -182,6 +205,61 @@ public class Button : BorderView<Button>,
         );
         _tapRecognizer.TapDetected += OnTapDetected;
         GestureRecognizers.Add(_tapRecognizer);
+
+    }
+
+    /// <summary>
+    /// Creates a button with explicit colors derived from a semantic palette.
+    /// Explicit palette colors are preserved when the global theme changes.
+    /// </summary>
+    public Button(ColorPalette palette) : this()
+    {
+        ApplyPalette(palette);
+    }
+
+    /// <summary>
+    /// Applies the button-related roles from a semantic color palette.
+    /// </summary>
+    public Button ApplyPalette(ColorPalette palette)
+    {
+        ArgumentNullException.ThrowIfNull(palette);
+
+        Background = palette.Primary;
+        HoverBackground = palette.PrimaryHover;
+        PressedBackground = palette.PrimaryPressed;
+        TextColor = palette.OnPrimary;
+        BorderBrush = palette.Border;
+
+        return this;
+    }
+
+    /// <summary>
+    /// Clears explicit color overrides and resumes following the active theme.
+    /// </summary>
+    public Button UseThemeDefaults()
+    {
+        ResetThemeValues();
+        return this;
+    }
+
+    private void ApplyActiveTheme() =>
+        OnThemeApplied(UIApplication.Current?.ActiveTheme ?? RayoThemes.Light);
+
+    protected override void OnThemeApplied(Theme theme)
+    {
+        var colors = Variant switch
+        {
+            ButtonVariant.Secondary => theme.Buttons.Secondary,
+            ButtonVariant.Danger => theme.Buttons.Danger,
+            ButtonVariant.Ghost => theme.Buttons.Ghost,
+            _ => theme.Buttons.Primary,
+        };
+
+        SetThemeValue(nameof(Background), (Brush)colors.Background, value => Background = value);
+        SetThemeValue(nameof(HoverBackground), (Brush)colors.HoverBackground, value => HoverBackground = value);
+        SetThemeValue(nameof(PressedBackground), (Brush)colors.PressedBackground, value => PressedBackground = value);
+        SetThemeValue(nameof(TextColor), (Brush)colors.Foreground, value => TextColor = value);
+        SetThemeValue(nameof(BorderBrush), (Brush)colors.Border, value => BorderBrush = value);
     }
 
     // =========================================================================

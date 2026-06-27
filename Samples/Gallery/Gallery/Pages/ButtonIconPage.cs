@@ -23,19 +23,19 @@ public class ButtonIconPage : Component
                         .Spacing(10)
                         .Children(
                             new ButtonIcon(Icons.Home)
-                                .IconColor(Color.White)
+                                .IconColor(GalleryPalette.OnSurface)
                                 .OnTapped(() => Console.WriteLine("Home clicked")),
 
                             new ButtonIcon(Icons.Settings)
-                                .IconColor(Color.White)
+                                .IconColor(GalleryPalette.OnSurface)
                                 .OnTapped(() => Console.WriteLine("Settings clicked")),
 
                             new ButtonIcon(Icons.Search)
-                                .IconColor(Color.White)
+                                .IconColor(GalleryPalette.OnSurface)
                                 .OnTapped(() => Console.WriteLine("Search clicked")),
 
                             new ButtonIcon(Icons.Refresh)
-                                .IconColor(Color.White)
+                                .IconColor(GalleryPalette.OnSurface)
                                 .OnTapped(() => Console.WriteLine("Refresh clicked"))
                         )
                 ),
@@ -333,62 +333,62 @@ public class ButtonIconPage : Component
     private VisualElement CreateIconToolbarSection()
     {
         var backButton = new ButtonIcon(Icons.ArrowLeft);
-        backButton.IconColor(Color.White);
+        backButton.IconColor(GalleryPalette.OnSurface);
         backButton.Background(Color.Transparent);
-        backButton.HoverBackground(new Color(255, 255, 255, 0.1f));
-        backButton.PressedBackground(new Color(255, 255, 255, 0.2f));
+        backButton.HoverBackground(GalleryPalette.SurfaceHover);
+        backButton.PressedBackground(GalleryPalette.SurfacePressed);
         backButton.Size(36);
         backButton.OnTapped(() => Console.WriteLine("Back"));
 
         var forwardButton = new ButtonIcon(Icons.ArrowRight);
-        forwardButton.IconColor(Color.White);
+        forwardButton.IconColor(GalleryPalette.OnSurface);
         forwardButton.Background(Color.Transparent);
-        forwardButton.HoverBackground(new Color(255, 255, 255, 0.1f));
-        forwardButton.PressedBackground(new Color(255, 255, 255, 0.2f));
+        forwardButton.HoverBackground(GalleryPalette.SurfaceHover);
+        forwardButton.PressedBackground(GalleryPalette.SurfacePressed);
         forwardButton.Size(36);
         forwardButton.OnTapped(() => Console.WriteLine("Forward"));
 
         var refreshButton = new ButtonIcon(Icons.Refresh);
-        refreshButton.IconColor(Color.White);
+        refreshButton.IconColor(GalleryPalette.OnSurface);
         refreshButton.Background(Color.Transparent);
-        refreshButton.HoverBackground(new Color(255, 255, 255, 0.1f));
-        refreshButton.PressedBackground(new Color(255, 255, 255, 0.2f));
+        refreshButton.HoverBackground(GalleryPalette.SurfaceHover);
+        refreshButton.PressedBackground(GalleryPalette.SurfacePressed);
         refreshButton.Size(36);
         refreshButton.OnTapped(() => Console.WriteLine("Refresh"));
 
         var divider = new Frame();
         divider.Width(1);
         divider.Height(24);
-        divider.Background(new Color(255, 255, 255, 0.2f));
+        divider.Background(GalleryPalette.Border);
         divider.Margin(new Thickness(4, 0));
 
         var volumeButton = new ButtonIcon(Icons.VolumeUp);
-        volumeButton.IconColor(Color.White);
+        volumeButton.IconColor(GalleryPalette.OnSurface);
         volumeButton.Background(Color.Transparent);
-        volumeButton.HoverBackground(new Color(255, 255, 255, 0.1f));
-        volumeButton.PressedBackground(new Color(255, 255, 255, 0.2f));
+        volumeButton.HoverBackground(GalleryPalette.SurfaceHover);
+        volumeButton.PressedBackground(GalleryPalette.SurfacePressed);
         volumeButton.Size(36);
         volumeButton.OnTapped(() => Console.WriteLine("Volume Up"));
 
         var muteButton = new ButtonIcon(Icons.VolumeMute);
-        muteButton.IconColor(Color.White);
+        muteButton.IconColor(GalleryPalette.OnSurface);
         muteButton.Background(Color.Transparent);
-        muteButton.HoverBackground(new Color(255, 255, 255, 0.1f));
-        muteButton.PressedBackground(new Color(255, 255, 255, 0.2f));
+        muteButton.HoverBackground(GalleryPalette.SurfaceHover);
+        muteButton.PressedBackground(GalleryPalette.SurfacePressed);
         muteButton.Size(36);
         muteButton.OnTapped(() => Console.WriteLine("Mute"));
 
         var settingsButton = new ButtonIcon(Icons.Settings);
-        settingsButton.IconColor(Color.White);
+        settingsButton.IconColor(GalleryPalette.OnSurface);
         settingsButton.Background(Color.Transparent);
-        settingsButton.HoverBackground(new Color(255, 255, 255, 0.1f));
-        settingsButton.PressedBackground(new Color(255, 255, 255, 0.2f));
+        settingsButton.HoverBackground(GalleryPalette.SurfaceHover);
+        settingsButton.PressedBackground(GalleryPalette.SurfacePressed);
         settingsButton.Size(36);
         settingsButton.OnTapped(() => Console.WriteLine("Settings"));
 
         return Helper.CreateExampleSection("Icon Toolbar",
             new Frame()
-                .Background(new Color(40, 40, 45))
+                .Background(GalleryPalette.Surface)
                 .BorderRadius(new CornerRadius(6))
                 .Padding(new Thickness(8))
                 .Content(

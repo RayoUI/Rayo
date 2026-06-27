@@ -21,9 +21,8 @@ public class IconsPage : Component
             .VerticalAlignment(VerticalAlignment.Top)
             .Children(
                 Helper.CreatePageHeader("Icons", "All vector icons available in Rayo.Controls.Icons"),
-                new Label($"{icons.Count} icons available")
+                new PaletteLabel($"{icons.Count} icons available", colors => colors.OnDisabled)
                     .FontSize(12)
-                    .Foreground(new Color(150, 160, 175))
             );
 
         foreach (var row in BuildRows(icons))
@@ -70,9 +69,7 @@ public class IconsPage : Component
 
     private static VisualElement BuildIconCard(string name, IconData icon)
     {
-        return new Frame()
-            .Background(new Color(29, 32, 38))
-            .BorderBrush(new Color(48, 54, 64))
+        return new PaletteFrame(colors => colors.Surface, colors => colors.Border)
             .BorderThickness(1)
             .BorderRadius(new CornerRadius(6))
             .Padding(new Thickness(10))
@@ -83,21 +80,18 @@ public class IconsPage : Component
                     .Alignment(Alignment.Center)
                     .HorizontalAlignment(HorizontalAlignment.Stretch)
                     .Children(
-                        new Frame()
+                        new PaletteFrame(colors => colors.SurfaceHover)
                             .Width(46)
                             .Height(46)
-                            .Background(new Color(38, 43, 52))
                             .BorderRadius(new CornerRadius(4))
                             .Content(
-                                new Icon(icon)
+                                new PaletteIcon(icon, colors => colors.OnSurface)
                                     .Size(28)
-                                    .Color(new Color(230, 235, 245))
                                     .HorizontalAlignment(HorizontalAlignment.Center)
                                     .VerticalAlignment(VerticalAlignment.Center)
                             ),
-                        new Label(name)
+                        new PaletteLabel(name, colors => colors.OnSurface)
                             .FontSize(10)
-                            .Foreground(new Color(205, 212, 224))
                             .TextHorizontalAlignment(HorizontalAlignment.Center)
                     )
             );

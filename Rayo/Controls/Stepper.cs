@@ -6,6 +6,7 @@ using Rayo.Reactivity;
 using Rayo.Rendering;
 using Rayo.Rendering.Brushes;
 using System;
+using Rayo.Styling;
 
 /// <summary>
 /// Stepper component - Increment/decrement control for numeric values
@@ -93,7 +94,7 @@ public class Stepper : BorderCompositeView<Stepper>
     {
         get => field;
         set => this.SetProperty(ref field, value);
-    } = new Color(59, 130, 246);
+    } = Color.Transparent;
     #endregion
 
     #region ButtonHoverColor
@@ -101,7 +102,7 @@ public class Stepper : BorderCompositeView<Stepper>
     {
         get => field;
         set => this.SetProperty(ref field, value);
-    } = new Color(79, 150, 255);
+    } = Color.Transparent;
     #endregion
 
     #region DisabledButtonColor
@@ -109,7 +110,7 @@ public class Stepper : BorderCompositeView<Stepper>
     {
         get => field;
         set => this.SetProperty(ref field, value);
-    } = new Color(60, 60, 65);
+    } = Color.Transparent;
     #endregion
 
     #region TextColor
@@ -117,7 +118,19 @@ public class Stepper : BorderCompositeView<Stepper>
     {
         get => field;
         set => this.SetProperty(ref field, value);
-    } = Color.White;
+    } = Color.Transparent;
+    #endregion
+
+    #region ValueTextColor
+    public Brush ValueTextColor
+    {
+        get => field;
+        set => this.SetProperty(ref field, value, () =>
+        {
+            if (_valueLabel != null)
+                _valueLabel.Foreground = value;
+        });
+    } = Color.Transparent;
     #endregion
 
     #region CornerRadius
@@ -151,10 +164,9 @@ public class Stepper : BorderCompositeView<Stepper>
 
     public Stepper()
     {
-        Background = new Color(40, 40, 45);
+        InitializeTheme();
         Width = 140;
         Height = 36;
-        BorderBrush = new Color(100, 100, 100);
         BorderThickness = 1;
         BuildComponents();
 
@@ -162,6 +174,26 @@ public class Stepper : BorderCompositeView<Stepper>
         {
             AddChild(_container);
         }
+    }
+
+    protected override void OnThemeApplied(Theme theme)
+    {
+        var palette = theme.Colors;
+        SetThemeValue(nameof(Background), (Brush)palette.Surface, value => Background = value);
+        SetThemeValue(nameof(ButtonColor), (Brush)palette.Primary, value => ButtonColor = value);
+        SetThemeValue(nameof(ButtonHoverColor), (Brush)palette.PrimaryHover, value => ButtonHoverColor = value);
+        SetThemeValue(nameof(DisabledButtonColor), (Brush)palette.Disabled, value => DisabledButtonColor = value);
+        SetThemeValue(nameof(TextColor), (Brush)palette.OnPrimary, value => TextColor = value);
+        SetThemeValue(nameof(ValueTextColor), (Brush)palette.OnSurface, value => ValueTextColor = value);
+        SetThemeValue(nameof(BorderBrush), (Brush)palette.Border, value => BorderBrush = value);
+
+        if (_decrementButton != null)
+            _decrementButton.TextColor = TextColor;
+        if (_incrementButton != null)
+            _incrementButton.TextColor = TextColor;
+        if (_container != null)
+            _container.Background = Background;
+        UpdateButtonStates();
     }
 
     protected override void OnBorderBrushChanged()
@@ -201,7 +233,7 @@ public class Stepper : BorderCompositeView<Stepper>
         _valueLabel = new Label
         {
             Text = Value.ToString(ValueFormat),
-            Foreground = TextColor,
+            Foreground = ValueTextColor,
             FontSize = 14,
             HorizontalAlignment = HorizontalAlignment.Center,
             VerticalAlignment = VerticalAlignment.Center,

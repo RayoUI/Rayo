@@ -47,7 +47,7 @@ public class GestureDetectorPage : Component
                                     .Content(
                                         new Label("Tap Me!")
                                             .FontSize(16)
-                                            .Foreground(Color.White)
+                                            .Foreground(GalleryPalette.OnPrimary)
                                             .HorizontalAlignment(HorizontalAlignment.Center)
                                             .VerticalAlignment(VerticalAlignment.Center)
                                     )
@@ -73,7 +73,7 @@ public class GestureDetectorPage : Component
                                     .Content(
                                         new Label("Double Tap Me!")
                                             .FontSize(16)
-                                            .Foreground(Color.White)
+                                            .Foreground(GalleryPalette.OnSuccess)
                                             .HorizontalAlignment(HorizontalAlignment.Center)
                                             .VerticalAlignment(VerticalAlignment.Center)
                                     )
@@ -103,7 +103,7 @@ public class GestureDetectorPage : Component
                                     .Content(
                                         new Label("Long Press Me!")
                                             .FontSize(16)
-                                            .Foreground(new Color(30, 30, 30))
+                                            .Foreground(GalleryPalette.OnWarning)
                                             .HorizontalAlignment(HorizontalAlignment.Center)
                                             .VerticalAlignment(VerticalAlignment.Center)
                                     )
@@ -139,11 +139,11 @@ public class GestureDetectorPage : Component
                                                 new Label("\uEAD3")
                                                     .FontFamily("Lineicons")
                                                     .FontSize(24)
-                                                    .Foreground(Color.White)
+                                                    .Foreground(GalleryPalette.OnDanger)
                                                     .HorizontalAlignment(HorizontalAlignment.Center),
                                                 new Label("Swipe Here")
                                                     .FontSize(14)
-                                                    .Foreground(Color.White)
+                                                    .Foreground(GalleryPalette.OnDanger)
                                                     .HorizontalAlignment(HorizontalAlignment.Center)
                                             )
                                     )
@@ -170,7 +170,7 @@ public class GestureDetectorPage : Component
 
                             new Frame()
                                 .Size(new Size(300, 150))
-                                .Background(new Color(50, 50, 60))
+                                .Background(GalleryPalette.SurfaceHover)
                                 .BorderRadius(8)
                                 .Content(
                                     new Absolute()
@@ -197,7 +197,7 @@ public class GestureDetectorPage : Component
                 // Code Example
                 Helper.CreateExampleSection("Code Example",
                     new Frame()
-                        .Background(new Color(30, 33, 42))
+                        .Background(GalleryPalette.Surface)
                         .BorderRadius(8)
                         .Padding(new Thickness(12))
                         .Content(
@@ -241,13 +241,13 @@ public class GestureDetectorPage : Component
     {
         var box = new Frame()
             .Size(new Size(60, 60))
-            .Background(new Color(168, 85, 247))
+            .Background(GalleryPalette.Info)
             .BorderRadius(8)
             .Content(
                 new Label("\uEAD3")
                     .FontFamily("Lineicons")
                     .FontSize(24)
-                    .Foreground(Color.White)
+                    .Foreground(GalleryPalette.OnInfo)
                     .HorizontalAlignment(HorizontalAlignment.Center)
                     .VerticalAlignment(VerticalAlignment.Center)
             );
@@ -273,22 +273,27 @@ public class GestureDetectorPage : Component
     private VisualElement CreateMultiGestureDemo()
     {
         var status = UseSignal("Waiting for gesture...");
-        var bgColor = UseSignal(new Color(100, 100, 120));
+        var bgColor = UseSignal(GalleryPalette.Secondary);
 
         var Frame = new Frame();
         Frame.Size(new Size(250, 80));
         Frame.BorderRadius(8);
+        var statusLabel = new Label()
+            .Text(status)
+            .FontSize(14)
+            .Foreground(GalleryPalette.OnSecondary)
+            .HorizontalAlignment(HorizontalAlignment.Center)
+            .VerticalAlignment(VerticalAlignment.Center);
         Frame.Content(
-            new Label()
-                .Text(status)
-                .FontSize(14)
-                .Foreground(Color.White)
-                .HorizontalAlignment(HorizontalAlignment.Center)
-                .VerticalAlignment(VerticalAlignment.Center)
+            statusLabel
         );
 
         // Bind background color
-        UseSubscription(bgColor, c => Frame.Background(c));
+        UseSubscription(bgColor, c =>
+        {
+            Frame.Background(c);
+            statusLabel.Foreground(GetOnColor(c));
+        });
         Frame.Background(bgColor.Value);
 
         return new GestureDetector(Frame)
@@ -312,5 +317,16 @@ public class GestureDetectorPage : Component
                 status.Value = $"Swipe {dir}!";
                 bgColor.Value = ColorDefault.Danger;
             });
+    }
+
+    private static Color GetOnColor(Color background)
+    {
+        var colors = Rayo.Styling.RayoThemes.Current.Colors;
+        if (background == colors.Success) return colors.OnSuccess;
+        if (background == colors.Warning) return colors.OnWarning;
+        if (background == colors.Danger) return colors.OnDanger;
+        if (background == colors.Info) return colors.OnInfo;
+        if (background == colors.Secondary) return colors.OnSecondary;
+        return colors.OnPrimary;
     }
 }

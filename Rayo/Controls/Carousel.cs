@@ -6,6 +6,7 @@ using Rayo.Layout;
 using Rayo.Reactivity;
 using Rayo.Rendering;
 using Rayo.Rendering.Brushes;
+using Rayo.Styling;
 using Rayo.Rendering.Graphics.VectorGraphics;
 
 /// <summary>
@@ -129,7 +130,7 @@ public class Carousel : BorderCompositeView<Carousel>, IFrameAnimation
             _contentFrame.Background = value;
             _transitionHost.SlideBackground = value;
         });
-    } = new Color(35, 38, 46);
+    } = Color.Transparent;
     #endregion
 
     #region NavigationButtonBackground
@@ -138,7 +139,7 @@ public class Carousel : BorderCompositeView<Carousel>, IFrameAnimation
     {
         get => field;
         set => this.SetProperty(ref field, value, RefreshNavigationButtonStyles);
-    } = new Color(55, 60, 72);
+    } = Color.Transparent;
     #endregion
 
     #region NavigationButtonHoverBackground
@@ -147,7 +148,7 @@ public class Carousel : BorderCompositeView<Carousel>, IFrameAnimation
     {
         get => field;
         set => this.SetProperty(ref field, value, RefreshNavigationButtonStyles);
-    } = new Color(75, 82, 98);
+    } = Color.Transparent;
     #endregion
 
     #region NavigationButtonDisabledBackground
@@ -156,7 +157,7 @@ public class Carousel : BorderCompositeView<Carousel>, IFrameAnimation
     {
         get => field;
         set => this.SetProperty(ref field, value, RefreshNavigationState);
-    } = new Color(45, 48, 56);
+    } = Color.Transparent;
     #endregion
 
     #region NavigationIconColor
@@ -165,7 +166,7 @@ public class Carousel : BorderCompositeView<Carousel>, IFrameAnimation
     {
         get => field;
         set => this.SetProperty(ref field, value, RefreshNavigationButtonStyles);
-    } = Color.White;
+    } = Color.Transparent;
     #endregion
 
     #region NavigationIconDisabledColor
@@ -174,7 +175,7 @@ public class Carousel : BorderCompositeView<Carousel>, IFrameAnimation
     {
         get => field;
         set => this.SetProperty(ref field, value, RefreshNavigationState);
-    } = new Color(120, 124, 135);
+    } = Color.Transparent;
     #endregion
 
     #region IndicatorColor
@@ -183,7 +184,7 @@ public class Carousel : BorderCompositeView<Carousel>, IFrameAnimation
     {
         get => field;
         set => this.SetProperty(ref field, value, RebuildIndicators);
-    } = new Color(105, 112, 128);
+    } = Color.Transparent;
     #endregion
 
     #region IndicatorSelectedColor
@@ -192,7 +193,7 @@ public class Carousel : BorderCompositeView<Carousel>, IFrameAnimation
     {
         get => field;
         set => this.SetProperty(ref field, value, RebuildIndicators);
-    } = new Color(59, 130, 246);
+    } = Color.Transparent;
     #endregion
 
     #region IndicatorSize
@@ -251,7 +252,6 @@ public class Carousel : BorderCompositeView<Carousel>, IFrameAnimation
         Width = 360;
         Height = 260;
         Padding = new Thickness(0);
-        BorderBrush = new Color(70, 75, 90);
         BorderThickness = 1f;
 
         _viewport = new CarouselViewport
@@ -306,7 +306,29 @@ public class Carousel : BorderCompositeView<Carousel>, IFrameAnimation
             .AddChild(_navigationRow, 1, 0);
 
         AddChild(_root);
+        InitializeTheme();
         RefreshNavigation();
+    }
+
+    protected override void OnThemeApplied(Theme theme)
+    {
+        var palette = theme.Colors;
+        SetThemeValue(nameof(SlideBackground), (Brush)palette.Surface, value => SlideBackground = value);
+        SetThemeValue(nameof(NavigationButtonBackground), (Brush)palette.SurfaceHover, value => NavigationButtonBackground = value);
+        SetThemeValue(nameof(NavigationButtonHoverBackground), (Brush)palette.SurfacePressed, value => NavigationButtonHoverBackground = value);
+        SetThemeValue(nameof(NavigationButtonDisabledBackground), (Brush)palette.Disabled, value => NavigationButtonDisabledBackground = value);
+        SetThemeValue(nameof(NavigationIconColor), (Brush)palette.OnSurface, value => NavigationIconColor = value);
+        SetThemeValue(nameof(NavigationIconDisabledColor), (Brush)palette.OnDisabled, value => NavigationIconDisabledColor = value);
+        SetThemeValue(nameof(IndicatorColor), (Brush)palette.OnDisabled, value => IndicatorColor = value);
+        SetThemeValue(nameof(IndicatorSelectedColor), (Brush)palette.Primary, value => IndicatorSelectedColor = value);
+        SetThemeValue(nameof(BorderBrush), (Brush)palette.Border, value => BorderBrush = value);
+
+        // Slides outside the transition host are not part of the visual tree,
+        // so propagate the new theme to them before they become visible.
+        foreach (var item in _items.Where(item => item.Parent != _transitionHost).ToArray())
+        {
+            item.NotifyThemeChanged(theme);
+        }
     }
 
     public Carousel AddSlide(VisualElement slide)

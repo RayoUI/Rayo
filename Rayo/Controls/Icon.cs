@@ -5,6 +5,7 @@ using Rayo.Reactivity;
 using Rayo.Rendering;
 using Rayo.Rendering.Brushes;
 using System.ComponentModel.DataAnnotations;
+using Rayo.Styling;
 using IRenderer = Rayo.Rendering.IRenderer;
 
 /// <summary>
@@ -32,7 +33,7 @@ public class Icon : View<Icon>
     {
         get => field;
         set => this.SetProperty(ref field, value);
-    }
+    } = Rayo.Rendering.Color.Transparent;
     #endregion
 
 
@@ -51,7 +52,7 @@ public class Icon : View<Icon>
 
     public Icon()
     {
-        Color = Rayo.Rendering.Color.White;
+        InitializeTheme();
         Size(DefaultIconSize);
     }
 
@@ -59,6 +60,11 @@ public class Icon : View<Icon>
         : this()
     {
         IconData = iconData;
+    }
+
+    protected override void OnThemeApplied(Theme theme)
+    {
+        SetThemeValue(nameof(Color), (Brush)theme.Colors.OnSurface, value => Color = value);
     }
 
     protected override void Measure(float availableWidth, float availableHeight)

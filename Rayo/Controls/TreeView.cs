@@ -7,6 +7,7 @@ using Rayo.Core.Interfaces;
 using Rayo.DevTools;
 using Rayo.Layout;
 using Rayo.Rendering;
+using Rayo.Styling;
 using Rayo.Rendering.Brushes;
 using Rayo.Reactivity;
 using System;
@@ -596,7 +597,7 @@ internal class TreeNodeView : CompositeView<TreeNodeView>
                     {
                         Width = checkIconSize,
                         Height = checkIconSize,
-                        Color = Color.White
+                        Color = treeView.SelectedTextColor
                     };
                     checkIcon.MeasureUpdate(checkIconSize, checkIconSize);
                     checkIcon.ArrangeUpdate(checkboxX + 2, checkboxY + 2, checkIconSize, checkIconSize);
@@ -642,42 +643,42 @@ public class TreeView : BorderCompositeView<TreeView>
     {
         get => field;
         set => this.SetProperty(ref field, value, UpdateNodeVisuals);
-    } = new Color(0, 120, 215);
+    } = Color.Transparent;
 
     [PaintProperty]
     public Brush SelectedTextColor
     {
         get => field;
         set => this.SetProperty(ref field, value, UpdateNodeVisuals);
-    } = Color.White;
+    } = Color.Transparent;
 
     [PaintProperty]
     public Brush HoverColor
     {
         get => field;
         set => this.SetProperty(ref field, value, UpdateNodeVisuals);
-    } = new Color(240, 240, 240);
+    } = Color.Transparent;
 
     [PaintProperty]
     public Brush PressedColor
     {
         get => field;
         set => this.SetProperty(ref field, value, UpdateNodeVisuals);
-    } = new Color(220, 220, 220);
+    } = Color.Transparent;
 
     [PaintProperty]
     public Brush TextColor
     {
         get => field;
         set => this.SetProperty(ref field, value, UpdateNodeVisuals);
-    } = Color.Black;
+    } = Color.Transparent;
 
     [PaintProperty]
     public Brush DisabledTextColor
     {
         get => field;
         set => this.SetProperty(ref field, value, UpdateNodeVisuals);
-    } = new Color(150, 150, 150);
+    } = Color.Transparent;
 
     [LayoutProperty]
     public float ItemHeight
@@ -793,11 +794,23 @@ public class TreeView : BorderCompositeView<TreeView>
 
     public TreeView()
     {
-        Background = Color.White;
-        BorderBrush = new Color(220, 220, 220);
+        InitializeTheme();
         BorderThickness = 1;
         BuildComponents();
         ApplyStyles();
+    }
+
+    protected override void OnThemeApplied(Theme theme)
+    {
+        var palette = theme.Colors;
+        SetThemeValue(nameof(Background), (Brush)palette.Surface, value => Background = value);
+        SetThemeValue(nameof(SelectedColor), (Brush)palette.Primary, value => SelectedColor = value);
+        SetThemeValue(nameof(SelectedTextColor), (Brush)palette.OnPrimary, value => SelectedTextColor = value);
+        SetThemeValue(nameof(HoverColor), (Brush)palette.SurfaceHover, value => HoverColor = value);
+        SetThemeValue(nameof(PressedColor), (Brush)palette.SurfacePressed, value => PressedColor = value);
+        SetThemeValue(nameof(TextColor), (Brush)palette.OnSurface, value => TextColor = value);
+        SetThemeValue(nameof(DisabledTextColor), (Brush)palette.OnDisabled, value => DisabledTextColor = value);
+        SetThemeValue(nameof(BorderBrush), (Brush)palette.Border, value => BorderBrush = value);
     }
 
     protected override void OnBorderBrushChanged()

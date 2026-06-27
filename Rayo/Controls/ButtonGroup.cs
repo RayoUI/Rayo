@@ -7,6 +7,7 @@ using Rayo.Layout;
 using Rayo.Reactivity;
 using Rayo.Rendering;
 using Rayo.Rendering.Brushes;
+using Rayo.Styling;
 using Rayo.Rendering.Graphics.VectorGraphics;
 using IRenderer = Rayo.Rendering.IRenderer;
 
@@ -108,7 +109,7 @@ public class ButtonGroup : BorderCompositeView<ButtonGroup>
     {
         get => field;
         set => this.SetProperty(ref field, value, RefreshButtonStates);
-    } = Color.White;
+    } = Color.Transparent;
     #endregion
 
     #region HoverBackground
@@ -117,7 +118,7 @@ public class ButtonGroup : BorderCompositeView<ButtonGroup>
     {
         get => field;
         set => this.SetProperty(ref field, value, RefreshButtonStates);
-    } = new Color(245, 248, 252);
+    } = Color.Transparent;
     #endregion
 
     #region PressedBackground
@@ -126,7 +127,7 @@ public class ButtonGroup : BorderCompositeView<ButtonGroup>
     {
         get => field;
         set => this.SetProperty(ref field, value, RefreshButtonStates);
-    } = new Color(224, 231, 255);
+    } = Color.Transparent;
     #endregion
 
     #region SelectedBackground
@@ -135,7 +136,7 @@ public class ButtonGroup : BorderCompositeView<ButtonGroup>
     {
         get => field;
         set => this.SetProperty(ref field, value, RefreshButtonStates);
-    } = new Color(37, 99, 235);
+    } = Color.Transparent;
     #endregion
 
     #region SelectedBorderBrush
@@ -144,7 +145,7 @@ public class ButtonGroup : BorderCompositeView<ButtonGroup>
     {
         get => field;
         set => this.SetProperty(ref field, value, RefreshButtonStates);
-    } = new Color(37, 99, 235);
+    } = Color.Transparent;
     #endregion
 
     #region TextColor
@@ -153,7 +154,7 @@ public class ButtonGroup : BorderCompositeView<ButtonGroup>
     {
         get => field;
         set => this.SetProperty(ref field, value, RefreshButtonStates);
-    } = new Color(51, 65, 85);
+    } = Color.Transparent;
     #endregion
 
     #region SelectedTextColor
@@ -162,7 +163,7 @@ public class ButtonGroup : BorderCompositeView<ButtonGroup>
     {
         get => field;
         set => this.SetProperty(ref field, value, RefreshButtonStates);
-    } = Color.White;
+    } = Color.Transparent;
     #endregion
 
     public string? SelectedItem => SelectedIndex >= 0 && SelectedIndex < Items.Count ? Items[SelectedIndex] : null;
@@ -172,9 +173,22 @@ public class ButtonGroup : BorderCompositeView<ButtonGroup>
 
     public ButtonGroup()
     {
+        InitializeTheme();
         Cursor = CursorShape.Hand;
         BorderThickness = 1f;
-        BorderBrush = new Color(203, 213, 225);
+    }
+
+    protected override void OnThemeApplied(Theme theme)
+    {
+        var palette = theme.Colors;
+        SetThemeValue(nameof(Background), (Brush)palette.Surface, value => Background = value);
+        SetThemeValue(nameof(HoverBackground), (Brush)palette.SurfaceHover, value => HoverBackground = value);
+        SetThemeValue(nameof(PressedBackground), (Brush)palette.SurfacePressed, value => PressedBackground = value);
+        SetThemeValue(nameof(SelectedBackground), (Brush)palette.Primary, value => SelectedBackground = value);
+        SetThemeValue(nameof(SelectedBorderBrush), (Brush)palette.PrimaryPressed, value => SelectedBorderBrush = value);
+        SetThemeValue(nameof(TextColor), (Brush)palette.OnSurface, value => TextColor = value);
+        SetThemeValue(nameof(SelectedTextColor), (Brush)palette.OnPrimary, value => SelectedTextColor = value);
+        SetThemeValue(nameof(BorderBrush), (Brush)palette.Border, value => BorderBrush = value);
     }
 
     protected override void OnBorderBrushChanged()

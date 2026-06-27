@@ -130,12 +130,12 @@ public class EntryPage : Component
                                 .IsReadOnly(true)
                                 .Width(350)
                                 .Text(readOnlyText.Value)
-                                .Background(new Color(35, 35, 40))
+                                .Background(GalleryPalette.Surface)
                                 .TextColor(new Color(180, 180, 190)),
 
                             new Label("You cannot edit or delete this text")
                                 .FontSize(12)
-                                .Foreground(new Color(140, 145, 160))
+                                .Foreground(GalleryPalette.Muted)
                         )
                 ),
 
@@ -176,7 +176,7 @@ public class EntryPage : Component
                                 .Width(350)
                                 .Placeholder("Minimal style...")
                                 .BorderThickness(0)
-                                .Background(new Color(30, 30, 35))
+                                .Background(GalleryPalette.Surface)
                         )
                 ),
 
@@ -186,7 +186,7 @@ public class EntryPage : Component
                         .Children(
                             new Label("Login Form:")
                                 .FontSize(16)
-                                .Foreground(Color.White),
+                                .Foreground(GalleryPalette.OnSurface),
 
                             new VStack()
                                 .Spacing(10)

@@ -7,6 +7,7 @@ using Rayo.Layout;
 using Rayo.Rendering;
 using Rayo.Rendering.Brushes;
 using Rayo.Reactivity;
+using Rayo.Styling;
 using IRenderer = Rayo.Rendering.IRenderer;
 
 public enum ScrollBarVisibility
@@ -45,7 +46,7 @@ public class ScrollView : CompositeView<ScrollView>, IInputHandler, IScrollable,
     {
         get => field;
         set => this.SetProperty(ref field, value);
-    } = new Color(40, 40, 40);
+    } = Color.Transparent;
     #endregion
 
     #region ScrollbarThumb
@@ -54,7 +55,7 @@ public class ScrollView : CompositeView<ScrollView>, IInputHandler, IScrollable,
     {
         get => field;
         set => this.SetProperty(ref field, value);
-    } = new Color(100, 100, 100);
+    } = Color.Transparent;
     #endregion
 
     #region ScrollbarWidth
@@ -243,9 +244,17 @@ public class ScrollView : CompositeView<ScrollView>, IInputHandler, IScrollable,
 
     public ScrollView()
     {
+        InitializeTheme();
         // ScrollView should stretch to fill its parent container by default
         HorizontalAlignment = HorizontalAlignment.Stretch;
         VerticalAlignment = VerticalAlignment.Stretch;
+    }
+
+    protected override void OnThemeApplied(Theme theme)
+    {
+        var palette = theme.Colors;
+        SetThemeValue(nameof(ScrollbarBackground), (Brush)palette.SurfacePressed, value => ScrollbarBackground = value);
+        SetThemeValue(nameof(ScrollbarThumb), (Brush)palette.OnDisabled, value => ScrollbarThumb = value);
     }
 
     public ScrollView(VisualElement content) : this()

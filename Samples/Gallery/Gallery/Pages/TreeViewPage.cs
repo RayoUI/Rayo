@@ -40,9 +40,9 @@ public class TreeViewPage : Component
         var compactTree = new TreeView()
             .Width(350)
             .Height(250)
-            .SelectedColor(new Color(59, 130, 246, 0.3f))
-            .HoverColor(new Color(59, 130, 246, 0.1f))
-            .SelectedTextColor(Color.Black)
+            .SelectedColor(GalleryPalette.Primary.WithAlpha(0.3f))
+            .HoverColor(GalleryPalette.Primary.WithAlpha(0.1f))
+            .SelectedTextColor(GalleryPalette.OnPrimary)
             .HighlightMode(SelectionHighlightMode.Compact)
             .ItemHeight(28);
 
@@ -50,9 +50,9 @@ public class TreeViewPage : Component
         var stretchTree = new TreeView()
             .Width(350)
             .Height(250)
-            .SelectedColor(new Color(59, 130, 246, 0.3f))
-            .HoverColor(new Color(59, 130, 246, 0.1f))
-            .SelectedTextColor(Color.Black)
+            .SelectedColor(GalleryPalette.Primary.WithAlpha(0.3f))
+            .HoverColor(GalleryPalette.Primary.WithAlpha(0.1f))
+            .SelectedTextColor(GalleryPalette.OnPrimary)
             .HighlightMode(SelectionHighlightMode.Stretch)
             .ItemHeight(28);
 
@@ -116,11 +116,11 @@ public class TreeViewPage : Component
                         .Children(
                             new Label()
                                 .Text("Compact Mode (Default)")
-                                .Foreground(new Color(100, 100, 100))
+                                .Foreground(GalleryPalette.Muted)
                                 .FontSize(14),
                             new Label()
                                 .Text("Highlight wraps content")
-                                .Foreground(new Color(120, 120, 120))
+                                .Foreground(GalleryPalette.Muted)
                                 .FontSize(12),
                             compactTree
                         ),
@@ -129,11 +129,11 @@ public class TreeViewPage : Component
                         .Children(
                             new Label()
                                 .Text("Stretch Mode")
-                                .Foreground(new Color(100, 100, 100))
+                                .Foreground(GalleryPalette.Muted)
                                 .FontSize(14),
                             new Label()
                                 .Text("Highlight spans full width")
-                                .Foreground(new Color(120, 120, 120))
+                                .Foreground(GalleryPalette.Muted)
                                 .FontSize(12),
                             stretchTree
                         )
@@ -149,8 +149,8 @@ public class TreeViewPage : Component
         var tree = new TreeView()
             .Width(400)
             .Height(300)
-            .SelectedColor(new Color(59, 130, 246))
-            .HoverColor(new Color(240, 240, 245))
+            .SelectedColor(GalleryPalette.Primary)
+            .HoverColor(GalleryPalette.SurfaceHover)
             .ChevronSize(16f)
             .NodeIconSize(18f);
 
@@ -216,7 +216,7 @@ public class TreeViewPage : Component
                 .Children(
                     new Label()
                         .Text("Tree with folder/file icons from Icons.cs")
-                        .Foreground(new Color(100, 100, 100))
+                        .Foreground(GalleryPalette.Muted)
                         .FontSize(13),
                     tree,
                     new HStack()
@@ -225,12 +225,12 @@ public class TreeViewPage : Component
                             new Button()
                                 .Text("Expand All")
                                 .Background(ColorDefault.Primary)
-                                .TextColor(Color.White)
+                                .TextColor(GalleryPalette.OnPrimary)
                                 .OnTapped(() => tree.ExpandAll()),
                             new Button()
                                 .Text("Collapse All")
                                 .Background(ColorDefault.Secondary)
-                                .TextColor(Color.White)
+                                .TextColor(GalleryPalette.OnSecondary)
                                 .OnTapped(() => tree.CollapseAll())
                         )
                 )
@@ -288,7 +288,7 @@ public class TreeViewPage : Component
                 .Children(
                     new Label()
                         .Text("Different icon types: Settings, Person, Lock, Notifications, Info, Warning, Error")
-                        .Foreground(new Color(100, 100, 100))
+                        .Foreground(GalleryPalette.Muted)
                         .FontSize(13),
                     tree
                 )
@@ -350,7 +350,7 @@ public class TreeViewPage : Component
 
         var checkedLabel = new Label()
             .Text("Checked items: 3")
-            .Foreground(new Color(100, 100, 100))
+            .Foreground(GalleryPalette.Muted)
             .FontSize(14);
 
         tree.OnNodeCheckedChanged((node, isChecked) =>
@@ -365,7 +365,7 @@ public class TreeViewPage : Component
                 .Children(
                     new Label()
                         .Text("Tree with checkboxes enabled (ShowCheckboxes = true)")
-                        .Foreground(new Color(100, 100, 100))
+                        .Foreground(GalleryPalette.Muted)
                         .FontSize(13),
                     tree,
                     checkedLabel
@@ -397,7 +397,7 @@ public class TreeViewPage : Component
 
         _statusLabel = new Label()
             .Text("Status: Ready")
-            .Foreground(new Color(100, 100, 100))
+            .Foreground(GalleryPalette.Muted)
             .FontSize(14);
 
         // Build simple tree
@@ -439,7 +439,7 @@ public class TreeViewPage : Component
                 .Children(
                     new Label()
                         .Text("Try: single click, double click, expand/collapse")
-                        .Foreground(new Color(100, 100, 100))
+                        .Foreground(GalleryPalette.Muted)
                         .FontSize(13),
                     tree,
                     _statusLabel
@@ -509,7 +509,7 @@ public class TreeViewPage : Component
                 new Button()
                     .Text("Find Dog")
                     .Background(ColorDefault.Primary)
-                    .TextColor(Color.White)
+                    .TextColor(GalleryPalette.OnPrimary)
                     .OnTapped(() =>
                     {
                         if (_searchableTree != null)
@@ -521,7 +521,7 @@ public class TreeViewPage : Component
                 new Button()
                     .Text("Find Eagle")
                     .Background(ColorDefault.Secondary)
-                    .TextColor(Color.White)
+                    .TextColor(GalleryPalette.OnSecondary)
                     .OnTapped(() =>
                     {
                         if (_searchableTree != null)
@@ -533,7 +533,7 @@ public class TreeViewPage : Component
                 new Button()
                     .Text("Find Snake")
                     .Background(ColorDefault.Success)
-                    .TextColor(Color.White)
+                    .TextColor(GalleryPalette.OnSuccess)
                     .OnTapped(() =>
                     {
                         if (_searchableTree != null)
@@ -550,7 +550,7 @@ public class TreeViewPage : Component
                 .Children(
                     new Label()
                         .Text("Click buttons to find and reveal specific animals")
-                        .Foreground(new Color(100, 100, 100))
+                        .Foreground(GalleryPalette.Muted)
                         .FontSize(13),
                     searchButtons,
                     _searchableTree
@@ -567,7 +567,7 @@ public class TreeViewPage : Component
             .Width(400)
             .Height(200)
             .SelectedColor(new Color(99, 102, 241))
-            .DisabledTextColor(new Color(200, 200, 200));
+            .DisabledTextColor(GalleryPalette.Muted);
 
         var menu = new TreeNode("Menu")
         {
@@ -600,12 +600,12 @@ public class TreeViewPage : Component
                 .Children(
                     new Label()
                         .Text("Some nodes are disabled (IsEnabled = false)")
-                        .Foreground(new Color(100, 100, 100))
+                        .Foreground(GalleryPalette.Muted)
                         .FontSize(13),
                     tree,
                     new Label()
                         .Text("💡 Disabled nodes cannot be selected or interacted with")
-                        .Foreground(new Color(100, 100, 100))
+                        .Foreground(GalleryPalette.Muted)
                         .FontSize(12)
                 )
         );

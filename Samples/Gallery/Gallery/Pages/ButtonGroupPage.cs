@@ -13,7 +13,7 @@ public class ButtonGroupPage : Component
     public override VisualElement Build()
     {
         _selectionLabel = new Label("Selected: Day")
-            .Foreground(new Color(90, 90, 90))
+            .Foreground(GalleryPalette.Muted)
             .FontSize(13);
 
         return new VStack()

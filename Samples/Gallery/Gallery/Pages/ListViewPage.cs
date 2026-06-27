@@ -72,7 +72,7 @@ public class ListViewPage : Component
     {
         var listView = new ListView<string>();
         listView.ItemSelectedBackground = ColorDefault.Primary;
-        listView.ItemHoverBackground = new Color(60, 60, 70);
+        listView.ItemHoverBackground = GalleryPalette.SurfaceHover;
         listView.ItemSelected += (item, index) =>
         {
             System.Console.WriteLine($"Selected: {item}");

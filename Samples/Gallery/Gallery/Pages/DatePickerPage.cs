@@ -22,9 +22,9 @@ public class DatePickerPage : Component
         dialogPreview.Height(90);
         dialogPreview.HorizontalAlignment(HorizontalAlignment.Stretch);
         dialogPreview.BorderRadius(12);
-        dialogPreview.Background(new Color(38, 41, 52));
+        dialogPreview.Background(GalleryPalette.SurfaceHover);
         dialogPreview.BorderThickness(1);
-        dialogPreview.BorderBrush(new Color(255, 255, 255, 25));
+        dialogPreview.BorderBrush(GalleryPalette.Border);
         dialogPreview.Padding(new Thickness(16));
         dialogPreview.Content(
             new VStack()
@@ -35,7 +35,7 @@ public class DatePickerPage : Component
                         .Foreground(ColorDefault.Secondary),
                     new Label()
                         .FontSize(16)
-                        .Foreground(Color.White)
+                        .Foreground(GalleryPalette.OnSurface)
                         .Text(dialogDate.Map(date => date.ToString("dddd, MMMM d")))
                 )
         );

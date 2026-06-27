@@ -4,6 +4,7 @@ using Rayo.Core.Interfaces; // Added for IInputTransparent
 using Rayo.Reactivity;
 using Rayo.Rendering;
 using Rayo.Rendering.Brushes;
+using Rayo.Styling;
 
 namespace Rayo.Core;
 
@@ -18,6 +19,14 @@ using Thickness = Rayo.Thickness;
 /// </summary>
 public abstract class VisualElement : BindableObject, IDisposable, IInputTransparent
 {
+    [ThreadStatic]
+    private static VisualElement? s_themeApplicationOwner;
+
+    private readonly HashSet<string> _themeManagedProperties = new();
+    private readonly HashSet<string> _themeOverrides = new();
+    private bool _isApplyingTheme;
+    private bool _isTrackingThemeOverrides;
+
     /// <summary>
     /// Static event fired when any element's children are added, removed, or cleared.
     /// Used by DevTools to detect structural changes in the UI tree.
@@ -111,6 +120,18 @@ public abstract class VisualElement : BindableObject, IDisposable, IInputTranspa
         base.OnPropertyChanged(propertyName);
         if (propertyName is null) return;
 
+        if (s_themeApplicationOwner != null &&
+            s_themeApplicationOwner != this)
+        {
+            _themeOverrides.Remove(propertyName);
+        }
+        else if (_isTrackingThemeOverrides &&
+                 !_isApplyingTheme &&
+                 _themeManagedProperties.Contains(propertyName))
+        {
+            _themeOverrides.Add(propertyName);
+        }
+
         var type = GetType();
         if (s_measureProps.TryGetValue(type, out var mp) && mp.Contains(propertyName))
             InvalidateMeasure();
@@ -121,9 +142,124 @@ public abstract class VisualElement : BindableObject, IDisposable, IInputTranspa
     }
     #endregion
 
+    public override bool SetProperty<T>(
+        ref T field,
+        T value,
+        Action? onBeforeChanged = null,
+        [System.Runtime.CompilerServices.CallerMemberName] string? propertyName = null)
+    {
+        TrackThemeOverride(propertyName);
+        return base.SetProperty(ref field, value, onBeforeChanged, propertyName);
+    }
+
+    public override bool SetPropertyCondition<T>(
+        ref T field,
+        T value,
+        Func<T, T, bool>? shouldUpdate = null,
+        Action? onBeforeChanged = null,
+        [System.Runtime.CompilerServices.CallerMemberName] string? propertyName = null)
+    {
+        TrackThemeOverride(propertyName);
+        return base.SetPropertyCondition(ref field, value, shouldUpdate, onBeforeChanged, propertyName);
+    }
+
+    private void TrackThemeOverride(string? propertyName)
+    {
+        if (propertyName == null)
+            return;
+
+        // A composite control may style one of its internal children while its
+        // own theme is being applied. That value belongs to the theme cascade,
+        // not to the consumer, so it must replace any construction-time
+        // override previously recorded by the child.
+        if (s_themeApplicationOwner != null && s_themeApplicationOwner != this)
+        {
+            _themeOverrides.Remove(propertyName);
+            return;
+        }
+
+        if (_isTrackingThemeOverrides &&
+            !_isApplyingTheme &&
+            _themeManagedProperties.Contains(propertyName))
+        {
+            _themeOverrides.Add(propertyName);
+        }
+    }
+
     protected VisualElement()
     {
 
+    }
+
+    /// <summary>
+    /// Applies a theme value unless the property was explicitly changed by the consumer.
+    /// </summary>
+    protected void SetThemeValue<T>(string propertyName, T value, Action<T> setter)
+    {
+        if (_themeOverrides.Contains(propertyName))
+            return;
+
+        _themeManagedProperties.Add(propertyName);
+        bool wasApplyingTheme = _isApplyingTheme;
+        _isApplyingTheme = true;
+        try
+        {
+            setter(value);
+        }
+        finally
+        {
+            _isApplyingTheme = wasApplyingTheme;
+        }
+    }
+
+    /// <summary>
+    /// Applies the current theme during construction and starts tracking explicit overrides.
+    /// </summary>
+    protected void InitializeTheme()
+    {
+        ApplyTheme(UIApplication.Current?.ActiveTheme ?? RayoThemes.Light);
+    }
+
+    /// <summary>
+    /// Clears local theme-property overrides and immediately reapplies the active theme.
+    /// </summary>
+    protected void ResetThemeValues()
+    {
+        _themeOverrides.Clear();
+        ApplyTheme(UIApplication.Current?.ActiveTheme ?? RayoThemes.Light);
+    }
+
+    /// <summary>Called whenever a theme must be applied to this element.</summary>
+    protected virtual void OnThemeApplied(Theme theme) { }
+
+    private void ApplyTheme(Theme theme)
+    {
+        var previousOwner = s_themeApplicationOwner;
+        bool wasApplyingTheme = _isApplyingTheme;
+        s_themeApplicationOwner = this;
+        _isApplyingTheme = true;
+        try
+        {
+            OnThemeApplied(theme);
+            _isTrackingThemeOverrides = true;
+        }
+        finally
+        {
+            _isApplyingTheme = wasApplyingTheme;
+            s_themeApplicationOwner = previousOwner;
+        }
+    }
+
+    internal void NotifyThemeChanged(Theme theme)
+    {
+        // Apply descendants first. Composite controls then get the final word
+        // over their implementation details, matching a style cascade while
+        // preserving explicit customizations on public/user-owned children.
+        foreach (var child in GetChildren().ToArray())
+        {
+            child.NotifyThemeChanged(theme);
+        }
+        ApplyTheme(theme);
     }
 
     internal virtual CornerRadius VisualCornerRadius => CornerRadius.None;
@@ -1286,6 +1422,7 @@ public abstract class VisualElement : BindableObject, IDisposable, IInputTranspa
 
     internal void NotifyMounted()
     {
+        ApplyTheme(UIApplication.Current?.ActiveTheme ?? RayoThemes.Light);
         OnMounted();
         // Use ToArray to avoid collection modification during iteration
         foreach (var child in GetChildren().ToArray())

@@ -15,7 +15,7 @@ public class MenuPage : Component
     {
         _actionLabel = new Label(_lastAction)
             .FontSize(13)
-            .Foreground(new Color(140, 145, 160));
+            .Foreground(GalleryPalette.Muted);
 
         return new VStack()
             .Spacing(20)
@@ -27,9 +27,8 @@ public class MenuPage : Component
                     new VStack()
                         .Spacing(16)
                         .Children(
-                            new Frame()
+                            new PaletteFrame(colors => colors.SurfacePressed)
                                 .Height(40)
-                                .Background(new Color(45, 45, 48))
                                 .Content(
                                     new HStack()
                                         .Spacing(0)
@@ -51,16 +50,15 @@ public class MenuPage : Component
                                 .Children(
                                     new Label("Last action:")
                                         .FontSize(13)
-                                        .Foreground(new Color(180, 185, 195)),
+                                        .Foreground(GalleryPalette.Muted),
                                     _actionLabel
                                 )
                         )
                 ),
 
                 Helper.CreateExampleSection("Multiple Menus (Menu Bar)",
-                    new Frame()
+                    new PaletteFrame(colors => colors.SurfacePressed)
                         .Height(40)
-                        .Background(new Color(45, 45, 48))
                         .BorderRadius(4)
                         .Content(
                             new HStack()
@@ -97,9 +95,8 @@ public class MenuPage : Component
                     new VStack()
                         .Spacing(12)
                         .Children(
-                            new Frame()
+                            new PaletteFrame(colors => colors.SurfacePressed)
                                 .Height(40)
-                                .Background(new Color(45, 45, 48))
                                 .BorderRadius(4)
                                 .Content(
                                     new HStack()
@@ -125,7 +122,7 @@ public class MenuPage : Component
 
                             new Label("Menu items can include icons with custom colors and sizes")
                                 .FontSize(12)
-                                .Foreground(new Color(140, 145, 160))
+                                .Foreground(GalleryPalette.Muted)
                         )
                 ),
 
@@ -137,9 +134,8 @@ public class MenuPage : Component
                     new HStack()
                         .Spacing(16)
                         .Children(
-                            new Frame()
+                            new PaletteFrame(colors => colors.SurfacePressed)
                                 .Height(40)
-                                .Background(new Color(45, 45, 48))
                                 .BorderRadius(4)
                                 .Content(
                                     new HStack()
@@ -155,9 +151,8 @@ public class MenuPage : Component
                                                     .TextAlignment(HorizontalAlignment.Left))
                                         )
                                 ),
-                            new Frame()
+                            new PaletteFrame(colors => colors.SurfacePressed)
                                 .Height(40)
-                                .Background(new Color(45, 45, 48))
                                 .BorderRadius(4)
                                 .Content(
                                     new HStack()
@@ -173,9 +168,8 @@ public class MenuPage : Component
                                                     .TextAlignment(HorizontalAlignment.Center))
                                         )
                                 ),
-                            new Frame()
+                            new PaletteFrame(colors => colors.SurfacePressed)
                                 .Height(40)
-                                .Background(new Color(45, 45, 48))
                                 .BorderRadius(4)
                                 .Content(
                                     new HStack()
@@ -198,9 +192,8 @@ public class MenuPage : Component
                     new VStack()
                         .Spacing(12)
                         .Children(
-                            new Frame()
+                            new PaletteFrame(colors => colors.SurfacePressed)
                                 .Height(40)
-                                .Background(new Color(45, 45, 48))
                                 .BorderRadius(4)
                                 .Content(
                                     new HStack()
@@ -227,7 +220,7 @@ public class MenuPage : Component
                                 ),
                             new Label("Click menu items to trigger actions")
                                 .FontSize(12)
-                                .Foreground(new Color(120, 125, 140))
+                                .Foreground(GalleryPalette.Muted)
                         )
                 ),
 
@@ -245,8 +238,7 @@ public class MenuPage : Component
                 ),
 
                 Helper.CreateExampleSection("Usage Example",
-                    new Frame()
-                        .Background(new Color(30, 33, 42))
+                    new PaletteFrame(colors => colors.Surface)
                         .BorderRadius(8)
                         .Padding(new Thickness(16))
                         .Content(
@@ -288,9 +280,8 @@ public class MenuPage : Component
             .Spacing(0)
             .Children(
                 // Menu bar
-                new Frame()
+                new PaletteFrame(colors => colors.SurfacePressed)
                     .Height(32)
-                    .Background(new Color(32, 32, 36))
                     .HorizontalAlignment(HorizontalAlignment.Stretch)
                     .Content(
                         new HStack()
@@ -302,12 +293,10 @@ public class MenuPage : Component
                                     .Spacing(8)
                                     .Padding(new Thickness(12, 0, 16, 0))
                                     .Children(
-                                        new Icon(Icons.Edit)
-                                            .Size(16)
-                                            .Color(new Color(59, 130, 246)),
-                                        new Label("Rayo Editor")
+                                        new PaletteIcon(Icons.Edit, colors => colors.Primary)
+                                            .Size(16),
+                                        new PaletteLabel("Rayo Editor", colors => colors.OnSurface)
                                             .FontSize(12)
-                                            .Foreground(new Color(200, 205, 215))
                                     ),
 
                                 // Menus
@@ -350,9 +339,8 @@ public class MenuPage : Component
                     ),
 
                 // Simulated content area
-                new Frame()
+                new PaletteFrame(colors => colors.Background)
                     .Height(120)
-                    .Background(new Color(25, 25, 30))
                     .HorizontalAlignment(HorizontalAlignment.Stretch)
                     .Content(
                         new VStack()
@@ -360,15 +348,12 @@ public class MenuPage : Component
                             .Padding(new Thickness(16))
                             .Alignment(Alignment.Center)
                             .Children(
-                                new Icon(Icons.Edit)
-                                    .Size(32)
-                                    .Color(new Color(80, 85, 100)),
-                                new Label("Application Content Area")
-                                    .FontSize(14)
-                                    .Foreground(new Color(100, 105, 120)),
-                                new Label("Click the menus above to see actions")
+                                new PaletteIcon(Icons.Edit, colors => colors.OnDisabled)
+                                    .Size(32),
+                                new PaletteLabel("Application Content Area", colors => colors.OnDisabled)
+                                    .FontSize(14),
+                                new PaletteLabel("Click the menus above to see actions", colors => colors.OnDisabled)
                                     .FontSize(12)
-                                    .Foreground(new Color(80, 85, 100))
                             )
                     )
             );
@@ -394,7 +379,7 @@ public class MenuPage : Component
                     .Color(new Color(34, 197, 94)),
                 new Label(text)
                     .FontSize(14)
-                    .Foreground(new Color(180, 185, 195))
+                    .Foreground(GalleryPalette.Muted)
             );
     }
 }

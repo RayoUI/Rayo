@@ -12,10 +12,10 @@ public class CheckboxPage : Component
 {
     public override VisualElement Build()
     {
-        var isChecked = new Signal<bool>(false);
-        var option1 = new Signal<bool>(true);
-        var option2 = new Signal<bool>(false);
-        var option3 = new Signal<bool>(false);
+        var isChecked = UseSignal<bool>(false);
+        var option1 = UseSignal<bool>(true);
+        var option2 = UseSignal<bool>(false);
+        var option3 = UseSignal<bool>(false);
 
         return new VStack()
             .Spacing(20)
@@ -41,9 +41,8 @@ public class CheckboxPage : Component
                     new VStack()
                         .Spacing(12)
                         .Children(
-                            new Label("Select your preferences:")
-                                .FontSize(14)
-                                .Foreground(ColorDefault.Secondary),
+                            new PaletteLabel("Select your preferences:", colors => colors.OnSurface)
+                                .FontSize(14),
 
                             new Checkbox("Receive email notifications")
                                 .IsChecked(option1.Value)
@@ -57,8 +56,7 @@ public class CheckboxPage : Component
                                 .IsChecked(option3.Value)
                                 .OnChanged(value => option3.Value = value),
 
-                            new Frame()
-                                .Background(new Color(40, 40, 50))
+                            new PaletteFrame(colors => colors.SurfaceHover)
                                 .BorderRadius(6)
                                 .Padding(new Thickness(12))
                                 .Margin(new Thickness(0, 10, 0, 0))
@@ -73,7 +71,6 @@ public class CheckboxPage : Component
                                                 return $"Selected: {count} option(s)";
                                             })
                                         )
-                                        .Foreground(ColorDefault.Info)
                                 )
                         )
                 ),

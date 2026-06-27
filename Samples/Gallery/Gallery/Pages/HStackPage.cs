@@ -29,7 +29,7 @@ public class HStackPage : Component
                 Helper.CreateExampleSection("Alignment - Vertical Center",
                     new Frame()
                         .Height(100)
-                        .Background(new Color(30, 30, 35))
+                        .Background(GalleryPalette.Surface)
                         .Content(
                             new HStack()
                                 .Spacing(15)
@@ -45,7 +45,7 @@ public class HStackPage : Component
 
                 Helper.CreateExampleSection("Alignment - Horizontal End",
                     new Frame()
-                        .Background(new Color(30, 30, 35))
+                        .Background(GalleryPalette.Surface)
                         .Content(
                             new HStack()
                                 .Spacing(10)
@@ -59,14 +59,16 @@ public class HStackPage : Component
                 ),
 
                 Helper.CreateExampleSection("Spacing and Padding",
-                    new HStack()
-                        .Spacing(30)
+                    new PaletteFrame(colors => colors.SurfaceHover)
                         .Padding(new Thickness(20))
-                        .Background(new Color(45, 48, 58))
-                        .Children(
-                            CreateSquare(40, Color.White),
-                            CreateSquare(40, Color.White),
-                            CreateSquare(40, Color.White)
+                        .Content(
+                            new HStack()
+                                .Spacing(30)
+                                .Children(
+                                    CreatePaletteSquare(40, colors => colors.Primary),
+                                    CreatePaletteSquare(40, colors => colors.Success),
+                                    CreatePaletteSquare(40, colors => colors.Warning)
+                                )
                         )
                 ),
 
@@ -76,7 +78,7 @@ public class HStackPage : Component
                         .Children(
                             new Button().Text("Login").Padding(new Thickness(12, 6, 12, 6)),
                             new Button().Text("Register").Padding(new Thickness(12, 6, 12, 6)),
-                            new Icon(Icons.Settings).Size(24).Color(Color.White)
+                            new Icon(Icons.Settings).Size(24).Color(GalleryPalette.OnSurface)
                         )
                 )
             );
@@ -87,6 +89,13 @@ public class HStackPage : Component
         return new Frame()
             .Size(new Size(size, size))
             .Background(color)
+            .BorderRadius(8);
+    }
+
+    private VisualElement CreatePaletteSquare(float size, Func<Rayo.Styling.ColorPalette, Color> color)
+    {
+        return new PaletteFrame(color)
+            .Size(new Size(size, size))
             .BorderRadius(8);
     }
 }

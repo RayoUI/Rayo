@@ -23,7 +23,7 @@ public abstract class BindableObject : INotifyPropertyChanged
     /// Sets a field value and raises PropertyChanged if the value changed.
     /// Returns true if the value was changed.
     /// </summary>
-    public bool SetProperty<T>(
+    public virtual bool SetProperty<T>(
         ref T field, 
         T value,
         Action? onBeforeChanged = null, 
@@ -38,7 +38,7 @@ public abstract class BindableObject : INotifyPropertyChanged
     } 
 
 
-    public bool SetPropertyCondition<T>(
+    public virtual bool SetPropertyCondition<T>(
         ref T field,
         T value,
         Func<T, T, bool>? shouldUpdate = null,

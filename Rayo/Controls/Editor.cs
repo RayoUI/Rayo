@@ -7,6 +7,7 @@ using Rayo.Core.Interfaces;
 using Rayo.Reactivity;
 using Rayo.Rendering;
 using Rayo.Rendering.Brushes;
+using Rayo.Styling;
 
 /// <summary>
 /// Multi-line text input control (MAUI-compatible Editor).
@@ -270,7 +271,7 @@ public class Editor : TextBox<Editor>, IScrollable
     {
         get => field;
         set => this.SetProperty(ref field, value);
-    } = new Color(40, 40, 40);
+    } = Color.Transparent;
     #endregion
 
     #region ScrollbarThumb
@@ -282,8 +283,15 @@ public class Editor : TextBox<Editor>, IScrollable
     {
         get => field;
         set => this.SetProperty(ref field, value);
-    } = new Color(100, 100, 100);
+    } = Color.Transparent;
     #endregion
+
+    protected override void OnThemeApplied(Theme theme)
+    {
+        base.OnThemeApplied(theme);
+        SetThemeValue(nameof(ScrollbarBackground), (Brush)theme.Colors.SurfacePressed, value => ScrollbarBackground = value);
+        SetThemeValue(nameof(ScrollbarThumb), (Brush)theme.Colors.OnDisabled, value => ScrollbarThumb = value);
+    }
 
     #region ScrollbarWidth
     /// <summary>

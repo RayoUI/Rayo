@@ -35,7 +35,7 @@ public class StepperPage : Component
 
                             new Label()
                                 .Text(value1.Map(v => $"Value: {v}"))
-                                .Foreground(Color.White)
+                                .Foreground(GalleryPalette.OnSurface)
                         )
                 ),
 
@@ -60,7 +60,7 @@ public class StepperPage : Component
 
                                     new Label()
                                         .Text(value2.Map(v => $"Value: {v}"))
-                                        .Foreground(Color.White)
+                                        .Foreground(GalleryPalette.OnSurface)
                                 )
                         )
                 ),

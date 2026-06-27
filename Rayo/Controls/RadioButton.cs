@@ -7,6 +7,7 @@ using Rayo.Reactivity;
 using Rayo.Rendering;
 using Rayo.Rendering.Brushes;
 using Rayo.Rendering.Graphics.VectorGraphics;
+using Rayo.Styling;
 using IRenderer = Rayo.Rendering.IRenderer;
 
 /// <summary>
@@ -47,7 +48,7 @@ public class RadioButton : BorderView<RadioButton>,
     {
         get => field;
         set => this.SetProperty(ref field, value);
-    } = new Color(40, 40, 40);
+    } = Color.Transparent;
     #endregion
 
     #region CheckedBackground
@@ -55,7 +56,7 @@ public class RadioButton : BorderView<RadioButton>,
     {
         get => field;
         set => this.SetProperty(ref field, value);
-    } = new Color(59, 130, 246);
+    } = Color.Transparent;
     #endregion
 
     #region HoverBackground
@@ -63,7 +64,15 @@ public class RadioButton : BorderView<RadioButton>,
     {
         get => field;
         set => this.SetProperty(ref field, value);
-    } = new Color(50, 50, 50);
+    } = Color.Transparent;
+    #endregion
+
+    #region PressedBackground
+    public Brush PressedBackground
+    {
+        get => field;
+        set => this.SetProperty(ref field, value);
+    } = Color.Transparent;
     #endregion
 
     #region DotColor
@@ -71,7 +80,7 @@ public class RadioButton : BorderView<RadioButton>,
     {
         get => field;
         set => this.SetProperty(ref field, value);
-    } = Color.White;
+    } = Color.Transparent;
     #endregion
 
     #region LabelColor
@@ -79,7 +88,7 @@ public class RadioButton : BorderView<RadioButton>,
     {
         get => field;
         set => this.SetProperty(ref field, value);
-    } = Color.White;
+    } = Color.Transparent;
     #endregion
 
     #region CircleSize
@@ -178,7 +187,7 @@ public class RadioButton : BorderView<RadioButton>,
 
     public RadioButton()
     {
-        BorderBrush = new Color(100, 100, 100);
+        InitializeTheme();
         BorderThickness = 2;
 
         // Setup gesture recognizers
@@ -197,6 +206,18 @@ public class RadioButton : BorderView<RadioButton>,
     {
         Label = label;
         GroupName = groupName;
+    }
+
+    protected override void OnThemeApplied(Theme theme)
+    {
+        var palette = theme.Colors;
+        SetThemeValue(nameof(Background), (Brush)palette.Surface, value => Background = value);
+        SetThemeValue(nameof(HoverBackground), (Brush)palette.SurfaceHover, value => HoverBackground = value);
+        SetThemeValue(nameof(PressedBackground), (Brush)palette.SurfacePressed, value => PressedBackground = value);
+        SetThemeValue(nameof(CheckedBackground), (Brush)palette.Primary, value => CheckedBackground = value);
+        SetThemeValue(nameof(DotColor), (Brush)palette.OnPrimary, value => DotColor = value);
+        SetThemeValue(nameof(LabelColor), (Brush)palette.OnSurface, value => LabelColor = value);
+        SetThemeValue(nameof(BorderBrush), (Brush)palette.Border, value => BorderBrush = value);
     }
 
     // =========================================================================
@@ -242,7 +263,7 @@ public class RadioButton : BorderView<RadioButton>,
 
     private void UpdateVisualState()
     {
-        _currentBackground = IsPressed ? new Color(30, 30, 30) :
+        _currentBackground = IsPressed ? PressedBackground :
                            IsHovered ? HoverBackground :
                            Background;
     }

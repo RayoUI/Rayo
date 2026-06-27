@@ -95,7 +95,7 @@ public class AnimationPage : Component
     private VisualElement CreateControlFrame()
     {
         return new Frame()
-            .Background(new Color(35, 35, 40))
+            .Background(GalleryPalette.Surface)
             .BorderRadius(8)
             .Padding(new Thickness(16))
             .Content(
@@ -105,25 +105,25 @@ public class AnimationPage : Component
                     .Children(
                         new Button()
                             .Text("Play All Animations")
-                            .Background(new Color(59, 130, 246))
-                            .HoverBackground(new Color(79, 150, 255))
-                            .TextColor(Color.White)
+                            .Background(GalleryPalette.Primary)
+                            .HoverBackground(GalleryPalette.PrimaryHover)
+                            .TextColor(GalleryPalette.OnPrimary)
                             .BorderThickness(0)
                             .Padding(new Thickness(20, 12, 20, 12))
                             .OnTapped(PlayAllAnimations),
 
                         new Button()
                             .Text("Reset")
-                            .Background(new Color(100, 105, 120))
-                            .HoverBackground(new Color(120, 125, 140))
-                            .TextColor(Color.White)
+                            .Background(GalleryPalette.Secondary)
+                            .HoverBackground(GalleryPalette.SurfacePressed)
+                            .TextColor(GalleryPalette.OnSecondary)
                             .BorderThickness(0)
                             .Padding(new Thickness(20, 12, 20, 12))
                             .OnTapped(ResetAllAnimations),
 
                         new Label("Click 'Play All' to see easing functions in action")
                             .FontSize(13)
-                            .Foreground(new Color(140, 145, 160))
+                            .Foreground(GalleryPalette.Muted)
                     )
             );
     }
@@ -132,7 +132,7 @@ public class AnimationPage : Component
     {
         var indicator = new Frame();
         indicator.Size(new Size(IndicatorSize, IndicatorSize));
-        indicator.Background(new Color(59, 130, 246));
+        indicator.Background(GalleryPalette.Primary);
         indicator.BorderRadius(12);
 
         var demoState = new EasingDemoState(name, easingFunc, indicator);
@@ -145,12 +145,12 @@ public class AnimationPage : Component
                 new Label(name)
                     .Width(100)
                     .FontSize(13)
-                    .Foreground(new Color(180, 185, 195)),
+                    .Foreground(GalleryPalette.Muted),
 
                 new Frame()
                     .Height(TrackHeight)
                     .Width(TrackContainerWidth)
-                    .Background(new Color(35, 38, 48))
+                    .Background(GalleryPalette.SurfacePressed)
                     .BorderRadius(4)
                     .Content(
                         new Absolute()
@@ -163,18 +163,18 @@ public class AnimationPage : Component
                     .Children(
                         new Button()
                             .Text("Play")
-                            .Background(new Color(59, 130, 246))
-                            .HoverBackground(new Color(79, 150, 255))
-                            .TextColor(Color.White)
+                            .Background(GalleryPalette.Primary)
+                            .HoverBackground(GalleryPalette.PrimaryHover)
+                            .TextColor(GalleryPalette.OnPrimary)
                             .BorderThickness(0)
                             .Padding(new Thickness(12, 8, 12, 8))
                             .OnTapped(() => PlayAnimation(demoState)),
 
                         new Button()
                             .Text("Reset")
-                            .Background(new Color(100, 105, 120))
-                            .HoverBackground(new Color(120, 125, 140))
-                            .TextColor(Color.White)
+                            .Background(GalleryPalette.Secondary)
+                            .HoverBackground(GalleryPalette.SurfacePressed)
+                            .TextColor(GalleryPalette.OnSecondary)
                             .BorderThickness(0)
                             .Padding(new Thickness(12, 8, 12, 8))
                             .OnTapped(() => ResetAnimation(demoState))
@@ -187,10 +187,10 @@ public class AnimationPage : Component
         return new HStack()
             .Spacing(20)
             .Children(
-                CreateCurveGraph("OutQuad", Easing.OutQuad, new Color(59, 130, 246)),
-                CreateCurveGraph("OutCubic", Easing.OutCubic, new Color(34, 197, 94)),
-                CreateCurveGraph("OutElastic", Easing.OutElastic, new Color(168, 85, 247)),
-                CreateCurveGraph("OutBounce", Easing.OutBounce, new Color(239, 68, 68))
+                CreateCurveGraph("OutQuad", Easing.OutQuad, GalleryPalette.Primary),
+                CreateCurveGraph("OutCubic", Easing.OutCubic, GalleryPalette.Success),
+                CreateCurveGraph("OutElastic", Easing.OutElastic, GalleryPalette.Info),
+                CreateCurveGraph("OutBounce", Easing.OutBounce, GalleryPalette.Danger)
             );
     }
 
@@ -202,7 +202,7 @@ public class AnimationPage : Component
 
         var canvas = new Absolute()
             .Size(new Size(width, height))
-            .Background(new Color(30, 33, 42));
+            .Background(GalleryPalette.Surface);
 
         for (int i = 0; i <= steps; i++)
         {

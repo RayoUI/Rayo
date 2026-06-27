@@ -24,7 +24,7 @@ public class CardPage : Component
                             new Card()
                                 .Content(
                                     new Label("This is a basic card with just content. Cards provide a visual container for related information.")
-                                        .Foreground(Color.Black)
+                                        .Foreground(GalleryPalette.OnSurface)
                                 )
                                 .Width(400)
                         ),
@@ -35,11 +35,11 @@ public class CardPage : Component
                                 .Header(
                                     new Label("Card Title")
                                         .FontSize(18)
-                                        .Foreground(Color.Black)
+                                        .Foreground(GalleryPalette.OnSurface)
                                 )
                                 .Content(
                                     new Label("Cards can have a header section with a different background color to visually separate the title from the content.")
-                                        .Foreground(Color.Black)
+                                        .Foreground(GalleryPalette.OnSurface)
                                 )
                                 .Width(400)
                         ),
@@ -51,15 +51,15 @@ public class CardPage : Component
                                 .Header(
                                     new Label("User Profile")
                                         .FontSize(18)
-                                        .Foreground(Color.Black)
+                                        .Foreground(GalleryPalette.OnSurface)
                                 )
                                 .Content(
                                     new VStack()
                                         .Spacing(8)
                                         .Children(
-                                            new Label("Name: John Doe").Foreground(Color.Black),
-                                            new Label("Email: john@example.com").Foreground(Color.Black),
-                                            new Label("Role: Administrator").Foreground(Color.Black)
+                                            new Label("Name: John Doe").Foreground(GalleryPalette.OnSurface),
+                                            new Label("Email: john@example.com").Foreground(GalleryPalette.OnSurface),
+                                            new Label("Role: Administrator").Foreground(GalleryPalette.OnSurface)
                                         )
                                 )
                                 .Footer(
@@ -87,11 +87,11 @@ public class CardPage : Component
                                         .Header(
                                             new Label("With Shadow")
                                                 .FontSize(14)
-                                                .Foreground(Color.Black)
+                                                .Foreground(GalleryPalette.OnSurface)
                                         )
                                         .Content(
                                             new Label("Default card with shadow enabled")
-                                                .Foreground(Color.Black)
+                                                .Foreground(GalleryPalette.OnSurface)
                                         ),
 
                                     // No shadow
@@ -101,11 +101,11 @@ public class CardPage : Component
                                         .Header(
                                             new Label("No Shadow")
                                                 .FontSize(14)
-                                                .Foreground(Color.Black)
+                                                .Foreground(GalleryPalette.OnSurface)
                                         )
                                         .Content(
                                             new Label("Card with shadow disabled")
-                                                .Foreground(Color.Black)
+                                                .Foreground(GalleryPalette.OnSurface)
                                         ),
 
                                     // Custom border
@@ -117,11 +117,11 @@ public class CardPage : Component
                                         .Header(
                                             new Label("Custom Border")
                                                 .FontSize(14)
-                                                .Foreground(Color.Black)
+                                                .Foreground(GalleryPalette.OnSurface)
                                         )
                                         .Content(
                                             new Label("Card with colored border")
-                                                .Foreground(Color.Black)
+                                                .Foreground(GalleryPalette.OnSurface)
                                         )
                                 )
                         ),
@@ -190,22 +190,22 @@ public class CardPage : Component
                                         .Children(
                                             // Product image placeholder
                                             new Frame()
-                                                .Background(new Color(229, 231, 235))
+                                                .Background(GalleryPalette.SurfacePressed)
                                                 .Height(150)
                                                 .BorderRadius(8)
                                                 .Content(
                                                     new Label("Product Image")
-                                                        .Foreground(new Color(107, 114, 128))
+                                                        .Foreground(GalleryPalette.Muted)
                                                         .HorizontalAlignment(HorizontalAlignment.Center)
                                                         .VerticalAlignment(VerticalAlignment.Center)
                                                 ),
 
                                             new Label("Premium Headphones")
                                                 .FontSize(18)
-                                                .Foreground(Color.Black),
+                                                .Foreground(GalleryPalette.OnSurface),
 
                                             new Label("High-quality wireless headphones with noise cancellation")
-                                                .Foreground(new Color(107, 114, 128)),
+                                                .Foreground(GalleryPalette.Muted),
 
                                             new HStack()
                                                 .Spacing(8)
@@ -216,7 +216,7 @@ public class CardPage : Component
                                                         .Foreground(ColorDefault.Primary),
                                                     new Label("$349.99")
                                                         .FontSize(14)
-                                                        .Foreground(new Color(156, 163, 175))
+                                                        .Foreground(GalleryPalette.Muted)
                                                 ),
 
                                             new Button()

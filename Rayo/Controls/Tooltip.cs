@@ -6,6 +6,8 @@ using Rayo.Layout;
 using Rayo.Reactivity;
 using Rayo.Rendering;
 using Rayo.Rendering.Graphics.VectorGraphics;
+using Rayo.Rendering.Brushes;
+using Rayo.Styling;
 
 /// <summary>
 /// Tooltip positioning relative to target element
@@ -37,20 +39,27 @@ internal class TooltipFrame : Frame
 
     public TooltipFrame(string text)
     {
+        InitializeTheme();
         HorizontalAlignment = HorizontalAlignment.Left;
         VerticalAlignment = VerticalAlignment.Top;
         Text = text;
-        this.Background(new Color(50, 50, 50))
-            .Padding(new Thickness(HorizontalPadding, VerticalPadding + ArrowLength, HorizontalPadding, VerticalPadding));
+        this.Padding(new Thickness(HorizontalPadding, VerticalPadding + ArrowLength, HorizontalPadding, VerticalPadding));
         BorderRadius = new CornerRadius(5);
 
         _label = new Label(text)
             .TextHorizontalAlignment(HorizontalAlignment.Center)
             .TextVerticalAlignment(VerticalAlignment.Center)
-            .Foreground(Color.White)
+            .Foreground(RayoThemes.Current.Colors.OnSurface)
             .FontSize(12);
 
         this.Content(_label);
+    }
+
+    protected override void OnThemeApplied(Theme theme)
+    {
+        SetThemeValue(nameof(Background), (Brush)theme.Colors.SurfacePressed, value => Background = value);
+        if (_label != null)
+            _label.Foreground = theme.Colors.OnSurface;
     }
 
     public void UpdateText(string text)

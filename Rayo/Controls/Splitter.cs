@@ -11,6 +11,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
+using Rayo.Styling;
 
 /// <summary>
 /// Defines the orientation of the Splitter.
@@ -54,9 +55,9 @@ public class Splitter : Rayo.Core.Layout<Splitter>, IPointerHandler, IInputHandl
 
     private SplitterOrientation _orientation = SplitterOrientation.Horizontal;
     private float _splitterSize = 6f;
-    private Brush _splitterColor = new Color(40, 44, 52);
-    private Brush _hoverColor = new Color(60, 64, 72);
-    private Brush _dragColor = new Color(59, 130, 246); // Blue-ish
+    private Brush _splitterColor = Color.Transparent;
+    private Brush _hoverColor = Color.Transparent;
+    private Brush _dragColor = Color.Transparent;
 
     // Internal state
     private int _draggedSplitterIndex = -1;
@@ -101,32 +102,37 @@ public class Splitter : Rayo.Core.Layout<Splitter>, IPointerHandler, IInputHandl
     public Brush SplitterColor
     {
         get => _splitterColor;
-        set
-        {
-            _splitterColor = value;
-            MarkNeedsPaint();
-        }
+        set => this.SetProperty(ref _splitterColor, value, MarkNeedsPaint);
     }
 
     public Brush HoverColor
     {
         get => _hoverColor;
-        set => _hoverColor = value;
+        set => this.SetProperty(ref _hoverColor, value, MarkNeedsPaint);
     }
 
     public Brush DragColor
     {
         get => _dragColor;
-        set => _dragColor = value;
+        set => this.SetProperty(ref _dragColor, value, MarkNeedsPaint);
     }
 
     #endregion
 
     public Splitter()
     {
+        InitializeTheme();
         // Default behavior
         HorizontalAlignment = HorizontalAlignment.Stretch;
         VerticalAlignment = VerticalAlignment.Stretch;
+    }
+
+    protected override void OnThemeApplied(Theme theme)
+    {
+        var palette = theme.Colors;
+        SetThemeValue(nameof(SplitterColor), (Brush)palette.Border, value => SplitterColor = value);
+        SetThemeValue(nameof(HoverColor), (Brush)palette.SurfacePressed, value => HoverColor = value);
+        SetThemeValue(nameof(DragColor), (Brush)palette.Primary, value => DragColor = value);
     }
 
     #region IInputHandler

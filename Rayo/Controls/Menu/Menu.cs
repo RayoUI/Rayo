@@ -4,6 +4,7 @@ using Rayo.Core;
 using Rayo.Core.Interactions;
 using Rayo.Layout;
 using Rayo.Rendering;
+using Rayo.Styling;
 
 /// <summary>
 /// A container for menu items, typically used in a MenuBar.
@@ -54,13 +55,10 @@ public class Menu : Component
     {
         var titleButton = new Button();
         titleButton.Text(_title);
-        titleButton.Background(Color.Transparent);
-        titleButton.TextColor(Color.White);
+        titleButton.Variant(ButtonVariant.Ghost);
         titleButton.FontSize(12);
         titleButton.Padding(new Thickness(10, 5));
         titleButton.BorderRadius(0);
-        titleButton.HoverBackground(new Color(60, 60, 60));
-        titleButton.PressedBackground(new Color(40, 40, 40));
         titleButton.OnTapped(() => {
             if (_isOpen)
             {
@@ -105,8 +103,6 @@ public class Menu : Component
             // Ensure button has a minimum size and visible colors
             btn.HorizontalAlignment( HorizontalAlignment.Stretch );
             btn.Height( 30 );
-            btn.Background( Color.Transparent );
-            btn.TextColor( Color.White );
             btn.FontSize( 12 );  // Ensure font size is set
 
             itemButtons.Add(btn);
@@ -119,11 +115,11 @@ public class Menu : Component
         const float menuWidth = 180f;
 
         Frame menuFrame = new Frame();
-        menuFrame.Background( new Color( 45, 45, 48 ) );
+        menuFrame.Background(RayoThemes.Current.Colors.Surface);
         menuFrame.Width( menuWidth );
         menuFrame.X( x );
         menuFrame.Y( y );
-        menuFrame.BorderBrush = new Color( 80, 80, 80 );
+        menuFrame.BorderBrush = RayoThemes.Current.Colors.Border;
         menuFrame.BorderThickness = 1;
         menuFrame.Content(vstack);
         menuFrame.HorizontalAlignment = HorizontalAlignment.Left;

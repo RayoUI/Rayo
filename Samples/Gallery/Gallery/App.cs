@@ -2,6 +2,7 @@
 using Rayo.Core;
 using Rayo.Core.Assets;
 using Rayo.Core.Platform;
+using Rayo.Styling;
 
 namespace Gallery;
 
@@ -96,6 +97,7 @@ public static class App
         ConfigureServices(services);
 
         app.UseServiceProvider(services);
+        app.UseTheme(RayoThemes.Dark);
 
         // Set the main view
         app.SetUI<GalleryBuilder>();

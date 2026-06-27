@@ -6,6 +6,7 @@ using Rayo.Reactivity;
 using Rayo.Rendering;
 using Rayo.Rendering.Brushes;
 using System;
+using Rayo.Styling;
 
 /// <summary>
 /// TimePicker component - Time selection with hour/minute/period dropdowns.
@@ -24,6 +25,7 @@ public class TimePicker : BorderCompositeView<TimePicker>,
     // Visual components
     private Frame? _timeButton;
     private Label? _timeText;
+    private ButtonIcon? _clockIcon;
     private Frame? _pickerFrame;
     private Frame? _dialogOverlay;
     private TimeSpan _originalSelectedTime;
@@ -40,7 +42,7 @@ public class TimePicker : BorderCompositeView<TimePicker>,
     {
         get => field;
         set => this.SetProperty(ref field, value);
-    } = new Color(59, 130, 246);
+    } = Color.Transparent;
     #endregion
 
     #region SelectedColor
@@ -48,7 +50,7 @@ public class TimePicker : BorderCompositeView<TimePicker>,
     {
         get => field;
         set => this.SetProperty(ref field, value);
-    } = new Color(59, 130, 246);
+    } = Color.Transparent;
     #endregion
 
     #region HoverColor
@@ -56,7 +58,7 @@ public class TimePicker : BorderCompositeView<TimePicker>,
     {
         get => field;
         set => this.SetProperty(ref field, value);
-    } = new Color(50, 50, 55);
+    } = Color.Transparent;
     #endregion
 
     #region TextColor
@@ -64,7 +66,7 @@ public class TimePicker : BorderCompositeView<TimePicker>,
     {
         get => field;
         set => this.SetProperty(ref field, value);
-    } = Color.White;
+    } = Color.Transparent;
     #endregion
 
     #region MutedTextColor
@@ -72,19 +74,15 @@ public class TimePicker : BorderCompositeView<TimePicker>,
     {
         get => field;
         set => this.SetProperty(ref field, value);
-    } = new Color(128, 128, 128);
+    } = Color.Transparent;
     #endregion
 
     #region PickerBackground
     public Rendering.Brushes.Brush PickerBackground
     {
         get => field;
-        set
-        {
-            field = value;
-            MarkNeedsPaint();
-        }
-    } = new Color(30, 30, 35);
+        set => this.SetProperty(ref field, value, MarkNeedsPaint);
+    } = Color.Transparent;
     #endregion
 
     #region PickerBorderBrush
@@ -92,7 +90,7 @@ public class TimePicker : BorderCompositeView<TimePicker>,
     {
         get => field;
         set => this.SetProperty(ref field, value);
-    } = new Color(50, 55, 65);
+    } = Color.Transparent;
     #endregion
 
     #region FieldCornerRadius
@@ -144,10 +142,9 @@ public class TimePicker : BorderCompositeView<TimePicker>,
 
     public TimePicker()
     {
-        Background = new Color(40, 45, 60);
+        InitializeTheme();
         Width = 180;
         Height = 44;
-        BorderBrush = new Color(100, 100, 100);
         BorderThickness = 1;
         UpdateFromTimeSpan(SelectedTime);
         BuildComponents();
@@ -156,6 +153,25 @@ public class TimePicker : BorderCompositeView<TimePicker>,
         {
             AddChild(_timeButton);
         }
+    }
+
+    protected override void OnThemeApplied(Theme theme)
+    {
+        var palette = theme.Colors;
+        SetThemeValue(nameof(Background), (Brush)palette.Surface, value => Background = value);
+        SetThemeValue(nameof(HeaderColor), (Brush)palette.Primary, value => HeaderColor = value);
+        SetThemeValue(nameof(SelectedColor), (Brush)palette.Primary, value => SelectedColor = value);
+        SetThemeValue(nameof(HoverColor), (Brush)palette.SurfaceHover, value => HoverColor = value);
+        SetThemeValue(nameof(TextColor), (Brush)palette.OnSurface, value => TextColor = value);
+        SetThemeValue(nameof(MutedTextColor), (Brush)palette.OnDisabled, value => MutedTextColor = value);
+        SetThemeValue(nameof(PickerBackground), (Brush)palette.Surface, value => PickerBackground = value);
+        SetThemeValue(nameof(PickerBorderBrush), (Brush)palette.Border, value => PickerBorderBrush = value);
+        SetThemeValue(nameof(BorderBrush), (Brush)palette.Border, value => BorderBrush = value);
+
+        ApplyInputAppearance();
+
+        if (_isOpen)
+            RebuildPicker();
     }
 
     protected override void OnBorderBrushChanged()
@@ -208,15 +224,13 @@ public class TimePicker : BorderCompositeView<TimePicker>,
             HorizontalAlignment = HorizontalAlignment.Stretch
         };
 
-        var clockIcon = new ButtonIcon(Icons.Clock)
+        _clockIcon = new ButtonIcon(Icons.Clock)
+            .Variant(ButtonVariant.Ghost)
             .IconSize(18)
             .IconColor(MutedTextColor)
-            .Background(new Color(45, 50, 67))
-            .HoverBackground(new Color(55, 60, 77))
-            .PressedBackground(new Color(35, 40, 57))
             .BorderRadius(new CornerRadius(6))
             .Size(32);
-        clockIcon.OnTapped(() => TogglePicker());
+        _clockIcon.OnTapped(() => TogglePicker());
 
         var inputContent = new HStack
         {
@@ -226,7 +240,7 @@ public class TimePicker : BorderCompositeView<TimePicker>,
             HorizontalAlignment = HorizontalAlignment.Stretch
         };
         inputContent.AddChild(_timeText);
-        inputContent.AddChild(clockIcon);
+        inputContent.AddChild(_clockIcon);
 
         _timeButton = new Frame
         {
@@ -239,6 +253,25 @@ public class TimePicker : BorderCompositeView<TimePicker>,
             BorderRadius = new CornerRadius(FieldCornerRadius)
         };
         _timeButton.Content(inputContent);
+    }
+
+    private void ApplyInputAppearance()
+    {
+        if (_timeText != null)
+            _timeText.Foreground = TextColor;
+
+        if (_clockIcon != null)
+        {
+            _clockIcon.IconColor = MutedTextColor;
+            _clockIcon.Background = PickerBackground;
+            _clockIcon.HoverBackground = HoverColor;
+        }
+
+        if (_timeButton != null)
+        {
+            _timeButton.Background = Background;
+            _timeButton.BorderBrush = BorderBrush;
+        }
     }
 
     private string FormatTime()
@@ -397,7 +430,7 @@ public class TimePicker : BorderCompositeView<TimePicker>,
         var headerLabel = new Label
         {
             Text = "Pick a time",
-            Foreground = Color.White,
+            Foreground = TextColor,
             FontSize = 18
         };
 
@@ -407,7 +440,7 @@ public class TimePicker : BorderCompositeView<TimePicker>,
         var previewTimeLabel = new Label
         {
             Text = timePartText,
-            Foreground = Color.White,
+            Foreground = TextColor,
             FontSize = 24
         };
 
@@ -430,7 +463,7 @@ public class TimePicker : BorderCompositeView<TimePicker>,
         }
 
         var previewFrame = new Frame();
-        previewFrame.Background(new Color(37, 39, 48));
+        previewFrame.Background(HoverColor);
         previewFrame.BorderRadius(new CornerRadius(12));
         previewFrame.Padding(new Thickness(16, 12, 16, 12));
         previewFrame.HorizontalAlignment(HorizontalAlignment.Left);
@@ -476,7 +509,7 @@ public class TimePicker : BorderCompositeView<TimePicker>,
         }
 
         var selectionSurface = new Frame();
-        selectionSurface.Background(new Color(34, 36, 44));
+        selectionSurface.Background(PickerBackground);
         selectionSurface.BorderRadius(new CornerRadius(12));
         selectionSurface.BorderThickness(1);
         selectionSurface.BorderBrush(PickerBorderBrush);
@@ -486,9 +519,7 @@ public class TimePicker : BorderCompositeView<TimePicker>,
         var cancelButton = new Button
         {
             Text = "Cancel",
-            Background = new Color(45, 45, 52),
-            HoverBackground = new Color(55, 55, 62),
-            TextColor = Color.White,
+            Variant = ButtonVariant.Secondary,
             BorderThickness = 0,
             BorderRadius = new CornerRadius(6),
             Width = 100,
@@ -499,9 +530,7 @@ public class TimePicker : BorderCompositeView<TimePicker>,
         var okButton = new Button
         {
             Text = "OK",
-            Background = HeaderColor,
-            HoverBackground = new Color(79, 150, 255),
-            TextColor = Color.White,
+            Variant = ButtonVariant.Primary,
             BorderThickness = 0,
             BorderRadius = new CornerRadius(6),
             Width = 100,
@@ -570,7 +599,7 @@ public class TimePicker : BorderCompositeView<TimePicker>,
                 Height = (int)ItemHeight,
                 Background = isSelected ? SelectedColor : (Brush)Color.Transparent,
                 HoverBackground = isSelected ? SelectedColor : HoverColor,
-                TextColor = isSelected ? (Brush)Color.White : TextColor,
+                TextColor = isSelected ? (Brush)RayoThemes.Current.Colors.OnPrimary : TextColor,
                 BorderThickness = 0,
                 BorderRadius = new CornerRadius(6)
             };
@@ -631,7 +660,7 @@ public class TimePicker : BorderCompositeView<TimePicker>,
             Height = 40,
             Background = !_isPM ? SelectedColor : (Brush)Color.Transparent,
             HoverBackground = !_isPM ? SelectedColor : HoverColor,
-            TextColor = !_isPM ? (Brush)Color.White : TextColor,
+            TextColor = !_isPM ? (Brush)RayoThemes.Current.Colors.OnPrimary : TextColor,
             BorderThickness = 0,
             BorderRadius = new CornerRadius(6)
         };
@@ -650,7 +679,7 @@ public class TimePicker : BorderCompositeView<TimePicker>,
             Height = 40,
             Background = _isPM ? SelectedColor : (Brush)Color.Transparent,
             HoverBackground = _isPM ? SelectedColor : HoverColor,
-            TextColor = _isPM ? (Brush)Color.White : TextColor,
+            TextColor = _isPM ? (Brush)RayoThemes.Current.Colors.OnPrimary : TextColor,
             BorderThickness = 0,
             BorderRadius = new CornerRadius(6)
         };

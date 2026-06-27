@@ -158,11 +158,10 @@ public class UIApplication : IDisposable
     public float WindowHeight => _lastPolledSize.Y > 0 ? _lastPolledSize.Y : _window?.Size.Y ?? 768f;
 
     /// <summary>
-    /// The currently active <see cref="Rayo.Styling.Theme"/>, or <c>null</c> if none has been set.
-    /// When set, <see cref="Rayo.Styling.StyleTokens.Get{T}"/> checks this theme first before
-    /// falling back to its own dictionary.
+    /// The currently active <see cref="Rayo.Styling.Theme"/>.
+    /// Defaults to <see cref="Rayo.Styling.RayoThemes.Light"/>.
     /// </summary>
-    public Theme? ActiveTheme { get; private set; }
+    public Theme ActiveTheme { get; private set; } = RayoThemes.Light;
 
     /// <summary>
     /// Fired after <see cref="UseTheme"/> switches the active theme, so that already-built
@@ -179,6 +178,16 @@ public class UIApplication : IDisposable
         ArgumentNullException.ThrowIfNull(theme);
         ActiveTheme = theme;
         ThemeChanged?.Invoke(theme);
+
+        _tree.Root?.NotifyThemeChanged(theme);
+        foreach (var overlay in _overlays)
+            overlay.NotifyThemeChanged(theme);
+        foreach (var overlay in _tree.Overlays)
+        {
+            if (!_overlays.Contains(overlay))
+                overlay.NotifyThemeChanged(theme);
+        }
+
         return this;
     }
 

@@ -105,7 +105,7 @@ public class IconPage : Component
                         .Children(
                             new Label("Use Label with FontFamily to render icons from registered fonts (like Lineicons)")
                                 .FontSize(12)
-                                .Foreground(new Color(140, 145, 160)),
+                                .Foreground(GalleryPalette.Muted),
 
                             new HStack()
                                 .Spacing(16)
@@ -121,7 +121,7 @@ public class IconPage : Component
                                 ),
 
                             new Frame()
-                                .Background(new Color(30, 33, 42))
+                                .Background(GalleryPalette.Surface)
                                 .BorderRadius(8)
                                 .Padding(new Thickness(12))
                                 .Content(
@@ -162,18 +162,18 @@ public class IconPage : Component
             .Children(
                 new Frame()
                     .Size(new Size(48, 48))
-                    .Background(new Color(45, 48, 58))
+                    .Background(GalleryPalette.SurfaceHover)
                     .BorderRadius(8)
                     .Content(
                         new Icon(iconData)
                             .Size(24)
-                            .Color(Color.White)
+                            .Color(GalleryPalette.OnSurface)
                             .HorizontalAlignment(HorizontalAlignment.Center)
                             .VerticalAlignment(VerticalAlignment.Center)
                     ),
                 new Label(label)
                     .FontSize(10)
-                    .Foreground(new Color(140, 145, 160))
+                    .Foreground(GalleryPalette.Muted)
             );
     }
 
@@ -185,7 +185,7 @@ public class IconPage : Component
             .Children(
                 new Frame()
                     .Size(new Size(size + 16, size + 16))
-                    .Background(new Color(45, 48, 58))
+                    .Background(GalleryPalette.SurfaceHover)
                     .BorderRadius(8)
                     .Content(
                         new Icon(Icons.Star)
@@ -196,7 +196,7 @@ public class IconPage : Component
                     ),
                 new Label(label)
                     .FontSize(11)
-                    .Foreground(new Color(140, 145, 160))
+                    .Foreground(GalleryPalette.Muted)
             );
     }
 
@@ -219,7 +219,7 @@ public class IconPage : Component
                     ),
                 new Label(label)
                     .FontSize(10)
-                    .Foreground(new Color(140, 145, 160))
+                    .Foreground(GalleryPalette.Muted)
             );
     }
 
@@ -236,10 +236,10 @@ public class IconPage : Component
                     .Children(
                         new Icon(iconData)
                             .Size(18)
-                            .Color(Color.White),
+                            .Color(GalleryPalette.OnSurface),
                         new Label(text)
                             .FontSize(14)
-                            .Foreground(Color.White)
+                            .Foreground(GalleryPalette.OnSurface)
                     )
             );
     }
@@ -252,7 +252,7 @@ public class IconPage : Component
             .Children(
                 new Frame()
                     .Size(new Size(48, 48))
-                    .Background(new Color(45, 48, 58))
+                    .Background(GalleryPalette.SurfaceHover)
                     .BorderRadius(8)
                     .Content(
                         new Label(unicodeChar)
@@ -264,7 +264,7 @@ public class IconPage : Component
                     ),
                 new Label(label)
                     .FontSize(10)
-                    .Foreground(new Color(140, 145, 160))
+                    .Foreground(GalleryPalette.Muted)
             );
     }
 
@@ -276,7 +276,7 @@ public class IconPage : Component
             .Children(
                 new Frame()
                     .Size(new Size(size + 16, size + 16))
-                    .Background(new Color(45, 48, 58))
+                    .Background(GalleryPalette.SurfaceHover)
                     .BorderRadius(8)
                     .Content(
                         new Label(unicodeChar)
@@ -288,7 +288,7 @@ public class IconPage : Component
                     ),
                 new Label(label)
                     .FontSize(11)
-                    .Foreground(new Color(140, 145, 160))
+                    .Foreground(GalleryPalette.Muted)
             );
     }
 }

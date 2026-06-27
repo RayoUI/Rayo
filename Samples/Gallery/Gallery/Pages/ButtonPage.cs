@@ -103,21 +103,21 @@ public class ButtonPage : Component
                                 .Width(200)
                                 .Height(40)
                                 .TextAlignment(HorizontalAlignment.Left)
-                                .Background(new Color(60, 63, 73)),
+                                .Background(GalleryPalette.SurfaceHover),
 
                             new Button()
                                 .Text("Center Aligned")
                                 .Width(200)
                                 .Height(40)
                                 .TextAlignment(HorizontalAlignment.Center)
-                                .Background(new Color(60, 63, 73)),
+                                .Background(GalleryPalette.SurfaceHover),
 
                             new Button()
                                 .Text("Right Aligned")
                                 .Width(200)
                                 .Height(40)
                                 .TextAlignment(HorizontalAlignment.Right)
-                                .Background(new Color(60, 63, 73))
+                                .Background(GalleryPalette.SurfaceHover)
                         )
                 ),
 
@@ -127,7 +127,7 @@ public class ButtonPage : Component
                         .Children(
                             new Label("Use Frame with Label for icon-only buttons")
                                 .FontSize(12)
-                                .Foreground(new Color(140, 145, 160)),
+                                .Foreground(GalleryPalette.Muted),
 
                             new HStack()
                                 .Spacing(12)
@@ -137,9 +137,9 @@ public class ButtonPage : Component
                                     CreateButtonIcon("\uEA44", ColorDefault.Primary),     // Home
                                     CreateButtonIcon("\uEA5E", ColorDefault.Success),     // Search
                                     CreateButtonIcon("\uEA5F", ColorDefault.Info),        // Settings
-                                    CreateButtonIcon("\uEA54", new Color(168, 85, 247)),  // User
-                                    CreateButtonIcon("\uEBB3", new Color(34, 197, 94)),   // Atom
-                                    CreateButtonIcon("\uEAA4", new Color(239, 68, 68))    // Trash
+                                    CreateButtonIcon("\uEA54", GalleryPalette.Info),       // User
+                                    CreateButtonIcon("\uEBB3", GalleryPalette.Success),    // Atom
+                                    CreateButtonIcon("\uEAA4", GalleryPalette.Danger)      // Trash
                                 )
                         )
                 ),
@@ -150,7 +150,7 @@ public class ButtonPage : Component
                         .Children(
                             new Label("Combine icons with text using HStack inside Frame")
                                 .FontSize(12)
-                                .Foreground(new Color(140, 145, 160)),
+                                .Foreground(GalleryPalette.Muted),
 
                             new HStack()
                                 .Spacing(12)
@@ -163,7 +163,7 @@ public class ButtonPage : Component
 
                             new Label("Icon on right side")
                                 .FontSize(12)
-                                .Foreground(new Color(140, 145, 160)),
+                                .Foreground(GalleryPalette.Muted),
 
                             new HStack()
                                 .Spacing(12)
@@ -229,7 +229,7 @@ public class ButtonPage : Component
 
                 Helper.CreateExampleSection("Code Example",
                     new Frame()
-                        .Background(new Color(30, 33, 42))
+                        .Background(GalleryPalette.Surface)
                         .BorderRadius(8)
                         .Padding(new Thickness(12))
                         .Content(
@@ -265,7 +265,7 @@ public class ButtonPage : Component
         var label = new Label(icon);
         label.FontFamily("Lineicons");
         label.FontSize(20);
-        label.Foreground(Color.White);
+        label.Foreground(GetOnColor(bgColor));
         label.HorizontalAlignment(HorizontalAlignment.Center);
         label.VerticalAlignment(VerticalAlignment.Center);
 
@@ -282,11 +282,11 @@ public class ButtonPage : Component
         var iconLabel = new Label(icon);
         iconLabel.FontFamily("Lineicons");
         iconLabel.FontSize(16);
-        iconLabel.Foreground(Color.White);
+        iconLabel.Foreground(GetOnColor(bgColor));
 
         var textLabel = new Label(text);
         textLabel.FontSize(14);
-        textLabel.Foreground(Color.White);
+        textLabel.Foreground(GetOnColor(bgColor));
 
         var hstack = new HStack();
         hstack.Spacing(8);
@@ -305,12 +305,12 @@ public class ButtonPage : Component
     {
         var textLabel = new Label(text);
         textLabel.FontSize(14);
-        textLabel.Foreground(Color.White);
+        textLabel.Foreground(GetOnColor(bgColor));
 
         var iconLabel = new Label(icon);
         iconLabel.FontFamily("Lineicons");
         iconLabel.FontSize(16);
-        iconLabel.Foreground(Color.White);
+        iconLabel.Foreground(GetOnColor(bgColor));
 
         var hstack = new HStack();
         hstack.Spacing(8);
@@ -323,6 +323,17 @@ public class ButtonPage : Component
         Frame.Padding(new Thickness(14, 10));
         Frame.Content(hstack);
         return Frame;
+    }
+
+    private static Color GetOnColor(Color background)
+    {
+        var colors = Rayo.Styling.RayoThemes.Current.Colors;
+        if (background == colors.Success) return colors.OnSuccess;
+        if (background == colors.Warning) return colors.OnWarning;
+        if (background == colors.Danger) return colors.OnDanger;
+        if (background == colors.Info) return colors.OnInfo;
+        if (background == colors.Secondary) return colors.OnSecondary;
+        return colors.OnPrimary;
     }
 
     private VisualElement CreateBorderRadiusSection()

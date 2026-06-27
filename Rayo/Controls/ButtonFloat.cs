@@ -68,10 +68,6 @@ public class ButtonFloat : ButtonIcon
 
     public ButtonFloat(IconData iconData) : base(iconData)
     {
-        Background = new Color(59, 130, 246);
-        HoverBackground = new Color(37, 99, 235);
-        PressedBackground = new Color(29, 78, 216);
-        IconColor = Color.White;
         BorderThickness = 0;
         ZIndex = 1000;
 

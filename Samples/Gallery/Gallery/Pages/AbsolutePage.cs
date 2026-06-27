@@ -21,7 +21,7 @@ public class AbsolutePage : Component
                 Helper.CreateExampleSection("Basic Absolute Positioning",
                     new Absolute()
                         .Height(200)
-                        .Background(new Color(25, 28, 35))
+                        .Background(GalleryPalette.Background)
                         .Children(
                             new Frame()
                                 .AbsolutePosition(20, 20)
@@ -52,7 +52,7 @@ public class AbsolutePage : Component
                 Helper.CreateExampleSection("Overlapping Elements",
                     new Absolute()
                         .Height(180)
-                        .Background(new Color(25, 28, 35))
+                        .Background(GalleryPalette.Background)
                         .Children(
                             new Frame()
                                 .AbsolutePosition(50, 30)
@@ -77,12 +77,12 @@ public class AbsolutePage : Component
                 Helper.CreateExampleSection("Mixed Content",
                     new Absolute()
                         .Height(200)
-                        .Background(new Color(25, 28, 35))
+                        .Background(GalleryPalette.Background)
                         .Children(
                             new Label("Top Left")
                                 .AbsolutePosition(10, 10)
                                 .FontSize(14)
-                                .Foreground(Color.White),
+                                .Foreground(GalleryPalette.OnBackground),
 
                             new Label("Center")
                                 .AbsolutePosition(200, 90)
@@ -93,7 +93,7 @@ public class AbsolutePage : Component
                                 .AbsolutePosition(320, 20)
                                 .Text("Button")
                                 .Background(new Color(34, 197, 94))
-                                .TextColor(Color.White)
+                                .TextColor(GalleryPalette.OnSuccess)
                                 .BorderThickness(0)
                                 .Padding(new Thickness(16, 8, 16, 8)),
 
@@ -110,13 +110,13 @@ public class AbsolutePage : Component
                             new Frame()
                                 .AbsolutePosition(250, 120)
                                 .Size(new Size(150, 60))
-                                .Background(new Color(45, 48, 58))
+                                .Background(GalleryPalette.SurfaceHover)
                                 .BorderRadius(8)
                                 .Padding(new Thickness(12))
                                 .Content(
                                     new Label("Nested Frame")
                                         .FontSize(13)
-                                        .Foreground(new Color(180, 185, 195))
+                                        .Foreground(GalleryPalette.Muted)
                                 )
                         )
                 ),
@@ -124,7 +124,7 @@ public class AbsolutePage : Component
                 Helper.CreateExampleSection("Vector Paths - Cubic Bezier Curves",
                     new Absolute()
                         .Height(220)
-                        .Background(new Color(25, 28, 35))
+                        .Background(GalleryPalette.Background)
                         .Children(
                             // Simple cubic bezier curve
                             new Rayo.Controls.Shapes.Path()
@@ -194,7 +194,7 @@ public class AbsolutePage : Component
                 Helper.CreateExampleSection("Vector Paths - Quadratic Bezier Curves",
                     new Absolute()
                         .Height(200)
-                        .Background(new Color(25, 28, 35))
+                        .Background(GalleryPalette.Background)
                         .Children(
                             // Simple quadratic curve
                             new Rayo.Controls.Shapes.Path()
@@ -245,7 +245,7 @@ public class AbsolutePage : Component
                 Helper.CreateExampleSection("SVG Path Syntax",
                     new Absolute()
                         .Height(200)
-                        .Background(new Color(25, 28, 35))
+                        .Background(GalleryPalette.Background)
                         .Children(
                             // Star using SVG syntax
                             new Rayo.Controls.Shapes.Path("M 50 0 L 61 35 L 98 35 L 68 57 L 79 91 L 50 70 L 21 91 L 32 57 L 2 35 L 39 35 Z")
@@ -322,7 +322,7 @@ public class AbsolutePage : Component
                     .Foreground(new Color(59, 130, 246)),
                 new Label(text)
                     .FontSize(14)
-                    .Foreground(new Color(180, 185, 195))
+                    .Foreground(GalleryPalette.Muted)
             );
     }
 }

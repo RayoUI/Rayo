@@ -28,11 +28,49 @@ public sealed class Theme
     /// <summary>The name of this theme (e.g. "light", "dark", "high-contrast").</summary>
     public string Name { get; }
 
-    /// <param name="name">Unique name for this theme.</param>
-    public Theme(string name)
+    /// <summary>Semantic colors shared by all controls.</summary>
+    public ColorPalette Colors { get; private set; }
+
+    /// <summary>Typed tokens used by button controls.</summary>
+    public ButtonTheme Buttons { get; private set; }
+
+    /// <summary>
+    /// Creates a theme using the light palette and its derived control tokens.
+    /// </summary>
+    public Theme(string name) : this(name, ColorPalettes.Light)
+    {
+    }
+
+    /// <summary>
+    /// Creates a theme from semantic colors and optional button-specific tokens.
+    /// </summary>
+    public Theme(string name, ColorPalette colors, ButtonTheme? buttons = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
+        ArgumentNullException.ThrowIfNull(colors);
+
         Name = name;
+        Colors = colors;
+        Buttons = buttons ?? ButtonTheme.FromPalette(colors);
+    }
+
+    /// <summary>
+    /// Replaces the semantic palette and regenerates control tokens from it.
+    /// </summary>
+    public Theme UseColors(ColorPalette colors)
+    {
+        ArgumentNullException.ThrowIfNull(colors);
+        Colors = colors;
+        Buttons = ButtonTheme.FromPalette(colors);
+        return this;
+    }
+
+    /// <summary>Overrides the button-specific tokens for this theme.</summary>
+    public Theme UseButtons(ButtonTheme buttons)
+    {
+        ArgumentNullException.ThrowIfNull(buttons);
+        Buttons = buttons;
+        return this;
     }
 
     /// <summary>Sets a token value. Returns <c>this</c> for chaining.</summary>
@@ -64,4 +102,14 @@ public sealed class Theme
 
     /// <summary>Returns <c>true</c> if this theme contains the given token.</summary>
     public bool Contains(string token) => _tokens.ContainsKey(token);
+}
+
+/// <summary>
+/// Ready-to-use global themes supplied by Rayo.
+/// </summary>
+public static class RayoThemes
+{
+    public static Theme Light { get; } = new("light", ColorPalettes.Light);
+    public static Theme Dark { get; } = new("dark", ColorPalettes.Dark);
+    public static Theme Current => Rayo.Core.UIApplication.Current?.ActiveTheme ?? Light;
 }

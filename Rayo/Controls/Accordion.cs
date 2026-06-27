@@ -8,6 +8,7 @@ using Rayo.Reactivity;
 using Rayo.Rendering;
 using Rayo.Rendering.Brushes;
 using System.Collections.Generic;
+using Rayo.Styling;
 
 /// <summary>
 /// Expandable content section with header
@@ -35,12 +36,8 @@ public class Expander : BorderCompositeView<Expander>
     public Rendering.Brushes.Brush HeaderBackground
     {
         get => field;
-        set
-        {
-            field = value;
-            UpdateHeaderVisuals();
-        }
-    } = new Color(245, 245, 245);
+        set => this.SetProperty(ref field, value, UpdateHeaderVisuals);
+    } = Color.Transparent;
     #endregion
 
     #region HeaderHoverColor
@@ -49,7 +46,7 @@ public class Expander : BorderCompositeView<Expander>
     {
         get => field;
         set => this.SetProperty(ref field, value, UpdateHeaderVisuals);
-    } = new Color(230, 230, 230);
+    } = Color.Transparent;
     #endregion
 
     #region ContentBackground
@@ -63,7 +60,7 @@ public class Expander : BorderCompositeView<Expander>
             _contentFrame?.Background(value);
             MarkNeedsPaint();
         }
-    } = Color.White;
+    } = Color.Transparent;
     #endregion
 
     #region TextColor
@@ -72,7 +69,7 @@ public class Expander : BorderCompositeView<Expander>
     {
         get => field;
         set => this.SetProperty(ref field, value, () => { UpdateHeaderVisuals(); });
-    } = Color.Black;
+    } = Color.Transparent;
     #endregion
 
     #region HeaderPadding
@@ -167,21 +164,28 @@ public class Expander : BorderCompositeView<Expander>
     // Constructors and methods
     public Expander()
     {
-        BorderBrush = new Color(220, 220, 220);
+        InitializeTheme();
         BorderThickness = 1;
         BuildComponents();
     }
 
-    public Expander(string header, VisualElement? content = null)
+    public Expander(string header, VisualElement? content = null) : this()
     {
-        BorderBrush = new Color(220, 220, 220);
-        BorderThickness = 1;
-        BuildComponents();
         Header = header;
         if (content != null)
         {
             Content = content;
         }
+    }
+
+    protected override void OnThemeApplied(Theme theme)
+    {
+        var palette = theme.Colors;
+        SetThemeValue(nameof(HeaderBackground), (Brush)palette.SurfaceHover, value => HeaderBackground = value);
+        SetThemeValue(nameof(HeaderHoverColor), (Brush)palette.SurfacePressed, value => HeaderHoverColor = value);
+        SetThemeValue(nameof(ContentBackground), (Brush)palette.Surface, value => ContentBackground = value);
+        SetThemeValue(nameof(TextColor), (Brush)palette.OnSurface, value => TextColor = value);
+        SetThemeValue(nameof(BorderBrush), (Brush)palette.Border, value => BorderBrush = value);
     }
 
     protected override void OnBorderBrushChanged()

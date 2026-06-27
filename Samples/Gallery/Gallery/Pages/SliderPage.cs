@@ -105,7 +105,7 @@ public class SliderPage : Component
                         .Children(
                             new Label("Audio Settings")
                                 .FontSize(16)
-                                .Foreground(Color.White),
+                                .Foreground(GalleryPalette.OnSurface),
 
                             new VStack()
                                 .Spacing(8)

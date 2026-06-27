@@ -24,7 +24,7 @@ public class DrawerPage : Component
         _rightDrawer = new Drawer()
             .Position(DrawerPosition.Right)
             .DrawerWidth(320)
-            .Background(new Color(40, 45, 55))
+            .Background(GalleryPalette.Surface)
             .Content(BuildDrawerContent("Right Drawer", "This drawer slides in from the right side."));
 
         _topDrawer = new Drawer()
@@ -35,7 +35,7 @@ public class DrawerPage : Component
         _bottomDrawer = new Drawer()
             .Position(DrawerPosition.Bottom)
             .DrawerHeight(250)
-            .Background(new Color(35, 40, 50))
+            .Background(GalleryPalette.Surface)
             .Content(BuildHorizontalDrawerContent("Bottom Drawer"));
 
         return new VStack()
@@ -50,43 +50,43 @@ public class DrawerPage : Component
                         .Children(
                             new Label("Click buttons to open drawers from different positions:")
                                 .FontSize(14)
-                                .Foreground(new Color(180, 185, 195)),
+                                .Foreground(GalleryPalette.Muted),
 
                             new HStack()
                                 .Spacing(12)
                                 .Children(
                                     new Button()
                                         .Text("Left Drawer")
-                                        .Background(new Color(59, 130, 246))
-                                        .HoverBackground(new Color(79, 150, 255))
-                                        .TextColor(Color.White)
+                                        .Background(GalleryPalette.Primary)
+                                        .HoverBackground(GalleryPalette.PrimaryHover)
+                                        .TextColor(GalleryPalette.OnPrimary)
                                         .BorderThickness(0)
                                         .Padding(new Thickness(16, 10, 16, 10))
                                         .OnTapped(() => _leftDrawer?.Open()),
 
                                     new Button()
                                         .Text("Right Drawer")
-                                        .Background(new Color(34, 197, 94))
-                                        .HoverBackground(new Color(54, 217, 114))
-                                        .TextColor(Color.White)
+                                        .Background(GalleryPalette.Success)
+                                        .HoverBackground(GalleryPalette.Success)
+                                        .TextColor(GalleryPalette.OnSuccess)
                                         .BorderThickness(0)
                                         .Padding(new Thickness(16, 10, 16, 10))
                                         .OnTapped(() => _rightDrawer?.Open()),
 
                                     new Button()
                                         .Text("Top Drawer")
-                                        .Background(new Color(168, 85, 247))
-                                        .HoverBackground(new Color(188, 105, 255))
-                                        .TextColor(Color.White)
+                                        .Background(GalleryPalette.Info)
+                                        .HoverBackground(GalleryPalette.Info)
+                                        .TextColor(GalleryPalette.OnInfo)
                                         .BorderThickness(0)
                                         .Padding(new Thickness(16, 10, 16, 10))
                                         .OnTapped(() => _topDrawer?.Open()),
 
                                     new Button()
                                         .Text("Bottom Drawer")
-                                        .Background(new Color(249, 115, 22))
-                                        .HoverBackground(new Color(255, 135, 42))
-                                        .TextColor(Color.White)
+                                        .Background(GalleryPalette.Warning)
+                                        .HoverBackground(GalleryPalette.Warning)
+                                        .TextColor(GalleryPalette.OnWarning)
                                         .BorderThickness(0)
                                         .Padding(new Thickness(16, 10, 16, 10))
                                         .OnTapped(() => _bottomDrawer?.Open())
@@ -122,20 +122,20 @@ public class DrawerPage : Component
             .Children(
                 new Label(title)
                     .FontSize(20)
-                    .Foreground(Color.White),
+                    .Foreground(GalleryPalette.OnSurface),
 
                 new Label(description)
                     .FontSize(14)
-                    .Foreground(new Color(160, 165, 175)),
+                    .Foreground(GalleryPalette.Muted),
 
                 new Frame()
                     .Height(1)
-                    .Background(new Color(60, 65, 80))
+                    .Background(GalleryPalette.Border)
                     .HorizontalAlignment(HorizontalAlignment.Stretch),
 
                 new Label("Navigation")
                     .FontSize(12)
-                    .Foreground(new Color(120, 125, 140)),
+                    .Foreground(GalleryPalette.Muted),
 
                 CreateNavItem("Home", true),
                 CreateNavItem("Profile", false),
@@ -147,9 +147,9 @@ public class DrawerPage : Component
 
                 new Button()
                     .Text("Close Drawer")
-                    .Background(new Color(239, 68, 68))
-                    .HoverBackground(new Color(255, 88, 88))
-                    .TextColor(Color.White)
+                    .Background(GalleryPalette.Danger)
+                    .HoverBackground(GalleryPalette.Danger)
+                    .TextColor(GalleryPalette.OnDanger)
                     .BorderThickness(0)
                     .HorizontalAlignment(HorizontalAlignment.Stretch)
                     .Padding(new Thickness(12, 10, 12, 10))
@@ -169,15 +169,15 @@ public class DrawerPage : Component
                     .Children(
                         new Label(title)
                             .FontSize(18)
-                            .Foreground(Color.White),
+                            .Foreground(GalleryPalette.OnSurface),
 
                         new Frame().Width(1),
 
                         new Button()
                             .Text("Close")
-                            .Background(new Color(239, 68, 68))
-                            .HoverBackground(new Color(255, 88, 88))
-                            .TextColor(Color.White)
+                            .Background(GalleryPalette.Danger)
+                            .HoverBackground(GalleryPalette.Danger)
+                            .TextColor(GalleryPalette.OnDanger)
                             .BorderThickness(0)
                             .Padding(new Thickness(12, 8, 12, 8))
                             .OnTapped(() => Drawer.CloseCurrentDrawer())
@@ -185,7 +185,7 @@ public class DrawerPage : Component
 
                 new Label("This is a horizontal drawer that slides from the edge of the screen.")
                     .FontSize(14)
-                    .Foreground(new Color(160, 165, 175)),
+                    .Foreground(GalleryPalette.Muted),
 
                 new HStack()
                     .Spacing(12)
@@ -200,14 +200,14 @@ public class DrawerPage : Component
 
     private VisualElement CreateNavItem(string text, bool isSelected)
     {
-        var bgColor = isSelected ? new Color(59, 130, 246) : Color.Transparent;
-        var hoverColor = isSelected ? new Color(79, 150, 255) : new Color(50, 55, 70);
+        var bgColor = isSelected ? GalleryPalette.Primary : Color.Transparent;
+        var hoverColor = isSelected ? GalleryPalette.PrimaryHover : GalleryPalette.SurfaceHover;
 
         return new Button()
             .Text(text)
             .Background(bgColor)
             .HoverBackground(hoverColor)
-            .TextColor(Color.White)
+            .TextColor(isSelected ? GalleryPalette.OnPrimary : GalleryPalette.OnSurface)
             .BorderThickness(0)
             .BorderRadius(8)
             .HorizontalAlignment(HorizontalAlignment.Stretch)
@@ -218,9 +218,9 @@ public class DrawerPage : Component
     {
         return new Button()
             .Text(text)
-            .Background(new Color(55, 60, 75))
-            .HoverBackground(new Color(70, 75, 90))
-            .TextColor(Color.White)
+            .Background(GalleryPalette.SurfaceHover)
+            .HoverBackground(GalleryPalette.SurfacePressed)
+            .TextColor(GalleryPalette.OnSurface)
             .BorderThickness(0)
             .Padding(new Thickness(16, 12, 16, 12));
     }
@@ -232,10 +232,10 @@ public class DrawerPage : Component
             .Children(
                 new Label("*")
                     .FontSize(14)
-                    .Foreground(new Color(59, 130, 246)),
+                    .Foreground(GalleryPalette.Primary),
                 new Label(text)
                     .FontSize(14)
-                    .Foreground(new Color(180, 185, 195))
+                    .Foreground(GalleryPalette.Muted)
             );
     }
 }

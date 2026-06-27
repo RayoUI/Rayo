@@ -19,7 +19,7 @@ public class SplitterPage : Component
                 Helper.CreateExampleSection("Horizontal Splitter",
                     new Frame()
                         .Height(200)
-                        .Background(new Color(25, 28, 35))
+                        .Background(GalleryPalette.Background)
                         .Content(
                             new Splitter()
                                 .Orientation(SplitterOrientation.Horizontal)
@@ -33,7 +33,7 @@ public class SplitterPage : Component
                                             new Label("Left (Fixed Width)")
                                                 .VerticalAlignment(VerticalAlignment.Center)
                                                 .HorizontalAlignment(HorizontalAlignment.Center)
-                                                .Foreground(Color.White)
+                                                .Foreground(GalleryPalette.OnBackground)
                                         ),
 
                                     // Center Frame (Flexible)
@@ -43,7 +43,7 @@ public class SplitterPage : Component
                                             new Label("Center (Star)")
                                                 .VerticalAlignment(VerticalAlignment.Center)
                                                 .HorizontalAlignment(HorizontalAlignment.Center)
-                                                .Foreground(Color.White)
+                                                .Foreground(GalleryPalette.OnBackground)
                                         ),
                                     
                                     // Right Frame (Fixed width initially)
@@ -54,7 +54,7 @@ public class SplitterPage : Component
                                             new Label("Right (Fixed)")
                                                 .VerticalAlignment(VerticalAlignment.Center)
                                                 .HorizontalAlignment(HorizontalAlignment.Center)
-                                                .Foreground(Color.White)
+                                                .Foreground(GalleryPalette.OnBackground)
                                         )
                                 )
                         )
@@ -63,7 +63,7 @@ public class SplitterPage : Component
                 Helper.CreateExampleSection("Vertical Splitter",
                     new Frame()
                         .Height(300)
-                        .Background(new Color(25, 28, 35))
+                        .Background(GalleryPalette.Background)
                         .Content(
                             new Splitter()
                                 .Orientation(SplitterOrientation.Vertical)
@@ -77,7 +77,7 @@ public class SplitterPage : Component
                                             new Label("Top (Fixed Height)")
                                                 .VerticalAlignment(VerticalAlignment.Center)
                                                 .HorizontalAlignment(HorizontalAlignment.Center)
-                                                .Foreground(Color.White)
+                                                .Foreground(GalleryPalette.OnBackground)
                                         ),
 
                                     // Bottom Frame (Flexible)
@@ -87,7 +87,7 @@ public class SplitterPage : Component
                                             new Label("Bottom (Star)")
                                                 .VerticalAlignment(VerticalAlignment.Center)
                                                 .HorizontalAlignment(HorizontalAlignment.Center)
-                                                .Foreground(Color.White)
+                                                .Foreground(GalleryPalette.OnBackground)
                                         )
                                 )
                         )
@@ -96,7 +96,7 @@ public class SplitterPage : Component
                 Helper.CreateExampleSection("Nested Splitters (IDE Layout)",
                     new Frame()
                         .Height(300)
-                        .Background(new Color(25, 28, 35))
+                        .Background(GalleryPalette.Background)
                         .Content(
                             new Splitter()
                                 .Orientation(SplitterOrientation.Horizontal)
@@ -104,11 +104,11 @@ public class SplitterPage : Component
                                     // Explorer (Left)
                                     new Frame()
                                         .Width(150)
-                                        .Background(new Color(30, 30, 35))
+                                        .Background(GalleryPalette.Surface)
                                         .Content(
                                             new Label("Explorer")
                                                 .Padding(new Thickness(5))
-                                                .Foreground(new Color(150, 150, 150))
+                                                .Foreground(GalleryPalette.Muted)
                                         ),
 
                                     // Main Area (Right)
@@ -121,17 +121,17 @@ public class SplitterPage : Component
                                                 .Content(
                                                     new Label("Code Editor")
                                                         .Padding(new Thickness(10))
-                                                        .Foreground(Color.White)
+                                                        .Foreground(GalleryPalette.OnBackground)
                                                 ),
                                             
                                             // Terminal (Bottom)
                                             new Frame()
                                                 .Height(100)
-                                                .Background(new Color(40, 40, 45))
+                                                .Background(GalleryPalette.SurfaceHover)
                                                 .Content(
                                                     new Label("Terminal")
                                                         .Padding(new Thickness(5))
-                                                        .Foreground(new Color(180, 180, 180))
+                                                        .Foreground(GalleryPalette.Muted)
                                                 )
                                         )
                                 )
@@ -162,7 +162,7 @@ public class SplitterPage : Component
                     .Foreground(new Color(59, 130, 246)),
                 new Label(text)
                     .FontSize(14)
-                    .Foreground(new Color(180, 185, 195))
+                    .Foreground(GalleryPalette.Muted)
             );
     }
 }

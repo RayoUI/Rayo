@@ -9,6 +9,7 @@ using Rayo.Layout;
 using Rayo.Reactivity;
 using Rayo.Rendering;
 using Rayo.Rendering.Brushes;
+using Rayo.Styling;
 using Rayo.Rendering.Graphics.VectorGraphics;
 using System.Numerics;
 using IRenderer = Rayo.Rendering.IRenderer;
@@ -70,45 +71,46 @@ public class TabControl : CompositeView<TabControl>, IFrameAnimation
     private float _dragPointerY;
     private bool _autoScrollActive;
     private bool _autoScrollRegistered;
+    private bool _isApplyingThemeStyle;
 
     #region TabBackground
     public Brush TabBackground
     {
         get => field;
-        set => this.SetProperty(ref field, value, RebuildHeaders);
-    } = new Color(45, 45, 48);
+        set => this.SetProperty(ref field, value, RefreshHeadersForStyleChange);
+    } = Color.Transparent;
     #endregion
 
     #region TabActiveBackground
     public Brush TabActiveBackground
     {
         get => field;
-        set => this.SetProperty(ref field, value, RebuildHeaders);
-    } = new Color(30, 30, 30);
+        set => this.SetProperty(ref field, value, RefreshHeadersForStyleChange);
+    } = Color.Transparent;
     #endregion
 
     #region TabHoverBackground
     public Brush TabHoverBackground
     {
         get => field;
-        set => this.SetProperty(ref field, value, RebuildHeaders);
-    } = new Color(60, 60, 60);
+        set => this.SetProperty(ref field, value, RefreshHeadersForStyleChange);
+    } = Color.Transparent;
     #endregion
 
     #region TabCloseButtonColor
     public Color TabCloseButtonColor
     {
         get => field;
-        set => this.SetProperty(ref field, value, RebuildHeaders);
-    } = new Color(200, 200, 200);
+        set => this.SetProperty(ref field, value, RefreshHeadersForStyleChange);
+    } = Color.Transparent;
     #endregion
 
     #region TabCloseButtonHoverColor
     public Color TabCloseButtonHoverColor
     {
         get => field;
-        set => this.SetProperty(ref field, value, RebuildHeaders);
-    } = Color.White;
+        set => this.SetProperty(ref field, value, RefreshHeadersForStyleChange);
+    } = Color.Transparent;
     #endregion
 
     #region TabCloseButtonSize
@@ -131,16 +133,16 @@ public class TabControl : CompositeView<TabControl>, IFrameAnimation
     public Color TabAccentColor
     {
         get => field;
-        set => this.SetProperty(ref field, value, RebuildHeaders);
-    } = new Color(0, 122, 204);
+        set => this.SetProperty(ref field, value, RefreshHeadersForStyleChange);
+    } = Color.Transparent;
     #endregion
 
     #region TabDropIndicatorColor
     public Color TabDropIndicatorColor
     {
         get => field;
-        set => this.SetProperty(ref field, value, RebuildHeaders);
-    } = new Color(0, 122, 204);
+        set => this.SetProperty(ref field, value, RefreshHeadersForStyleChange);
+    } = Color.Transparent;
     #endregion
 
     #region ContentBackground
@@ -152,7 +154,7 @@ public class TabControl : CompositeView<TabControl>, IFrameAnimation
             if (_contentFrame != null)
                 _contentFrame.Background = value;
         });
-    } = new Color(30, 30, 30);
+    } = Color.Transparent;
     #endregion
 
     #region TabHeight
@@ -271,7 +273,53 @@ public class TabControl : CompositeView<TabControl>, IFrameAnimation
 
     public TabControl()
     {
+        InitializeTheme();
         CreateVisualTree();
+    }
+
+    protected override void OnThemeApplied(Theme theme)
+    {
+        var palette = theme.Colors;
+        _isApplyingThemeStyle = true;
+        try
+        {
+            SetThemeValue(nameof(TabBackground), (Brush)palette.SurfaceHover, value => TabBackground = value);
+            SetThemeValue(nameof(TabActiveBackground), (Brush)palette.Surface, value => TabActiveBackground = value);
+            SetThemeValue(nameof(TabHoverBackground), (Brush)palette.SurfacePressed, value => TabHoverBackground = value);
+            SetThemeValue(nameof(TabCloseButtonColor), palette.OnDisabled, value => TabCloseButtonColor = value);
+            SetThemeValue(nameof(TabCloseButtonHoverColor), palette.OnSurface, value => TabCloseButtonHoverColor = value);
+            SetThemeValue(nameof(TabAccentColor), palette.Primary, value => TabAccentColor = value);
+            SetThemeValue(nameof(TabDropIndicatorColor), palette.Primary, value => TabDropIndicatorColor = value);
+            SetThemeValue(nameof(ContentBackground), (Brush)palette.Surface, value => ContentBackground = value);
+        }
+        finally
+        {
+            _isApplyingThemeStyle = false;
+        }
+
+        RefreshHeaderTheme();
+    }
+
+    private void RefreshHeaderTheme()
+    {
+        if (_headerStrip == null)
+            return;
+
+        foreach (var header in GetHeaderChildren().OfType<TabHeaderHost>())
+        {
+            header.RefreshThemeStyle();
+        }
+
+        _scrollBackwardButton?.RefreshStyle();
+        _scrollForwardButton?.RefreshStyle();
+        _contentFrame?.MarkNeedsPaint();
+        MarkNeedsPaint();
+    }
+
+    private void RefreshHeadersForStyleChange()
+    {
+        if (!_isApplyingThemeStyle)
+            RebuildHeaders();
     }
 
     /// <summary>
@@ -647,10 +695,10 @@ public class TabControl : CompositeView<TabControl>, IFrameAnimation
     {
         var rightPadding = ShowTabCloseButtons ? TabCloseButtonHitSize + 14f : 10f;
         var textColor = !tab.IsEnabled
-            ? new Color(120, 120, 120)
+            ? RayoThemes.Current.Colors.OnDisabled
             : isSelected
-                ? Color.White
-                : new Color(210, 210, 210);
+                ? RayoThemes.Current.Colors.OnSurface
+                : RayoThemes.Current.Colors.OnDisabled;
 
         return new HStack()
             .Spacing(0)
@@ -1275,6 +1323,32 @@ public class TabControl : CompositeView<TabControl>, IFrameAnimation
             MarkNeedsPaint();
         }
 
+        public void RefreshThemeStyle()
+        {
+            RefreshVisualState();
+
+            if (_owner.TabHeaderTemplate == null)
+            {
+                var textColor = !_tab.IsEnabled
+                    ? RayoThemes.Current.Colors.OnDisabled
+                    : _owner.SelectedIndex == _index
+                        ? RayoThemes.Current.Colors.OnSurface
+                        : RayoThemes.Current.Colors.OnDisabled;
+                ApplyHeaderTextColor(_contentRoot, textColor);
+            }
+        }
+
+        private static void ApplyHeaderTextColor(VisualElement element, Color color)
+        {
+            if (element is Label label)
+                label.Foreground = color;
+
+            foreach (var child in element.GetChildren())
+            {
+                ApplyHeaderTextColor(child, color);
+            }
+        }
+
         private void OnTapDetected(TapGestureEventArgs e)
         {
             var app = UIApplication.Current;
@@ -1425,7 +1499,7 @@ internal class TabScrollButton : ButtonIcon
         _isBackward = isBackward;
         IconData = iconData;
         IconSize = 14f;
-        IconColor = new Color(240, 240, 240, 0.98f);
+        IconColor = RayoThemes.Current.Colors.OnSurface;
         BorderThickness = 0;
         BorderBrush = Color.Transparent;
         BorderRadius = new CornerRadius(0);
@@ -1486,9 +1560,7 @@ internal sealed class TabHeaderCloseButton : ButtonIcon
         _owner = owner;
         IconData = iconData;
         IconSize = owner.TabCloseButtonSize;
-        Background = Color.Transparent;
-        HoverBackground = new Color(255, 255, 255, 0.08f);
-        PressedBackground = new Color(255, 255, 255, 0.14f);
+        Variant = ButtonVariant.Ghost;
         BorderThickness = 0;
         BorderRadius = new CornerRadius(4);
         Padding = new Thickness(0);

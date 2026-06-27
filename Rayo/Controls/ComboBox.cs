@@ -10,6 +10,7 @@ using Rayo.Rendering.Brushes;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
+using Rayo.Styling;
 
 /// <summary>
 /// ComboBox/Dropdown component for selecting from a list of options.
@@ -83,7 +84,7 @@ public class ComboBox : BorderCompositeView<ComboBox>,
     {
         get => field;
         set => this.SetProperty(ref field, value, RebuildItems);
-    } = new Color(240, 240, 240);
+    } = Color.Transparent;
     #endregion
 
     #region SelectedColor
@@ -92,7 +93,7 @@ public class ComboBox : BorderCompositeView<ComboBox>,
     {
         get => field;
         set => this.SetProperty(ref field, value, RebuildItems);
-    } = new Color(0, 120, 215);
+    } = Color.Transparent;
     #endregion
 
     #region TextColor
@@ -108,7 +109,25 @@ public class ComboBox : BorderCompositeView<ComboBox>,
                 _chevronIcon.Color = value.PrimaryColor;  // Update chevron color
             }
         });
-    } = Color.Black;
+    } = Color.Transparent;
+    #endregion
+
+    #region SelectedTextColor
+    [PaintProperty]
+    public Brush SelectedTextColor
+    {
+        get => field;
+        set => this.SetProperty(ref field, value, RebuildItems);
+    } = Color.Transparent;
+    #endregion
+
+    #region PlaceholderColor
+    [PaintProperty]
+    public Brush PlaceholderColor
+    {
+        get => field;
+        set => this.SetProperty(ref field, value, UpdateSelectedText);
+    } = Color.Transparent;
     #endregion
 
     #region ItemHeight
@@ -270,10 +289,9 @@ public class ComboBox : BorderCompositeView<ComboBox>,
 
     public ComboBox()
     {
-        Background = Color.White;
+        InitializeTheme();
         Width = 200;
         Height = 32;
-        BorderBrush = new Color(200, 200, 200);
         BorderThickness = 1;
         BuildComponents();
 
@@ -282,6 +300,23 @@ public class ComboBox : BorderCompositeView<ComboBox>,
         {
             AddChild(_dropdownButton);
         }
+    }
+
+    protected override void OnThemeApplied(Theme theme)
+    {
+        var palette = theme.Colors;
+        SetThemeValue(nameof(Background), (Brush)palette.Surface, value => Background = value);
+        SetThemeValue(nameof(HoverColor), (Brush)palette.SurfaceHover, value => HoverColor = value);
+        SetThemeValue(nameof(SelectedColor), (Brush)palette.Primary, value => SelectedColor = value);
+        SetThemeValue(nameof(TextColor), (Brush)palette.OnSurface, value => TextColor = value);
+        SetThemeValue(nameof(SelectedTextColor), (Brush)palette.OnPrimary, value => SelectedTextColor = value);
+        SetThemeValue(nameof(PlaceholderColor), (Brush)palette.OnDisabled, value => PlaceholderColor = value);
+        SetThemeValue(nameof(BorderBrush), (Brush)palette.Border, value => BorderBrush = value);
+
+        if (_dropdownButton != null)
+            _dropdownButton.Background = Background;
+        if (_dropdownFrame != null)
+            _dropdownFrame.Background = Background;
     }
 
     protected override void OnBorderBrushChanged()
@@ -303,7 +338,7 @@ public class ComboBox : BorderCompositeView<ComboBox>,
         // Create the selected text label
         _selectedText = (Label)new Label()
             .Text(Placeholder)
-            .Foreground(new Color(128, 128, 128))
+            .Foreground(PlaceholderColor)
             .FontSize(14)
             .SetInputTransparent(true);
 
@@ -360,7 +395,7 @@ public class ComboBox : BorderCompositeView<ComboBox>,
                 HorizontalAlignment = HorizontalAlignment.Stretch,
                 TextAlignment = ItemTextAlignment,
                 Background = isSelected ? SelectedColor : Color.Transparent,
-                TextColor = isSelected ? Color.White : TextColor,
+                TextColor = isSelected ? SelectedTextColor : TextColor,
                 HoverBackground = isSelected ? SelectedColor : HoverColor,
                 PressedBackground = isSelected ? SelectedColor : HoverColor,
                 BorderThickness = 0,
@@ -389,7 +424,7 @@ public class ComboBox : BorderCompositeView<ComboBox>,
         else
         {
             _selectedText.Text(Placeholder)
-                        .Foreground(new Color(128, 128, 128));
+                        .Foreground(PlaceholderColor);
         }
     }
 

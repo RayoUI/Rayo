@@ -7,6 +7,7 @@ using Rayo.Layout;
 using Rayo.Reactivity;
 using Rayo.Rendering;
 using Rayo.Rendering.Brushes;
+using Rayo.Styling;
 using Rayo.Animation;
 
 
@@ -187,9 +188,8 @@ public class Drawer : BorderCompositeView<Drawer>, IFrameAnimation
         CloseOnOverlayClick = true;
         AnimationDuration = 0.25f;
 
-        Background = new Color(30, 32, 40);
+        InitializeTheme();
         OverlayColor = new Color(0, 0, 0, 0.5f);
-        BorderBrush = new Color(60, 65, 80);
         BorderThickness = 1;
         CornerRadius = new CornerRadius(0);
         Width = 0;
@@ -208,6 +208,12 @@ public class Drawer : BorderCompositeView<Drawer>, IFrameAnimation
             }
         };
         ClipToBounds = true;
+    }
+
+    protected override void OnThemeApplied(Theme theme)
+    {
+        SetThemeValue(nameof(Background), (Brush)theme.Colors.Surface, value => Background = value);
+        SetThemeValue(nameof(BorderBrush), (Brush)theme.Colors.Border, value => BorderBrush = value);
     }
 
     public Drawer DrawerSize(float width, float height)

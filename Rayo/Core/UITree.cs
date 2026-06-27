@@ -116,6 +116,7 @@ public class UITree
         if (!_overlays.Contains(overlay))
         {
             _overlays.Add(overlay);
+            overlay.NotifyMounted();
             MarkOverlayLayerDirty(overlay);
             MarkElementNeedsMeasure(overlay);
             OverlaysChanged?.Invoke();
@@ -129,6 +130,7 @@ public class UITree
     {
         if (_overlays.Remove(overlay))
         {
+            overlay.NotifyUnmounted();
             _layerCache?.RemoveLayer(GetOverlayLayerId(overlay));
             _dirtyRegions.MarkElementDirty(overlay, DirtyReason.LayoutChanged);
             MarkNeedsRender();

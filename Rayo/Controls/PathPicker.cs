@@ -12,6 +12,7 @@ using System.IO;
 using System.Linq;
 using System.Numerics;
 using static Rayo.Core.UIHelpers;
+using Rayo.Styling;
 
 public enum PathPickerMode
 {
@@ -38,6 +39,7 @@ public class PathPicker : BorderCompositeView<PathPicker>, IPointerHandler, IGlo
     private Frame? _pickerButton;
     private Label? _selectedPathLabel;
     private Icon? _modeIcon;
+    private Icon? _browseIcon;
     private Frame? _dialogOverlay;
     private Frame? _dialogCard;
     private Label? _currentDirectoryLabel;
@@ -54,10 +56,9 @@ public class PathPicker : BorderCompositeView<PathPicker>, IPointerHandler, IGlo
 
     public PathPicker()
     {
-        Background = new Color(40, 40, 45);
+        InitializeTheme();
         Width = 320;
         Height = 44;
-        BorderBrush = new Color(100, 100, 100);
         BorderThickness = 1;
         CurrentDirectory = ResolveInitialDirectory(null);
         BuildComponents();
@@ -203,14 +204,14 @@ public class PathPicker : BorderCompositeView<PathPicker>, IPointerHandler, IGlo
     {
         get => field;
         set => this.SetProperty(ref field, value, UpdateSelectedPathLabel);
-    } = Color.White;
+    } = Color.Transparent;
 
     [PaintProperty]
     public Brush PlaceholderColor
     {
         get => field;
         set => this.SetProperty(ref field, value, UpdateSelectedPathLabel);
-    } = new Color(128, 128, 128);
+    } = Color.Transparent;
 
     [PaintProperty]
     public Brush AccentColor
@@ -223,7 +224,7 @@ public class PathPicker : BorderCompositeView<PathPicker>, IPointerHandler, IGlo
                 _modeIcon.Color = value;
             }
         });
-    } = ColorDefault.Primary;
+    } = Color.Transparent;
 
     [LayoutProperty]
     public float FieldCornerRadius
@@ -245,6 +246,24 @@ public class PathPicker : BorderCompositeView<PathPicker>, IPointerHandler, IGlo
     public event Action<string>? PathChanged;
 
     public event Action? SelectionCanceled;
+
+    protected override void OnThemeApplied(Theme theme)
+    {
+        var palette = theme.Colors;
+        SetThemeValue(nameof(Background), (Brush)palette.Surface, value => Background = value);
+        SetThemeValue(nameof(TextColor), (Brush)palette.OnSurface, value => TextColor = value);
+        SetThemeValue(nameof(PlaceholderColor), (Brush)palette.OnDisabled, value => PlaceholderColor = value);
+        SetThemeValue(nameof(AccentColor), (Brush)palette.Primary, value => AccentColor = value);
+        SetThemeValue(nameof(BorderBrush), (Brush)palette.Border, value => BorderBrush = value);
+
+        if (_browseIcon != null)
+            _browseIcon.Color = PlaceholderColor;
+        if (_pickerButton != null)
+            _pickerButton.Background = Background;
+
+        if (_isOpen)
+            RebuildDialogContent(preserveScrollOffset: true);
+    }
 
     public static void CloseCurrentPathPicker()
     {
@@ -375,13 +394,13 @@ public class PathPicker : BorderCompositeView<PathPicker>, IPointerHandler, IGlo
             .HorizontalAlignment(HorizontalAlignment.Stretch)
             .SetInputTransparent(true);
 
-        var browseIcon = new Icon(Icons.Search)
+        _browseIcon = new Icon(Icons.Search)
         {
             Width = 18,
             Height = 18,
             Color = PlaceholderColor
         };
-        browseIcon.SetInputTransparent(true);
+        _browseIcon.SetInputTransparent(true);
 
         var content = new HStack()
             .Spacing(10)
@@ -390,7 +409,7 @@ public class PathPicker : BorderCompositeView<PathPicker>, IPointerHandler, IGlo
             .HorizontalAlignment(HorizontalAlignment.Stretch);
         content.AddChild(_modeIcon);
         content.AddChild(_selectedPathLabel);
-        content.AddChild(browseIcon);
+        content.AddChild(_browseIcon);
 
         _pickerButton = new Frame()
             .Background(Background)
@@ -427,8 +446,8 @@ public class PathPicker : BorderCompositeView<PathPicker>, IPointerHandler, IGlo
         _dialogCard = new Frame()
             .Width(620)
             .Height(560)
-            .Background(new Color(30, 30, 35))
-            .BorderBrush(new Color(50, 55, 65))
+            .Background(RayoThemes.Current.Colors.Surface)
+            .BorderBrush(RayoThemes.Current.Colors.Border)
             .BorderThickness(1)
             .BorderRadius(new CornerRadius(14))
             .Padding(new Thickness(16))
@@ -446,16 +465,16 @@ public class PathPicker : BorderCompositeView<PathPicker>, IPointerHandler, IGlo
         var title = new Label(GetDialogTitle())
             .FontSize(18)
             .Height(28)
-            .Foreground(Color.White);
+            .Foreground(TextColor);
 
         _currentDirectoryLabel = new Label(CurrentDirectory)
             .FontSize(13)
-            .Foreground(ColorDefault.Secondary)
+            .Foreground(PlaceholderColor)
             .HorizontalAlignment(HorizontalAlignment.Stretch);
 
         var pathFrame = new Frame()
             .Height(42)
-            .Background(new Color(37, 39, 48))
+            .Background(RayoThemes.Current.Colors.SurfaceHover)
             .BorderRadius(new CornerRadius(10))
             .Padding(new Thickness(12, 8, 12, 8))
             .HorizontalAlignment(HorizontalAlignment.Stretch)
@@ -470,7 +489,7 @@ public class PathPicker : BorderCompositeView<PathPicker>, IPointerHandler, IGlo
         var status = BuildItems();
         _statusLabel = new Label(status)
             .FontSize(12)
-            .Foreground(string.IsNullOrEmpty(status) ? Color.Transparent : ColorDefault.Secondary);
+            .Foreground(string.IsNullOrEmpty(status) ? Color.Transparent : PlaceholderColor);
 
         _listScrollView = new ScrollView()
             .HorizontalAlignment(HorizontalAlignment.Stretch)
@@ -478,8 +497,8 @@ public class PathPicker : BorderCompositeView<PathPicker>, IPointerHandler, IGlo
             .Content(_itemsStack);
 
         var listFrame = new Frame()
-            .Background(new Color(34, 36, 44))
-            .BorderBrush(new Color(50, 55, 65))
+            .Background(RayoThemes.Current.Colors.Surface)
+            .BorderBrush(RayoThemes.Current.Colors.Border)
             .BorderThickness(1)
             .BorderRadius(new CornerRadius(12))
             .Padding(new Thickness(8))
@@ -539,12 +558,12 @@ public class PathPicker : BorderCompositeView<PathPicker>, IPointerHandler, IGlo
         _fileNameEntry = new Entry(fileName)
         {
             Height = 34,
-            Background = new Color(37, 39, 48),
-            BorderBrush = new Color(50, 55, 65),
+            Background = RayoThemes.Current.Colors.SurfaceHover,
+            BorderBrush = RayoThemes.Current.Colors.Border,
             BorderThickness = 1,
-            TextColor = Color.White,
+            TextColor = TextColor,
             Placeholder = "File name",
-            PlaceholderColor = ColorDefault.Secondary,
+            PlaceholderColor = PlaceholderColor,
             HorizontalAlignment = HorizontalAlignment.Stretch
         };
         _fileNameEntry.OnCompletedHandler(ConfirmSelection);
@@ -555,7 +574,7 @@ public class PathPicker : BorderCompositeView<PathPicker>, IPointerHandler, IGlo
             .Children(
                 new Label("File name")
                     .FontSize(11)
-                    .Foreground(ColorDefault.Secondary),
+                    .Foreground(PlaceholderColor),
                 _fileNameEntry);
     }
 
@@ -581,8 +600,7 @@ public class PathPicker : BorderCompositeView<PathPicker>, IPointerHandler, IGlo
             Text = "Cancel",
             Width = 100,
             Height = 36,
-            Background = new Color(45, 45, 52),
-            HoverBackground = new Color(55, 55, 62),
+            Variant = ButtonVariant.Secondary,
             BorderThickness = 0,
             BorderRadius = new CornerRadius(6)
         };
@@ -593,8 +611,7 @@ public class PathPicker : BorderCompositeView<PathPicker>, IPointerHandler, IGlo
             Text = GetConfirmText(),
             Width = 130,
             Height = 36,
-            Background = ColorDefault.Primary,
-            HoverBackground = ColorDefault.Info,
+            Variant = ButtonVariant.Primary,
             BorderThickness = 0,
             BorderRadius = new CornerRadius(6)
         };
@@ -652,13 +669,13 @@ public class PathPicker : BorderCompositeView<PathPicker>, IPointerHandler, IGlo
         {
             Width = 20,
             Height = 20,
-            Color = entry.IsDirectory ? new Color(96, 165, 250) : new Color(203, 213, 225),
+            Color = entry.IsDirectory ? AccentColor : TextColor,
             VerticalAlignment = VerticalAlignment.Center
         };
 
         var name = new Label(entry.Name)
             .FontSize(14)
-            .Foreground(Color.White)
+            .Foreground(TextColor)
             .HorizontalAlignment(HorizontalAlignment.Stretch)
             .VerticalAlignment(VerticalAlignment.Center)
             .TextHorizontalAlignment(HorizontalAlignment.Left)
@@ -666,7 +683,7 @@ public class PathPicker : BorderCompositeView<PathPicker>, IPointerHandler, IGlo
 
         var details = new Label(entry.IsDirectory ? "Folder" : FormatFileSize(entry.Size))
             .FontSize(12)
-            .Foreground(ColorDefault.Secondary)
+            .Foreground(PlaceholderColor)
             .Width(86)
             .TextHorizontalAlignment(HorizontalAlignment.Right)
             .VerticalAlignment(VerticalAlignment.Center)
@@ -688,10 +705,10 @@ public class PathPicker : BorderCompositeView<PathPicker>, IPointerHandler, IGlo
             BorderRadius = new CornerRadius(7),
             Padding = new Thickness(10, 6, 10, 6),
             NormalBackground = IsPendingSelection(entry.Path)
-                ? new Color(59, 130, 246, 0.35f)
+                ? AccentColor.PrimaryColor.WithAlpha(0.35f)
                 : Color.Transparent,
-            HoverBackground = new Color(255, 255, 255, 0.08f),
-            PressedBackground = new Color(59, 130, 246, 0.45f),
+            HoverBackground = RayoThemes.Current.Colors.SurfaceHover,
+            PressedBackground = AccentColor.PrimaryColor.WithAlpha(0.45f),
             HorizontalAlignment = HorizontalAlignment.Stretch
         };
         row.Content(rowContent);
@@ -793,13 +810,11 @@ public class PathPicker : BorderCompositeView<PathPicker>, IPointerHandler, IGlo
     private ButtonIcon CreateToolbarButton(IconData icon, Action action)
     {
         var button = new ButtonIcon(icon)
+            .Variant(ButtonVariant.Ghost)
             .Size(34)
             .VerticalAlignment(VerticalAlignment.Center)
             .IconSize(16)
-            .IconColor(ColorDefault.Secondary)
-            .Background(new Color(45, 45, 52))
-            .HoverBackground(new Color(55, 55, 62))
-            .PressedBackground(new Color(35, 35, 42))
+            .IconColor(PlaceholderColor)
             .BorderRadius(new CornerRadius(7));
         button.OnTapped(action);
         return button;
@@ -869,7 +884,7 @@ public class PathPicker : BorderCompositeView<PathPicker>, IPointerHandler, IGlo
         }
 
         _statusLabel.Text = text;
-        _statusLabel.Foreground = ColorDefault.Secondary;
+        _statusLabel.Foreground = PlaceholderColor;
     }
 
     private void UpdateTriggerContent()
@@ -1307,9 +1322,9 @@ public class PathPicker : BorderCompositeView<PathPicker>, IPointerHandler, IGlo
             }
         } = Color.Transparent;
 
-        public Brush HoverBackground { get; set; } = new Color(255, 255, 255, 0.08f);
+        public Brush HoverBackground { get; set; } = Color.Transparent;
 
-        public Brush PressedBackground { get; set; } = new Color(59, 130, 246, 0.45f);
+        public Brush PressedBackground { get; set; } = Color.Transparent;
 
         public void OnPointerEntered(PointerEventArgs e)
         {

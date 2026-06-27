@@ -16,7 +16,7 @@ public class ScrollViewPage : Component
         {
             longContent.AddChild(
                 new Label($"Item {i}")
-                    .Foreground(i % 2 == 0 ? Color.White : ColorDefault.Secondary)
+                    .Foreground(i % 2 == 0 ? GalleryPalette.OnSurface : GalleryPalette.Muted)
                     .Padding(new Thickness(8)
             ));
         }
@@ -32,7 +32,7 @@ public class ScrollViewPage : Component
                     new Frame()
                         .Height(220)
                         .HorizontalAlignment(HorizontalAlignment.Stretch)
-                        .Background(new Color(28, 28, 34))
+                        .Background(GalleryPalette.Surface)
                         .BorderRadius(8)
                         .Padding(new Thickness(12))
                         .Content(
@@ -55,7 +55,7 @@ public class ScrollViewPage : Component
                     new Frame()
                         .Height(260)
                         .HorizontalAlignment(HorizontalAlignment.Stretch)
-                        .Background(new Color(28, 28, 34))
+                        .Background(GalleryPalette.Surface)
                         .BorderRadius(8)
                         .Padding(new Thickness(12))
                         .Content(
@@ -76,7 +76,7 @@ public class ScrollViewPage : Component
                                                 .Children(
                                                     new Label("Scrollable Frame")
                                                         .FontSize(18)
-                                                        .Foreground(Color.White),
+                                                        .Foreground(GalleryPalette.OnSurface),
 
                                                     new Frame()
                                                         .Background(ColorDefault.Primary)
@@ -84,7 +84,7 @@ public class ScrollViewPage : Component
                                                         .Padding(new Thickness(12))
                                                         .Content(
                                                             new Label("This is a Frame inside a scroll view")
-                                                                .Foreground(Color.White)
+                                                                .Foreground(GalleryPalette.OnPrimary)
                                                         ),
 
                                                     new Frame()
@@ -93,7 +93,7 @@ public class ScrollViewPage : Component
                                                         .Padding(new Thickness(12))
                                                         .Content(
                                                             new Label("You can scroll to see more content")
-                                                                .Foreground(Color.White)
+                                                                .Foreground(GalleryPalette.OnSuccess)
                                                         ),
 
                                                     new Frame()
@@ -102,7 +102,7 @@ public class ScrollViewPage : Component
                                                         .Padding(new Thickness(12))
                                                         .Content(
                                                             new Label("Add as many items as you need")
-                                                                .Foreground(Color.White)
+                                                                .Foreground(GalleryPalette.OnWarning)
                                                         ),
 
                                                     new Frame()
@@ -111,7 +111,7 @@ public class ScrollViewPage : Component
                                                         .Padding(new Thickness(12))
                                                         .Content(
                                                             new Label("The scrollbar appears automatically")
-                                                                .Foreground(Color.White)
+                                                                .Foreground(GalleryPalette.OnDanger)
                                                         ),
 
                                                     new Frame()
@@ -120,7 +120,7 @@ public class ScrollViewPage : Component
                                                         .Padding(new Thickness(12))
                                                         .Content(
                                                             new Label("Last item - scroll to see it")
-                                                                .Foreground(Color.White)
+                                                                .Foreground(GalleryPalette.OnInfo)
                                                         )
                                                 )
                                         )
@@ -132,7 +132,7 @@ public class ScrollViewPage : Component
                     new Frame()
                         .Height(220)
                         .HorizontalAlignment(HorizontalAlignment.Stretch)
-                        .Background(new Color(40, 40, 50))
+                        .Background(GalleryPalette.Surface)
                         .BorderRadius(8)
                         .Padding(new Thickness(16))
                         .Content(
@@ -143,7 +143,7 @@ public class ScrollViewPage : Component
                                 .Children(
                                     new Label("Recent Activity")
                                         .FontSize(16)
-                                        .Foreground(Color.White),
+                                        .Foreground(GalleryPalette.OnSurface),
 
                                     new ScrollView()
                                         .HorizontalAlignment(HorizontalAlignment.Stretch)
@@ -176,7 +176,7 @@ public class ScrollViewPage : Component
                     new Frame()
                         .Height(150)
                         .HorizontalAlignment(HorizontalAlignment.Stretch)
-                        .Background(new Color(28, 28, 34))
+                        .Background(GalleryPalette.Surface)
                         .BorderRadius(8)
                         .Padding(new Thickness(12))
                         .Content(
@@ -209,7 +209,7 @@ public class ScrollViewPage : Component
                     new Frame()
                         .Height(320)
                         .HorizontalAlignment(HorizontalAlignment.Stretch)
-                        .Background(new Color(28, 28, 34))
+                        .Background(GalleryPalette.Surface)
                         .BorderRadius(8)
                         .Padding(new Thickness(12))
                         .Content(

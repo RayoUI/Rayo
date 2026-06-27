@@ -8,6 +8,7 @@ using Rayo.Reactivity;
 using Rayo.Rendering;
 using Rayo.Rendering.Brushes;
 using Rayo.Rendering.Graphics.VectorGraphics;
+using Rayo.Styling;
 using IRenderer = Rayo.Rendering.IRenderer;
 
 /// <summary>
@@ -45,12 +46,21 @@ public class ButtonIcon : BorderView<ButtonIcon>,
     }
     #endregion
 
+    #region Variant
+    [PaintProperty]
+    public ButtonVariant Variant
+    {
+        get => field;
+        set => this.SetProperty(ref field, value, ApplyActiveTheme);
+    } = ButtonVariant.Primary;
+    #endregion
+
     #region IconColor
     public Brush IconColor
     {
         get => field;
         set => this.SetProperty(ref field, value);
-    }
+    } = Color.Transparent;
     #endregion
 
     #region IconSize
@@ -67,7 +77,7 @@ public class ButtonIcon : BorderView<ButtonIcon>,
     {
         get => field;
         set => this.SetProperty(ref field, value, UpdateVisualState);
-    }
+    } = Color.Transparent;
     #endregion
 
     #region HoverBackground
@@ -75,7 +85,7 @@ public class ButtonIcon : BorderView<ButtonIcon>,
     {
         get => field;
         set => this.SetProperty(ref field, value, () => UpdateVisualState());
-    }
+    } = Color.Transparent;
     #endregion
 
     #region PressedBackground
@@ -83,7 +93,7 @@ public class ButtonIcon : BorderView<ButtonIcon>,
     {
         get => field;
         set => this.SetProperty(ref field, value, () => UpdateVisualState());
-    }
+    } = Color.Transparent;
     #endregion
 
     #region IsHovered
@@ -137,12 +147,8 @@ public class ButtonIcon : BorderView<ButtonIcon>,
     {
         // Initialize reactive properties
         IconSize = 24;
-        IconColor = Color.White;
-        Background = new Color(70, 130, 180);
-        HoverBackground = new Color(100, 150, 200);
-        PressedBackground = new Color(50, 100, 150);
+        InitializeTheme();
         BorderThickness = 0;
-        BorderBrush = new Color(40, 80, 120);
 
         // Touch-friendly sizing
         // Minimum recommended size for touch: 44x44 (iOS HIG) or 48x48 (Material Design)
@@ -164,6 +170,32 @@ public class ButtonIcon : BorderView<ButtonIcon>,
     public ButtonIcon(IconData iconData) : this()
     {
         IconData = iconData;
+    }
+
+    public ButtonIcon UseThemeDefaults()
+    {
+        ResetThemeValues();
+        return this;
+    }
+
+    private void ApplyActiveTheme() =>
+        OnThemeApplied(UIApplication.Current?.ActiveTheme ?? RayoThemes.Light);
+
+    protected override void OnThemeApplied(Theme theme)
+    {
+        var colors = Variant switch
+        {
+            ButtonVariant.Secondary => theme.Buttons.Secondary,
+            ButtonVariant.Danger => theme.Buttons.Danger,
+            ButtonVariant.Ghost => theme.Buttons.Ghost,
+            _ => theme.Buttons.Primary,
+        };
+
+        SetThemeValue(nameof(Background), (Brush)colors.Background, value => Background = value);
+        SetThemeValue(nameof(HoverBackground), (Brush)colors.HoverBackground, value => HoverBackground = value);
+        SetThemeValue(nameof(PressedBackground), (Brush)colors.PressedBackground, value => PressedBackground = value);
+        SetThemeValue(nameof(IconColor), (Brush)colors.Foreground, value => IconColor = value);
+        SetThemeValue(nameof(BorderBrush), (Brush)colors.Border, value => BorderBrush = value);
     }
 
     // =========================================================================

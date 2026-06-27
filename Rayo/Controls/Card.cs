@@ -5,6 +5,7 @@ using Rayo.Layout;
 using Rayo.Reactivity;
 using Rayo.Rendering;
 using Rayo.Rendering.Brushes;
+using Rayo.Styling;
 
 /// <summary>
 /// Card component - Content container with optional header and footer
@@ -34,7 +35,7 @@ public class Card : BorderCompositeView<Card>
             _cardFrame?.Background(value);
             _contentFrame?.Background(value);
         });
-    }
+    } = Color.Transparent;
     #endregion
 
     #region HeaderBackground
@@ -46,7 +47,7 @@ public class Card : BorderCompositeView<Card>
         {
             _headerFrame?.Background(value);
         });
-    } = new Color(245, 245, 245);
+    } = Color.Transparent;
     #endregion
 
     #region FooterBackground
@@ -58,7 +59,7 @@ public class Card : BorderCompositeView<Card>
         {
             _footerFrame?.Background(value);
         });
-    } = new Color(245, 245, 245);
+    } = Color.Transparent;
     #endregion
 
     #region CornerRadius
@@ -154,10 +155,18 @@ public class Card : BorderCompositeView<Card>
 
     public Card()
     {
-        Background = Color.White;
-        BorderBrush = new Color(220, 220, 220);
+        InitializeTheme();
         BorderThickness = 1;
         BuildComponents();
+    }
+
+    protected override void OnThemeApplied(Theme theme)
+    {
+        var palette = theme.Colors;
+        SetThemeValue(nameof(Background), (Brush)palette.Surface, value => Background = value);
+        SetThemeValue(nameof(HeaderBackground), (Brush)palette.SurfaceHover, value => HeaderBackground = value);
+        SetThemeValue(nameof(FooterBackground), (Brush)palette.SurfaceHover, value => FooterBackground = value);
+        SetThemeValue(nameof(BorderBrush), (Brush)palette.Border, value => BorderBrush = value);
     }
 
     protected override void OnBorderBrushChanged()

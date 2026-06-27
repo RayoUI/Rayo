@@ -19,7 +19,7 @@ public class GridPage : Component
                 Helper.CreateExampleSection("Basic 3x3 Grid",
                     new Frame()
                         .Height(200)
-                        .Background(new Color(30, 30, 35))
+                        .Background(GalleryPalette.Surface)
                         .Content(
                             new Grid()
                                 .Rows(GridLength.Star, GridLength.Star, GridLength.Star)
@@ -42,7 +42,7 @@ public class GridPage : Component
                 Helper.CreateExampleSection("Spanning Rows and Columns",
                     new Frame()
                         .Height(250)
-                        .Background(new Color(30, 30, 35))
+                        .Background(GalleryPalette.Surface)
                         .Content(
                             new Grid()
                                 .Rows(GridLength.Star, GridLength.Star, GridLength.Star)
@@ -65,7 +65,7 @@ public class GridPage : Component
                 Helper.CreateExampleSection("Mixed Sizes (Pixel, Auto, Star)",
                     new Frame()
                         .Height(200)
-                        .Background(new Color(30, 30, 35))
+                        .Background(GalleryPalette.Surface)
                         .Content(
                             new Grid()
                                 .Rows(GridLength.Pixels(50), GridLength.Star)
@@ -74,7 +74,7 @@ public class GridPage : Component
                                 .ColumnSpacing(10)
                                 .Padding(new Thickness(10))
                                 .AddChild(CreateCell("Header (50px high)", new Color(75, 85, 99)), 0, 0, 1, 2)
-                                .AddChild(new Label("Sidebar (Auto Width)").Foreground(Color.White).Padding(new Thickness(10)), 1, 0)
+                                .AddChild(new Label("Sidebar (Auto Width)").Foreground(GalleryPalette.OnSurface).Padding(new Thickness(10)), 1, 0)
                                 .AddChild(CreateCell("Content (Remaining Space)", new Color(31, 41, 55)), 1, 1)
                         )
                 )
@@ -91,7 +91,7 @@ public class GridPage : Component
                     .HorizontalAlignment(HorizontalAlignment.Center)
                     .VerticalAlignment(VerticalAlignment.Center)
                     .TextHorizontalAlignment(HorizontalAlignment.Center)
-                    .Foreground(Color.White)
+                    .Foreground(GalleryPalette.OnSurface)
                     .Padding(new Thickness(4))
                     .FontSize(12)
             );

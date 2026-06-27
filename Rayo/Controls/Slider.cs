@@ -6,6 +6,7 @@ using Rayo.Core.Interfaces;
 using Rayo.Rendering;
 using Rayo.Rendering.Brushes;
 using Rayo.Reactivity;
+using Rayo.Styling;
 using IRenderer = Rayo.Rendering.IRenderer;
 
 /// <summary>
@@ -76,7 +77,7 @@ public class Slider : Rayo.Core.View<Slider>,
     {
         get => field;
         set => this.SetProperty(ref field, value);
-    } = new Color(60, 60, 60);
+    } = Color.Transparent;
     #endregion
 
     #region TrackFillColor
@@ -85,7 +86,7 @@ public class Slider : Rayo.Core.View<Slider>,
     {
         get => field;
         set => this.SetProperty(ref field, value);
-    } = new Color(59, 130, 246);
+    } = Color.Transparent;
     #endregion
 
     #region ThumbColor
@@ -94,7 +95,7 @@ public class Slider : Rayo.Core.View<Slider>,
     {
         get => field;
         set => this.SetProperty(ref field, value);
-    } = Color.White;
+    } = Color.Transparent;
     #endregion
 
     #region ThumbHoverColor
@@ -103,7 +104,7 @@ public class Slider : Rayo.Core.View<Slider>,
     {
         get => field;
         set => this.SetProperty(ref field, value);
-    } = new Color(220, 220, 220);
+    } = Color.Transparent;
     #endregion
 
     #region TrackHeight
@@ -151,8 +152,18 @@ public class Slider : Rayo.Core.View<Slider>,
 
     public Slider()
     {
+        InitializeTheme();
         Width = 200;
         Height = 30;
+    }
+
+    protected override void OnThemeApplied(Theme theme)
+    {
+        var palette = theme.Colors;
+        SetThemeValue(nameof(TrackBackground), (Brush)palette.SurfacePressed, value => TrackBackground = value);
+        SetThemeValue(nameof(TrackFillColor), (Brush)palette.Primary, value => TrackFillColor = value);
+        SetThemeValue(nameof(ThumbColor), (Brush)palette.Primary, value => ThumbColor = value);
+        SetThemeValue(nameof(ThumbHoverColor), (Brush)palette.PrimaryHover, value => ThumbHoverColor = value);
     }
 
     public Slider(float minValue, float maxValue, float value = 0) : this()

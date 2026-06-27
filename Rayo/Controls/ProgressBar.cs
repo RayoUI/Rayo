@@ -4,6 +4,7 @@ using Rayo.Core;
 using Rayo.Reactivity;
 using Rayo.Rendering;
 using Rayo.Rendering.Brushes;
+using Rayo.Styling;
 
 /// <summary>
 /// Progress bar component that shows progress of an operation.
@@ -21,7 +22,7 @@ public class ProgressBar : Rayo.Core.View<ProgressBar>
     {
         get => field;
         set => this.SetProperty(ref field, value);
-    } = new Color(0, 120, 215);
+    } = Color.Transparent;
     #endregion
 
     #region BarHeight
@@ -114,8 +115,15 @@ public class ProgressBar : Rayo.Core.View<ProgressBar>
 
     public ProgressBar()
     {
-        Background = new Color(200, 200, 200);
+        InitializeTheme();
         Height = 4;
+    }
+
+    protected override void OnThemeApplied(Theme theme)
+    {
+        var palette = theme.Colors;
+        SetThemeValue(nameof(Background), (Brush)palette.SurfacePressed, value => Background = value);
+        SetThemeValue(nameof(ForegroundColor), (Brush)palette.Primary, value => ForegroundColor = value);
     }
 
     protected override void Measure(float availableWidth, float availableHeight)

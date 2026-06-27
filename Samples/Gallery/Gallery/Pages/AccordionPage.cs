@@ -79,11 +79,11 @@ public class AccordionPage : Component
                                 .Spacing(8)
                                 .Children(
                                     new Label("✓ Profile settings")
-                                        .Foreground(new Color(100, 100, 100)),
+                                        .Foreground(GalleryPalette.Muted),
                                     new Label("✓ Notification preferences")
-                                        .Foreground(new Color(100, 100, 100)),
+                                        .Foreground(GalleryPalette.Muted),
                                     new Label("✓ Privacy options")
-                                        .Foreground(new Color(100, 100, 100))
+                                        .Foreground(GalleryPalette.Muted)
                                 )
                         )
                         .IsExpanded(true),
@@ -94,9 +94,9 @@ public class AccordionPage : Component
                                 .Spacing(8)
                                 .Children(
                                     new Label("Advanced configuration options")
-                                        .Foreground(new Color(100, 100, 100)),
+                                        .Foreground(GalleryPalette.Muted),
                                     new Label("Developer tools")
-                                        .Foreground(new Color(100, 100, 100))
+                                        .Foreground(GalleryPalette.Muted)
                                 )
                         ),
 
@@ -106,9 +106,9 @@ public class AccordionPage : Component
                                 .Spacing(8)
                                 .Children(
                                     new Label("Usage statistics")
-                                        .Foreground(new Color(100, 100, 100)),
+                                        .Foreground(GalleryPalette.Muted),
                                     new Label("Performance metrics")
-                                        .Foreground(new Color(100, 100, 100))
+                                        .Foreground(GalleryPalette.Muted)
                                 )
                         )
                 )
@@ -122,7 +122,7 @@ public class AccordionPage : Component
     {
         _statusLabel = new Label()
             .Text("Status: Click an expander to see events")
-            .Foreground(new Color(100, 100, 100))
+            .Foreground(GalleryPalette.Muted)
             .FontSize(14);
 
         var expander1 = new Expander("📝 Expander with Events")
@@ -155,7 +155,7 @@ public class AccordionPage : Component
                 .Children(
                     new Label()
                         .Text("Try expanding/collapsing to see events in action")
-                        .Foreground(new Color(100, 100, 100))
+                        .Foreground(GalleryPalette.Muted)
                         .FontSize(13),
                     expander1,
                     expander2,
