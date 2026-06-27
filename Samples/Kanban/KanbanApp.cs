@@ -17,6 +17,9 @@ public class KanbanApp : IUIBuilder
             .VerticalAlignment(VerticalAlignment.Stretch) // Ensure root fills window
             .Children(
                 new Label("Drag & Drop Example - Drag the cards to the zones")
+                    .Background(Color.Gainsboro)
+                    .Padding(new Thickness(10))
+                    .FontWeight(FontWeight.Bold)
                     .Size(new Size(0, 40)),
 
                 new HStack()

@@ -19,18 +19,14 @@
     <Project Path="Samples/BasicApp/BasicApp.csproj" />
     <Project Path="Samples/ButtonFloatExample/ButtonFloatExample.csproj" />
     <Project Path="Samples/DiagramApp/DiagramApp.csproj" />
-    <Project Path="Samples/FluentExamples/FluentExamples.csproj" />
     <Project Path="Samples/FontSymbolsViewer/FontSymbolsViewer.csproj" />
     <Project Path="Samples/Kanban/Kanban.csproj" />
-    <Project Path="Samples/ModularApp/ModularApp.csproj" />
     <Project Path="Samples/Notepad/Notepad.csproj" />
     <Project Path="Samples/PaintApp/PaintApp.csproj" />
-    <Project Path="Samples/PerformanceRunner/PerformanceRunner.csproj" />
     <Project Path="Samples/PokemonMVVM/PokemonMVVM.csproj" />
     <Project Path="Samples/StyleDemo/StyleDemo.csproj" />
     <Project Path="Samples/TabControlApp/TabControlApp.csproj" />
     <Project Path="Samples/TestApp/TestApp.csproj" />
-    <Project Path="Samples/TestExamples/TestExamples.csproj" />
     <Project Path="Samples/ToDoList/ToDoList.csproj" />
     <Project Path="Samples/VisualScripting/VisualScripting.csproj" />
   </Folder>
