@@ -57,6 +57,41 @@ public class RayoGLSurfaceView : GLSurfaceView
         return true;
     }
 
+    public override bool OnKeyDown(global::Android.Views.Keycode keyCode, global::Android.Views.KeyEvent? e)
+    {
+        if (keyCode == global::Android.Views.Keycode.Del)
+        {
+            DispatchKeyDown(Rayo.Core.InputKey.Backspace);
+            return true;
+        }
+
+        if (keyCode == global::Android.Views.Keycode.ForwardDel)
+        {
+            DispatchKeyDown(Rayo.Core.InputKey.Delete);
+            return true;
+        }
+
+        if (keyCode == global::Android.Views.Keycode.Enter)
+        {
+            DispatchKeyDown(Rayo.Core.InputKey.Return);
+            return true;
+        }
+
+        return base.OnKeyDown(keyCode, e);
+    }
+
+    public override bool OnKeyUp(global::Android.Views.Keycode keyCode, global::Android.Views.KeyEvent? e)
+    {
+        if (keyCode is global::Android.Views.Keycode.Del
+            or global::Android.Views.Keycode.ForwardDel
+            or global::Android.Views.Keycode.Enter)
+        {
+            return true;
+        }
+
+        return base.OnKeyUp(keyCode, e);
+    }
+
     public override bool OnCheckIsTextEditor()
     {
         return true;
@@ -88,21 +123,25 @@ public class RayoGLSurfaceView : GLSurfaceView
             return;
         }
 
-        var eventManager = Rayo.Core.OverlayManager.EventManager;
-        if (eventManager == null)
+        Rayo.Reactivity.UIUpdateQueue.EnqueueUIUpdate(() =>
         {
-            return;
-        }
+            var eventManager = Rayo.Core.OverlayManager.EventManager;
+            if (eventManager == null)
+            {
+                return;
+            }
 
-        foreach (var ch in text)
-        {
-            eventManager.ProcessTextInput(ch);
-        }
+            foreach (var ch in text)
+            {
+                eventManager.ProcessTextInput(ch);
+            }
+        });
     }
 
     internal void DispatchKeyDown(Rayo.Core.InputKey key)
     {
-        Rayo.Core.OverlayManager.EventManager?.ProcessKeyDown(key);
+        Rayo.Reactivity.UIUpdateQueue.EnqueueUIUpdate(
+            () => Rayo.Core.OverlayManager.EventManager?.ProcessKeyDown(key));
     }
 
     private static global::Android.Text.InputTypes GetInputType(Rayo.Core.Platform.VirtualKeyboardType type, bool isMultiline)
@@ -147,9 +186,16 @@ public class RayoGLSurfaceView : GLSurfaceView
 
         public override bool DeleteSurroundingText(int beforeLength, int afterLength)
         {
-            if (beforeLength > 0)
+            DispatchDelete(beforeLength, afterLength);
+            return base.DeleteSurroundingText(beforeLength, afterLength);
+        }
+
+        public override bool DeleteSurroundingTextInCodePoints(int beforeLength, int afterLength)
+        {
+            DispatchDelete(beforeLength, afterLength);
+            if (OperatingSystem.IsAndroidVersionAtLeast(24))
             {
-                _view.DispatchKeyDown(Rayo.Core.InputKey.Backspace);
+                return base.DeleteSurroundingTextInCodePoints(beforeLength, afterLength);
             }
 
             return base.DeleteSurroundingText(beforeLength, afterLength);
@@ -157,22 +203,40 @@ public class RayoGLSurfaceView : GLSurfaceView
 
         public override bool SendKeyEvent(global::Android.Views.KeyEvent? e)
         {
-            if (e != null && e.Action == global::Android.Views.KeyEventActions.Down)
+            if (e?.KeyCode == global::Android.Views.Keycode.Del)
             {
-                if (e.KeyCode == global::Android.Views.Keycode.Del)
+                if (e.Action == global::Android.Views.KeyEventActions.Down)
                 {
                     _view.DispatchKeyDown(Rayo.Core.InputKey.Backspace);
-                    return true;
                 }
 
-                if (e.KeyCode == global::Android.Views.Keycode.Enter)
+                return true;
+            }
+
+            if (e?.KeyCode == global::Android.Views.Keycode.Enter)
+            {
+                if (e.Action == global::Android.Views.KeyEventActions.Down)
                 {
                     _view.DispatchKeyDown(Rayo.Core.InputKey.Return);
-                    return true;
                 }
+
+                return true;
             }
 
             return base.SendKeyEvent(e);
+        }
+
+        private void DispatchDelete(int beforeLength, int afterLength)
+        {
+            for (var i = 0; i < beforeLength; i++)
+            {
+                _view.DispatchKeyDown(Rayo.Core.InputKey.Backspace);
+            }
+
+            for (var i = 0; i < afterLength; i++)
+            {
+                _view.DispatchKeyDown(Rayo.Core.InputKey.Delete);
+            }
         }
     }
 
@@ -302,6 +366,16 @@ public class RayoGLSurfaceView : GLSurfaceView
             int bufferSize = width * height * 4;
             _pixelBuffer = ByteBuffer.AllocateDirect(bufferSize);
             _pixelBuffer.Order(ByteOrder.NativeOrder()!);
+
+            // Allocate the texture storage once for this surface size. Reallocating it
+            // with GlTexImage2D on every frame can expose an empty texture while the
+            // compositor is presenting rapid text/layout updates.
+            GLES20.GlBindTexture(GLES20.GlTexture2d, _textureId);
+            GLES20.GlTexImage2D(
+                GLES20.GlTexture2d, 0, GLES20.GlRgba,
+                width, height, 0,
+                GLES20.GlRgba, GLES20.GlUnsignedByte,
+                null);
 
             RayoLog.Info($"Surface changed: {width}x{height}");
 
@@ -568,9 +642,9 @@ public class RayoGLSurfaceView : GLSurfaceView
                     _pixelBuffer.Position(0);
 
                     GLES20.GlBindTexture(GLES20.GlTexture2d, _textureId);
-                    GLES20.GlTexImage2D(
-                        GLES20.GlTexture2d, 0, GLES20.GlRgba,
-                        _width, _height, 0,
+                    GLES20.GlTexSubImage2D(
+                        GLES20.GlTexture2d, 0,
+                        0, 0, _width, _height,
                         GLES20.GlRgba, GLES20.GlUnsignedByte,
                         _pixelBuffer);
                 }
