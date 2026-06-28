@@ -72,14 +72,26 @@ public class SkiaSharpTexture : ITexture
     /// Creates a render target texture (for render-to-texture operations)
     /// </summary>
     public SkiaSharpTexture(int width, int height)
+        : this(width, height, null)
+    {
+    }
+
+    internal SkiaSharpTexture(int width, int height, GRContext? grContext)
     {
         Width = width;
         Height = height;
         IsRenderTarget = true;
 
         var imageInfo = new SKImageInfo(width, height, SKColorType.Rgba8888, SKAlphaType.Premul);
-        _surface = SKSurface.Create(imageInfo)
-            ?? throw new InvalidOperationException("Failed to create render target surface");
+        _surface = grContext != null
+            ? SKSurface.Create(grContext, false, imageInfo)
+            : SKSurface.Create(imageInfo);
+        _surface ??=
+            SKSurface.Create(imageInfo);
+        if (_surface == null)
+        {
+            throw new InvalidOperationException("Failed to create render target surface");
+        }
 
         // Create initial image snapshot
         _image = _surface.Snapshot();

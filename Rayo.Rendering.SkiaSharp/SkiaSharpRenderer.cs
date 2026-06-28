@@ -19,6 +19,11 @@ public class SkiaSharpRenderer : IRenderer, INativeGradientRenderer
 {
     private SKSurface? _surface;
     private SKCanvas? _canvas;
+    private GRContext? _grContext;
+    private GRBackendRenderTarget? _gpuRenderTarget;
+    private uint _gpuFramebuffer;
+    private int _gpuSampleCount;
+    private int _gpuStencilBits;
     private int _width;
     private int _height;
     private bool _disposed;
@@ -77,8 +82,46 @@ public class SkiaSharpRenderer : IRenderer, INativeGradientRenderer
     {
     }
 
+    public bool IsGpuBacked => _grContext != null && _gpuRenderTarget != null;
+
+    /// <summary>
+    /// Initializes Skia against the OpenGL framebuffer that is current on the
+    /// calling thread. Rendering then stays entirely on the GPU.
+    /// </summary>
+    public bool TryInitializeGpu(
+        int width,
+        int height,
+        uint framebuffer,
+        int sampleCount,
+        int stencilBits)
+    {
+        try
+        {
+            DisposeSurface();
+
+            _grContext = GRContext.CreateGl();
+            if (_grContext == null)
+            {
+                return false;
+            }
+
+            _gpuFramebuffer = framebuffer;
+            _gpuSampleCount = Math.Max(0, sampleCount);
+            _gpuStencilBits = Math.Max(0, stencilBits);
+            CreateGpuSurface(width, height);
+            LoadDefaultFontIfNeeded();
+            return true;
+        }
+        catch
+        {
+            DisposeSurface();
+            return false;
+        }
+    }
+
     public void Initialize(int width, int height)
     {
+        DisposeSurface();
         _width = width;
         _height = height;
 
@@ -98,8 +141,46 @@ public class SkiaSharpRenderer : IRenderer, INativeGradientRenderer
             _canvas.Scale(_dpiScaleFactor, _dpiScaleFactor);
         }
 
-        // Load default font
-        LoadDefaultFont();
+        LoadDefaultFontIfNeeded();
+    }
+
+    private void LoadDefaultFontIfNeeded()
+    {
+        if (_defaultFont == null)
+        {
+            LoadDefaultFont();
+        }
+    }
+
+    private void CreateGpuSurface(int width, int height)
+    {
+        if (_grContext == null)
+        {
+            throw new InvalidOperationException("GPU context is not initialized");
+        }
+
+        _width = width;
+        _height = height;
+
+        var framebufferInfo = new GRGlFramebufferInfo(_gpuFramebuffer, 0x8058u); // GL_RGBA8
+        _gpuRenderTarget = new GRBackendRenderTarget(
+            width,
+            height,
+            _gpuSampleCount,
+            _gpuStencilBits,
+            framebufferInfo);
+        _surface = SKSurface.Create(
+            _grContext,
+            _gpuRenderTarget,
+            GRSurfaceOrigin.BottomLeft,
+            SKColorType.Rgba8888)
+            ?? throw new InvalidOperationException("Failed to create GPU-backed SkiaSharp surface");
+        _canvas = _surface.Canvas;
+
+        if (_dpiScaleFactor > 1.0f)
+        {
+            _canvas.Scale(_dpiScaleFactor, _dpiScaleFactor);
+        }
     }
 
     // Named emoji font typefaces (tried before SKFontManager.MatchCharacter).
@@ -188,6 +269,17 @@ public class SkiaSharpRenderer : IRenderer, INativeGradientRenderer
         if (_width == width && _height == height)
             return;
 
+        if (IsGpuBacked)
+        {
+            _surface?.Dispose();
+            _surface = null;
+            _canvas = null;
+            _gpuRenderTarget?.Dispose();
+            _gpuRenderTarget = null;
+            CreateGpuSurface(width, height);
+            return;
+        }
+
         _width = width;
         _height = height;
 
@@ -224,6 +316,7 @@ public class SkiaSharpRenderer : IRenderer, INativeGradientRenderer
 
         _canvas.Restore();
         _canvas.Flush();
+        _grContext?.Flush();
     }
 
     public void Clear(Color color)
@@ -959,7 +1052,7 @@ public class SkiaSharpRenderer : IRenderer, INativeGradientRenderer
 
     public ITexture CreateRenderTarget(int width, int height)
     {
-        return new SkiaSharpTexture(width, height);
+        return new SkiaSharpTexture(width, height, _grContext);
     }
 
     public void BeginRenderToTexture(ITexture target)
@@ -1494,10 +1587,21 @@ public class SkiaSharpRenderer : IRenderer, INativeGradientRenderer
         _fallbackFontCache.Clear();
 
         _defaultFont?.Dispose();
-        _surface?.Dispose();
+        DisposeSurface();
 
         _disposed = true;
         GC.SuppressFinalize(this);
+    }
+
+    private void DisposeSurface()
+    {
+        _canvas = null;
+        _surface?.Dispose();
+        _surface = null;
+        _gpuRenderTarget?.Dispose();
+        _gpuRenderTarget = null;
+        _grContext?.Dispose();
+        _grContext = null;
     }
 
     /// <summary>
@@ -1515,6 +1619,38 @@ public class SkiaSharpRenderer : IRenderer, INativeGradientRenderer
         if (pixmap == null) return null;
 
         return pixmap.GetPixelSpan().ToArray();
+    }
+
+    /// <summary>
+    /// Copies the current surface into a caller-owned native buffer without
+    /// allocating a managed byte array for every frame.
+    /// </summary>
+    public unsafe bool CopyPixelsTo(IntPtr destination, int destinationSize)
+    {
+        if (_surface == null || destination == IntPtr.Zero)
+        {
+            return false;
+        }
+
+        using var image = _surface.Snapshot();
+        using var pixmap = image.PeekPixels();
+        if (pixmap == null)
+        {
+            return false;
+        }
+
+        int byteCount = checked(pixmap.RowBytes * pixmap.Height);
+        if (destinationSize < byteCount)
+        {
+            return false;
+        }
+
+        System.Buffer.MemoryCopy(
+            pixmap.GetPixels().ToPointer(),
+            destination.ToPointer(),
+            destinationSize,
+            byteCount);
+        return true;
     }
 
 

@@ -264,6 +264,7 @@ public class RayoGLSurfaceView : GLSurfaceView
         private double _lastFrameTimestamp;
 
         private readonly ConcurrentQueue<TouchEvent> _touchEventQueue = new();
+        private readonly Dictionary<int, TouchEvent> _pendingTouchMoves = new();
         private const int MaxEventsPerFrame = 128;
 
         private readonly record struct TouchEvent(
@@ -400,8 +401,16 @@ public class RayoGLSurfaceView : GLSurfaceView
                 _skiaRenderer = new SkiaSharpRenderer();
                 float scaleFactor = SkiaSharpRenderer.GetDpiScaleFactor();
                 RayoLog.Info($"Using renderer scale factor: {scaleFactor:F2}x");
-                
-                _skiaRenderer.Initialize(width, height);
+
+                if (TryInitializeGpuSkia(width, height))
+                {
+                    RayoLog.Info("SkiaSharp initialized with direct OpenGL GPU rendering");
+                }
+                else
+                {
+                    _skiaRenderer.Initialize(width, height);
+                    RayoLog.Info("SkiaSharp GPU initialization unavailable; using CPU fallback");
+                }
 
                 _tree = new UITree();
                 UITree.Current = _tree;
@@ -486,6 +495,28 @@ public class RayoGLSurfaceView : GLSurfaceView
             {
                 RayoLog.Error($"Failed to initialize Rayo: {ex.Message}", ex);
             }
+        }
+
+        private bool TryInitializeGpuSkia(int width, int height)
+        {
+            if (_skiaRenderer == null)
+            {
+                return false;
+            }
+
+            var framebuffer = new int[1];
+            var samples = new int[1];
+            var stencilBits = new int[1];
+            GLES20.GlGetIntegerv(GLES20.GlFramebufferBinding, framebuffer, 0);
+            GLES20.GlGetIntegerv(GLES20.GlSamples, samples, 0);
+            GLES20.GlGetIntegerv(GLES20.GlStencilBits, stencilBits, 0);
+
+            return _skiaRenderer.TryInitializeGpu(
+                width,
+                height,
+                unchecked((uint)framebuffer[0]),
+                samples[0],
+                stencilBits[0]);
         }
 
         private void RegisterHotReload()
@@ -632,45 +663,51 @@ public class RayoGLSurfaceView : GLSurfaceView
 
                 _skiaRenderer.EndFrame();
 
-                // STEP 7: Get pixels and upload to OpenGL texture
-                var pixels = _skiaRenderer.GetPixels();
-                if (pixels != null && pixels.Length > 0)
+                if (_skiaRenderer.IsGpuBacked)
                 {
-                    // Copy pixels to direct buffer
-                    _pixelBuffer.Position(0);
-                    _pixelBuffer.Put(pixels);
-                    _pixelBuffer.Position(0);
-
-                    GLES20.GlBindTexture(GLES20.GlTexture2d, _textureId);
-                    GLES20.GlTexSubImage2D(
-                        GLES20.GlTexture2d, 0,
-                        0, 0, _width, _height,
-                        GLES20.GlRgba, GLES20.GlUnsignedByte,
-                        _pixelBuffer);
+                    // Skia rendered directly into the GLSurfaceView framebuffer.
+                    GLES20.GlFlush();
                 }
+                else
+                {
+                    // CPU fallback: copy into the reusable native buffer and upload.
+                    if (_skiaRenderer.CopyPixelsTo(
+                        _pixelBuffer.GetDirectBufferAddress(),
+                        _pixelBuffer.Capacity()))
+                    {
+                        _pixelBuffer.Position(0);
 
-                // STEP 8: Clear and draw fullscreen quad
-                GLES20.GlClear(GLES20.GlColorBufferBit);
-                GLES20.GlUseProgram(_programId);
+                        GLES20.GlBindTexture(GLES20.GlTexture2d, _textureId);
+                        GLES20.GlTexSubImage2D(
+                            GLES20.GlTexture2d, 0,
+                            0, 0, _width, _height,
+                            GLES20.GlRgba, GLES20.GlUnsignedByte,
+                            _pixelBuffer);
+                    }
 
-                GLES20.GlBindBuffer(GLES20.GlArrayBuffer, _vertexBufferId);
+                    // Present the CPU surface through a fullscreen textured quad.
+                    GLES20.GlClear(GLES20.GlColorBufferBit);
+                    GLES20.GlUseProgram(_programId);
 
-                int posLoc = GLES20.GlGetAttribLocation(_programId, "aPosition");
-                GLES20.GlEnableVertexAttribArray(posLoc);
-                GLES20.GlVertexAttribPointer(posLoc, 2, GLES20.GlFloat, false, 16, 0);
+                    GLES20.GlBindBuffer(GLES20.GlArrayBuffer, _vertexBufferId);
 
-                int texLoc = GLES20.GlGetAttribLocation(_programId, "aTexCoord");
-                GLES20.GlEnableVertexAttribArray(texLoc);
-                GLES20.GlVertexAttribPointer(texLoc, 2, GLES20.GlFloat, false, 16, 8);
+                    int posLoc = GLES20.GlGetAttribLocation(_programId, "aPosition");
+                    GLES20.GlEnableVertexAttribArray(posLoc);
+                    GLES20.GlVertexAttribPointer(posLoc, 2, GLES20.GlFloat, false, 16, 0);
 
-                GLES20.GlActiveTexture(GLES20.GlTexture0);
-                GLES20.GlBindTexture(GLES20.GlTexture2d, _textureId);
-                GLES20.GlUniform1i(GLES20.GlGetUniformLocation(_programId, "uTexture"), 0);
+                    int texLoc = GLES20.GlGetAttribLocation(_programId, "aTexCoord");
+                    GLES20.GlEnableVertexAttribArray(texLoc);
+                    GLES20.GlVertexAttribPointer(texLoc, 2, GLES20.GlFloat, false, 16, 8);
 
-                GLES20.GlDrawArrays(GLES20.GlTriangleStrip, 0, 4);
+                    GLES20.GlActiveTexture(GLES20.GlTexture0);
+                    GLES20.GlBindTexture(GLES20.GlTexture2d, _textureId);
+                    GLES20.GlUniform1i(GLES20.GlGetUniformLocation(_programId, "uTexture"), 0);
 
-                GLES20.GlDisableVertexAttribArray(posLoc);
-                GLES20.GlDisableVertexAttribArray(texLoc);
+                    GLES20.GlDrawArrays(GLES20.GlTriangleStrip, 0, 4);
+
+                    GLES20.GlDisableVertexAttribArray(posLoc);
+                    GLES20.GlDisableVertexAttribArray(texLoc);
+                }
 
                 // Allow next invalidation to trigger another frame
                 // In continuous rendering mode, this runs every frame targeting 60 fps
@@ -752,50 +789,72 @@ public class RayoGLSurfaceView : GLSurfaceView
             if (_tree?.EventManager == null) return;
 
             int processedCount = 0;
+
             while (_touchEventQueue.TryDequeue(out var touchEvent) && processedCount < MaxEventsPerFrame)
             {
                 processedCount++;
 
-                var position = new System.Numerics.Vector2(touchEvent.X, touchEvent.Y);
-
-                switch (touchEvent.Type)
+                if (touchEvent.Type == TouchEventType.Move)
                 {
-                    case TouchEventType.Down:
-                        var downArgs = PointerEventArgs.FromTouch(touchEvent.PointerId, position, touchEvent.Pressure);
-                        downArgs.IsInContact = true;
-                        _tree.EventManager.ProcessTouchDown(downArgs);
-                        RayoLog.Debug($"Touch DOWN: ID={touchEvent.PointerId} at ({touchEvent.X:F0}, {touchEvent.Y:F0})");
-                        break;
-
-                    case TouchEventType.Move:
-                        var moveArgs = PointerEventArgs.FromTouch(touchEvent.PointerId, position, touchEvent.Pressure);
-                        moveArgs.IsInContact = true;
-                        _tree.EventManager.ProcessTouchMove(moveArgs);
-                        // No logging for move events - too frequent
-                        break;
-
-                    case TouchEventType.Up:
-                        var upArgs = PointerEventArgs.FromTouch(touchEvent.PointerId, position, 0f);
-                        // IsInContact = false for release: finger is no longer in contact
-                        // TapRecognizer depends on this to detect release events
-                        upArgs.IsInContact = false;
-                        _tree.EventManager.ProcessTouchUp(upArgs);
-                        RayoLog.Debug($"Touch UP: ID={touchEvent.PointerId} at ({touchEvent.X:F0}, {touchEvent.Y:F0})");
-                        break;
-
-                    case TouchEventType.Cancel:
-                        var cancelArgs = PointerEventArgs.FromTouch(touchEvent.PointerId, position, 0f);
-                        cancelArgs.IsInContact = false;
-                        _tree.EventManager.ProcessTouchUp(cancelArgs);
-                        RayoLog.Debug($"Touch CANCEL: ID={touchEvent.PointerId}");
-                        break;
+                    _pendingTouchMoves[touchEvent.PointerId] = touchEvent;
+                    continue;
                 }
+
+                FlushPendingMoves();
+                ProcessTouchEvent(touchEvent);
             }
+
+            FlushPendingMoves();
 
             // If we hit the limit and there are more events, request another render
             if (!_touchEventQueue.IsEmpty)
             {
                 _view.RequestRender();
+            }
+
+            void FlushPendingMoves()
+            {
+                foreach (var move in _pendingTouchMoves.Values)
+                {
+                    ProcessTouchEvent(move);
+                }
+
+                _pendingTouchMoves.Clear();
+            }
+
+            void ProcessTouchEvent(TouchEvent current)
+            {
+                var position = new System.Numerics.Vector2(current.X, current.Y);
+
+                switch (current.Type)
+                {
+                    case TouchEventType.Down:
+                        var downArgs = PointerEventArgs.FromTouch(current.PointerId, position, current.Pressure);
+                        downArgs.IsInContact = true;
+                        _tree.EventManager.ProcessTouchDown(downArgs);
+                        RayoLog.Debug($"Touch DOWN: ID={current.PointerId} at ({current.X:F0}, {current.Y:F0})");
+                        break;
+
+                    case TouchEventType.Move:
+                        var moveArgs = PointerEventArgs.FromTouch(current.PointerId, position, current.Pressure);
+                        moveArgs.IsInContact = true;
+                        _tree.EventManager.ProcessTouchMove(moveArgs);
+                        break;
+
+                    case TouchEventType.Up:
+                        var upArgs = PointerEventArgs.FromTouch(current.PointerId, position, 0f);
+                        upArgs.IsInContact = false;
+                        _tree.EventManager.ProcessTouchUp(upArgs);
+                        RayoLog.Debug($"Touch UP: ID={current.PointerId} at ({current.X:F0}, {current.Y:F0})");
+                        break;
+
+                    case TouchEventType.Cancel:
+                        var cancelArgs = PointerEventArgs.FromTouch(current.PointerId, position, 0f);
+                        cancelArgs.IsInContact = false;
+                        _tree.EventManager.ProcessTouchUp(cancelArgs);
+                        RayoLog.Debug($"Touch CANCEL: ID={current.PointerId}");
+                        break;
+                }
             }
         }
 
