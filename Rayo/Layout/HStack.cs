@@ -383,7 +383,13 @@ public class HStack : Layout<HStack>
                         break;
 
                     case Alignment.Stretch:
-                        childHeight = contentHeight - child.Margin.Vertical;
+                        // Stretch only auto-sized children. An explicit height is a
+                        // cross-axis constraint and must not be overwritten by the
+                        // container (for example, ToggleSwitch is intrinsically 26px).
+                        if (!child.HasExplicitHeight)
+                        {
+                            childHeight = contentHeight - child.Margin.Vertical;
+                        }
                         break;
                 }
             }
