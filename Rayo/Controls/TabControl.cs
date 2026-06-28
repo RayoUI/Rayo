@@ -26,6 +26,18 @@ public enum TabPosition
 }
 
 /// <summary>
+/// Controls which tab headers display their close button.
+/// </summary>
+public enum TabCloseButtonDisplayMode
+{
+    /// <summary>Every tab displays a close button.</summary>
+    AllTabs,
+
+    /// <summary>Only the currently selected tab displays a close button.</summary>
+    ActiveTabOnly
+}
+
+/// <summary>
 /// Representa un tab individual.
 /// </summary>
 public class TabItem
@@ -230,6 +242,19 @@ public class TabControl : CompositeView<TabControl>, IFrameAnimation
     } = false;
     #endregion
 
+    #region CloseButtonDisplay
+    /// <summary>
+    /// Selects whether close buttons are shown on every tab or only on the
+    /// active tab. <see cref="ShowTabCloseButtons"/> remains the master switch.
+    /// </summary>
+    [LayoutProperty]
+    public TabCloseButtonDisplayMode CloseButtonDisplay
+    {
+        get => field;
+        set => this.SetProperty(ref field, value, RebuildHeaders);
+    } = TabCloseButtonDisplayMode.AllTabs;
+    #endregion
+
     #region SelectedIndex
     public int SelectedIndex
     {
@@ -272,6 +297,12 @@ public class TabControl : CompositeView<TabControl>, IFrameAnimation
     public event Action<int>? TabChanged;
 
     public event Action<int, int>? TabReordered;
+
+    /// <summary>
+    /// Raised when the user presses a tab close button. When there are no
+    /// subscribers the tab is removed immediately.
+    /// </summary>
+    public event Action<int>? TabCloseRequested;
 
     public TabControl()
     {
@@ -396,6 +427,14 @@ public class TabControl : CompositeView<TabControl>, IFrameAnimation
         }
 
         RefreshAfterItemsChanged(selectionChanged, ensureVisible: true);
+    }
+
+    private void RequestCloseTab(int index)
+    {
+        if (TabCloseRequested == null)
+            RemoveTab(index);
+        else
+            TabCloseRequested.Invoke(index);
     }
 
     public void DebugHitTest(float x, float y)
@@ -700,7 +739,9 @@ public class TabControl : CompositeView<TabControl>, IFrameAnimation
 
     private VisualElement CreateDefaultHeaderContent(TabItem tab, bool isSelected)
     {
-        var rightPadding = ShowTabCloseButtons ? TabCloseButtonHitSize + 14f : 10f;
+        var rightPadding = ShouldShowCloseButton(isSelected)
+            ? TabCloseButtonHitSize + 14f
+            : 10f;
         var textColor = !tab.IsEnabled
             ? RayoThemes.Current.Colors.OnDisabled
             : isSelected
@@ -720,6 +761,13 @@ public class TabControl : CompositeView<TabControl>, IFrameAnimation
                     .HorizontalAlignment(HorizontalAlignment.Stretch)
                     .VerticalAlignment(VerticalAlignment.Center));
     }
+
+    private bool ShouldShowCloseButton(bool isSelected) =>
+        ShowTabCloseButtons &&
+        (CloseButtonDisplay == TabCloseButtonDisplayMode.AllTabs || isSelected);
+
+    private bool ShouldShowCloseButton(int index) =>
+        ShouldShowCloseButton(index == _selectedIndex);
 
     private void UpdateContent()
     {
@@ -1146,7 +1194,7 @@ public class TabControl : CompositeView<TabControl>, IFrameAnimation
 
         private VisualElement BuildContentRoot(VisualElement content)
         {
-            if (!_owner.ShowTabCloseButtons)
+            if (!_owner.ShouldShowCloseButton(_index))
                 return content;
 
             float closeSize = _owner.TabCloseButtonHitSize;
@@ -1362,9 +1410,9 @@ public class TabControl : CompositeView<TabControl>, IFrameAnimation
             if (!IsEnabled || (app != null && app.EventManager.DragDrop.IsDragging))
                 return;
 
-            if (_owner.ShowTabCloseButtons && IsCloseButtonHit(e.Position))
+            if (_owner.ShouldShowCloseButton(_index) && IsCloseButtonHit(e.Position))
             {
-                _owner.RemoveTab(_index);
+                _owner.RequestCloseTab(_index);
                 Tapped?.Invoke(e);
                 return;
             }
@@ -1506,13 +1554,21 @@ internal class TabScrollButton : ButtonIcon
         _isBackward = isBackward;
         IconData = iconData;
         IconSize = 14f;
-        IconColor = RayoThemes.Current.Colors.OnSurface;
         BorderThickness = 0;
         BorderBrush = Color.Transparent;
         BorderRadius = new CornerRadius(0);
         Padding = new Thickness(0);
         RefreshStyle();
         Tapped += _ => onTap();
+    }
+
+    protected override void OnThemeApplied(Theme theme)
+    {
+        base.OnThemeApplied(theme);
+        SetThemeValue(
+            nameof(IconColor),
+            (Brush)theme.Colors.OnSurface,
+            value => IconColor = value);
     }
 
     public void RefreshStyle()
@@ -1536,12 +1592,15 @@ internal class TabScrollButton : ButtonIcon
     private Brush CreateGradientBrush(Color outer, Color mid, Color inner)
     {
         bool horizontal = _owner.Position is TabPosition.Top or TabPosition.Bottom;
-        bool outerFirst = _isBackward;
+        // The most opaque (and therefore visually darkest) stop faces the
+        // outer edge of the control: left/top for backward, right/bottom for
+        // forward. The gradient fades toward the tab strip content.
+        bool darkEdgeFirst = _isBackward;
 
         var brush = new LinearGradientBrush(
-            Rayo.Rendering.Brushes.GradientStop.At(0f, outerFirst ? outer : inner),
+            Rayo.Rendering.Brushes.GradientStop.At(0f, darkEdgeFirst ? inner : outer),
             Rayo.Rendering.Brushes.GradientStop.At(0.45f, mid),
-            Rayo.Rendering.Brushes.GradientStop.At(1f, outerFirst ? inner : outer));
+            Rayo.Rendering.Brushes.GradientStop.At(1f, darkEdgeFirst ? outer : inner));
 
         if (horizontal)
         {

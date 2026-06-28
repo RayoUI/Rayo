@@ -1,33 +1,31 @@
-﻿using Rayo;
+using Rayo;
 using Rayo.Controls;
 using Rayo.Core;
 using Rayo.Layout;
-using Rayo.Rendering;
+using Rayo.Reactivity;
 
 namespace Notepad.Controls;
 
-public class StatusBar() : Component
+public sealed class StatusBar(
+    IReadableSignal<string> statusText,
+    IReadableSignal<string> caretText) : Component
 {
     public override VisualElement Build()
     {
-        return new Frame()
-            .Height(24)
-            .Background(new Color(0, 122, 204)) // VS Blue-ish
+        return new ThemeFrame(colors => colors.Primary)
+            .Height(25)
             .Content(
                 new HStack()
-                    .Padding(new Thickness(10, 0, 10, 0))
+                    .Padding(new Thickness(10, 0))
                     .Alignment(Alignment.Center)
+                    .JustifyContent(JustifyContent.SpaceBetween)
                     .Children(
-                        new Label("Ready")
+                        new ThemeLabel(colors => colors.OnPrimary)
+                            .Text(statusText)
+                            .FontSize(12),
+                        new ThemeLabel(colors => colors.OnPrimary)
+                            .Text(caretText)
                             .FontSize(12)
-                            .Foreground(Color.White),
-                        
-                        new Frame().Width(20), // Spacer
-
-                        new Label("Ln 1, Col 1")
-                            .FontSize(12)
-                            .Foreground(Color.White)
-                            .HorizontalAlignment(HorizontalAlignment.Right)
                     )
             );
     }

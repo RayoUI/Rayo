@@ -1,73 +1,64 @@
-﻿namespace Rayo.Controls;
+namespace Rayo.Controls;
 
 using Rayo.Core;
 using Rayo.Core.Interactions;
 using Rayo.Layout;
 using Rayo.Rendering;
+using Rayo.Rendering.Brushes;
 using Rayo.Styling;
 
 /// <summary>
-/// A container for menu items, typically used in a MenuBar.
+/// A theme-aware dropdown menu with checked items and nested submenus.
 /// </summary>
 public class Menu : Component
 {
+    private const float MenuWidth = 210f;
     private readonly string _title;
-    private readonly List<MenuItem> _items = new();
-    private bool _isOpen = false;
-    private VisualElement? _overlayContent;
+    private readonly List<MenuItem> _items = [];
+    private readonly List<(int Depth, VisualElement Overlay)> _openOverlays = [];
+    private readonly Dictionary<int, MenuItem> _openSubmenuItems = [];
+    private bool _isOpen;
 
-    // Track the currently open menu globally to close it when another opens
     private static Menu? _currentlyOpenMenu;
 
     static Menu()
     {
-        ScrollInteractionNotifier.ScrollActivity += OnScrollActivity;
+        ScrollInteractionNotifier.ScrollActivity += _ => CloseCurrentMenu();
     }
 
     public Menu(string title)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(title);
         _title = title;
     }
 
-    private static void OnScrollActivity(VisualElement source)
-    {
-        CloseCurrentMenu();
-    }
-
-    /// <summary>
-    /// Closes the currently open menu if any (called from outside, e.g., when clicking away)
-    /// </summary>
     public static void CloseCurrentMenu()
     {
-        if (_currentlyOpenMenu != null)
-        {
-            _currentlyOpenMenu.CloseMenu();
-        }
+        _currentlyOpenMenu?.CloseMenu();
     }
 
     public Menu AddItem(MenuItem item)
     {
+        ArgumentNullException.ThrowIfNull(item);
         _items.Add(item);
         return this;
     }
 
     public override VisualElement Build()
     {
-        var titleButton = new Button();
-        titleButton.Text(_title);
-        titleButton.Variant(ButtonVariant.Ghost);
-        titleButton.FontSize(12);
-        titleButton.Padding(new Thickness(10, 5));
-        titleButton.BorderRadius(0);
-        titleButton.OnTapped(() => {
+        var titleButton = new MenuButton()
+            .Text(_title)
+            .Variant(ButtonVariant.Ghost)
+            .FontSize(12)
+            .Padding(new Thickness(10, 5))
+            .BorderRadius(0);
+
+        titleButton.OnTapped(() =>
+        {
             if (_isOpen)
-            {
                 CloseMenu();
-            }
             else
-            {
                 OpenMenu(titleButton);
-            }
         });
 
         return titleButton;
@@ -75,76 +66,132 @@ public class Menu : Component
 
     private void OpenMenu(VisualElement anchor)
     {
-        // Close any previously open menu before opening this one
         if (_currentlyOpenMenu != null && _currentlyOpenMenu != this)
-        {
             _currentlyOpenMenu.CloseMenu();
-        }
 
         _isOpen = true;
         _currentlyOpenMenu = this;
 
-        // Calculate position
-        float x = anchor.ComputedX;
-        float y = anchor.ComputedY + anchor.ComputedHeight;
+        var popup = BuildPopup(
+            _items,
+            anchor.ComputedX,
+            anchor.ComputedY + anchor.ComputedHeight,
+            depth: 0);
 
-        // Create menu Frame with items
-        var itemButtons = new List<VisualElement>();
-        foreach (var item in _items)
+        AddPopup(0, popup);
+    }
+
+    private VisualElement BuildPopup(
+        IReadOnlyList<MenuItem> items,
+        float x,
+        float y,
+        int depth)
+    {
+        var entries = items
+            .Select(item => item.BuildEntry(
+                onHovered: (hoveredItem, anchor) => OnItemHovered(hoveredItem, anchor, depth),
+                onActivated: (activatedItem, anchor) => OnItemActivated(activatedItem, anchor, depth)))
+            .ToArray();
+
+        return new MenuSurfaceFrame()
+            .Width(MenuWidth)
+            .X(x)
+            .Y(y)
+            .BorderThickness(1)
+            .Padding(new Thickness(3))
+            .HorizontalAlignment(HorizontalAlignment.Left)
+            .VerticalAlignment(VerticalAlignment.Top)
+            .Content(new VStack().Spacing(0).Children(entries));
+    }
+
+    private void OnItemHovered(MenuItem item, VisualElement anchor, int depth)
+    {
+        int submenuDepth = depth + 1;
+        if (!item.HasSubmenu)
         {
-            // Build the button from the MenuItem
-            var btn = (Button)item.Build();
-
-            // Add an additional handler to close the menu after item is clicked
-            btn.OnTapped(() => {
-                CloseMenu();
-            });
-
-            // Ensure button has a minimum size and visible colors
-            btn.HorizontalAlignment( HorizontalAlignment.Stretch );
-            btn.Height( 30 );
-            btn.FontSize( 12 );  // Ensure font size is set
-
-            itemButtons.Add(btn);
+            ClosePopupsFrom(submenuDepth);
+            return;
         }
 
-        var vstack = new VStack()
-            .Spacing( 0 )
-            .Children( itemButtons.ToArray() );
+        if (_openSubmenuItems.TryGetValue(submenuDepth, out var openItem) &&
+            ReferenceEquals(openItem, item))
+        {
+            return;
+        }
 
-        const float menuWidth = 180f;
+        ClosePopupsFrom(submenuDepth);
+        _openSubmenuItems[submenuDepth] = item;
 
-        Frame menuFrame = new Frame();
-        menuFrame.Background(RayoThemes.Current.Colors.Surface);
-        menuFrame.Width( menuWidth );
-        menuFrame.X( x );
-        menuFrame.Y( y );
-        menuFrame.BorderBrush = RayoThemes.Current.Colors.Border;
-        menuFrame.BorderThickness = 1;
-        menuFrame.Content(vstack);
-        menuFrame.HorizontalAlignment = HorizontalAlignment.Left;
-        menuFrame.VerticalAlignment = VerticalAlignment.Top;
+        var popup = BuildPopup(
+            item.Items,
+            anchor.ComputedX + anchor.ComputedWidth,
+            anchor.ComputedY,
+            submenuDepth);
 
-        _overlayContent = menuFrame;
+        AddPopup(submenuDepth, popup);
+    }
 
-        // Add menu overlay
-        Rayo.Core.OverlayManager.AddOverlay( _overlayContent );
+    private void OnItemActivated(MenuItem item, VisualElement anchor, int depth)
+    {
+        if (item.HasSubmenu)
+        {
+            OnItemHovered(item, anchor, depth);
+            return;
+        }
+
+        item.Invoke();
+        CloseMenu();
+    }
+
+    private void AddPopup(int depth, VisualElement popup)
+    {
+        _openOverlays.Add((depth, popup));
+        OverlayManager.AddOverlay(popup);
+    }
+
+    private void ClosePopupsFrom(int depth)
+    {
+        foreach (var entry in _openOverlays.Where(entry => entry.Depth >= depth).ToArray())
+        {
+            OverlayManager.RemoveOverlay(entry.Overlay);
+            _openOverlays.Remove(entry);
+        }
+
+        foreach (int key in _openSubmenuItems.Keys.Where(key => key >= depth).ToArray())
+            _openSubmenuItems.Remove(key);
     }
 
     private void CloseMenu()
     {
-        if (_overlayContent != null)
-        {
-            Rayo.Core.OverlayManager.RemoveOverlay( _overlayContent );
-            _overlayContent = null;
-        }
-
+        ClosePopupsFrom(0);
         _isOpen = false;
 
-        // Clear the global reference if this was the currently open menu
         if (_currentlyOpenMenu == this)
-        {
             _currentlyOpenMenu = null;
-        }
+    }
+}
+
+/// <summary>Ghost button whose foreground follows surface content colors.</summary>
+internal sealed class MenuButton : Button
+{
+    protected override void OnThemeApplied(Theme theme)
+    {
+        base.OnThemeApplied(theme);
+        SetThemeValue(nameof(TextColor), (Brush)theme.Colors.OnSurface, value => TextColor = value);
+    }
+}
+
+/// <summary>Popup surface that continues following the active theme while open.</summary>
+internal sealed class MenuSurfaceFrame : Frame
+{
+    public MenuSurfaceFrame()
+    {
+        InitializeTheme();
+    }
+
+    protected override void OnThemeApplied(Theme theme)
+    {
+        SetThemeValue(nameof(Background), (Brush)theme.Colors.Surface, value => Background = value);
+        SetThemeValue(nameof(BorderBrush), (Brush)theme.Colors.Border, value => BorderBrush = value);
     }
 }

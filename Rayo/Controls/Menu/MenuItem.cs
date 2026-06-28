@@ -1,7 +1,7 @@
-﻿namespace Rayo.Controls;
+namespace Rayo.Controls;
 
-using System;
 using Rayo.Core;
+using Rayo.Core.Input;
 using Rayo.Layout;
 using Rayo.Rendering;
 using Rayo.Rendering.Brushes;
@@ -11,62 +11,51 @@ using Rayo.Styling;
 public readonly record struct MenuItemIconOptions(IconData Icon, Brush Color, float? Size = null, float? Spacing = null);
 
 /// <summary>
-/// An item within a Menu.
+/// An action, checked option, or nested submenu entry within a <see cref="Menu"/>.
 /// </summary>
 public class MenuItem : Component
 {
     private readonly string _text;
     private readonly Action? _onClick;
+    private readonly List<MenuItem> _items = [];
+    private Func<bool>? _isChecked;
 
-    #region TextAlignment
     [LayoutProperty]
     public HorizontalAlignment TextAlignment
     {
         get => field;
         set => this.SetProperty(ref field, value, Rebuild);
     } = HorizontalAlignment.Left;
-    #endregion
 
-    #region IconData
     public IconData? IconData
     {
         get => field;
         set => this.SetProperty(ref field, value, Rebuild);
     }
-    #endregion
 
-    #region IconColor
     public Brush IconColor
     {
         get => field;
         set => this.SetProperty(ref field, value, Rebuild);
     } = Color.Transparent;
-    #endregion
 
-    #region IconSize
     public float IconSize
     {
         get => field;
         set => this.SetProperty(ref field, value, Rebuild);
     } = 14f;
-    #endregion
 
-    #region IconSpacing
     public float IconSpacing
     {
         get => field;
         set => this.SetProperty(ref field, value, Rebuild);
     } = 8f;
-    #endregion
 
-    #region IconOptions
     public MenuItemIconOptions? IconOptions
     {
         get => field;
         set => this.SetProperty(ref field, value, () =>
         {
-            if (field == value) return;
-
             if (value.HasValue)
             {
                 var options = value.Value;
@@ -78,136 +67,175 @@ public class MenuItem : Component
             else
             {
                 IconData = null;
+                IconColor = Color.Transparent;
             }
+
             Rebuild();
         });
     }
-    #endregion
+
+    internal string Text => _text;
+    internal IReadOnlyList<MenuItem> Items => _items;
+    internal bool HasSubmenu => _items.Count > 0;
+    internal bool IsChecked => _isChecked?.Invoke() == true;
 
     public MenuItem(string text, Action? onClick = null)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(text);
         _text = text;
         _onClick = onClick;
-        IconColor = RayoThemes.Current.Colors.OnDisabled;
     }
 
-    public override VisualElement Build()
+    /// <summary>Adds a child entry and turns this item into a submenu.</summary>
+    public MenuItem AddItem(MenuItem item)
     {
-        var button = new Button();
-        button.Text(IconData == null ? _text : string.Empty);
-        button.Variant(ButtonVariant.Ghost);
-        button.FontSize(12);
-        button.Padding(new Thickness(15, 5));
-        button.HorizontalAlignment(HorizontalAlignment.Stretch);
-        button.TextAlignment(TextAlignment);
-        button.BorderRadius(0);
-        button.OnTapped(() => {
-            _onClick?.Invoke();
-        });
+        ArgumentNullException.ThrowIfNull(item);
+        _items.Add(item);
+        return this;
+    }
 
-        if (IconData != null)
-        {
-            var icon = new Icon(IconData)
-                .Size(new Size(IconSize, IconSize))
-                .SetInputTransparent(true);
+    /// <summary>Displays a check icon while the supplied state evaluates to true.</summary>
+    public MenuItem CheckedWhen(Func<bool> isChecked)
+    {
+        _isChecked = isChecked ?? throw new ArgumentNullException(nameof(isChecked));
+        return this;
+    }
 
-            var label = new Label(_text)
-                .FontSize(12)
-                .Foreground(RayoThemes.Current.Colors.OnSurface)
-                .HorizontalAlignment(HorizontalAlignment.Left)
-                .SetInputTransparent(true);
+    internal void Invoke() => _onClick?.Invoke();
 
-            var justify = TextAlignment switch
+    public override VisualElement Build() =>
+        BuildEntry(
+            onHovered: null,
+            onActivated: (item, _) =>
             {
-                HorizontalAlignment.Center => JustifyContent.Center,
-                HorizontalAlignment.Right => JustifyContent.End,
-                _ => JustifyContent.Start
-            };
+                if (!item.HasSubmenu)
+                    item.Invoke();
+            });
 
-            HStack content = new HStack();
-            content.Spacing(IconSpacing);
-            content.Alignment(Alignment.Center);
-            content.JustifyContent(justify);
-            content.HorizontalAlignment(HorizontalAlignment.Stretch);
-            content.SetInputTransparent(true);
-            content.AddChild(icon);
-            content.AddChild(label);
-
-            // Create a Frame to wrap the button content - not needed since we fixed the code
-            // We can directly add content to wrapper below
-
-            // Use the Text property to hide default button text, then wrap with our content
-            button.Text(string.Empty);
-            // Since we cannot manipulate button children externally, we redesign to use Text("")
-            // and return a Frame that wraps both the button behavior and our custom content
-
-            // Alternative: create a clickable Frame instead
-            var wrapper = new Frame()
-                .Background(Color.Transparent)
-                .Padding(new Thickness(15, 5))
-                .HorizontalAlignment(HorizontalAlignment.Stretch);
-            wrapper.Content(content);
-
-            // Make wrapper clickable
-            var clickableWrapper = new MenuItemClickableFrame(wrapper, () => _onClick?.Invoke());
-            return clickableWrapper;
-        }
-
-        return button;
+    internal VisualElement BuildEntry(
+        Action<MenuItem, VisualElement>? onHovered,
+        Action<MenuItem, VisualElement>? onActivated)
+    {
+        return new MenuEntryView(this, onHovered, onActivated);
     }
 }
 
 /// <summary>
-/// Internal clickable Frame for MenuItem with icon support
+/// Interactive menu row with reserved icon and submenu columns.
 /// </summary>
-internal class MenuItemClickableFrame : Frame, Rayo.Core.Input.IPointerHandler
+internal sealed class MenuEntryView : Frame, IPointerHandler
 {
-    private readonly Frame _innerFrame;
-    private readonly Action _onClick;
+    private readonly MenuItem _item;
+    private readonly Action<MenuItem, VisualElement>? _onHovered;
+    private readonly Action<MenuItem, VisualElement>? _onActivated;
+    private bool _isHovered;
     private bool _isPressed;
 
-    public MenuItemClickableFrame(Frame innerFrame, Action onClick)
+    public MenuEntryView(
+        MenuItem item,
+        Action<MenuItem, VisualElement>? onHovered,
+        Action<MenuItem, VisualElement>? onActivated)
     {
-        _innerFrame = innerFrame;
-        _onClick = onClick;
+        _item = item;
+        _onHovered = onHovered;
+        _onActivated = onActivated;
+
+        Height = 30;
+        Padding = new Thickness(7, 0);
         HorizontalAlignment = HorizontalAlignment.Stretch;
-        this.Content(_innerFrame);
+        VerticalAlignment = VerticalAlignment.Top;
+
+        var leading = BuildLeadingIcon(item);
+        var label = new Label(item.Text)
+            .FontSize(12)
+            .HorizontalAlignment(HorizontalAlignment.Stretch)
+            .VerticalAlignment(VerticalAlignment.Center)
+            .SetInputTransparent(true);
+        var trailing = BuildTrailingIcon(item);
+
+        Content = new Grid()
+            .Rows(GridLength.Star)
+            .Columns(GridLength.Pixels(22), GridLength.Star, GridLength.Pixels(18))
+            .ColumnSpacing(item.IconSpacing)
+            .SetInputTransparent(true)
+            .AddChild(leading, 0, 0)
+            .AddChild(label, 0, 1)
+            .AddChild(trailing, 0, 2);
+
+        InitializeTheme();
     }
 
-    public void OnPointerEntered(Rayo.Core.Input.PointerEventArgs e)
+    protected override void OnThemeApplied(Theme theme)
     {
-        if (e.PointerType == Rayo.Core.Input.PointerType.Mouse)
-        {
-            _innerFrame.Background(RayoThemes.Current.Colors.Primary);
-            MarkNeedsPaint();
-        }
+        var background = _isPressed
+            ? theme.Colors.SurfacePressed
+            : _isHovered
+                ? theme.Colors.SurfaceHover
+                : Color.Transparent;
+
+        SetThemeValue(nameof(Background), (Brush)background, value => Background = value);
     }
 
-    public void OnPointerExited(Rayo.Core.Input.PointerEventArgs e)
+    public void OnPointerEntered(PointerEventArgs e)
     {
-        if (e.PointerType == Rayo.Core.Input.PointerType.Mouse)
-        {
-            _innerFrame.Background(Color.Transparent);
-            _isPressed = false;
-            MarkNeedsPaint();
-        }
+        _isHovered = true;
+        ApplyCurrentTheme();
+        _onHovered?.Invoke(_item, this);
     }
 
-    public void OnPointerPressed(Rayo.Core.Input.PointerEventArgs e)
+    public void OnPointerExited(PointerEventArgs e)
+    {
+        _isHovered = false;
+        _isPressed = false;
+        ApplyCurrentTheme();
+    }
+
+    public void OnPointerPressed(PointerEventArgs e)
     {
         _isPressed = true;
-        _innerFrame.Background(RayoThemes.Current.Colors.PrimaryPressed);
-        MarkNeedsPaint();
+        ApplyCurrentTheme();
     }
 
-    public void OnPointerReleased(Rayo.Core.Input.PointerEventArgs e)
+    public void OnPointerReleased(PointerEventArgs e)
     {
-        if (_isPressed)
-        {
-            _isPressed = false;
-            _innerFrame.Background(RayoThemes.Current.Colors.Primary);
-            MarkNeedsPaint();
-            _onClick?.Invoke();
-        }
+        if (!_isPressed)
+            return;
+
+        _isPressed = false;
+        ApplyCurrentTheme();
+        _onActivated?.Invoke(_item, this);
+    }
+
+    private void ApplyCurrentTheme() =>
+        OnThemeApplied(UIApplication.Current?.ActiveTheme ?? RayoThemes.Light);
+
+    private static VisualElement BuildLeadingIcon(MenuItem item)
+    {
+        IconData? iconData = item.IsChecked ? Icons.Check : item.IconData;
+        if (iconData == null)
+            return new Frame().Background(Color.Transparent).SetInputTransparent(true);
+
+        var icon = new Icon(iconData)
+            .Size(item.IconSize)
+            .HorizontalAlignment(HorizontalAlignment.Center)
+            .VerticalAlignment(VerticalAlignment.Center)
+            .SetInputTransparent(true);
+
+        if (!item.IsChecked && item.IconColor.PrimaryColor.A > 0)
+            icon.Color = item.IconColor;
+
+        return icon;
+    }
+
+    private static VisualElement BuildTrailingIcon(MenuItem item)
+    {
+        if (!item.HasSubmenu)
+            return new Frame().Background(Color.Transparent).SetInputTransparent(true);
+
+        return new Icon(Icons.ChevronRight)
+            .Size(12)
+            .HorizontalAlignment(HorizontalAlignment.Center)
+            .VerticalAlignment(VerticalAlignment.Center)
+            .SetInputTransparent(true);
     }
 }
