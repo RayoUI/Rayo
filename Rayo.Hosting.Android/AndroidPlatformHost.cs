@@ -62,6 +62,20 @@ public abstract class AndroidPlatformHost : Activity, IPlatformHost
         // Create application context
         _appContext = new AndroidApplicationContext();
 
+        // Android assets live inside the APK and are not regular filesystem files.
+        // Route Rayo asset requests through the Activity's packaged AssetManager.
+        Rayo.Core.Assets.AssetManager.Instance.AssetStreamProvider(
+            path =>
+            {
+                var assetPath = path.Replace('\\', '/').TrimStart('/');
+                if (assetPath.StartsWith("Assets/", StringComparison.OrdinalIgnoreCase))
+                {
+                    assetPath = assetPath["Assets/".Length..];
+                }
+
+                return Assets?.Open(assetPath);
+            });
+
         // Let user configure the app
         ConfigureApp(_appContext);
 

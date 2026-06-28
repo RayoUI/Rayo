@@ -63,10 +63,14 @@ public sealed class MainView : Component
     {
         var buttons = new[]
         {
-            WeatherUi.NavButton("⌂", _route.Value == AppRoute.Home, _store.IsDark, () => Navigate(AppRoute.Home)),
-            WeatherUi.NavButton("♡", _route.Value == AppRoute.Favorites, _store.IsDark, () => Navigate(AppRoute.Favorites)),
-            WeatherUi.NavButton("⌖", _route.Value == AppRoute.Map, _store.IsDark, () => Navigate(AppRoute.Map)),
-            WeatherUi.NavButton("⚙", _route.Value == AppRoute.Settings, _store.IsDark, () => Navigate(AppRoute.Settings))
+            WeatherUi.NavButton("tab_home.svg", "tab_home_on.svg",
+                _route.Value == AppRoute.Home, _store.IsDark, () => Navigate(AppRoute.Home)),
+            WeatherUi.NavButton("tab_favorites.svg", "tab_favorites_on.svg",
+                _route.Value == AppRoute.Favorites, _store.IsDark, () => Navigate(AppRoute.Favorites)),
+            WeatherUi.NavButton("tab_map.svg", "tab_map_on.svg",
+                _route.Value == AppRoute.Map, _store.IsDark, () => Navigate(AppRoute.Map)),
+            WeatherUi.NavButton("tab_settings.svg", "tab_settings_on.svg",
+                _route.Value == AppRoute.Settings, _store.IsDark, () => Navigate(AppRoute.Settings))
         };
 
         if (vertical)

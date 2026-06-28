@@ -1,6 +1,7 @@
 using Rayo;
 using Rayo.Controls;
 using Rayo.Core;
+using Rayo.Gestures.Components;
 using Rayo.Layout;
 using Rayo.Rendering;
 
@@ -39,16 +40,22 @@ internal static class WeatherUi
             .VerticalAlignment(VerticalAlignment.Top)
             .Content(content);
 
-    public static Button NavButton(string text, bool selected, bool dark, Action tapped) =>
-        new Button()
-            .Text(text)
-            .Height(52)
-            .FontSize(27)
-            .TextColor(selected ? Gold : Muted(dark))
+    public static VisualElement NavButton(
+        string icon,
+        string selectedIcon,
+        bool selected,
+        bool dark,
+        Action tapped)
+    {
+        var surface = new Frame()
+            .Size(52)
+            .Padding(new Thickness(11))
             .Background(selected ? SurfaceAlt(dark) : Color.Transparent)
-            .HoverBackground(SurfaceAlt(dark))
-            .PressedBackground(SurfaceAlt(dark))
             .BorderThickness(0)
             .BorderRadius(10)
-            .OnTapped(tapped);
+            .Content(WeatherImage(selected ? selectedIcon : icon, 30));
+
+        return new GestureDetector(surface)
+            .OnTap((System.Numerics.Vector2 _) => tapped());
+    }
 }
