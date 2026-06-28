@@ -44,6 +44,13 @@
     <Project Path="Samples/MobileApp.Desktop/MobileApp.Desktop.csproj" />
     <Project Path="Samples/MobileApp/MobileApp.csproj" />
   </Folder>
+  <Folder Name="/Samples/WeatherApp/">
+    <Project Path="Samples/WeatherApp.Android/WeatherApp.Android.csproj">
+      <Deploy />
+    </Project>
+    <Project Path="Samples/WeatherApp.Desktop/WeatherApp.Desktop.csproj" />
+    <Project Path="Samples/WeatherApp/WeatherApp.csproj" />
+  </Folder>
   <Folder Name="/Samples/Gallery/">
     <Project Path="Samples/Gallery/Gallery.Android/Gallery.Android.csproj">
       <Deploy />

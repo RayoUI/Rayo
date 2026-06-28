@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>preview</LangVersion>
+    <OutputType>Library</OutputType>
+    <RootNamespace>WeatherApp</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Content Include="Assets\Images\**\*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Rayo\Rayo.csproj" />
+    <ProjectReference Include="..\..\Rayo.Hosting.Abstractions\Rayo.Hosting.Abstractions.csproj" />
+  </ItemGroup>
+
+</Project>
