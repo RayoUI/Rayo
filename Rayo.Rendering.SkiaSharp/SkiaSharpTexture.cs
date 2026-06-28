@@ -11,6 +11,7 @@ namespace Rayo.Rendering.SkiaSharp;
 public class SkiaSharpTexture : ITexture
 {
     private SKImage? _image;
+    private SKSvg? _svg;
     private SKSurface? _surface; // For render targets
     private bool _disposed;
 
@@ -19,6 +20,7 @@ public class SkiaSharpTexture : ITexture
     public bool IsRenderTarget { get; }
 
     internal SKImage? Image => _image;
+    internal SKPicture? SvgPicture => _svg?.Picture;
     internal SKSurface? Surface => _surface;
 
     /// <summary>
@@ -41,11 +43,13 @@ public class SkiaSharpTexture : ITexture
             throw new FileNotFoundException("Texture file not found", filePath);
 
         using var stream = File.OpenRead(filePath);
-        _image = LoadImageFromStream(stream)
+        var loaded = LoadFromStream(stream)
             ?? throw new InvalidOperationException($"Failed to load texture from {filePath}");
 
-        Width = _image.Width;
-        Height = _image.Height;
+        _image = loaded.Image;
+        _svg = loaded.Svg;
+        Width = loaded.Width;
+        Height = loaded.Height;
         IsRenderTarget = false;
     }
 
@@ -54,11 +58,13 @@ public class SkiaSharpTexture : ITexture
     /// </summary>
     public SkiaSharpTexture(Stream stream)
     {
-        _image = LoadImageFromStream(stream)
+        var loaded = LoadFromStream(stream)
             ?? throw new InvalidOperationException("Failed to load texture from stream");
 
-        Width = _image.Width;
-        Height = _image.Height;
+        _image = loaded.Image;
+        _svg = loaded.Svg;
+        Width = loaded.Width;
+        Height = loaded.Height;
         IsRenderTarget = false;
     }
 
@@ -96,6 +102,7 @@ public class SkiaSharpTexture : ITexture
         if (_disposed) return;
 
         _image?.Dispose();
+        _svg?.Dispose();
         _surface?.Dispose();
         _disposed = true;
 
@@ -107,7 +114,7 @@ public class SkiaSharpTexture : ITexture
         Dispose();
     }
 
-    private static SKImage? LoadImageFromStream(Stream stream)
+    private static LoadedTexture? LoadFromStream(Stream stream)
     {
         using var memory = new MemoryStream();
         stream.CopyTo(memory);
@@ -116,11 +123,14 @@ public class SkiaSharpTexture : ITexture
         if (LooksLikeSvg(data))
         {
             var svg = Encoding.UTF8.GetString(data);
-            return LoadSvgImage(svg);
+            return LoadSvg(svg);
         }
 
         using var skData = SKData.CreateCopy(data);
-        return SKImage.FromEncodedData(skData);
+        var image = SKImage.FromEncodedData(skData);
+        return image == null
+            ? null
+            : new LoadedTexture(image, null, image.Width, image.Height);
     }
 
     private static bool LooksLikeSvg(byte[] data)
@@ -132,28 +142,29 @@ public class SkiaSharpTexture : ITexture
             && header.Contains("<svg", StringComparison.OrdinalIgnoreCase);
     }
 
-    private static SKImage? LoadSvgImage(string svg)
+    private static LoadedTexture? LoadSvg(string svg)
     {
-        using var svgDocument = new SKSvg();
-        var picture = svgDocument.FromSvg(svg);
-        if (picture == null)
-            return null;
+        var svgDocument = new SKSvg();
+        try
+        {
+            var picture = svgDocument.FromSvg(svg);
+            if (picture == null)
+            {
+                svgDocument.Dispose();
+                return null;
+            }
 
-        var bounds = picture.CullRect;
-        var pixelWidth = Math.Max(1, (int)MathF.Ceiling(bounds.Width));
-        var pixelHeight = Math.Max(1, (int)MathF.Ceiling(bounds.Height));
-        var info = new SKImageInfo(pixelWidth, pixelHeight, SKColorType.Rgba8888, SKAlphaType.Premul);
-
-        using var surface = SKSurface.Create(info);
-        if (surface == null)
-            return null;
-
-        var canvas = surface.Canvas;
-        canvas.Clear(SKColors.Transparent);
-        canvas.Translate(-bounds.Left, -bounds.Top);
-        canvas.DrawPicture(picture);
-
-        canvas.Flush();
-        return surface.Snapshot();
+            var bounds = picture.CullRect;
+            var width = Math.Max(1, (int)MathF.Ceiling(bounds.Width));
+            var height = Math.Max(1, (int)MathF.Ceiling(bounds.Height));
+            return new LoadedTexture(null, svgDocument, width, height);
+        }
+        catch
+        {
+            svgDocument.Dispose();
+            throw;
+        }
     }
+
+    private sealed record LoadedTexture(SKImage? Image, SKSvg? Svg, int Width, int Height);
 }

@@ -35,9 +35,6 @@ public class ScrollView : CompositeView<ScrollView>, IInputHandler, IScrollable,
         get => field;
         set => this.SetProperty(ref field, value);
     } = false;
-    protected internal new bool HasExplicitWidth { get; private set; } = false;
-    protected internal new bool HasExplicitHeight { get; private set; } = false;
-
     protected internal override bool RendersChildrenManually => true;
 
     #region ScrollbarBackground

@@ -914,25 +914,19 @@ public class SkiaSharpRenderer : IRenderer, INativeGradientRenderer
         if (texture is not SkiaSharpTexture skTexture)
             throw new ArgumentException("Texture must be a SkiaSharpTexture", nameof(texture));
 
-        if (skTexture.Image == null)
+        if (skTexture.Image == null && skTexture.SvgPicture == null)
             return;
 
         var destRect = new SKRect(x, y, x + width, y + height);
-
-        if (tint.HasValue)
-        {
-            using var paint = new SKPaint
+        using var paint = tint.HasValue
+            ? new SKPaint
             {
                 ColorFilter = SKColorFilter.CreateBlendMode(
                     ToSKColor(tint.Value),
                     SKBlendMode.Modulate),
                 IsAntialias = true
-            };
-            _canvas.DrawImage(skTexture.Image, destRect, paint);
-        }
-        else
-        {
-            using var paint = _currentOpacity < 1f
+            }
+            : _currentOpacity < 1f
                 ? new SKPaint
                 {
                     ColorFilter = SKColorFilter.CreateBlendMode(
@@ -941,7 +935,23 @@ public class SkiaSharpRenderer : IRenderer, INativeGradientRenderer
                     IsAntialias = true
                 }
                 : null;
-            _canvas.DrawImage(skTexture.Image, destRect, paint);
+
+        if (skTexture.SvgPicture is { } picture)
+        {
+            var bounds = picture.CullRect;
+            var scaleX = width / bounds.Width;
+            var scaleY = height / bounds.Height;
+            var matrix = SKMatrix.CreateScaleTranslation(
+                scaleX,
+                scaleY,
+                x - bounds.Left * scaleX,
+                y - bounds.Top * scaleY);
+            _canvas.DrawPicture(picture, in matrix, paint);
+        }
+        else if (skTexture.Image is { } image)
+        {
+            var sampling = new SKSamplingOptions(SKCubicResampler.Mitchell);
+            _canvas.DrawImage(image, destRect, sampling, paint);
         }
     }
 
