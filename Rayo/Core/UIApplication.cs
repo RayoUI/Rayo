@@ -177,7 +177,8 @@ public class UIApplication : IDisposable
     {
         ArgumentNullException.ThrowIfNull(theme);
         ActiveTheme = theme;
-        ThemeChanged?.Invoke(theme);
+        RayoThemes.SetCurrent(theme);
+        NotifyThemeChanged(theme);
 
         _tree.Root?.NotifyThemeChanged(theme);
         foreach (var overlay in _overlays)
@@ -189,6 +190,11 @@ public class UIApplication : IDisposable
         }
 
         return this;
+    }
+
+    internal static void NotifyThemeChanged(Theme theme)
+    {
+        ThemeChanged?.Invoke(theme);
     }
 
     /// <summary>

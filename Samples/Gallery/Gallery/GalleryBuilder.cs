@@ -157,6 +157,10 @@ internal sealed class ThemeToggleButton : ButtonIcon
     {
         base.OnThemeApplied(theme);
         IconData = theme == RayoThemes.Dark ? Icons.Sun : Icons.Moon;
+        SetThemeValue(nameof(IconColor), (Brush)theme.Colors.OnSurface, value => IconColor = value);
+        SetThemeValue(nameof(Background), (Brush)Color.Transparent, value => Background = value);
+        SetThemeValue(nameof(HoverBackground), (Brush)theme.Colors.SurfacePressed, value => HoverBackground = value);
+        SetThemeValue(nameof(PressedBackground), (Brush)theme.Colors.Border, value => PressedBackground = value);
     }
 }
 
@@ -402,22 +406,31 @@ public class GalleryBuilder : Component
 
     private VisualElement BuildDrawerContent()
     {
-        bool useMobileLayout = PlatformDetector.IsMobile;
-
         var header = new PaletteFrame(colors => colors.SurfaceHover)
-            .Padding(useMobileLayout? new Thickness(0) : new Thickness(16, 20))
+            .Padding(new Thickness(16, 14))
             .HorizontalAlignment(HorizontalAlignment.Stretch)
             .VerticalAlignment(VerticalAlignment.Top)
-            //.BorderRadius(new CornerRadius(topRight: 10))
             .Content(
-                new VStack()
-                    .Spacing(4)
+                new HStack()
+                    .Spacing(12)
+                    .Alignment(Alignment.Center)
+                    .JustifyContent(JustifyContent.SpaceBetween)
+                    .HorizontalAlignment(HorizontalAlignment.Stretch)
                     .Children(
-                        new PaletteLabel("Rayo", colors => colors.OnSurface)
-                            .FontSize(20)
-                            .TextHorizontalAlignment(HorizontalAlignment.Center),
-                        new PaletteLabel("Component Gallery", colors => colors.OnDisabled)
-                            .FontSize(12)
+                        new VStack()
+                            .Spacing(4)
+                            .VerticalAlignment(VerticalAlignment.Center)
+                            .Children(
+                                new PaletteLabel("Rayo", colors => colors.OnSurface)
+                                    .FontSize(20),
+                                new PaletteLabel("Component Gallery", colors => colors.OnDisabled)
+                                    .FontSize(12)
+                            ),
+                        new ThemeToggleButton()
+                            .Variant(ButtonVariant.Ghost)
+                            .Size(40)
+                            .IconSize(18)
+                            .OnTapped(ToggleTheme)
                     )
             );
 
@@ -688,6 +701,6 @@ public class GalleryBuilder : Component
 
     private void ApplyTheme(Theme theme)
     {
-        UIApplication.Current?.UseTheme(theme);
+        RayoThemes.UseTheme(theme);
     }
 }

@@ -95,9 +95,9 @@ public class ColorPickerPage : Component
 
     private static VisualElement CreateVariantCard(string title, string description, VisualElement picker)
     {
-        return new Frame()
-            .Background(new Color(40, 40, 48))
+        return new PaletteFrame(colors => colors.SurfaceHover, colors => colors.Border)
             .BorderRadius(10)
+            .BorderThickness(1)
             .Padding(new Thickness(16))
             .Width(0)
             .HorizontalAlignment(HorizontalAlignment.Stretch)
@@ -105,12 +105,10 @@ public class ColorPickerPage : Component
                 new VStack()
                     .Spacing(8)
                     .Children(
-                        new Label(title)
-                            .FontSize(15)
-                            .Foreground(Color.White),
-                        new Label(description)
-                            .FontSize(13)
-                            .Foreground(ColorDefault.Secondary),
+                        new PaletteLabel(title, colors => colors.OnSurface)
+                            .FontSize(15),
+                        new PaletteLabel(description, colors => colors.OnDisabled)
+                            .FontSize(13),
                         picker
                     )
             );
@@ -150,12 +148,10 @@ public class ColorPickerPage : Component
             .BorderThickness(1)
             .BorderBrush(new Color(255, 255, 255, 30));
 
-        var launcherContent = new Frame()
+        var launcherContent = new PaletteFrame(colors => colors.SurfaceHover, colors => colors.Border)
             .HorizontalAlignment(HorizontalAlignment.Stretch)
             .Padding(new Thickness(14, 12))
-            .Background(new Color(35, 35, 40))
             .BorderRadius(new CornerRadius(10))
-            .BorderBrush(new Color(255, 255, 255, 20))
             .BorderThickness(1)
             .Content(
                 new HStack()
@@ -167,12 +163,10 @@ public class ColorPickerPage : Component
                             .Spacing(2)
                             .VerticalAlignment(VerticalAlignment.Center)
                             .Children(
-                                new Label(title)
-                                    .FontSize(15)
-                                    .Foreground(Color.White),
-                                new Label()
+                                new PaletteLabel(title, colors => colors.OnSurface)
+                                    .FontSize(15),
+                                new PaletteLabel(string.Empty, colors => colors.OnDisabled)
                                     .FontSize(12)
-                                    .Foreground(ColorDefault.Secondary)
                                     .Text(colorState.Map(color => $"{subtitle} - {FormatHex(color)}"))
                             )
                     )

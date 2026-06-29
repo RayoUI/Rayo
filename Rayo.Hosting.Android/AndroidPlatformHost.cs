@@ -15,6 +15,7 @@ namespace Rayo.Hosting.Android;
 /// </summary>
 public abstract class AndroidPlatformHost : Activity, IPlatformHost
 {
+    private const int StoragePermissionRequestCode = 4221;
     private RayoGLSurfaceView? _glSurfaceView;
     private readonly AndroidPlatformCapabilities _capabilities;
     private AndroidApplicationContext? _appContext;
@@ -58,6 +59,7 @@ public abstract class AndroidPlatformHost : Activity, IPlatformHost
 
         // Apply options that don't require DecorView
         ApplyWindowFlags();
+        RequestStorageReadPermissions();
 
         // Create application context
         _appContext = new AndroidApplicationContext();
@@ -75,6 +77,8 @@ public abstract class AndroidPlatformHost : Activity, IPlatformHost
 
                 return Assets?.Open(assetPath);
             });
+
+        Rayo.Core.Platform.UrlLauncher.SetService(new AndroidUrlLauncherService(this));
 
         // Let user configure the app
         ConfigureApp(_appContext);
@@ -283,6 +287,37 @@ public abstract class AndroidPlatformHost : Activity, IPlatformHost
 #pragma warning restore CS0618
             }
         }
+    }
+
+    private void RequestStorageReadPermissions()
+    {
+#pragma warning disable CA1416
+        if (Build.VERSION.SdkInt < BuildVersionCodes.M)
+        {
+            return;
+        }
+
+        var permissions = Build.VERSION.SdkInt >= BuildVersionCodes.Tiramisu
+            ? new[]
+            {
+                global::Android.Manifest.Permission.ReadMediaAudio,
+                global::Android.Manifest.Permission.ReadMediaImages,
+                global::Android.Manifest.Permission.ReadMediaVideo,
+            }
+            : new[]
+            {
+                global::Android.Manifest.Permission.ReadExternalStorage,
+            };
+
+        var missingPermissions = permissions
+            .Where(permission => CheckSelfPermission(permission) != Permission.Granted)
+            .ToArray();
+
+        if (missingPermissions.Length > 0)
+        {
+            RequestPermissions(missingPermissions, StoragePermissionRequestCode);
+        }
+#pragma warning restore CA1416
     }
 
     private static WindowConfiguration CreateDefaultConfiguration()

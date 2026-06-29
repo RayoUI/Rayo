@@ -47,6 +47,7 @@ public class SideBar : BorderCompositeView<SideBar>
     private VStack? _itemsContainer;
     private VStack? _headerContainer;
     private VStack? _footerContainer;
+    private ButtonIcon? _collapseToggleButton;
     private readonly List<SideBarItem> _items = new();
 
     // =========================================================================
@@ -259,9 +260,14 @@ public class SideBar : BorderCompositeView<SideBar>
         SetThemeValue(nameof(ItemSelectedColor), (Brush)palette.Primary, value => ItemSelectedColor = value);
         SetThemeValue(nameof(ItemTextColor), (Brush)palette.OnDisabled, value => ItemTextColor = value);
         SetThemeValue(nameof(ItemSelectedTextColor), (Brush)palette.OnPrimary, value => ItemSelectedTextColor = value);
-        SetThemeValue(nameof(ItemIconColor), (Brush)palette.OnDisabled, value => ItemIconColor = value);
+        SetThemeValue(nameof(ItemIconColor), (Brush)palette.OnSurface, value => ItemIconColor = value);
         SetThemeValue(nameof(ItemSelectedIconColor), (Brush)palette.OnPrimary, value => ItemSelectedIconColor = value);
         SetThemeValue(nameof(BorderBrush), (Brush)palette.Border, value => BorderBrush = value);
+        if (_collapseToggleButton != null)
+        {
+            _collapseToggleButton.IconColor = ItemIconColor;
+            _collapseToggleButton.HoverBackground = ItemHoverColor;
+        }
     }
 
     protected override void OnBorderBrushChanged()
@@ -402,6 +408,7 @@ public class SideBar : BorderCompositeView<SideBar>
             .IconData(IsCollapsed ? Icons.ChevronRight : Icons.ChevronLeft)
             .Background(Color.Transparent)
             .HoverBackground(ItemHoverColor.PrimaryColor)
+            .IconColor(ItemIconColor.PrimaryColor)
             .BorderThickness(0)
             .Padding(new Thickness(8))
             .HorizontalAlignment(HorizontalAlignment.Right);
@@ -414,6 +421,7 @@ public class SideBar : BorderCompositeView<SideBar>
 
         if (_headerContainer != null)
         {
+            _collapseToggleButton = toggleButton;
             _headerContainer.Padding(new Thickness(8));
             _headerContainer.AddChild(toggleButton);
         }

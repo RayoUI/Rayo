@@ -1,6 +1,7 @@
 ﻿using Rayo;
 using Rayo.Controls;
 using Rayo.Core;
+using Rayo.Core.Platform;
 using Rayo.Layout;
 using Rayo.Rendering;
 using static Rayo.Core.UIHelpers;
@@ -15,6 +16,39 @@ public class ShadowPage : Component
 
     public override VisualElement Build()
     {
+        if (PlatformDetector.IsMobile)
+        {
+            return new VStack()
+                .Spacing(20)
+                .Padding(new Thickness(20))
+                .Children(
+                    Helper.CreatePageHeader("Shadow", "Drop shadow effects for elevated UI elements"),
+                    Helper.CreateInfoCard(
+                        "Mobile preview",
+                        "This page shows a reduced set of shadows on mobile to keep scrolling responsive."
+                    ),
+                    Helper.CreateExampleSection("Presets",
+                        new HStack()
+                            .Spacing(16)
+                            .Alignment(Alignment.Center)
+                            .Children(
+                                CreateShadowDemo("None", Shadow.None),
+                                CreateShadowDemo("Subtle", Shadow.Subtle),
+                                CreateShadowDemo("Default", Shadow.Default)
+                            )
+                    ),
+                    Helper.CreateExampleSection("Glow",
+                        new HStack()
+                            .Spacing(16)
+                            .Alignment(Alignment.Center)
+                            .Children(
+                                CreateColoredShadowDemo("Blue", new Color(59, 130, 246), Shadow.Colored(new Color(59, 130, 246, 255))),
+                                CreateColoredShadowDemo("Green", new Color(34, 197, 94), Shadow.Colored(new Color(34, 197, 94, 255)))
+                            )
+                    )
+                );
+        }
+
         return new VStack()
             .Spacing(20)
             .Padding(new Thickness(20))

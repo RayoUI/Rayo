@@ -58,13 +58,18 @@ public class DragDropManager
 
         // Buscar el elemento draggable m�s profundo en la posici�n del mouse
         var element = FindDraggableAt(mouseX, mouseY, _tree.Root);
-        if (element == null) return false;
+        return TryStartDrag(element, mouseX, mouseY);
+    }
+
+    public bool TryStartDrag(IDraggable? draggable, float mouseX, float mouseY)
+    {
+        if (_isDragging || draggable == null) return false;
 
         _dragStartX = mouseX;
         _dragStartY = mouseY;
         _lastMouseX = mouseX;
         _lastMouseY = mouseY;
-        _currentDraggable = element;
+        _currentDraggable = draggable;
 
         // No iniciamos el drag inmediatamente, esperamos el threshold
         return true;

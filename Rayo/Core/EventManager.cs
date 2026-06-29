@@ -34,7 +34,7 @@ public class EventManager
     /// Indicates if any element is currently being dragged.
     /// Useful for disabling idle mode optimizations during drag.
     /// </summary>
-    public bool IsAnythingBeingDragged => _draggedElement != null;
+    public bool IsAnythingBeingDragged => _draggedElement != null || _dragDropManager.IsDragging;
 
     // TODO: Refactor hover tracking to use IPointerHandler pattern
     // Currently maintains backward compatibility with legacy hover system
@@ -1890,6 +1890,7 @@ public class EventManager
 
         if (hitResult?.Element != null)
         {
+            _dragDropManager.TryStartDrag(FindDraggableAncestor(hitResult.Element), pointerArgs.Position.X, pointerArgs.Position.Y);
             state.CapturedElement = hitResult.Element;
             // Elements that handle their own drag exclusively (Slider, Splitter)
             // should never have scroll capture transferred away from them.
@@ -1948,6 +1949,18 @@ public class EventManager
         // Calculate delta
         pointerArgs.Delta = pointerArgs.Position - state.LastPosition;
         state.LastPosition = pointerArgs.Position;
+
+        if (_dragDropManager.IsDragging || _dragDropManager.CurrentDraggable != null)
+        {
+            bool wasDragging = _dragDropManager.IsDragging;
+            _dragDropManager.ProcessMouseMove(pointerArgs.Position.X, pointerArgs.Position.Y);
+
+            if (_dragDropManager.IsDragging || wasDragging)
+            {
+                _tree.MarkNeedsRender();
+                return;
+            }
+        }
 
         if (!state.IsScrollCaptured && state.ScrollCaptureTarget != null)
         {
@@ -2030,6 +2043,22 @@ public class EventManager
         return element.ContainsWindowPoint(position);
     }
 
+    private static IDraggable? FindDraggableAncestor(VisualElement element)
+    {
+        var current = element;
+        while (current != null)
+        {
+            if (current is IDraggable draggable)
+            {
+                return draggable;
+            }
+
+            current = current.Parent;
+        }
+
+        return null;
+    }
+
     /// <summary>
     /// Process touch up event (Android/iOS).
     /// Called when a finger is lifted from the screen.
@@ -2038,6 +2067,18 @@ public class EventManager
     {
         if (!_activeTouchPointers.TryGetValue(pointerArgs.PointerId, out var state))
             return;
+
+        bool wasDragging = _dragDropManager.IsDragging;
+        if (_dragDropManager.CurrentDraggable != null || wasDragging)
+        {
+            _dragDropManager.EndDrag();
+            if (wasDragging)
+            {
+                _activeTouchPointers.Remove(pointerArgs.PointerId);
+                _tree.MarkNeedsRender();
+                return;
+            }
+        }
 
         if (state.CapturedElement != null)
         {
@@ -2068,6 +2109,8 @@ public class EventManager
         {
             DispatchTouchPointerReleased(state.CapturedElement, pointerArgs);
         }
+
+        _dragDropManager.CancelDrag();
 
         // Remove touch state
         _activeTouchPointers.Remove(pointerArgs.PointerId);

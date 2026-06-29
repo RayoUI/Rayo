@@ -1,6 +1,7 @@
 namespace Rayo.Controls;
 
 using Rayo.Core;
+using Rayo.Core.Platform;
 using Rayo.Core.Input;
 using Rayo.Core.Interfaces;
 using Rayo.Layout;
@@ -11,6 +12,8 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Numerics;
+using System.Threading;
+using System.Threading.Tasks;
 using static Rayo.Core.UIHelpers;
 using Rayo.Styling;
 
@@ -53,6 +56,10 @@ public class PathPicker : BorderCompositeView<PathPicker>, IPointerHandler, IGlo
     private Action? _dialogCanceled;
     private bool _isOpen;
     private bool _isPressed;
+    private CancellationTokenSource? _entriesLoadCancellation;
+    private int _entriesLoadVersion;
+    private string? _loadedEntriesDirectory;
+    private DirectoryLoadResult? _loadedEntries;
 
     public PathPicker()
     {
@@ -76,6 +83,7 @@ public class PathPicker : BorderCompositeView<PathPicker>, IPointerHandler, IGlo
         get => field;
         set => this.SetProperty(ref field, value, () =>
         {
+            ClearLoadedEntries();
             UpdateTriggerContent();
             RebuildDialogContent();
         });
@@ -106,6 +114,7 @@ public class PathPicker : BorderCompositeView<PathPicker>, IPointerHandler, IGlo
         set => this.SetProperty(ref field, value, () =>
         {
             CurrentDirectory = ResolveInitialDirectory(value);
+            ClearLoadedEntries();
             RebuildDialogContent();
         });
     }
@@ -143,7 +152,11 @@ public class PathPicker : BorderCompositeView<PathPicker>, IPointerHandler, IGlo
     public List<string> FileExtensions
     {
         get => field;
-        set => this.SetProperty(ref field, value ?? new List<string>(), () => RebuildDialogContent());
+        set => this.SetProperty(ref field, value ?? new List<string>(), () =>
+        {
+            ClearLoadedEntries();
+            RebuildDialogContent();
+        });
     } = new();
     #endregion
 
@@ -185,7 +198,11 @@ public class PathPicker : BorderCompositeView<PathPicker>, IPointerHandler, IGlo
     public bool ShowHidden
     {
         get => field;
-        set => this.SetProperty(ref field, value, () => RebuildDialogContent());
+        set => this.SetProperty(ref field, value, () =>
+        {
+            ClearLoadedEntries();
+            RebuildDialogContent();
+        });
     }
     #endregion
 
@@ -194,7 +211,11 @@ public class PathPicker : BorderCompositeView<PathPicker>, IPointerHandler, IGlo
     public int MaxItems
     {
         get => field;
-        set => this.SetProperty(ref field, Math.Max(1, value), () => RebuildDialogContent());
+        set => this.SetProperty(ref field, Math.Max(1, value), () =>
+        {
+            ClearLoadedEntries();
+            RebuildDialogContent();
+        });
     } = 500;
     #endregion
 
@@ -307,6 +328,7 @@ public class PathPicker : BorderCompositeView<PathPicker>, IPointerHandler, IGlo
         _pendingSelection = null;
         _pendingSelectionIsDirectory = false;
         CurrentDirectory = ResolveInitialDirectory(InitialDirectory ?? SelectedPath);
+        ClearLoadedEntries();
         _dialogOverlay = BuildDialogOverlay();
 
         OverlayManager.AddOverlay(_dialogOverlay);
@@ -319,6 +341,8 @@ public class PathPicker : BorderCompositeView<PathPicker>, IPointerHandler, IGlo
         {
             return;
         }
+
+        CancelEntriesLoad();
 
         if (_dialogOverlay != null)
         {
@@ -335,6 +359,7 @@ public class PathPicker : BorderCompositeView<PathPicker>, IPointerHandler, IGlo
         _statusLabel = null;
         _pendingSelection = null;
         _pendingSelectionIsDirectory = false;
+        ClearLoadedEntries();
 
         if (_currentlyOpenPathPicker == this)
         {
@@ -375,6 +400,7 @@ public class PathPicker : BorderCompositeView<PathPicker>, IPointerHandler, IGlo
         CurrentDirectory = normalized;
         _pendingSelection = null;
         _pendingSelectionIsDirectory = false;
+        ClearLoadedEntries();
         RebuildDialogContent();
     }
 
@@ -460,7 +486,7 @@ public class PathPicker : BorderCompositeView<PathPicker>, IPointerHandler, IGlo
         return overlay;
     }
 
-    private VisualElement BuildDialogContent()
+    private VisualElement BuildDialogContent(float scrollOffset = 0f, bool restoreScrollOffset = false)
     {
         var title = new Label(GetDialogTitle())
             .FontSize(18)
@@ -486,10 +512,20 @@ public class PathPicker : BorderCompositeView<PathPicker>, IPointerHandler, IGlo
             .VerticalAlignment(VerticalAlignment.Top)
             .HorizontalAlignment(HorizontalAlignment.Stretch);
 
-        var status = BuildItems();
-        _statusLabel = new Label(status)
+        var loadedEntries = GetLoadedEntriesForCurrentDirectory();
+        if (loadedEntries != null)
+        {
+            BuildLoadedItems(loadedEntries);
+        }
+        else
+        {
+            ShowLoadingItems();
+        }
+
+        var statusText = loadedEntries != null ? GetStatusText(loadedEntries) : "Loading...";
+        _statusLabel = new Label(statusText)
             .FontSize(12)
-            .Foreground(string.IsNullOrEmpty(status) ? Color.Transparent : PlaceholderColor);
+            .Foreground(string.IsNullOrEmpty(statusText) ? Color.Transparent : PlaceholderColor);
 
         _listScrollView = new ScrollView()
             .HorizontalAlignment(HorizontalAlignment.Stretch)
@@ -507,9 +543,8 @@ public class PathPicker : BorderCompositeView<PathPicker>, IPointerHandler, IGlo
             .Content(_listScrollView);
         listFrame.ClipToBounds = true;
 
-        if (Mode == PathPickerMode.SaveFile)
-        {
-            return new Grid()
+        var content = Mode == PathPickerMode.SaveFile
+            ? new Grid()
                 .Rows(
                     GridLength.Pixels(28),
                     GridLength.Pixels(34),
@@ -528,29 +563,255 @@ public class PathPicker : BorderCompositeView<PathPicker>, IPointerHandler, IGlo
                 .AddChild(BuildSaveFileNameRow(), 3, 0)
                 .AddChild(listFrame, 4, 0)
                 .AddChild(_statusLabel, 5, 0)
-                .AddChild(BuildDialogButtons(), 6, 0);
-        }
+                .AddChild(BuildDialogButtons(), 6, 0)
+            : new Grid()
+                .Rows(
+                    GridLength.Pixels(28),
+                    GridLength.Pixels(34),
+                    GridLength.Pixels(42),
+                    GridLength.Star,
+                    GridLength.Pixels(20),
+                    GridLength.Pixels(36))
+                .Columns(GridLength.Star)
+                .RowSpacing(10)
+                .HorizontalAlignment(HorizontalAlignment.Stretch)
+                .VerticalAlignment(VerticalAlignment.Stretch)
+                .AddChild(title, 0, 0)
+                .AddChild(BuildNavigationBar(), 1, 0)
+                .AddChild(pathFrame, 2, 0)
+                .AddChild(listFrame, 3, 0)
+                .AddChild(_statusLabel, 4, 0)
+                .AddChild(BuildDialogButtons(), 5, 0);
 
-        return new Grid()
-            .Rows(
-                GridLength.Pixels(28),
-                GridLength.Pixels(34),
-                GridLength.Pixels(42),
-                GridLength.Star,
-                GridLength.Pixels(20),
-                GridLength.Pixels(36))
-            .Columns(GridLength.Star)
-            .RowSpacing(10)
-            .HorizontalAlignment(HorizontalAlignment.Stretch)
-            .VerticalAlignment(VerticalAlignment.Stretch)
-            .AddChild(title, 0, 0)
-            .AddChild(BuildNavigationBar(), 1, 0)
-            .AddChild(pathFrame, 2, 0)
-            .AddChild(listFrame, 3, 0)
-            .AddChild(_statusLabel, 4, 0)
-            .AddChild(BuildDialogButtons(), 5, 0);
+        if (loadedEntries == null)
+        {
+            StartEntriesLoad(scrollOffset, restoreScrollOffset);
+        }
+        return content;
     }
 
+    private DirectoryLoadResult? GetLoadedEntriesForCurrentDirectory()
+    {
+        return _loadedEntries != null &&
+            string.Equals(_loadedEntriesDirectory, CurrentDirectory, PathComparison)
+            ? _loadedEntries
+            : null;
+    }
+
+    private void ClearLoadedEntries()
+    {
+        _loadedEntries = null;
+        _loadedEntriesDirectory = null;
+    }
+
+    private void ShowLoadingItems()
+    {
+        if (_itemsStack == null)
+        {
+            return;
+        }
+
+        _itemsStack.ClearChildren();
+        _itemsStack.AddChild(
+            new VStack()
+                .Spacing(10)
+                .Alignment(Alignment.Center)
+                .HorizontalAlignment(HorizontalAlignment.Stretch)
+                .VerticalAlignment(VerticalAlignment.Top)
+                .Padding(new Thickness(0, 36))
+                .Children(
+                    new Loading()
+                        .Size(new Size(28)),
+                    new Label("Loading folder...")
+                        .FontSize(13)
+                        .Foreground(PlaceholderColor)));
+    }
+
+    private void StartEntriesLoad(float scrollOffset = 0f, bool restoreScrollOffset = false)
+    {
+        if (!_isOpen)
+        {
+            return;
+        }
+
+        CancelEntriesLoad();
+
+        var cancellation = new CancellationTokenSource();
+        var token = cancellation.Token;
+        _entriesLoadCancellation = cancellation;
+        int version = ++_entriesLoadVersion;
+        string directory = CurrentDirectory;
+        var mode = Mode;
+        var showHidden = ShowHidden;
+        var maxItems = MaxItems;
+        var extensions = FileExtensions.Select(NormalizeExtension).ToList();
+
+        _ = Task.Run(
+            () => LoadEntries(directory, mode, extensions, showHidden, maxItems, token),
+            token)
+            .ContinueWith(task =>
+            {
+                if (task.IsCanceled || token.IsCancellationRequested)
+                {
+                    return;
+                }
+
+                DirectoryLoadResult result = task.IsFaulted
+                    ? new DirectoryLoadResult([], "This folder cannot be opened.", false)
+                    : task.Result;
+
+                UIUpdateQueue.EnqueueUIUpdate(() =>
+                    ApplyEntriesLoadResult(version, directory, result, scrollOffset, restoreScrollOffset));
+                (UIApplication.Current?.Tree ?? UITree.Current)?.MarkNeedsRender();
+            }, CancellationToken.None);
+    }
+
+    private void CancelEntriesLoad()
+    {
+        _entriesLoadCancellation?.Cancel();
+        _entriesLoadCancellation?.Dispose();
+        _entriesLoadCancellation = null;
+    }
+
+    private void ApplyEntriesLoadResult(
+        int version,
+        string directory,
+        DirectoryLoadResult result,
+        float scrollOffset,
+        bool restoreScrollOffset)
+    {
+        if (!_isOpen ||
+            version != _entriesLoadVersion ||
+            !string.Equals(directory, CurrentDirectory, PathComparison) ||
+            _itemsStack == null)
+        {
+            return;
+        }
+
+        _loadedEntries = result;
+        _loadedEntriesDirectory = directory;
+        BuildLoadedItems(result);
+        string status = GetStatusText(result);
+
+        if (_statusLabel != null)
+        {
+            _statusLabel.Text = status;
+            _statusLabel.Foreground = string.IsNullOrEmpty(status) ? Color.Transparent : PlaceholderColor;
+        }
+
+        if (restoreScrollOffset && _listScrollView != null)
+        {
+            _listScrollView.VerticalScrollOffset = scrollOffset;
+            _listScrollView.MarkNeedsPaint();
+        }
+
+        RefreshDialogLayout();
+    }
+
+    private void BuildLoadedItems(DirectoryLoadResult result)
+    {
+        if (_itemsStack == null)
+        {
+            return;
+        }
+
+        _itemsStack.ClearChildren();
+        foreach (var entry in result.Entries)
+        {
+            _itemsStack.AddChild(CreateEntryRow(entry));
+        }
+    }
+
+    private string GetStatusText(DirectoryLoadResult result)
+    {
+        if (result.Truncated)
+        {
+            return $"Showing the first {MaxItems} items.";
+        }
+
+        if (!string.IsNullOrEmpty(result.Status))
+        {
+            return result.Status;
+        }
+
+        if (result.Entries.Count == 0)
+        {
+            return Mode == PathPickerMode.Folder
+                ? "This folder does not contain visible folders."
+                : "This folder does not contain matching files.";
+        }
+
+        return string.Empty;
+    }
+
+    private DirectoryLoadResult LoadEntries(
+        string directory,
+        PathPickerMode mode,
+        IReadOnlyList<string> extensions,
+        bool showHidden,
+        int maxItems,
+        CancellationToken cancellationToken)
+    {
+        var entries = new List<FileSystemEntry>();
+        string status = string.Empty;
+        var normalizedDirectory = ResolveDirectory(directory);
+        if (normalizedDirectory == null)
+        {
+            return new DirectoryLoadResult([], "The selected folder is not available.", false);
+        }
+
+        try
+        {
+            var directories = new List<FileSystemEntry>();
+            foreach (var path in Directory.EnumerateDirectories(normalizedDirectory))
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var entry = CreateEntry(path, true);
+                if (entry != null && IsEntryVisible(entry.Value, showHidden))
+                {
+                    directories.Add(entry.Value);
+                }
+            }
+
+            directories.Sort((left, right) => StringComparer.CurrentCultureIgnoreCase.Compare(left.Name, right.Name));
+            entries.AddRange(directories);
+
+            if (mode != PathPickerMode.Folder)
+            {
+                var files = new List<FileSystemEntry>();
+                foreach (var path in Directory.EnumerateFiles(normalizedDirectory))
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    var entry = CreateEntry(path, false);
+                    if (entry != null &&
+                        IsEntryVisible(entry.Value, showHidden) &&
+                        MatchesFileExtensions(entry.Value, extensions))
+                    {
+                        files.Add(entry.Value);
+                    }
+                }
+
+                files.Sort((left, right) => StringComparer.CurrentCultureIgnoreCase.Compare(left.Name, right.Name));
+                entries.AddRange(files);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex) when (ex is UnauthorizedAccessException or IOException or System.Security.SecurityException)
+        {
+            status = "This folder cannot be opened.";
+        }
+
+        bool truncated = entries.Count > maxItems;
+        if (truncated)
+        {
+            entries = entries.Take(maxItems).ToList();
+        }
+
+        return new DirectoryLoadResult(entries, status, truncated);
+    }
     private VisualElement BuildSaveFileNameRow()
     {
         string fileName = GetInitialSaveFileName();
@@ -582,7 +843,7 @@ public class PathPicker : BorderCompositeView<PathPicker>, IPointerHandler, IGlo
     {
         var parentButton = CreateToolbarButton(Icons.ChevronUp, NavigateToParent);
         var homeButton = CreateToolbarButton(Icons.Home, NavigateToHome);
-        var refreshButton = CreateToolbarButton(Icons.Refresh, () => RebuildDialogContent());
+        var refreshButton = CreateToolbarButton(Icons.Refresh, RefreshCurrentDirectory);
         var rootsButton = CreateToolbarButton(Icons.Folder, NavigateToFirstRoot);
 
         return new HStack()
@@ -801,10 +1062,16 @@ public class PathPicker : BorderCompositeView<PathPicker>, IPointerHandler, IGlo
 
     private void NavigateToFirstRoot()
     {
-        var root = Directory.GetLogicalDrives().FirstOrDefault()
+        var root = GetRootDirectories().FirstOrDefault()
             ?? Path.GetPathRoot(CurrentDirectory)
             ?? CurrentDirectory;
         NavigateTo(root);
+    }
+
+    private void RefreshCurrentDirectory()
+    {
+        ClearLoadedEntries();
+        RebuildDialogContent();
     }
 
     private ButtonIcon CreateToolbarButton(IconData icon, Action action)
@@ -831,15 +1098,8 @@ public class PathPicker : BorderCompositeView<PathPicker>, IPointerHandler, IGlo
             ? _listScrollView?.VerticalScrollOffset ?? 0f
             : 0f;
 
-        _dialogCard.Content(BuildDialogContent());
+        _dialogCard.Content(BuildDialogContent(preservedScrollOffset, preserveScrollOffset));
         RefreshDialogLayout();
-
-        if (preserveScrollOffset && _listScrollView != null)
-        {
-            _listScrollView.VerticalScrollOffset = preservedScrollOffset;
-            _listScrollView.MarkNeedsPaint();
-            (UIApplication.Current?.Tree ?? UITree.Current)?.MarkNeedsRender();
-        }
     }
 
     private void RefreshDialogLayout()
@@ -1073,7 +1333,12 @@ public class PathPicker : BorderCompositeView<PathPicker>, IPointerHandler, IGlo
 
     private bool IsEntryVisible(FileSystemEntry entry)
     {
-        if (ShowHidden)
+        return IsEntryVisible(entry, ShowHidden);
+    }
+
+    private static bool IsEntryVisible(FileSystemEntry entry, bool showHidden)
+    {
+        if (showHidden)
         {
             return true;
         }
@@ -1088,17 +1353,19 @@ public class PathPicker : BorderCompositeView<PathPicker>, IPointerHandler, IGlo
 
     private bool MatchesFileExtensions(FileSystemEntry entry)
     {
-        if (entry.IsDirectory || FileExtensions.Count == 0)
+        return MatchesFileExtensions(entry, FileExtensions.Select(NormalizeExtension).ToList());
+    }
+
+    private static bool MatchesFileExtensions(FileSystemEntry entry, IReadOnlyList<string> extensions)
+    {
+        if (entry.IsDirectory || extensions.Count == 0)
         {
             return true;
         }
 
         string extension = Path.GetExtension(entry.Path);
-        return FileExtensions.Any(filter =>
-        {
-            var normalized = NormalizeExtension(filter);
-            return normalized == "*" || string.Equals(extension, normalized, StringComparison.OrdinalIgnoreCase);
-        });
+        return extensions.Any(filter =>
+            filter == "*" || string.Equals(extension, filter, StringComparison.OrdinalIgnoreCase));
     }
 
     private static string NormalizeExtension(string extension)
@@ -1139,10 +1406,17 @@ public class PathPicker : BorderCompositeView<PathPicker>, IPointerHandler, IGlo
             }
         }
 
-        return ResolveDirectory(GetHomeDirectory())
-            ?? ResolveDirectory(Directory.GetCurrentDirectory())
-            ?? Path.GetPathRoot(Directory.GetCurrentDirectory())
-            ?? Directory.GetCurrentDirectory();
+        foreach (var candidate in GetInitialDirectoryCandidates())
+        {
+            var resolved = ResolveDirectory(candidate);
+            if (resolved != null)
+            {
+                return resolved;
+            }
+        }
+
+        var currentDirectory = Directory.GetCurrentDirectory();
+        return Path.GetPathRoot(currentDirectory) ?? currentDirectory;
     }
 
     private static string? ResolveDirectory(string? path)
@@ -1169,19 +1443,100 @@ public class PathPicker : BorderCompositeView<PathPicker>, IPointerHandler, IGlo
 
     private static string GetHomeDirectory()
     {
-        var documents = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
-        if (!string.IsNullOrWhiteSpace(documents) && Directory.Exists(documents))
+        return GetInitialDirectoryCandidates().FirstOrDefault() ?? Directory.GetCurrentDirectory();
+    }
+
+    private static IEnumerable<string> GetInitialDirectoryCandidates()
+    {
+        if (PlatformDetector.IsAndroid)
         {
-            return documents;
+            foreach (var directory in GetAndroidDirectoryCandidates())
+            {
+                if (IsUsableDirectory(directory))
+                {
+                    yield return directory;
+                }
+            }
         }
 
-        var profile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-        if (!string.IsNullOrWhiteSpace(profile) && Directory.Exists(profile))
+        foreach (var specialFolder in new[]
         {
-            return profile;
+            Environment.SpecialFolder.MyDocuments,
+            Environment.SpecialFolder.UserProfile,
+            Environment.SpecialFolder.LocalApplicationData,
+            Environment.SpecialFolder.ApplicationData
+        })
+        {
+            var directory = Environment.GetFolderPath(specialFolder);
+            if (IsUsableDirectory(directory))
+            {
+                yield return directory;
+            }
         }
 
-        return Directory.GetCurrentDirectory();
+        var currentDirectory = Directory.GetCurrentDirectory();
+        if (IsUsableDirectory(currentDirectory))
+        {
+            yield return currentDirectory;
+        }
+    }
+
+    private static IEnumerable<string> GetRootDirectories()
+    {
+        if (PlatformDetector.IsAndroid)
+        {
+            foreach (var directory in GetAndroidDirectoryCandidates())
+            {
+                if (IsUsableDirectory(directory))
+                {
+                    yield return directory;
+                }
+            }
+        }
+
+        foreach (var drive in Directory.GetLogicalDrives())
+        {
+            if (IsUsableDirectory(drive))
+            {
+                yield return drive;
+            }
+        }
+    }
+
+    private static IEnumerable<string> GetAndroidDirectoryCandidates()
+    {
+        yield return "/storage/emulated/0";
+        yield return "/sdcard";
+        yield return "/storage/emulated/0/Download";
+        yield return "/storage/emulated/0/Documents";
+        yield return "/storage/emulated/0/Pictures";
+        yield return Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+        yield return Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+        yield return Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+    }
+
+    private static bool IsUsableDirectory(string? directory)
+    {
+        if (string.IsNullOrWhiteSpace(directory))
+        {
+            return false;
+        }
+
+        try
+        {
+            if (!Directory.Exists(directory))
+            {
+                return false;
+            }
+
+            using var enumerator = Directory.EnumerateFileSystemEntries(directory).GetEnumerator();
+            _ = enumerator.MoveNext();
+            return true;
+        }
+        catch (Exception ex) when (ex is UnauthorizedAccessException or IOException or System.Security.SecurityException)
+        {
+            return false;
+        }
     }
 
     private static string GetDisplayName(string path)
@@ -1296,6 +1651,11 @@ public class PathPicker : BorderCompositeView<PathPicker>, IPointerHandler, IGlo
         bool IsDirectory,
         long Size,
         FileAttributes Attributes);
+
+    private sealed record DirectoryLoadResult(
+        IReadOnlyList<FileSystemEntry> Entries,
+        string Status,
+        bool Truncated);
 
     private sealed class DialogOverlayFrame : Frame, IPointerHandler
     {

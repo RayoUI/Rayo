@@ -522,6 +522,16 @@ internal class DrawerOverlay : Rayo.Core.CompositeView<DrawerOverlay>, Rayo.Core
         AddChild(_drawerFrame);
     }
 
+    protected override void OnThemeApplied(Theme theme)
+    {
+        _drawer.NotifyThemeChanged(theme);
+        if (_drawerFrame == null)
+            return;
+
+        _drawerFrame.Background = _drawer.Background;
+        _drawerFrame.BorderBrush = _drawer.BorderBrush;
+    }
+
     protected override void Measure(float availableWidth, float availableHeight)
     {
         // Calculate drawer dimensions

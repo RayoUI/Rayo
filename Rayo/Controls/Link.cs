@@ -4,10 +4,10 @@ using Rayo.Core;
 using Rayo.Core.Input;
 using Rayo.Core.Input.Gestures;
 using Rayo.Core.Interfaces;
+using Rayo.Core.Platform;
 using Rayo.Reactivity;
 using Rayo.Rendering;
 using Rayo.Rendering.Brushes;
-using System.Diagnostics;
 using Rayo.Styling;
 using IRenderer = Rayo.Rendering.IRenderer;
 
@@ -260,7 +260,7 @@ public class Link : View<Link>,
 
         if (OpenUrlOnTap && !string.IsNullOrWhiteSpace(Url))
         {
-            OpenUrl(Url);
+            UrlLauncher.Open(Url);
         }
     }
 
@@ -293,20 +293,5 @@ public class Link : View<Link>,
         }
 
         return width;
-    }
-
-    private static void OpenUrl(string url)
-    {
-        try
-        {
-            using var process = Process.Start(new ProcessStartInfo(url)
-            {
-                UseShellExecute = true
-            });
-        }
-        catch
-        {
-            // Hosts can handle activation through the Activated or Tapped events.
-        }
     }
 }

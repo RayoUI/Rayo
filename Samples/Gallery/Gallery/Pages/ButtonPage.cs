@@ -103,21 +103,33 @@ public class ButtonPage : Component
                                 .Width(200)
                                 .Height(40)
                                 .TextAlignment(HorizontalAlignment.Left)
-                                .Background(GalleryPalette.SurfaceHover),
+                                .Variant(ButtonVariant.Ghost)
+                                .Background(GalleryPalette.SurfaceHover)
+                                .HoverBackground(GalleryPalette.SurfacePressed)
+                                .PressedBackground(GalleryPalette.Border)
+                                .TextColor(GalleryPalette.OnSurface),
 
                             new Button()
                                 .Text("Center Aligned")
                                 .Width(200)
                                 .Height(40)
                                 .TextAlignment(HorizontalAlignment.Center)
-                                .Background(GalleryPalette.SurfaceHover),
+                                .Variant(ButtonVariant.Ghost)
+                                .Background(GalleryPalette.SurfaceHover)
+                                .HoverBackground(GalleryPalette.SurfacePressed)
+                                .PressedBackground(GalleryPalette.Border)
+                                .TextColor(GalleryPalette.OnSurface),
 
                             new Button()
                                 .Text("Right Aligned")
                                 .Width(200)
                                 .Height(40)
                                 .TextAlignment(HorizontalAlignment.Right)
+                                .Variant(ButtonVariant.Ghost)
                                 .Background(GalleryPalette.SurfaceHover)
+                                .HoverBackground(GalleryPalette.SurfacePressed)
+                                .PressedBackground(GalleryPalette.Border)
+                                .TextColor(GalleryPalette.OnSurface)
                         )
                 ),
 

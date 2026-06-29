@@ -111,5 +111,42 @@ public static class RayoThemes
 {
     public static Theme Light { get; } = new("light", ColorPalettes.Light);
     public static Theme Dark { get; } = new("dark", ColorPalettes.Dark);
-    public static Theme Current => Rayo.Core.UIApplication.Current?.ActiveTheme ?? Light;
+
+    private static Theme _current = Light;
+
+    public static Theme Current => Rayo.Core.UIApplication.Current?.ActiveTheme ?? _current;
+
+    /// <summary>
+    /// Applies a theme through the active platform host. On mobile hosts there may be
+    /// no UIApplication, so the current UITree is updated directly.
+    /// </summary>
+    public static void UseTheme(Theme theme)
+    {
+        ArgumentNullException.ThrowIfNull(theme);
+
+        if (Rayo.Core.UIApplication.Current != null)
+        {
+            Rayo.Core.UIApplication.Current.UseTheme(theme);
+            return;
+        }
+
+        SetCurrent(theme);
+        Rayo.Core.UIApplication.NotifyThemeChanged(theme);
+
+        var tree = Rayo.Core.UITree.Current;
+        tree?.Root?.NotifyThemeChanged(theme);
+        if (tree != null)
+        {
+            foreach (var overlay in tree.Overlays)
+                overlay.NotifyThemeChanged(theme);
+
+            tree.MarkNeedsMeasure();
+        }
+    }
+
+    internal static void SetCurrent(Theme theme)
+    {
+        ArgumentNullException.ThrowIfNull(theme);
+        _current = theme;
+    }
 }

@@ -217,7 +217,7 @@ public abstract class VisualElement : BindableObject, IDisposable, IInputTranspa
     /// </summary>
     protected void InitializeTheme()
     {
-        ApplyTheme(UIApplication.Current?.ActiveTheme ?? RayoThemes.Light);
+        ApplyTheme(RayoThemes.Current);
     }
 
     /// <summary>
@@ -226,7 +226,7 @@ public abstract class VisualElement : BindableObject, IDisposable, IInputTranspa
     protected void ResetThemeValues()
     {
         _themeOverrides.Clear();
-        ApplyTheme(UIApplication.Current?.ActiveTheme ?? RayoThemes.Light);
+        ApplyTheme(RayoThemes.Current);
     }
 
     /// <summary>Called whenever a theme must be applied to this element.</summary>
@@ -1422,7 +1422,7 @@ public abstract class VisualElement : BindableObject, IDisposable, IInputTranspa
 
     internal void NotifyMounted()
     {
-        ApplyTheme(UIApplication.Current?.ActiveTheme ?? RayoThemes.Light);
+        ApplyTheme(RayoThemes.Current);
         OnMounted();
         // Use ToArray to avoid collection modification during iteration
         foreach (var child in GetChildren().ToArray())

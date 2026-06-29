@@ -306,8 +306,19 @@ public abstract class TextBox<T> : BorderView<T>, IInputHandler, IFocusable, Ray
         SetThemeValue(nameof(TextColor), (Brush)palette.OnSurface, value => TextColor = value);
         SetThemeValue(nameof(PlaceholderColor), (Brush)palette.OnDisabled, value => PlaceholderColor = value);
         SetThemeValue(nameof(FocusBorderBrush), (Brush)palette.Focus, value => FocusBorderBrush = value);
-        SetThemeValue(nameof(SelectionBackground), (Brush)palette.Primary, value => SelectionBackground = value);
+        SetThemeValue(
+            nameof(SelectionBackground),
+            (Brush)GetSelectionBackground(theme),
+            value => SelectionBackground = value);
         SetThemeValue(nameof(BorderBrush), (Brush)palette.Border, value => BorderBrush = value);
+    }
+
+    private static Color GetSelectionBackground(Theme theme)
+    {
+        var palette = theme.Colors;
+        return theme == RayoThemes.Dark
+            ? palette.OnSurface.WithAlpha(0.28f)
+            : palette.Primary.WithAlpha(0.20f);
     }
 
     // =========================================================================
