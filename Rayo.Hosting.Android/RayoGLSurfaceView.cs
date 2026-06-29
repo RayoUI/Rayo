@@ -144,6 +144,17 @@ public class RayoGLSurfaceView : GLSurfaceView
             () => Rayo.Core.OverlayManager.EventManager?.ProcessKeyDown(key));
     }
 
+    internal void ScheduleResumeRender()
+    {
+        Post(() =>
+        {
+            RequestFocus();
+            RequestRender();
+        });
+
+        PostDelayed(RequestRender, 50);
+    }
+
     private static global::Android.Text.InputTypes GetInputType(Rayo.Core.Platform.VirtualKeyboardType type, bool isMultiline)
     {
         global::Android.Text.InputTypes inputType = type switch
@@ -402,15 +413,8 @@ public class RayoGLSurfaceView : GLSurfaceView
                 float scaleFactor = SkiaSharpRenderer.GetDpiScaleFactor();
                 RayoLog.Info($"Using renderer scale factor: {scaleFactor:F2}x");
 
-                if (TryInitializeGpuSkia(width, height))
-                {
-                    RayoLog.Info("SkiaSharp initialized with direct OpenGL GPU rendering");
-                }
-                else
-                {
-                    _skiaRenderer.Initialize(width, height);
-                    RayoLog.Info("SkiaSharp GPU initialization unavailable; using CPU fallback");
-                }
+                _skiaRenderer.Initialize(width, height);
+                RayoLog.Info("SkiaSharp initialized with CPU surface for Android GL presentation");
 
                 _tree = new UITree();
                 UITree.Current = _tree;

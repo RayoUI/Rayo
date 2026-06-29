@@ -93,6 +93,17 @@ public abstract class AndroidPlatformHost : Activity, IPlatformHost
     {
         base.OnResume();
         _glSurfaceView?.OnResume();
+        _glSurfaceView?.ScheduleResumeRender();
+    }
+
+    public override void OnWindowFocusChanged(bool hasFocus)
+    {
+        base.OnWindowFocusChanged(hasFocus);
+
+        if (hasFocus)
+        {
+            _glSurfaceView?.ScheduleResumeRender();
+        }
     }
 
     protected override void OnPause()
