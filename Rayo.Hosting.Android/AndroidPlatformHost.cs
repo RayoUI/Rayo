@@ -89,10 +89,28 @@ public abstract class AndroidPlatformHost : Activity, IPlatformHost
         ApplyDecorViewOptions();
     }
 
+    protected override void OnStart()
+    {
+        base.OnStart();
+        _glSurfaceView?.ScheduleResumeRender();
+    }
+
+    protected override void OnRestart()
+    {
+        base.OnRestart();
+        _glSurfaceView?.ScheduleResumeRender();
+    }
+
     protected override void OnResume()
     {
         base.OnResume();
         _glSurfaceView?.OnResume();
+        _glSurfaceView?.ScheduleResumeRender();
+    }
+
+    protected override void OnPostResume()
+    {
+        base.OnPostResume();
         _glSurfaceView?.ScheduleResumeRender();
     }
 
@@ -104,12 +122,23 @@ public abstract class AndroidPlatformHost : Activity, IPlatformHost
         {
             _glSurfaceView?.ScheduleResumeRender();
         }
+        else
+        {
+            _glSurfaceView?.NotifyPaused();
+        }
     }
 
     protected override void OnPause()
     {
+        _glSurfaceView?.NotifyPaused();
         base.OnPause();
         _glSurfaceView?.OnPause();
+    }
+
+    protected override void OnStop()
+    {
+        _glSurfaceView?.NotifyPaused();
+        base.OnStop();
     }
 
     public void Run(

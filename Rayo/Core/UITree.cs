@@ -272,6 +272,15 @@ public class UITree
         _dirtyRegions.Clear();
     }
 
+    public void ResetRenderCache()
+    {
+        _layerCache?.Dispose();
+        _layerCache = null;
+        _layerCacheRenderer = null;
+        _dirtyRegions.MarkFullScreenDirty();
+        MarkNeedsRender();
+    }
+
     private void ClearDirtyFlags(VisualElement element)
     {
         element.NeedsMeasure = false;

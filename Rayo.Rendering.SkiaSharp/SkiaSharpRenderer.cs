@@ -1065,7 +1065,9 @@ public class SkiaSharpRenderer : IRenderer, INativeGradientRenderer
 
     public ITexture CreateRenderTarget(int width, int height)
     {
-        return new SkiaSharpTexture(width, height, _grContext);
+        int physicalWidth = Math.Max(1, (int)MathF.Ceiling(width * _dpiScaleFactor));
+        int physicalHeight = Math.Max(1, (int)MathF.Ceiling(height * _dpiScaleFactor));
+        return new SkiaSharpTexture(physicalWidth, physicalHeight, _grContext);
     }
 
     public void BeginRenderToTexture(ITexture target)
@@ -1089,6 +1091,11 @@ public class SkiaSharpRenderer : IRenderer, INativeGradientRenderer
         _canvas = skTexture.Surface.Canvas;
         _canvas.Save();
         _canvas.Clear(SKColors.Transparent);
+
+        if (_dpiScaleFactor > 1.0f)
+        {
+            _canvas.Scale(_dpiScaleFactor, _dpiScaleFactor);
+        }
     }
 
     public void EndRenderToTexture()

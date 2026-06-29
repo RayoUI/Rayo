@@ -116,7 +116,11 @@ public class LayerCache : IDisposable
 
         foreach (var layer in _layers.Values)
         {
-            totalMemory += (long)(layer.Width * layer.Height * 4); // RGBA
+            if (layer.Texture != null)
+            {
+                totalMemory += (long)layer.Texture.Width * layer.Texture.Height * 4; // RGBA
+            }
+
             if (layer.IsDirty) dirtyCount++;
         }
 

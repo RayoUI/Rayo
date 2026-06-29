@@ -25,6 +25,8 @@ public enum ScrollBarVisibility
 /// </summary>
 public class ScrollView : CompositeView<ScrollView>, IInputHandler, IScrollable, IClippable, IDragScrollable
 {
+    private static readonly HashSet<ScrollView> ActiveInertiaScrollViews = new();
+
     // Properties from old Layout base class
     // Background is now inherited from VisualElement as Brush
     // Use Background property for simple colors
@@ -838,9 +840,7 @@ public class ScrollView : CompositeView<ScrollView>, IInputHandler, IScrollable,
         switch (args.EventType)
         {
             case InputEventType.MouseDown:
-                _hasInertia = false;
-                _velocityY = 0;
-                _velocityX = 0;
+                StopInertia();
 
                 // ✅ Check if the click is on the scrollbar thumb
                 if (IsPointOnVerticalThumb(args.Position))
@@ -1009,9 +1009,7 @@ public class ScrollView : CompositeView<ScrollView>, IInputHandler, IScrollable,
                     float velocityMagnitude = MathF.Sqrt(_velocityY * _velocityY + _velocityX * _velocityX);
                     if (velocityMagnitude > MinReleaseInertiaVelocity)
                     {
-                        _hasInertia = true;
-                        _lastInertiaUpdate = DateTime.UtcNow;
-                        MarkNeedsPaint();
+                        StartInertia();
                     }
                 }
 
@@ -1031,6 +1029,28 @@ public class ScrollView : CompositeView<ScrollView>, IInputHandler, IScrollable,
     {
         float clampedSample = MathF.Max(-MaxInertiaVelocity, MathF.Min(MaxInertiaVelocity, sampleVelocity));
         return currentVelocity * (1f - TouchVelocitySmoothing) + clampedSample * TouchVelocitySmoothing;
+    }
+
+    private void StartInertia()
+    {
+        _hasInertia = true;
+        _lastInertiaUpdate = DateTime.UtcNow;
+        ActiveInertiaScrollViews.Add(this);
+        MarkNeedsPaint();
+    }
+
+    private void StopInertia()
+    {
+        _hasInertia = false;
+        _velocityY = 0;
+        _velocityX = 0;
+        ActiveInertiaScrollViews.Remove(this);
+    }
+
+    protected override void OnUnmounted()
+    {
+        StopInertia();
+        base.OnUnmounted();
     }
 
     /// <summary>
@@ -1060,7 +1080,7 @@ public class ScrollView : CompositeView<ScrollView>, IInputHandler, IScrollable,
         _isDraggingVerticalThumb = false;
         _isDraggingHorizontalThumb = false;
         _isTouchDragging = false;
-        _hasInertia = false;
+        StopInertia();
     }
 
     /// <summary>
@@ -1126,9 +1146,7 @@ public class ScrollView : CompositeView<ScrollView>, IInputHandler, IScrollable,
         // Check if we should stop inertia
         if (!hasVerticalInertia && !hasHorizontalInertia)
         {
-            _hasInertia = false;
-            _velocityY = 0;
-            _velocityX = 0;
+            StopInertia();
         }
         else
         {
@@ -1137,18 +1155,11 @@ public class ScrollView : CompositeView<ScrollView>, IInputHandler, IScrollable,
         }
     }
 
-    public static void ProcessInertiaTree(VisualElement? element)
+    public static void ProcessActiveInertia()
     {
-        if (element == null) return;
-
-        if (element is ScrollView scrollView)
+        foreach (var scrollView in ActiveInertiaScrollViews.ToArray())
         {
             scrollView.ProcessInertia();
-        }
-
-        foreach (var child in element.GetChildren().ToArray())
-        {
-            ProcessInertiaTree(child);
         }
     }
 

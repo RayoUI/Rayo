@@ -35,7 +35,7 @@ public class RayoGLSurfaceView : GLSurfaceView
         WindowConfiguration config) : base(context)
     {
         SetEGLContextClientVersion(2);
-        SetEGLConfigChooser(8, 8, 8, 8, 0, 0);
+        SetEGLConfigChooser(new MultisampleEglConfigChooser(config.Samples));
         _renderer = new RayoRenderer(context, this, appContext, config);
         SetRenderer(_renderer);
         
@@ -48,6 +48,85 @@ public class RayoGLSurfaceView : GLSurfaceView
         FocusableInTouchMode = true;
         Focusable = true;
         RequestFocus();
+    }
+
+    private sealed class MultisampleEglConfigChooser : Java.Lang.Object, GLSurfaceView.IEGLConfigChooser
+    {
+        private const int EglOpenGlEs2Bit = 4;
+        private const int EglRenderableType = 0x3040;
+        private const int EglSampleBuffers = 0x3032;
+        private const int EglSamples = 0x3031;
+
+        private readonly int _requestedSamples;
+
+        public MultisampleEglConfigChooser(int requestedSamples)
+        {
+            _requestedSamples = Math.Max(0, requestedSamples);
+        }
+
+        public global::Javax.Microedition.Khronos.Egl.EGLConfig? ChooseConfig(
+            IEGL10? egl,
+            global::Javax.Microedition.Khronos.Egl.EGLDisplay? display)
+        {
+            if (egl == null || display == null)
+            {
+                return null;
+            }
+
+            int[] attributes =
+            [
+                IEGL10.EglRedSize, 8,
+                IEGL10.EglGreenSize, 8,
+                IEGL10.EglBlueSize, 8,
+                IEGL10.EglAlphaSize, 8,
+                IEGL10.EglDepthSize, 0,
+                IEGL10.EglStencilSize, 0,
+                EglRenderableType, EglOpenGlEs2Bit,
+                IEGL10.EglNone
+            ];
+
+            var configCount = new int[1];
+            if (!egl.EglChooseConfig(display, attributes, null, 0, configCount) || configCount[0] <= 0)
+            {
+                return null;
+            }
+
+            var configs = new global::Javax.Microedition.Khronos.Egl.EGLConfig[configCount[0]];
+            if (!egl.EglChooseConfig(display, attributes, configs, configs.Length, configCount))
+            {
+                return null;
+            }
+
+            var selected = configs
+                .Where(config => config != null)
+                .Select(config => new
+                {
+                    Config = config,
+                    Samples = GetConfigAttribute(egl, display, config, EglSamples),
+                    SampleBuffers = GetConfigAttribute(egl, display, config, EglSampleBuffers)
+                })
+                .OrderByDescending(config => config.SampleBuffers > 0)
+                .ThenBy(config => config.Samples >= _requestedSamples ? config.Samples - _requestedSamples : int.MaxValue)
+                .ThenByDescending(config => config.Samples)
+                .FirstOrDefault();
+
+            if (selected != null)
+            {
+                RayoLog.Info($"Android EGL config selected with {selected.Samples}x MSAA");
+            }
+
+            return selected?.Config;
+        }
+
+        private static int GetConfigAttribute(
+            IEGL10 egl,
+            global::Javax.Microedition.Khronos.Egl.EGLDisplay display,
+            global::Javax.Microedition.Khronos.Egl.EGLConfig config,
+            int attribute)
+        {
+            var value = new int[1];
+            return egl.EglGetConfigAttrib(display, config, attribute, value) ? value[0] : 0;
+        }
     }
 
     public override bool OnTouchEvent(global::Android.Views.MotionEvent? e)
@@ -146,13 +225,58 @@ public class RayoGLSurfaceView : GLSurfaceView
 
     internal void ScheduleResumeRender()
     {
-        Post(() =>
+        Post(RequestForegroundFrame);
+        PostDelayed(RequestForegroundFrame, 16);
+        PostDelayed(RequestForegroundFrame, 50);
+        PostDelayed(RequestForegroundFrame, 150);
+        PostDelayed(RequestForegroundFrame, 300);
+        PostDelayed(RequestForegroundFrame, 600);
+        PostDelayed(RequestForegroundFrame, 1000);
+    }
+
+    internal void NotifyPaused()
+    {
+        _renderer.NotifyPaused();
+    }
+
+    protected override void OnAttachedToWindow()
+    {
+        base.OnAttachedToWindow();
+        ScheduleResumeRender();
+    }
+
+    protected override void OnDetachedFromWindow()
+    {
+        NotifyPaused();
+        base.OnDetachedFromWindow();
+    }
+
+    protected override void OnWindowVisibilityChanged(global::Android.Views.ViewStates visibility)
+    {
+        base.OnWindowVisibilityChanged(visibility);
+
+        if (visibility == global::Android.Views.ViewStates.Visible)
         {
-            RequestFocus();
+            ScheduleResumeRender();
+        }
+        else
+        {
+            NotifyPaused();
+        }
+    }
+
+    private void RequestForegroundFrame()
+    {
+        RequestFocus();
+        RequestLayout();
+        Invalidate();
+        RenderMode = Rendermode.Continuously;
+        QueueEvent(() =>
+        {
+            _renderer.NotifyForegrounded();
             RequestRender();
         });
-
-        PostDelayed(RequestRender, 50);
+        RequestRender();
     }
 
     private static global::Android.Text.InputTypes GetInputType(Rayo.Core.Platform.VirtualKeyboardType type, bool isMultiline)
@@ -269,10 +393,15 @@ public class RayoGLSurfaceView : GLSurfaceView
         private int _programId;
         private int _vertexBufferId;
         private bool _glInitialized;
+        private bool _surfaceRecreated;
 
         private ByteBuffer? _pixelBuffer;
         private readonly Stopwatch _frameStopwatch = Stopwatch.StartNew();
         private double _lastFrameTimestamp;
+        private bool _resumeRenderPending;
+        private bool _foregroundRenderPending;
+        private volatile bool _resumeRequiresRebind;
+        private bool _hasPresentedFrame;
 
         private readonly ConcurrentQueue<TouchEvent> _touchEventQueue = new();
         private readonly Dictionary<int, TouchEvent> _pendingTouchMoves = new();
@@ -366,6 +495,7 @@ public class RayoGLSurfaceView : GLSurfaceView
             GLES20.GlTexParameteri(GLES20.GlTexture2d, GLES20.GlTextureWrapT, GLES20.GlClampToEdge);
 
             _glInitialized = true;
+            _surfaceRecreated = true;
             RayoLog.Info("OpenGL surface created successfully");
         }
 
@@ -397,12 +527,41 @@ public class RayoGLSurfaceView : GLSurfaceView
             }
             else
             {
-                _skiaRenderer?.Resize(width, height);
+                RecreateOrResizeSkiaSurface(width, height);
+                _tree.MarkNeedsLayout();
+                _tree.MarkNeedsRender();
             }
+
+            _surfaceRecreated = false;
 
             float logicalWidth = width / SkiaSharpRenderer.GetDpiScaleFactor();
             float logicalHeight = height / SkiaSharpRenderer.GetDpiScaleFactor();
             Rayo.Core.OverlayManager.SetWindowSize(logicalWidth, logicalHeight);
+        }
+
+        private void RecreateOrResizeSkiaSurface(int width, int height, bool forceGpuRebind = false)
+        {
+            if (_skiaRenderer == null)
+            {
+                return;
+            }
+
+            if (_surfaceRecreated || forceGpuRebind)
+            {
+                if (TryInitializeGpuSkia(width, height))
+                {
+                    RayoLog.Info("SkiaSharp GPU surface rebound to current Android framebuffer");
+                }
+                else
+                {
+                    _skiaRenderer.Initialize(width, height);
+                    RayoLog.Info("SkiaSharp GPU surface unavailable; using CPU fallback");
+                }
+
+                return;
+            }
+
+            _skiaRenderer.Resize(width, height);
         }
 
         private void InitializeRayo(int width, int height)
@@ -413,8 +572,15 @@ public class RayoGLSurfaceView : GLSurfaceView
                 float scaleFactor = SkiaSharpRenderer.GetDpiScaleFactor();
                 RayoLog.Info($"Using renderer scale factor: {scaleFactor:F2}x");
 
-                _skiaRenderer.Initialize(width, height);
-                RayoLog.Info("SkiaSharp initialized with CPU surface for Android GL presentation");
+                if (TryInitializeGpuSkia(width, height))
+                {
+                    RayoLog.Info("SkiaSharp initialized with direct OpenGL GPU rendering");
+                }
+                else
+                {
+                    _skiaRenderer.Initialize(width, height);
+                    RayoLog.Info("SkiaSharp GPU initialization unavailable; using CPU fallback");
+                }
 
                 _tree = new UITree();
                 UITree.Current = _tree;
@@ -507,6 +673,8 @@ public class RayoGLSurfaceView : GLSurfaceView
             {
                 return false;
             }
+
+            BindDefaultFramebuffer(width, height);
 
             var framebuffer = new int[1];
             var samples = new int[1];
@@ -638,6 +806,25 @@ public class RayoGLSurfaceView : GLSurfaceView
                 // STEP 1: Process queued touch events from Main Thread (lock-free)
                 ProcessTouchEvents();
 
+                if (_surfaceRecreated || _resumeRenderPending || _foregroundRenderPending)
+                {
+                    bool shouldRebindSurface = _surfaceRecreated || _resumeRenderPending;
+                    bool forceGpuRebind = _resumeRenderPending;
+                    _resumeRenderPending = false;
+                    _foregroundRenderPending = false;
+                    _lastFrameTimestamp = 0;
+
+                    if (shouldRebindSurface)
+                    {
+                        RecreateOrResizeSkiaSurface(_width, _height, forceGpuRebind);
+                        _surfaceRecreated = false;
+                    }
+
+                    _tree.ResetRenderCache();
+                    _tree.MarkNeedsLayout();
+                    _tree.MarkNeedsRender();
+                }
+
                 // STEP 2: Tick animations
                 AnimationManager.Instance.Update(deltaTime * 1000.0f);
                 FrameAnimationTicker.Tick(deltaTime);
@@ -656,6 +843,11 @@ public class RayoGLSurfaceView : GLSurfaceView
                 _tree.Update(logicalWidth, logicalHeight);
 
                 // STEP 6: Render UI to SkiaSharp surface
+                if (_skiaRenderer.IsGpuBacked)
+                {
+                    BindDefaultFramebuffer(_width, _height);
+                }
+
                 _skiaRenderer.BeginFrame();
                 _skiaRenderer.Clear(new Rayo.Rendering.Color(30, 30, 30));
 
@@ -716,10 +908,40 @@ public class RayoGLSurfaceView : GLSurfaceView
                 // Allow next invalidation to trigger another frame
                 // In continuous rendering mode, this runs every frame targeting 60 fps
                 _tree.ClearRenderFlag();
+                _hasPresentedFrame = true;
             }
             catch (Exception ex)
             {
                 RayoLog.Error($"Error in OnDrawFrame: {ex.Message}", ex);
+            }
+        }
+
+        public void NotifyResumed()
+        {
+            NotifyForegrounded();
+        }
+
+        public void NotifyForegrounded()
+        {
+            if (!_isInitialized || !_hasPresentedFrame)
+            {
+                return;
+            }
+
+            _foregroundRenderPending = true;
+
+            if (_resumeRequiresRebind)
+            {
+                _resumeRequiresRebind = false;
+                _resumeRenderPending = true;
+            }
+        }
+
+        public void NotifyPaused()
+        {
+            if (_isInitialized && _hasPresentedFrame)
+            {
+                _resumeRequiresRebind = true;
             }
         }
 
@@ -742,6 +964,12 @@ public class RayoGLSurfaceView : GLSurfaceView
             }
 
             return (float)delta;
+        }
+
+        private static void BindDefaultFramebuffer(int width, int height)
+        {
+            GLES20.GlBindFramebuffer(GLES20.GlFramebuffer, 0);
+            GLES20.GlViewport(0, 0, width, height);
         }
 
         public void HandleTouchEvent(global::Android.Views.MotionEvent e)
@@ -869,24 +1097,7 @@ public class RayoGLSurfaceView : GLSurfaceView
         /// </summary>
         private void ProcessScrollInertia()
         {
-            if (_tree?.Root == null) return;
-
-            // Process inertia for ScrollViews in the main tree
-            ProcessElementInertia(_tree.Root);
-
-            // Process inertia for ScrollViews in overlays (Drawer, Dialog, etc.)
-            foreach (var overlay in _tree.Overlays)
-            {
-                ProcessElementInertia(overlay);
-            }
-        }
-
-        /// <summary>
-        /// Recursively processes inertia for ScrollView elements in the tree.
-        /// </summary>
-        private void ProcessElementInertia(VisualElement element)
-        {
-            Controls.ScrollView.ProcessInertiaTree(element);
+            Controls.ScrollView.ProcessActiveInertia();
         }
 
         private int CreateProgram(string vertexSource, string fragmentSource)
