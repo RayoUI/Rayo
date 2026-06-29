@@ -1043,8 +1043,21 @@ public class SkiaSharpRenderer : IRenderer, INativeGradientRenderer
         }
         else if (skTexture.Image is { } image)
         {
-            var sampling = new SKSamplingOptions(SKCubicResampler.Mitchell);
-            _canvas.DrawImage(image, destRect, sampling, paint);
+            bool isOneToOne =
+                MathF.Abs(width - image.Width) < 1f &&
+                MathF.Abs(height - image.Height) < 1f;
+
+            if (isOneToOne)
+            {
+                // Avoid an expensive cubic resample for dynamic pixel buffers and
+                // other textures drawn at their native size.
+                _canvas.DrawImage(image, x, y, paint);
+            }
+            else
+            {
+                var sampling = new SKSamplingOptions(SKCubicResampler.Mitchell);
+                _canvas.DrawImage(image, destRect, sampling, paint);
+            }
         }
     }
 
