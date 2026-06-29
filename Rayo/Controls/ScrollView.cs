@@ -144,8 +144,11 @@ public class ScrollView : CompositeView<ScrollView>, IInputHandler, IScrollable,
     private float _velocityY = 0;
     private float _velocityX = 0;
     private bool _hasInertia = false;
-    private const float InertiaDecelerationPerFrame = 0.94f;
-    private const float MinInertiaVelocity = 0.5f; // Stop inertia when velocity is below this
+    private const float TouchVelocitySmoothing = 0.75f;
+    private const float InertiaDecelerationPerFrame = 0.965f;
+    private const float MinInertiaVelocity = 8f; // Logical pixels per second
+    private const float MinReleaseInertiaVelocity = 120f;
+    private const float MaxInertiaVelocity = 6500f;
     private const float InertiaBaseFrameTime = 1f / 60f;
     private const float MinInertiaDelta = 1f / 240f;
     private const float MaxInertiaDelta = 1f / 15f;
@@ -835,6 +838,10 @@ public class ScrollView : CompositeView<ScrollView>, IInputHandler, IScrollable,
         switch (args.EventType)
         {
             case InputEventType.MouseDown:
+                _hasInertia = false;
+                _velocityY = 0;
+                _velocityX = 0;
+
                 // ✅ Check if the click is on the scrollbar thumb
                 if (IsPointOnVerticalThumb(args.Position))
                 {
@@ -917,9 +924,8 @@ public class ScrollView : CompositeView<ScrollView>, IInputHandler, IScrollable,
                     // Calculate velocity (for inertia when released)
                     if (timeDelta > 0.001f)
                     {
-                        // Smooth velocity with some averaging
-                        _velocityY = _velocityY * 0.3f + (posDelta.Y / timeDelta) * 0.7f;
-                        _velocityX = _velocityX * 0.3f + (posDelta.X / timeDelta) * 0.7f;
+                        _velocityY = SmoothTouchVelocity(_velocityY, posDelta.Y / timeDelta);
+                        _velocityX = SmoothTouchVelocity(_velocityX, posDelta.X / timeDelta);
                     }
 
                     // Touch scroll: content follows finger (natural mobile behavior)
@@ -968,7 +974,7 @@ public class ScrollView : CompositeView<ScrollView>, IInputHandler, IScrollable,
 
                     if (distance >= activationThreshold)
                     {
-                        // Exceeded the threshold - activate touch drag mode
+                        // Exceeded the threshold - activate drag scroll mode
                         _isTouchDragging = true;
                         _dragPending = false;
                         _lastTouchPosition = args.Position;
@@ -997,16 +1003,14 @@ public class ScrollView : CompositeView<ScrollView>, IInputHandler, IScrollable,
             case InputEventType.MouseUp:
                 bool wasDragging = _isDragging || _isDraggingVerticalThumb || _isDraggingHorizontalThumb || _isTouchDragging;
 
-                // Start inertia if we were touch dragging with significant velocity
-                if (_isTouchDragging)
+                // Start inertia only for mobile/touch. Desktop pointer dragging should stop immediately.
+                if (_isTouchDragging && Rayo.Core.Platform.PlatformDetector.IsMobile)
                 {
                     float velocityMagnitude = MathF.Sqrt(_velocityY * _velocityY + _velocityX * _velocityX);
-                    float inertiaThreshold = MinInertiaVelocity * (Rayo.Core.Platform.PlatformDetector.IsMobile ? 2f : 5f);
-                    if (velocityMagnitude > inertiaThreshold)
+                    if (velocityMagnitude > MinReleaseInertiaVelocity)
                     {
                         _hasInertia = true;
                         _lastInertiaUpdate = DateTime.UtcNow;
-                        // Schedule inertia updates
                         MarkNeedsPaint();
                     }
                 }
@@ -1021,6 +1025,12 @@ public class ScrollView : CompositeView<ScrollView>, IInputHandler, IScrollable,
             default:
                 return false;
         }
+    }
+
+    private static float SmoothTouchVelocity(float currentVelocity, float sampleVelocity)
+    {
+        float clampedSample = MathF.Max(-MaxInertiaVelocity, MathF.Min(MaxInertiaVelocity, sampleVelocity));
+        return currentVelocity * (1f - TouchVelocitySmoothing) + clampedSample * TouchVelocitySmoothing;
     }
 
     /// <summary>
@@ -1083,16 +1093,34 @@ public class ScrollView : CompositeView<ScrollView>, IInputHandler, IScrollable,
 
         if (hasVerticalInertia)
         {
+            float previousOffset = VerticalScrollOffset;
             VerticalScrollOffset -= _velocityY * deltaSeconds;
-            float decayMultiplier = MathF.Pow(InertiaDecelerationPerFrame, deltaSeconds / InertiaBaseFrameTime);
-            _velocityY *= decayMultiplier;
+            if (MathF.Abs(VerticalScrollOffset - previousOffset) < 0.01f)
+            {
+                _velocityY = 0;
+                hasVerticalInertia = false;
+            }
+            else
+            {
+                float decayMultiplier = MathF.Pow(InertiaDecelerationPerFrame, deltaSeconds / InertiaBaseFrameTime);
+                _velocityY *= decayMultiplier;
+            }
         }
 
         if (hasHorizontalInertia)
         {
+            float previousOffset = HorizontalScrollOffset;
             HorizontalScrollOffset -= _velocityX * deltaSeconds;
-            float decayMultiplier = MathF.Pow(InertiaDecelerationPerFrame, deltaSeconds / InertiaBaseFrameTime);
-            _velocityX *= decayMultiplier;
+            if (MathF.Abs(HorizontalScrollOffset - previousOffset) < 0.01f)
+            {
+                _velocityX = 0;
+                hasHorizontalInertia = false;
+            }
+            else
+            {
+                float decayMultiplier = MathF.Pow(InertiaDecelerationPerFrame, deltaSeconds / InertiaBaseFrameTime);
+                _velocityX *= decayMultiplier;
+            }
         }
 
         // Check if we should stop inertia
@@ -1106,6 +1134,21 @@ public class ScrollView : CompositeView<ScrollView>, IInputHandler, IScrollable,
         {
             // Continue animation
             MarkNeedsPaint();
+        }
+    }
+
+    public static void ProcessInertiaTree(VisualElement? element)
+    {
+        if (element == null) return;
+
+        if (element is ScrollView scrollView)
+        {
+            scrollView.ProcessInertia();
+        }
+
+        foreach (var child in element.GetChildren().ToArray())
+        {
+            ProcessInertiaTree(child);
         }
     }
 

@@ -886,17 +886,7 @@ public class RayoGLSurfaceView : GLSurfaceView
         /// </summary>
         private void ProcessElementInertia(VisualElement element)
         {
-            // Process this element if it's a ScrollView (use full name to avoid Android.Widget.ScrollView conflict)
-            if (element is Controls.ScrollView scrollView)
-            {
-                scrollView.ProcessInertia();
-            }
-
-            // Recursively process children
-            //foreach (var child in element)
-            //{
-            //    ProcessElementInertia(child);
-            //}
+            Controls.ScrollView.ProcessInertiaTree(element);
         }
 
         private int CreateProgram(string vertexSource, string fragmentSource)
