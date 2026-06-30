@@ -324,12 +324,7 @@ public class GalleryBuilder : Component
                     .HorizontalAlignment(HorizontalAlignment.Stretch)
                     .Children(
                         new PaletteLabel("Rayo Gallery", colors => colors.OnSurface)
-                            .FontSize(16),
-                        new ThemeToggleButton()
-                            .Variant(ButtonVariant.Ghost)
-                            .Size(34)
-                            .IconSize(17)
-                            .OnTapped(ToggleTheme)
+                            .FontSize(16)
                     )
             );
 

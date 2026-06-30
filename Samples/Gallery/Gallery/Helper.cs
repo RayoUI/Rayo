@@ -1,6 +1,7 @@
 ﻿using Rayo;
 using Rayo.Controls;
 using Rayo.Core;
+using Rayo.Core.Platform;
 using Rayo.Layout;
 using Rayo.Rendering;
 using Rayo.Styling;
@@ -16,17 +17,42 @@ public static class Helper
     // Creates a page header with a title and description.
     public static VisualElement CreatePageHeader(string title, string description)
     {
+        var titleLabel = new PaletteLabel(title, colors => colors.Primary)
+            .FontSize(28);
+
+        VisualElement titleContent = titleLabel;
+        if (!PlatformDetector.IsMobile)
+        {
+            titleContent = new Grid()
+                .Rows(GridLength.Auto)
+                .Columns(GridLength.Star, GridLength.Auto)
+                .HorizontalAlignment(HorizontalAlignment.Stretch)
+                .AddChild(titleLabel, 0, 0)
+                .AddChild(
+                    new ThemeToggleButton()
+                        .Variant(ButtonVariant.Ghost)
+                        .Size(34)
+                        .IconSize(17)
+                        .OnTapped(ToggleTheme),
+                    0,
+                    1);
+        }
+
         return new VStack()
             .Spacing(8)
             .Margin(new Thickness(0, 0, 0, 20))
             .VerticalAlignment(VerticalAlignment.Top)
             .Children(
-                new PaletteLabel(title, colors => colors.Primary)
-                    .FontSize(28),
+                titleContent,
 
                 new PaletteLabel(description, colors => colors.OnDisabled)
                     .FontSize(14)
             );
+    }
+
+    private static void ToggleTheme()
+    {
+        RayoThemes.UseTheme(RayoThemes.Current == RayoThemes.Dark ? RayoThemes.Light : RayoThemes.Dark);
     }
 
     // Creates a section with a title and content for examples.

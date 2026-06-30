@@ -55,7 +55,7 @@ public sealed class HomePage(WeatherStore store) : Component
                     .FontSize(28).Foreground(WeatherUi.Text(store.IsDark)),
                 new Frame()
                     .Background(WeatherUi.Purple)
-                    .BorderRadius(24)
+                    .BorderRadius(30)
                     .BorderThickness(0)
                     .Padding(new Thickness(18, 5))
                     .Content(new Label("Clear").FontSize(13).Foreground(Color.White)));
