@@ -4,6 +4,7 @@ using Rayo.Core;
 using Rayo.Core.Platform;
 using Rayo.Layout;
 using Rayo.Rendering;
+using Rayo.Styling;
 using static Rayo.Core.UIHelpers;
 using Shadow = Rayo.Controls.Shadow;
 
@@ -11,11 +12,10 @@ namespace Gallery.Pages;
 
 public class ShadowPage : Component
 {
-    // Lighter surface used as the background tile so dark shadows have contrast
-    private static readonly Color SurfaceBg = new Color(62, 65, 80);
-
     public override VisualElement Build()
     {
+        var palette = RayoThemes.Current.Colors;
+
         if (PlatformDetector.IsMobile)
         {
             return new VStack()
@@ -34,7 +34,9 @@ public class ShadowPage : Component
                             .Children(
                                 CreateShadowDemo("None", Shadow.None),
                                 CreateShadowDemo("Subtle", Shadow.Subtle),
-                                CreateShadowDemo("Default", Shadow.Default)
+                                CreateShadowDemo("Default", Shadow.Default),
+                                CreateShadowDemo("Strong", Shadow.Strong),
+                                CreateColoredShadowDemo("Colored", palette.Primary, Shadow.Colored(palette.Primary))
                             )
                     ),
                     Helper.CreateExampleSection("Glow",
@@ -44,6 +46,16 @@ public class ShadowPage : Component
                             .Children(
                                 CreateColoredShadowDemo("Blue", new Color(59, 130, 246), Shadow.Colored(new Color(59, 130, 246, 255))),
                                 CreateColoredShadowDemo("Green", new Color(34, 197, 94), Shadow.Colored(new Color(34, 197, 94, 255)))
+                            )
+                    ),
+                    Helper.CreateExampleSection("Parameters",
+                        new HStack()
+                            .Spacing(16)
+                            .Alignment(Alignment.Center)
+                            .Children(
+                                CreateShadowDemo("Alpha 25%", new Shadow(new Color(0, 0, 0, 64), 0, 4, 12)),
+                                CreateShadowDemo("Offset X", new Shadow(new Color(0, 0, 0, 160), 8, 0, 10)),
+                                CreateShadowDemo("Soft", new Shadow(new Color(0, 0, 0, 120), 0, 8, 24))
                             )
                     )
                 );
@@ -58,8 +70,7 @@ public class ShadowPage : Component
                 Helper.CreateInfoCard(
                     "How shadows work",
                     "Shadows are rendered as semi-transparent layers behind the element. " +
-                    "They require a lighter background to be visible — each demo card below sits " +
-                    "on a lighter tile for contrast."
+                    "Each demo uses theme surfaces and borders so the elevation stays visible in light and dark themes."
                 ),
 
                 // ── Presets ──────────────────────────────────────────────────────
@@ -71,7 +82,8 @@ public class ShadowPage : Component
                             CreateShadowDemo("None",    Shadow.None),
                             CreateShadowDemo("Subtle",  Shadow.Subtle),
                             CreateShadowDemo("Default", Shadow.Default),
-                            CreateShadowDemo("Strong",  Shadow.Strong)
+                            CreateShadowDemo("Strong",  Shadow.Strong),
+                            CreateColoredShadowDemo("Colored", palette.Primary, Shadow.Colored(palette.Primary))
                         )
                 ),
 
@@ -100,6 +112,42 @@ public class ShadowPage : Component
                             CreateShadowDemo("Bottom-Right", new Shadow(new Color(0, 0, 0, 220), 5, 5, 8)),
                             CreateShadowDemo("Top-Left",     new Shadow(new Color(0, 0, 0, 220), -4, -4, 8)),
                             CreateShadowDemo("Centered",     new Shadow(new Color(0, 0, 0, 220), 0, 0, 14))
+                        )
+                ),
+
+                Helper.CreateExampleSection("Opacity",
+                    new HStack()
+                        .Spacing(16)
+                        .Alignment(Alignment.Center)
+                        .Children(
+                            CreateShadowDemo("Alpha 20%", new Shadow(new Color(0, 0, 0, 51), 0, 4, 14)),
+                            CreateShadowDemo("Alpha 35%", new Shadow(new Color(0, 0, 0, 89), 0, 4, 14)),
+                            CreateShadowDemo("Alpha 55%", new Shadow(new Color(0, 0, 0, 140), 0, 4, 14)),
+                            CreateShadowDemo("Alpha 75%", new Shadow(new Color(0, 0, 0, 191), 0, 4, 14))
+                        )
+                ),
+
+                Helper.CreateExampleSection("Elevation Profiles",
+                    new HStack()
+                        .Spacing(16)
+                        .Alignment(Alignment.Center)
+                        .Children(
+                            CreateShadowDemo("Flat Lift", new Shadow(new Color(0, 0, 0, 80), 0, 1, 3)),
+                            CreateShadowDemo("Card", new Shadow(new Color(0, 0, 0, 110), 0, 4, 12)),
+                            CreateShadowDemo("Popover", new Shadow(new Color(0, 0, 0, 145), 0, 8, 20)),
+                            CreateShadowDemo("Modal", new Shadow(new Color(0, 0, 0, 170), 0, 14, 32))
+                        )
+                ),
+
+                Helper.CreateExampleSection("Axis Combinations",
+                    new HStack()
+                        .Spacing(16)
+                        .Alignment(Alignment.Center)
+                        .Children(
+                            CreateShadowDemo("X 10 / Y 2", new Shadow(new Color(0, 0, 0, 150), 10, 2, 12)),
+                            CreateShadowDemo("X -10 / Y 2", new Shadow(new Color(0, 0, 0, 150), -10, 2, 12)),
+                            CreateShadowDemo("X 0 / Y -8", new Shadow(new Color(0, 0, 0, 150), 0, -8, 14)),
+                            CreateShadowDemo("Ring Glow", new Shadow(palette.Primary.WithAlpha(0.85f), 0, 0, 22))
                         )
                 ),
 
@@ -141,8 +189,8 @@ public class ShadowPage : Component
                             WrapInTile(
                                 new Border()
                                     .CornerRadius(new CornerRadius(10))
-                                    .Background(new Color(45, 48, 60))
-                                    .BorderBrush(new Color(70, 73, 87))
+                                    .Background(palette.Surface)
+                                    .BorderBrush(palette.Border)
                                     .BorderThickness(new Thickness(1))
                                     .Shadow(Shadow.Strong)
                                     .Padding(new Thickness(16))
@@ -152,10 +200,10 @@ public class ShadowPage : Component
                                             .Children(
                                                 new Label("Elevated Card")
                                                     .FontSize(14).FontWeight(FontWeight.SemiBold)
-                                                    .Foreground(Color.White),
+                                                    .Foreground(palette.OnSurface),
                                                 new Label("Shadow.Strong preset")
                                                     .FontSize(12)
-                                                    .Foreground(ColorDefault.Secondary)
+                                                    .Foreground(palette.OnDisabled)
                                             )
                                     )
                             ),
@@ -164,7 +212,7 @@ public class ShadowPage : Component
                             WrapInTile(
                                 new Border()
                                     .CornerRadius(new CornerRadius(8))
-                                    .Background(new Color(35, 38, 48))
+                                    .Background(palette.Surface)
                                     .BorderBrush(new Color(239, 68, 68, 100))
                                     .BorderThickness(new Thickness(1))
                                     .Shadow(new Shadow(new Color(239, 68, 68, 255), 0, 0, 16))
@@ -178,7 +226,7 @@ public class ShadowPage : Component
                                                     .Foreground(new Color(239, 68, 68)),
                                                 new Label("3 Alerts")
                                                     .FontSize(13).FontWeight(FontWeight.Medium)
-                                                    .Foreground(Color.White)
+                                                    .Foreground(palette.OnSurface)
                                             )
                                     )
                             )
@@ -194,7 +242,7 @@ public class ShadowPage : Component
     {
         return new Border()
             .CornerRadius(new CornerRadius(10))
-            .Background(SurfaceBg)
+            .Background(GetTileBackground())
             .Padding(new Thickness(24, 20))
             .Content(content);
     }
@@ -208,27 +256,27 @@ public class ShadowPage : Component
                 // Lighter tile so dark shadow has contrast
                 new Border()
                     .CornerRadius(new CornerRadius(10))
-                    .Background(SurfaceBg)
+                    .Background(GetTileBackground())
                     .Padding(new Thickness(24, 20))
                     .Content(
                         new Border()
                             .CornerRadius(new CornerRadius(8))
-                            .Background(new Color(35, 38, 50))
-                            .BorderBrush(new Color(60, 63, 78))
+                            .Background(RayoThemes.Current.Colors.Surface)
+                            .BorderBrush(RayoThemes.Current.Colors.Border)
                             .BorderThickness(new Thickness(1))
                             .Shadow(shadow)
                             .Padding(new Thickness(20, 12))
                             .Content(
                                 new Label("Aa")
                                     .FontSize(16).FontWeight(FontWeight.SemiBold)
-                                    .Foreground(Color.White)
+                                    .Foreground(RayoThemes.Current.Colors.OnSurface)
                                     .HorizontalAlignment(HorizontalAlignment.Center)
                                     .VerticalAlignment(VerticalAlignment.Center)
                             )
                     ),
                 new Label(label)
                     .FontSize(11)
-                    .Foreground(new Color(140, 145, 160))
+                    .Foreground(RayoThemes.Current.Colors.OnDisabled)
                     .TextHorizontalAlignment(HorizontalAlignment.Center)
             );
     }
@@ -241,12 +289,12 @@ public class ShadowPage : Component
             .Children(
                 new Border()
                     .CornerRadius(new CornerRadius(10))
-                    .Background(SurfaceBg)
+                    .Background(GetTileBackground())
                     .Padding(new Thickness(24, 20))
                     .Content(
                         new Border()
                             .CornerRadius(new CornerRadius(8))
-                            .Background(new Color(28, 30, 42))
+                            .Background(RayoThemes.Current.Colors.Surface)
                             .BorderBrush(accent.WithAlpha(0.3f))
                             .BorderThickness(new Thickness(1))
                             .Shadow(shadow)
@@ -261,8 +309,10 @@ public class ShadowPage : Component
                     ),
                 new Label(label)
                     .FontSize(11)
-                    .Foreground(new Color(140, 145, 160))
+                    .Foreground(RayoThemes.Current.Colors.OnDisabled)
                     .TextHorizontalAlignment(HorizontalAlignment.Center)
             );
     }
+
+    private static Color GetTileBackground() => RayoThemes.Current.Colors.SurfaceHover;
 }

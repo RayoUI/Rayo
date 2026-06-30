@@ -317,7 +317,7 @@ public abstract class TextBox<T> : BorderView<T>, IInputHandler, IFocusable, Ray
     {
         var palette = theme.Colors;
         return theme == RayoThemes.Dark
-            ? palette.OnSurface.WithAlpha(0.28f)
+            ? palette.Primary.WithAlpha(0.42f)
             : palette.Primary.WithAlpha(0.20f);
     }
 

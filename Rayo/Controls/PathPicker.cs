@@ -45,10 +45,10 @@ public class PathPicker : BorderCompositeView<PathPicker>, IPointerHandler, IGlo
     private Icon? _browseIcon;
     private Frame? _dialogOverlay;
     private Frame? _dialogCard;
+    private Frame? _listFrame;
     private Label? _currentDirectoryLabel;
     private Label? _statusLabel;
-    private VStack? _itemsStack;
-    private ScrollView? _listScrollView;
+    private ListView<FileSystemEntry>? _entriesListView;
     private Entry? _fileNameEntry;
     private string? _pendingSelection;
     private bool _pendingSelectionIsDirectory;
@@ -60,6 +60,8 @@ public class PathPicker : BorderCompositeView<PathPicker>, IPointerHandler, IGlo
     private int _entriesLoadVersion;
     private string? _loadedEntriesDirectory;
     private DirectoryLoadResult? _loadedEntries;
+    private readonly Dictionary<string, ListViewItem> _visibleEntryRowsByPath = new();
+    private readonly Dictionary<ListViewItem, string> _pathByVisibleEntryRow = new();
 
     public PathPicker()
     {
@@ -352,8 +354,8 @@ public class PathPicker : BorderCompositeView<PathPicker>, IPointerHandler, IGlo
         _isOpen = false;
         _dialogOverlay = null;
         _dialogCard = null;
-        _itemsStack = null;
-        _listScrollView = null;
+        _listFrame = null;
+        _entriesListView = null;
         _fileNameEntry = null;
         _currentDirectoryLabel = null;
         _statusLabel = null;
@@ -428,14 +430,27 @@ public class PathPicker : BorderCompositeView<PathPicker>, IPointerHandler, IGlo
         };
         _browseIcon.SetInputTransparent(true);
 
-        var content = new HStack()
-            .Spacing(10)
-            .Alignment(Alignment.Center)
-            .JustifyContent(JustifyContent.SpaceBetween)
-            .HorizontalAlignment(HorizontalAlignment.Stretch);
-        content.AddChild(_modeIcon);
-        content.AddChild(_selectedPathLabel);
-        content.AddChild(_browseIcon);
+        var selectedPathScroll = new ScrollView()
+        {
+            Orientation = ScrollOrientation.Horizontal,
+            VerticalScrollBarVisibility = ScrollBarVisibility.Disabled,
+            HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
+            ClipToBounds = true
+        }
+            .Height(24)
+            .HorizontalAlignment(HorizontalAlignment.Stretch)
+            .VerticalAlignment(VerticalAlignment.Center)
+            .Content(_selectedPathLabel);
+
+        var content = new Grid()
+            .Rows(GridLength.Star)
+            .Columns(GridLength.Pixels(24), GridLength.Star, GridLength.Pixels(22))
+            .ColumnSpacing(10)
+            .HorizontalAlignment(HorizontalAlignment.Stretch)
+            .VerticalAlignment(VerticalAlignment.Stretch)
+            .AddChild(_modeIcon, 0, 0)
+            .AddChild(selectedPathScroll, 0, 1)
+            .AddChild(_browseIcon, 0, 2);
 
         _pickerButton = new Frame()
             .Background(Background)
@@ -507,12 +522,22 @@ public class PathPicker : BorderCompositeView<PathPicker>, IPointerHandler, IGlo
             .VerticalAlignment(VerticalAlignment.Top)
             .Content(_currentDirectoryLabel);
 
-        _itemsStack = new VStack()
-            .Spacing(4)
-            .VerticalAlignment(VerticalAlignment.Top)
-            .HorizontalAlignment(HorizontalAlignment.Stretch);
-
         var loadedEntries = GetLoadedEntriesForCurrentDirectory();
+        var statusText = loadedEntries != null ? GetStatusText(loadedEntries) : string.Empty;
+        _statusLabel = new Label(statusText)
+            .FontSize(12)
+            .Foreground(string.IsNullOrEmpty(statusText) ? Color.Transparent : PlaceholderColor);
+
+        _listFrame = new Frame()
+            .Background(RayoThemes.Current.Colors.Surface)
+            .BorderBrush(RayoThemes.Current.Colors.Border)
+            .BorderThickness(1)
+            .BorderRadius(new CornerRadius(12))
+            .Padding(new Thickness(8))
+            .HorizontalAlignment(HorizontalAlignment.Stretch)
+            .VerticalAlignment(VerticalAlignment.Stretch);
+        _listFrame.ClipToBounds = true;
+
         if (loadedEntries != null)
         {
             BuildLoadedItems(loadedEntries);
@@ -521,27 +546,6 @@ public class PathPicker : BorderCompositeView<PathPicker>, IPointerHandler, IGlo
         {
             ShowLoadingItems();
         }
-
-        var statusText = loadedEntries != null ? GetStatusText(loadedEntries) : "Loading...";
-        _statusLabel = new Label(statusText)
-            .FontSize(12)
-            .Foreground(string.IsNullOrEmpty(statusText) ? Color.Transparent : PlaceholderColor);
-
-        _listScrollView = new ScrollView()
-            .HorizontalAlignment(HorizontalAlignment.Stretch)
-            .VerticalAlignment(VerticalAlignment.Stretch)
-            .Content(_itemsStack);
-
-        var listFrame = new Frame()
-            .Background(RayoThemes.Current.Colors.Surface)
-            .BorderBrush(RayoThemes.Current.Colors.Border)
-            .BorderThickness(1)
-            .BorderRadius(new CornerRadius(12))
-            .Padding(new Thickness(8))
-            .HorizontalAlignment(HorizontalAlignment.Stretch)
-            .VerticalAlignment(VerticalAlignment.Stretch)
-            .Content(_listScrollView);
-        listFrame.ClipToBounds = true;
 
         var content = Mode == PathPickerMode.SaveFile
             ? new Grid()
@@ -561,7 +565,7 @@ public class PathPicker : BorderCompositeView<PathPicker>, IPointerHandler, IGlo
                 .AddChild(BuildNavigationBar(), 1, 0)
                 .AddChild(pathFrame, 2, 0)
                 .AddChild(BuildSaveFileNameRow(), 3, 0)
-                .AddChild(listFrame, 4, 0)
+                .AddChild(_listFrame, 4, 0)
                 .AddChild(_statusLabel, 5, 0)
                 .AddChild(BuildDialogButtons(), 6, 0)
             : new Grid()
@@ -579,7 +583,7 @@ public class PathPicker : BorderCompositeView<PathPicker>, IPointerHandler, IGlo
                 .AddChild(title, 0, 0)
                 .AddChild(BuildNavigationBar(), 1, 0)
                 .AddChild(pathFrame, 2, 0)
-                .AddChild(listFrame, 3, 0)
+                .AddChild(_listFrame, 3, 0)
                 .AddChild(_statusLabel, 4, 0)
                 .AddChild(BuildDialogButtons(), 5, 0);
 
@@ -602,29 +606,31 @@ public class PathPicker : BorderCompositeView<PathPicker>, IPointerHandler, IGlo
     {
         _loadedEntries = null;
         _loadedEntriesDirectory = null;
+        _visibleEntryRowsByPath.Clear();
+        _pathByVisibleEntryRow.Clear();
     }
 
     private void ShowLoadingItems()
     {
-        if (_itemsStack == null)
+        if (_listFrame == null)
         {
             return;
         }
 
-        _itemsStack.ClearChildren();
-        _itemsStack.AddChild(
-            new VStack()
-                .Spacing(10)
-                .Alignment(Alignment.Center)
+        _entriesListView = null;
+        _listFrame.Content(
+            new Grid()
+                .Rows(GridLength.Star, GridLength.Pixels(28), GridLength.Star)
+                .Columns(GridLength.Star, GridLength.Pixels(28), GridLength.Star)
                 .HorizontalAlignment(HorizontalAlignment.Stretch)
-                .VerticalAlignment(VerticalAlignment.Top)
-                .Padding(new Thickness(0, 36))
-                .Children(
+                .VerticalAlignment(VerticalAlignment.Stretch)
+                .AddChild(
                     new Loading()
-                        .Size(new Size(28)),
-                    new Label("Loading folder...")
-                        .FontSize(13)
-                        .Foreground(PlaceholderColor)));
+                        .Size(new Size(28))
+                        .HorizontalAlignment(HorizontalAlignment.Center)
+                        .VerticalAlignment(VerticalAlignment.Center),
+                    1,
+                    1));
     }
 
     private void StartEntriesLoad(float scrollOffset = 0f, bool restoreScrollOffset = false)
@@ -683,7 +689,7 @@ public class PathPicker : BorderCompositeView<PathPicker>, IPointerHandler, IGlo
         if (!_isOpen ||
             version != _entriesLoadVersion ||
             !string.Equals(directory, CurrentDirectory, PathComparison) ||
-            _itemsStack == null)
+            _listFrame == null)
         {
             return;
         }
@@ -699,10 +705,10 @@ public class PathPicker : BorderCompositeView<PathPicker>, IPointerHandler, IGlo
             _statusLabel.Foreground = string.IsNullOrEmpty(status) ? Color.Transparent : PlaceholderColor;
         }
 
-        if (restoreScrollOffset && _listScrollView != null)
+        if (restoreScrollOffset && _entriesListView != null)
         {
-            _listScrollView.VerticalScrollOffset = scrollOffset;
-            _listScrollView.MarkNeedsPaint();
+            _entriesListView.VerticalScrollOffset = scrollOffset;
+            _entriesListView.MarkNeedsPaint();
         }
 
         RefreshDialogLayout();
@@ -710,16 +716,38 @@ public class PathPicker : BorderCompositeView<PathPicker>, IPointerHandler, IGlo
 
     private void BuildLoadedItems(DirectoryLoadResult result)
     {
-        if (_itemsStack == null)
+        if (_listFrame == null)
         {
             return;
         }
 
-        _itemsStack.ClearChildren();
-        foreach (var entry in result.Entries)
+        var entries = result.Entries as IList<FileSystemEntry> ?? result.Entries.ToList();
+
+        _entriesListView = new ListView<FileSystemEntry>
         {
-            _itemsStack.AddChild(CreateEntryRow(entry));
+            Items = entries,
+            ItemHeight = 38,
+            ItemSpacing = 4,
+            ItemBackground = Color.Transparent,
+            ItemHoverBackground = RayoThemes.Current.Colors.SurfaceHover,
+            ItemSelectedBackground = GetSelectedEntryBackground(),
+            ItemFactory = CreateEntryRow,
+            ItemBinder = BindEntryRow,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch
+        };
+
+        int selectedIndex = -1;
+        for (int i = 0; i < entries.Count; i++)
+        {
+            if (IsPendingSelection(entries[i].Path))
+            {
+                selectedIndex = i;
+                break;
+            }
         }
+
+        _listFrame.Content(_entriesListView);
     }
 
     private string GetStatusText(DirectoryLoadResult result)
@@ -888,43 +916,47 @@ public class PathPicker : BorderCompositeView<PathPicker>, IPointerHandler, IGlo
             .Children(cancelButton, selectButton);
     }
 
-    private string BuildItems()
+    private VisualElement CreateEntryRow()
     {
-        if (_itemsStack == null)
+        return new ListViewItem
         {
-            return string.Empty;
-        }
-
-        _itemsStack.ClearChildren();
-
-        var entries = GetEntries(CurrentDirectory, out var status).Take(MaxItems + 1).ToList();
-        bool truncated = entries.Count > MaxItems;
-        if (truncated)
-        {
-            entries = entries.Take(MaxItems).ToList();
-        }
-
-        if (entries.Count == 0 && string.IsNullOrEmpty(status))
-        {
-            status = Mode == PathPickerMode.Folder
-                ? "This folder does not contain visible folders."
-                : "This folder does not contain matching files.";
-        }
-
-        foreach (var entry in entries)
-        {
-            _itemsStack.AddChild(CreateEntryRow(entry));
-        }
-
-        if (truncated)
-        {
-            status = $"Showing the first {MaxItems} items.";
-        }
-
-        return status;
+            Height = 38,
+            BorderRadius = new CornerRadius(7),
+            Padding = new Thickness(10, 6, 10, 6),
+            HorizontalAlignment = HorizontalAlignment.Stretch
+        };
     }
 
-    private VisualElement CreateEntryRow(FileSystemEntry entry)
+    private void BindEntryRow(VisualElement element, FileSystemEntry entry, int index, bool isSelected)
+    {
+        if (element is not ListViewItem row)
+        {
+            return;
+        }
+
+        bool isSameEntry = _pathByVisibleEntryRow.TryGetValue(row, out var previousPath) &&
+            string.Equals(previousPath, entry.Path, PathComparison);
+        if (!isSameEntry)
+        {
+            if (!string.IsNullOrWhiteSpace(previousPath))
+            {
+                _visibleEntryRowsByPath.Remove(previousPath);
+            }
+
+            _pathByVisibleEntryRow[row] = entry.Path;
+            _visibleEntryRowsByPath[entry.Path] = row;
+            row.Content(CreateEntryRowContent(entry));
+        }
+
+        row.NormalBackground = isSelected || IsPendingSelection(entry.Path)
+            ? GetSelectedEntryBackground()
+            : Color.Transparent;
+        row.HoverBackground = RayoThemes.Current.Colors.SurfaceHover;
+        row.PressedBackground = AccentColor.PrimaryColor.WithAlpha(0.45f);
+        row.OnTap(() => HandleEntryTap(entry));
+    }
+
+    private VisualElement CreateEntryRowContent(FileSystemEntry entry)
     {
         var icon = new Icon(entry.IsDirectory ? Icons.Folder : Icons.File)
         {
@@ -950,7 +982,7 @@ public class PathPicker : BorderCompositeView<PathPicker>, IPointerHandler, IGlo
             .VerticalAlignment(VerticalAlignment.Center)
             .TextVerticalAlignment(VerticalAlignment.Center);
 
-        var rowContent = new Grid()
+        return new Grid()
             .Rows(GridLength.Star)
             .Columns(GridLength.Pixels(24), GridLength.Star, GridLength.Pixels(92))
             .ColumnSpacing(10)
@@ -959,22 +991,6 @@ public class PathPicker : BorderCompositeView<PathPicker>, IPointerHandler, IGlo
             .AddChild(icon, 0, 0)
             .AddChild(name, 0, 1)
             .AddChild(details, 0, 2);
-
-        var row = new PickerRow(() => HandleEntryTap(entry))
-        {
-            Height = 38,
-            BorderRadius = new CornerRadius(7),
-            Padding = new Thickness(10, 6, 10, 6),
-            NormalBackground = IsPendingSelection(entry.Path)
-                ? AccentColor.PrimaryColor.WithAlpha(0.35f)
-                : Color.Transparent,
-            HoverBackground = RayoThemes.Current.Colors.SurfaceHover,
-            PressedBackground = AccentColor.PrimaryColor.WithAlpha(0.45f),
-            HorizontalAlignment = HorizontalAlignment.Stretch
-        };
-        row.Content(rowContent);
-
-        return row;
     }
 
     private void HandleEntryTap(FileSystemEntry entry)
@@ -996,8 +1012,23 @@ public class PathPicker : BorderCompositeView<PathPicker>, IPointerHandler, IGlo
         {
             _fileNameEntry.Text = entry.Name;
         }
-        RebuildDialogContent(preserveScrollOffset: true);
+        UpdateSelectionRows();
     }
+
+    private void UpdateSelectionRows()
+    {
+        foreach (var (path, row) in _visibleEntryRowsByPath.ToArray())
+        {
+            row.NormalBackground = IsPendingSelection(path)
+                ? GetSelectedEntryBackground()
+                : Color.Transparent;
+            row.MarkNeedsPaint();
+        }
+
+        _entriesListView?.MarkNeedsPaint();
+    }
+
+    private Brush GetSelectedEntryBackground() => AccentColor.PrimaryColor.WithAlpha(0.35f);
 
     private void ConfirmSelection()
     {
@@ -1095,7 +1126,7 @@ public class PathPicker : BorderCompositeView<PathPicker>, IPointerHandler, IGlo
         }
 
         float preservedScrollOffset = preserveScrollOffset
-            ? _listScrollView?.VerticalScrollOffset ?? 0f
+            ? _entriesListView?.VerticalScrollOffset ?? 0f
             : 0f;
 
         _dialogCard.Content(BuildDialogContent(preservedScrollOffset, preserveScrollOffset));
@@ -1659,78 +1690,6 @@ public class PathPicker : BorderCompositeView<PathPicker>, IPointerHandler, IGlo
 
     private sealed class DialogOverlayFrame : Frame, IPointerHandler
     {
-    }
-
-    private sealed class PickerRow : Frame, IPointerHandler
-    {
-        private readonly Action _onTap;
-        private bool _isPressed;
-        private Vector2 _pressPosition;
-
-        public PickerRow(Action onTap)
-        {
-            _onTap = onTap;
-        }
-
-        public Brush NormalBackground
-        {
-            get => field;
-            set
-            {
-                field = value;
-                Background = value;
-            }
-        } = Color.Transparent;
-
-        public Brush HoverBackground { get; set; } = Color.Transparent;
-
-        public Brush PressedBackground { get; set; } = Color.Transparent;
-
-        public void OnPointerEntered(PointerEventArgs e)
-        {
-            if (!_isPressed)
-            {
-                Background = HoverBackground;
-            }
-        }
-
-        public void OnPointerExited(PointerEventArgs e)
-        {
-            if (!_isPressed)
-            {
-                Background = NormalBackground;
-            }
-        }
-
-        public void OnPointerPressed(PointerEventArgs e)
-        {
-            _isPressed = true;
-            _pressPosition = e.Position;
-            Background = PressedBackground;
-        }
-
-        public void OnPointerReleased(PointerEventArgs e)
-        {
-            if (!_isPressed)
-            {
-                return;
-            }
-
-            _isPressed = false;
-            var delta = e.Position - _pressPosition;
-            bool isTap = MathF.Sqrt(delta.X * delta.X + delta.Y * delta.Y) < 15f;
-            bool inside = e.Position.X >= ComputedX &&
-                          e.Position.X <= ComputedX + ComputedWidth &&
-                          e.Position.Y >= ComputedY &&
-                          e.Position.Y <= ComputedY + ComputedHeight;
-
-            Background = NormalBackground;
-
-            if (isTap && inside)
-            {
-                _onTap();
-            }
-        }
     }
 }
 

@@ -44,6 +44,7 @@ public class Dialog : Component
     #endregion
 
     private readonly bool _showCancelButton;
+    private readonly bool _showCloseButton;
     private readonly string _okText;
     private readonly string _cancelText;
     private readonly Func<bool>? _validate;
@@ -69,11 +70,13 @@ public class Dialog : Component
         bool showCancelButton = true,
         Func<bool>? validate = null,
         string okText = "OK",
-        string cancelText = "Cancel")
+        string cancelText = "Cancel",
+        bool showCloseButton = true)
     {
         _title = title;
         _message = message;
         _showCancelButton = showCancelButton;
+        _showCloseButton = showCloseButton;
         _okText = okText;
         _cancelText = cancelText;
         _validate = validate;
@@ -94,12 +97,14 @@ public class Dialog : Component
         bool showCancelButton = true,
         Func<bool>? validate = null,
         string okText = "OK",
-        string cancelText = "Cancel")
+        string cancelText = "Cancel",
+        bool showCloseButton = true)
     {
         _title = title;
         _content = content;
         _message = "";
         _showCancelButton = showCancelButton;
+        _showCloseButton = showCloseButton;
         _okText = okText;
         _cancelText = cancelText;
         _validate = validate;
@@ -164,13 +169,41 @@ public class Dialog : Component
         var titleLabel = new Label(_title)
             .FontSize(16)
             .Foreground(RayoThemes.Current.Colors.OnSurface)
-            .HorizontalAlignment(HorizontalAlignment.Left);
+            .HorizontalAlignment(HorizontalAlignment.Stretch)
+            .VerticalAlignment(VerticalAlignment.Center);
+
+        VisualElement titleContent = titleLabel;
+        if (_showCloseButton)
+        {
+            var closeButton = new ButtonIcon(Icons.Close)
+                .Size(32)
+                .IconSize(18)
+                .Background(Color.Transparent)
+                .HoverBackground(RayoThemes.Current.Colors.Surface)
+                .PressedBackground(RayoThemes.Current.Colors.SurfaceHover)
+                .IconColor(RayoThemes.Current.Colors.OnSurface)
+                .BorderThickness(0)
+                .Padding(new Thickness(7))
+                .HorizontalAlignment(HorizontalAlignment.Right)
+                .VerticalAlignment(VerticalAlignment.Center);
+
+            closeButton.OnTapped(() => Canceled?.Invoke());
+
+            titleContent = new Grid()
+                .Rows(GridLength.Pixels(32))
+                .Columns(GridLength.Star, GridLength.Pixels(32))
+                .ColumnSpacing(12)
+                .HorizontalAlignment(HorizontalAlignment.Stretch)
+                .VerticalAlignment(VerticalAlignment.Center)
+                .AddChild(titleLabel, 0, 0)
+                .AddChild(closeButton, 0, 1);
+        }
 
         Frame Frame = new Frame();
         Frame.Background(RayoThemes.Current.Colors.SurfaceHover);
-        Frame.Padding(new Thickness(24, 20, 24, 20));
+        Frame.Padding(new Thickness(24, 16, 16, 16));
         Frame.BorderRadius(new CornerRadius(_borderRadius, _borderRadius, 0, 0));
-        Frame.Content(titleLabel);
+        Frame.Content(titleContent);
         return Frame;
     }
 
@@ -229,7 +262,8 @@ public class Dialog : Component
         Action? onCanceled = null,
         Func<bool>? validate = null,
         string okText = "OK",
-        string cancelText = "Cancel")
+        string cancelText = "Cancel",
+        bool showCloseButton = true)
     {
         VisualElement? overlay = null;
 
@@ -254,7 +288,8 @@ public class Dialog : Component
             showCancelButton,
             validate,
             okText,
-            cancelText).Build(); // We need the built element (Frame)
+            cancelText,
+            showCloseButton).Build(); // We need the built element (Frame)
 
         Rayo.Core.OverlayManager.AddOverlay(overlay);
     }
@@ -267,7 +302,8 @@ public class Dialog : Component
         Action? onCanceled = null,
         Func<bool>? validate = null,
         string okText = "OK",
-        string cancelText = "Cancel")
+        string cancelText = "Cancel",
+        bool showCloseButton = true)
     {
         VisualElement? overlay = null;
 
@@ -292,7 +328,8 @@ public class Dialog : Component
             showCancelButton,
             validate,
             okText,
-            cancelText).Build();
+            cancelText,
+            showCloseButton).Build();
 
         Rayo.Core.OverlayManager.AddOverlay(overlay);
     }

@@ -20,9 +20,11 @@ public class ListViewItem : Frame, IPointerHandler
     private Action? _onTap;
     private System.Numerics.Vector2 _pressPosition;
     private const float TapThreshold = 15f;
+    private const float TouchTapThreshold = 10f;
 
     // Internal pressed state management
     private bool _isPressed;
+    private bool _isTouchPress;
 
     private Brush _normalBackground = Color.Transparent;
     private Brush _hoverBackground = Color.Transparent;
@@ -61,7 +63,7 @@ public class ListViewItem : Frame, IPointerHandler
 
     public void OnPointerEntered(PointerEventArgs e)
     {
-        if (!_isPressed)
+        if (e.PointerType == PointerType.Mouse && !_isPressed)
         {
             Background = _hoverBackground;
         }
@@ -69,7 +71,7 @@ public class ListViewItem : Frame, IPointerHandler
 
     public void OnPointerExited(PointerEventArgs e)
     {
-        if (!_isPressed)
+        if (e.PointerType == PointerType.Mouse && !_isPressed)
         {
             Background = _normalBackground;
         }
@@ -80,6 +82,20 @@ public class ListViewItem : Frame, IPointerHandler
         // Update pressed state based on whether pointer is inside bounds
         if (_isPressed)
         {
+            if (_isTouchPress)
+            {
+                var touchDelta = e.Position - _pressPosition;
+                float touchDistance = MathF.Sqrt(touchDelta.X * touchDelta.X + touchDelta.Y * touchDelta.Y);
+                if (touchDistance >= TouchTapThreshold)
+                {
+                    _isPressed = false;
+                    _isTouchPress = false;
+                    Background = _normalBackground;
+                }
+
+                return;
+            }
+
             bool isInside = IsPointInside(e.Position);
             var targetBg = isInside
                 ? (_pressedBackground.PrimaryColor.A > 0 ? _pressedBackground : _hoverBackground)
@@ -91,8 +107,12 @@ public class ListViewItem : Frame, IPointerHandler
     public void OnPointerPressed(PointerEventArgs e)
     {
         _isPressed = true;
+        _isTouchPress = e.PointerType == PointerType.Touch;
         _pressPosition = e.Position;
-        Background = _pressedBackground.PrimaryColor.A > 0 ? _pressedBackground : _hoverBackground;
+        if (!_isTouchPress)
+        {
+            Background = _pressedBackground.PrimaryColor.A > 0 ? _pressedBackground : _hoverBackground;
+        }
     }
 
     public void OnPointerReleased(PointerEventArgs e)
@@ -105,13 +125,15 @@ public class ListViewItem : Frame, IPointerHandler
             bool isInside = IsPointInside(e.Position);
             var delta = e.Position - _pressPosition;
             float distance = MathF.Sqrt(delta.X * delta.X + delta.Y * delta.Y);
+            float threshold = _isTouchPress ? TouchTapThreshold : TapThreshold;
 
-            if (isInside && distance < TapThreshold)
+            if (isInside && distance < threshold)
             {
                 _onTap?.Invoke();
             }
         }
         _isPressed = false;
+        _isTouchPress = false;
         Background = _normalBackground;
     }
 
@@ -208,6 +230,24 @@ public class ListView<T> : Rayo.Core.CompositeView<ListView<T>>, IInputHandler, 
     } = item => item?.ToString() ?? "";
     #endregion
 
+    #region ItemFactory
+    [Rayo.Reactivity.NotFluent]
+    public Func<VisualElement>? ItemFactory
+    {
+        get => field;
+        set => this.SetProperty(ref field, value, RebuildItems);
+    }
+    #endregion
+
+    #region ItemBinder
+    [Rayo.Reactivity.NotFluent]
+    public Action<VisualElement, T, int, bool>? ItemBinder
+    {
+        get => field;
+        set => this.SetProperty(ref field, value, RebuildItems);
+    }
+    #endregion
+
     #region SelectedIndex
     public int SelectedIndex
     {
@@ -279,9 +319,20 @@ public class ListView<T> : Rayo.Core.CompositeView<ListView<T>>, IInputHandler, 
 
     public float ContentWidth => _scrollView.ContentWidth;
 
+    public float VerticalScrollOffset
+    {
+        get => _scrollView.VerticalScrollOffset;
+        set => _scrollView.VerticalScrollOffset = value;
+    }
+
     public void Scroll(float deltaY)
     {
         _scrollView.Scroll(deltaY);
+    }
+
+    public void RefreshVisibleItems()
+    {
+        _itemsPanel?.RefreshVisibleItems();
     }
 
     public bool IsDragPending => _scrollView.IsDragPending;
@@ -369,16 +420,22 @@ public class ListView<T> : Rayo.Core.CompositeView<ListView<T>>, IInputHandler, 
 
     private VisualElement CreateListItem()
     {
-        return new RecyclableListViewItem();
+        return ItemFactory?.Invoke() ?? new RecyclableListViewItem();
     }
 
     private void BindListItem(VisualElement element, int index)
     {
-        if (element is not RecyclableListViewItem listItem)
-            return;
-
         var item = Items[index];
         var isSelected = index == SelectedIndex;
+
+        if (ItemBinder != null)
+        {
+            ItemBinder(element, item, index, isSelected);
+            return;
+        }
+
+        if (element is not RecyclableListViewItem listItem)
+            return;
 
         var itemBg = isSelected ? ItemSelectedBackground : ItemBackground;
         var hoverBg = isSelected ? ItemSelectedBackground : ItemHoverBackground;

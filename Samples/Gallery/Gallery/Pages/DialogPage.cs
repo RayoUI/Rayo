@@ -316,6 +316,7 @@ public class DialogPage : Component
         Dialog.Show(
             "Create project",
             content,
+            showCloseButton: false,
             showCancelButton: true,
             onAccepted: () => Dialog.Show(
                 "Project created",

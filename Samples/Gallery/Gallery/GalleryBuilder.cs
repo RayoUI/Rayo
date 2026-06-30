@@ -378,11 +378,13 @@ public class GalleryBuilder : Component
             .Height(56)
             .HorizontalAlignment(HorizontalAlignment.Stretch)
             .Content(
-                new HStack()
-                    .Spacing(12)
-                    .Alignment(Alignment.Center)
-                    .Children(
-                        // Hamburger menu button
+                new Grid()
+                    .Rows(GridLength.Star)
+                    .Columns(GridLength.Pixels(44), GridLength.Star, GridLength.Pixels(44))
+                    .ColumnSpacing(12)
+                    .HorizontalAlignment(HorizontalAlignment.Stretch)
+                    .VerticalAlignment(VerticalAlignment.Stretch)
+                    .AddChild(
                         new ButtonIcon()
                             .IconData(Icons.Menu)
                             .Variant(ButtonVariant.Ghost)
@@ -393,14 +395,17 @@ public class GalleryBuilder : Component
                             {
                                 _navigationDrawer?.Open();
                             }),
-
-                        // Title
+                        0,
+                        0)
+                    .AddChild(
                         new Label()
                             .Text(_currentPage)
-                            .FontSize(18),
-
-                        BuildCompactThemeButton()
-                    )
+                            .FontSize(18)
+                            .VerticalAlignment(VerticalAlignment.Center)
+                            .HorizontalAlignment(HorizontalAlignment.Stretch),
+                        0,
+                        1)
+                    .AddChild(BuildCompactThemeButton(), 0, 2)
             );
     }
 
@@ -411,26 +416,15 @@ public class GalleryBuilder : Component
             .HorizontalAlignment(HorizontalAlignment.Stretch)
             .VerticalAlignment(VerticalAlignment.Top)
             .Content(
-                new HStack()
-                    .Spacing(12)
-                    .Alignment(Alignment.Center)
-                    .JustifyContent(JustifyContent.SpaceBetween)
+                new VStack()
+                    .Spacing(4)
+                    .VerticalAlignment(VerticalAlignment.Center)
                     .HorizontalAlignment(HorizontalAlignment.Stretch)
                     .Children(
-                        new VStack()
-                            .Spacing(4)
-                            .VerticalAlignment(VerticalAlignment.Center)
-                            .Children(
-                                new PaletteLabel("Rayo", colors => colors.OnSurface)
-                                    .FontSize(20),
-                                new PaletteLabel("Component Gallery", colors => colors.OnDisabled)
-                                    .FontSize(12)
-                            ),
-                        new ThemeToggleButton()
-                            .Variant(ButtonVariant.Ghost)
-                            .Size(40)
-                            .IconSize(18)
-                            .OnTapped(ToggleTheme)
+                        new PaletteLabel("Rayo", colors => colors.OnSurface)
+                            .FontSize(20),
+                        new PaletteLabel("Component Gallery", colors => colors.OnDisabled)
+                            .FontSize(12)
                     )
             );
 

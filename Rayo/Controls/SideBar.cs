@@ -265,8 +265,7 @@ public class SideBar : BorderCompositeView<SideBar>
         SetThemeValue(nameof(BorderBrush), (Brush)palette.Border, value => BorderBrush = value);
         if (_collapseToggleButton != null)
         {
-            _collapseToggleButton.IconColor = ItemIconColor;
-            _collapseToggleButton.HoverBackground = ItemHoverColor;
+            ApplyCollapseToggleTheme(palette);
         }
     }
 
@@ -406,9 +405,6 @@ public class SideBar : BorderCompositeView<SideBar>
     {
         var toggleButton = new ButtonIcon()
             .IconData(IsCollapsed ? Icons.ChevronRight : Icons.ChevronLeft)
-            .Background(Color.Transparent)
-            .HoverBackground(ItemHoverColor.PrimaryColor)
-            .IconColor(ItemIconColor.PrimaryColor)
             .BorderThickness(0)
             .Padding(new Thickness(8))
             .HorizontalAlignment(HorizontalAlignment.Right);
@@ -422,11 +418,26 @@ public class SideBar : BorderCompositeView<SideBar>
         if (_headerContainer != null)
         {
             _collapseToggleButton = toggleButton;
+            ApplyCollapseToggleTheme(RayoThemes.Current.Colors);
             _headerContainer.Padding(new Thickness(8));
             _headerContainer.AddChild(toggleButton);
         }
 
         return this;
+    }
+
+    private void ApplyCollapseToggleTheme(ColorPalette palette)
+    {
+        if (_collapseToggleButton == null)
+        {
+            return;
+        }
+
+        _collapseToggleButton.Background = palette.SurfaceHover;
+        _collapseToggleButton.HoverBackground = palette.Primary.WithAlpha(0.16f);
+        _collapseToggleButton.PressedBackground = palette.Primary.WithAlpha(0.24f);
+        _collapseToggleButton.IconColor = palette.OnSurface;
+        _collapseToggleButton.BorderBrush = palette.Border;
     }
 
     private void UpdateWidth()

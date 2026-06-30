@@ -2,21 +2,24 @@ namespace Rayo.Controls;
 
 using Rayo.Core;
 using Rayo.Core.Interactions;
+using Rayo.Core.Interfaces;
 using Rayo.Layout;
 using Rayo.Rendering;
 using Rayo.Rendering.Brushes;
 using Rayo.Styling;
+using System.Numerics;
 
 /// <summary>
 /// A theme-aware dropdown menu with checked items and nested submenus.
 /// </summary>
-public class Menu : Component
+public class Menu : Component, IGlobalPointerHandler
 {
     private const float MenuWidth = 210f;
     private readonly string _title;
     private readonly List<MenuItem> _items = [];
     private readonly List<(int Depth, VisualElement Overlay)> _openOverlays = [];
     private readonly Dictionary<int, MenuItem> _openSubmenuItems = [];
+    private VisualElement? _anchor;
     private bool _isOpen;
 
     private static Menu? _currentlyOpenMenu;
@@ -71,6 +74,7 @@ public class Menu : Component
 
         _isOpen = true;
         _currentlyOpenMenu = this;
+        _anchor = anchor;
 
         var popup = BuildPopup(
             _items,
@@ -147,6 +151,7 @@ public class Menu : Component
     {
         _openOverlays.Add((depth, popup));
         OverlayManager.AddOverlay(popup);
+        OverlayManager.EventManager?.RegisterGlobalPointerHandler(this);
     }
 
     private void ClosePopupsFrom(int depth)
@@ -165,9 +170,56 @@ public class Menu : Component
     {
         ClosePopupsFrom(0);
         _isOpen = false;
+        _anchor = null;
+        OverlayManager.EventManager?.UnregisterGlobalPointerHandler(this);
 
         if (_currentlyOpenMenu == this)
             _currentlyOpenMenu = null;
+    }
+
+    public bool HandleGlobalPointer(Vector2 position, VisualElement? hitElement)
+    {
+        if (!_isOpen)
+        {
+            return false;
+        }
+
+        if (IsInsideMenu(hitElement))
+        {
+            return true;
+        }
+
+        if (_anchor?.ContainsWindowPoint(position) == true)
+        {
+            return true;
+        }
+
+        foreach (var (_, overlay) in _openOverlays)
+        {
+            if (overlay.ContainsWindowPoint(position))
+            {
+                return true;
+            }
+        }
+
+        CloseMenu();
+        return false;
+    }
+
+    private bool IsInsideMenu(VisualElement? element)
+    {
+        var current = element;
+        while (current != null)
+        {
+            if (current == _anchor || _openOverlays.Any(entry => entry.Overlay == current))
+            {
+                return true;
+            }
+
+            current = current.Parent;
+        }
+
+        return false;
     }
 }
 
