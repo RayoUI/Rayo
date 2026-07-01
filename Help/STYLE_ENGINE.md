@@ -467,58 +467,31 @@ StyleSheet sheet =
 
 ## 10. Theme system
 
-A `Theme` is a token override layer. When active, `StyleTokens.Get<T>()` checks the theme before its own dictionary. When the theme changes, all `UserControl` instances automatically re-apply their styles.
+The current theme system includes semantic colors (`ColorPalette`), typed
+button tokens (`ButtonTheme`), free-form token overrides and runtime propagation
+through the visual tree and overlays.
 
 ```csharp
-// Define themes
-var darkTheme = new Theme("dark")
-    .Set("--surface",  new Color(18, 18, 18))
-    .Set("--text",     Color.White)
-    .Set("--primary",  new Color(100, 140, 255));
-
-var lightTheme = new Theme("light")
-    .Set("--surface",  Color.White)
-    .Set("--text",     new Color(20, 20, 20))
-    .Set("--primary",  new Color(0, 120, 212));
-
-// Switch theme at runtime
-UIApplication.Current?.UseTheme(darkTheme);
-
-// Or set it during initial configuration
-var app = new UIApplication("My App", 1280, 720);
-app.UseTheme(darkTheme);
-app.Run();
-```
-
-**Theme-toggle button:**
-
-```csharp
-new Button()
-    .Text("Dark mode")
-    .OnTap(() => UIApplication.Current?.UseTheme(darkTheme))
-```
-
-**Subscribing to theme changes:**
-
-```csharp
-UIApplication.ThemeChanged += theme =>
+var brandPalette = ColorPalettes.Dark with
 {
-    Console.WriteLine($"Active theme: {theme.Name}");
+    Primary = new Color(236, 72, 153),
+    PrimaryHover = new Color(219, 39, 119),
+    PrimaryPressed = new Color(190, 24, 93),
 };
+
+var brandTheme = new Theme("brand", brandPalette);
+
+// Portable across UIApplication and hostless/mobile UITree hosts.
+RayoThemes.UseTheme(brandTheme);
 ```
 
-**Theme API:**
+`UIApplication.ActiveTheme` defaults to `RayoThemes.Light`. Built-in controls
+preserve consumer-assigned property values when the global theme changes.
 
-| Member                           | Description                                           |
-|----------------------------------|-------------------------------------------------------|
-| `new Theme(name)`                | Creates a theme with the given name                   |
-| `Set<T>(token, value)`           | Registers a value; returns `this` for chaining        |
-| `Get<T>(token, fallback)`        | Reads a value from the theme                          |
-| `TryGet<T>(token, out T? value)` | Attempts to read without throwing                     |
-| `Contains(token)`                | Returns `true` if the theme defines the token         |
-| `UIApplication.UseTheme(theme)`  | Activates the theme and notifies all components       |
-| `UIApplication.ActiveTheme`      | The currently active theme (may be `null`)            |
-| `UIApplication.ThemeChanged`     | Static event fired when the active theme changes      |
+See [THEME_SYSTEM.md](THEME_SYSTEM.md) for the complete model, palette roles,
+custom themes, control integration, explicit overrides, `StyleTokens`,
+propagation and the distinction between application themes and the operating
+system color scheme.
 
 ---
 

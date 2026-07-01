@@ -1,3 +1,4 @@
+using Notepad;
 using Rayo.Controls;
 using Rayo.Core;
 using Rayo.Reactivity;
@@ -18,6 +19,7 @@ public sealed class NotepadWorkspace
     public Signal<string> CaretText { get; } = new("Ln 1, Col 1");
     public bool IsLightTheme() => ReferenceEquals(RayoThemes.Current, RayoThemes.Light);
     public bool IsDarkTheme() => ReferenceEquals(RayoThemes.Current, RayoThemes.Dark);
+    public bool IsNeonTheme() => ReferenceEquals(RayoThemes.Current, NotepadThemes.Neon);
 
     public void Attach(TabControl tabs)
     {
@@ -167,6 +169,12 @@ public sealed class NotepadWorkspace
     {
         UIApplication.Current?.UseTheme(RayoThemes.Dark);
         StatusText.Value = "Dark theme";
+    }
+
+    public void UseNeonTheme()
+    {
+        UIApplication.Current?.UseTheme(NotepadThemes.Neon);
+        StatusText.Value = "Neon theme";
     }
 
     private EditorTab? SelectedEditor => _tabs?.SelectedTab?.Content as EditorTab;

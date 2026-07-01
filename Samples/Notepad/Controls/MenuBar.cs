@@ -35,7 +35,9 @@ public sealed class MenuBar(NotepadWorkspace workspace) : Component
                     .AddItem(new MenuItem("Light", workspace.UseLightTheme)
                         .CheckedWhen(workspace.IsLightTheme))
                     .AddItem(new MenuItem("Dark", workspace.UseDarkTheme)
-                        .CheckedWhen(workspace.IsDarkTheme)));
+                        .CheckedWhen(workspace.IsDarkTheme))
+                    .AddItem(new MenuItem("Neon", workspace.UseNeonTheme)
+                        .CheckedWhen(workspace.IsNeonTheme)));
 
         var helpMenu = new Menu("Help")
             .AddItem(new MenuItem("About", () =>
