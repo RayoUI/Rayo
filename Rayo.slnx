@@ -27,6 +27,7 @@
     <Project Path="Samples/StyleDemo/StyleDemo.csproj" />
     <Project Path="Samples/TabControlApp/TabControlApp.csproj" />
     <Project Path="Samples/TestApp/TestApp.csproj" />
+    <Project Path="Samples/ThemeApp/ThemeApp.csproj" />
     <Project Path="Samples/ToDoList/ToDoList.csproj" />
     <Project Path="Samples/VisualScripting/VisualScripting.csproj" />
   </Folder>
