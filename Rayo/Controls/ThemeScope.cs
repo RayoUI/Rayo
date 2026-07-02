@@ -47,6 +47,37 @@ public sealed class ThemeScope : ContentView<ThemeScope>
         return this;
     }
 
+    protected override void Measure(float availableWidth, float availableHeight)
+    {
+        if (Content == null)
+        {
+            DesiredWidth = HasExplicitWidth ? Width : 0;
+            DesiredHeight = HasExplicitHeight ? Height : 0;
+            return;
+        }
+
+        Content.MeasureUpdate(availableWidth, availableHeight);
+        DesiredWidth = HasExplicitWidth
+            ? Width
+            : Content.DesiredWidth + Content.Margin.Horizontal;
+        DesiredHeight = HasExplicitHeight
+            ? Height
+            : Content.DesiredHeight + Content.Margin.Vertical;
+    }
+
+    protected override void Arrange(float x, float y, float width, float height)
+    {
+        base.Arrange(x, y, width, height);
+        if (Content == null)
+            return;
+
+        Content.ArrangeUpdate(
+            x + Content.Margin.Left,
+            y + Content.Margin.Top,
+            Math.Max(0, width - Content.Margin.Horizontal),
+            Math.Max(0, height - Content.Margin.Vertical));
+    }
+
     public override void Render(IRenderer renderer)
     {
         // ThemeScope is intentionally non-visual; the tree renders its content.

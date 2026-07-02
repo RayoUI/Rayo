@@ -11,6 +11,45 @@ namespace Rayo.Tests;
 public sealed class ThemeScopeTests
 {
     [Fact]
+    public void Theme_scope_forwards_its_content_size()
+    {
+        var content = new Frame
+        {
+            Width = 250,
+            Height = 120,
+        };
+        var scope = new ThemeScope(RayoThemes.Dark, content);
+
+        scope.MeasureUpdate(float.PositiveInfinity, float.PositiveInfinity);
+        scope.ArrangeUpdate(10, 20, scope.DesiredWidth, scope.DesiredHeight);
+
+        Assert.Equal(250, scope.DesiredWidth);
+        Assert.Equal(120, scope.DesiredHeight);
+        Assert.Equal(250, content.ComputedWidth);
+        Assert.Equal(120, content.ComputedHeight);
+    }
+
+    [Fact]
+    public void Flex_reports_the_wrapped_height_of_theme_scopes()
+    {
+        var flex = new Flex
+        {
+            Direction = FlexDirection.Row,
+            Wrap = FlexWrap.Wrap,
+            Gap = 14,
+            RowGap = 14,
+            VerticalAlignment = VerticalAlignment.Top,
+        };
+        flex.AddChild(new ThemeScope(RayoThemes.Light, new Frame().Width(250).Height(120)));
+        flex.AddChild(new ThemeScope(RayoThemes.Dark, new Frame().Width(250).Height(120)));
+        flex.AddChild(new ThemeScope(RayoThemes.Light, new Frame().Width(250).Height(120)));
+
+        flex.MeasureUpdate(540, float.PositiveInfinity);
+
+        Assert.Equal(254, flex.DesiredHeight);
+    }
+
+    [Fact]
     public void Child_uses_nearest_scope()
     {
         var child = new Button();
