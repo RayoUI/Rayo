@@ -147,7 +147,11 @@ public class Carousel : BorderCompositeView<Carousel>, IFrameAnimation
     public Brush NavigationButtonHoverBackground
     {
         get => field;
-        set => this.SetProperty(ref field, value, RefreshNavigationButtonStyles);
+        set => this.SetProperty(ref field, value, () =>
+        {
+            RefreshNavigationButtonStyles();
+            RefreshIndicatorStyles();
+        });
     } = Color.Transparent;
     #endregion
 
@@ -183,7 +187,7 @@ public class Carousel : BorderCompositeView<Carousel>, IFrameAnimation
     public Brush IndicatorColor
     {
         get => field;
-        set => this.SetProperty(ref field, value, RebuildIndicators);
+        set => this.SetProperty(ref field, value, RefreshIndicatorStyles);
     } = Color.Transparent;
     #endregion
 
@@ -192,7 +196,7 @@ public class Carousel : BorderCompositeView<Carousel>, IFrameAnimation
     public Brush IndicatorSelectedColor
     {
         get => field;
-        set => this.SetProperty(ref field, value, RebuildIndicators);
+        set => this.SetProperty(ref field, value, RefreshIndicatorStyles);
     } = Color.Transparent;
     #endregion
 
@@ -329,6 +333,7 @@ public class Carousel : BorderCompositeView<Carousel>, IFrameAnimation
         {
             item.NotifyThemeChanged(theme);
         }
+        RefreshIndicatorStyles();
     }
 
     public Carousel AddSlide(VisualElement slide)
@@ -670,6 +675,7 @@ public class Carousel : BorderCompositeView<Carousel>, IFrameAnimation
 
         if (!ShowIndicators)
         {
+            InvalidateIndicatorLayout();
             return;
         }
 
@@ -679,21 +685,52 @@ public class Carousel : BorderCompositeView<Carousel>, IFrameAnimation
             bool isSelected = index == _selectedIndex;
             float size = isSelected ? IndicatorSize + 4f : IndicatorSize;
 
-            var indicator = new Button
-            {
-                Text = string.Empty,
-                Width = size,
-                Height = IndicatorSize,
-                Background = isSelected ? IndicatorSelectedColor : IndicatorColor,
-                HoverBackground = isSelected ? IndicatorSelectedColor : NavigationButtonHoverBackground,
-                PressedBackground = IndicatorSelectedColor,
-                BorderThickness = 0,
-                BorderRadius = new CornerRadius(IndicatorSize / 2f),
-                Padding = new Thickness(0)
-            };
-
+            var indicator = new CarouselIndicatorButton { Text = string.Empty };
             indicator.Tapped += _ => SelectedIndex = index;
             _indicatorStack.AddChild(indicator);
+            ApplyIndicatorStyle(indicator, isSelected, size);
+        }
+
+        InvalidateIndicatorLayout();
+    }
+
+    private void InvalidateIndicatorLayout()
+    {
+        _indicatorStack.InvalidateMeasure();
+        _navigationRow.InvalidateMeasure();
+        InvalidateMeasure();
+    }
+
+    private void ApplyIndicatorStyle(Button indicator, bool isSelected, float width)
+    {
+        indicator.Width = width;
+        indicator.Height = IndicatorSize;
+        indicator.MinWidth = 0;
+        indicator.MinHeight = 0;
+        indicator.Background = isSelected ? IndicatorSelectedColor : IndicatorColor;
+        indicator.HoverBackground = isSelected
+            ? IndicatorSelectedColor
+            : NavigationButtonHoverBackground;
+        indicator.PressedBackground = IndicatorSelectedColor;
+        indicator.BorderThickness = 0;
+        indicator.BorderRadius = new CornerRadius(IndicatorSize / 2f);
+        indicator.Padding = new Thickness(0);
+    }
+
+    private void RefreshIndicatorStyles()
+    {
+        var indicators = _indicatorStack.GetChildren().OfType<Button>().ToArray();
+        for (int index = 0; index < indicators.Length; index++)
+        {
+            bool isSelected = index == _selectedIndex;
+            float width = isSelected ? IndicatorSize + 4f : IndicatorSize;
+            ApplyIndicatorStyle(indicators[index], isSelected, width);
+        }
+
+        if (indicators.Length > 0)
+        {
+            InvalidateIndicatorLayout();
+            _indicatorStack.MarkNeedsPaint();
         }
     }
 
@@ -721,6 +758,17 @@ public class Carousel : BorderCompositeView<Carousel>, IFrameAnimation
         button.HoverBackground = isEnabled ? NavigationButtonHoverBackground : NavigationButtonDisabledBackground;
         button.PressedBackground = isEnabled ? NavigationButtonHoverBackground : NavigationButtonDisabledBackground;
         button.IconColor = isEnabled ? NavigationIconColor : NavigationIconDisabledColor;
+    }
+
+    private sealed class CarouselIndicatorButton : Button
+    {
+        protected override void OnThemeApplied(ThemeData theme)
+        {
+            MinWidth = 0;
+            MinHeight = 0;
+            Padding = new Thickness(0);
+            BorderThickness = 0;
+        }
     }
 
     private void ConfigureBottomButton(ButtonIcon button)

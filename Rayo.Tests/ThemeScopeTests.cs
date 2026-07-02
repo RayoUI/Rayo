@@ -83,26 +83,66 @@ public sealed class ThemeScopeTests
     public void Sidebar_internal_text_reacts_to_runtime_theme_changes()
     {
         var sidebar = new SideBar()
-            .AddItem("Dashboard", "\u2302");
+            .AddItem("Dashboard", "\u2302")
+            .AddItem("Settings", "S")
+            .SelectedKey("Dashboard");
         var scope = new ThemeScope(RayoThemes.Dark, sidebar);
 
         scope.Theme = RayoThemes.Light;
 
-        Assert.Equal(RayoThemes.Light.Colors.OnDisabled, sidebar.ItemTextColor.PrimaryColor);
-        var label = Descendants(sidebar)
+        Assert.Equal(RayoThemes.Light.Colors.OnSurface, sidebar.ItemTextColor.PrimaryColor);
+        var selectedLabel = Descendants(sidebar)
             .OfType<Label>()
             .Single(element => element.Text == "Dashboard");
-        var expected = RayoThemes.Light.Colors.OnDisabled;
-        var actual = label.Foreground.PrimaryColor;
-        Assert.True(
-            expected == actual,
-            $"Expected {expected.R},{expected.G},{expected.B}; actual {actual.R},{actual.G},{actual.B}");
+        var normalLabel = Descendants(sidebar)
+            .OfType<Label>()
+            .Single(element => element.Text == "Settings");
+        Assert.Equal(RayoThemes.Light.Colors.OnPrimary, selectedLabel.Foreground.PrimaryColor);
+        Assert.Equal(RayoThemes.Light.Colors.OnSurface, normalLabel.Foreground.PrimaryColor);
 
         scope.Theme = RayoThemes.Dark;
-        label = Descendants(sidebar)
+        selectedLabel = Descendants(sidebar)
             .OfType<Label>()
             .Single(element => element.Text == "Dashboard");
-        Assert.Equal(RayoThemes.Dark.Colors.OnDisabled, label.Foreground.PrimaryColor);
+        normalLabel = Descendants(sidebar)
+            .OfType<Label>()
+            .Single(element => element.Text == "Settings");
+        Assert.Equal(RayoThemes.Dark.Colors.OnPrimary, selectedLabel.Foreground.PrimaryColor);
+        Assert.Equal(RayoThemes.Dark.Colors.OnSurface, normalLabel.Foreground.PrimaryColor);
+    }
+
+    [Fact]
+    public void Carousel_indicators_ignore_button_theme_minimum_height()
+    {
+        var carousel = new Carousel()
+            .IndicatorSize(8)
+            .AddSlides(new Frame(), new Frame(), new Frame());
+        var scope = new ThemeScope(RayoThemes.Light, carousel);
+
+        carousel.MeasureUpdate(440, 180);
+
+        var lightIndicators = Descendants(carousel)
+            .OfType<Button>()
+            .Where(button => string.IsNullOrEmpty(button.Text))
+            .ToArray();
+        Assert.Equal(3, lightIndicators.Length);
+        Assert.All(lightIndicators, indicator => Assert.Equal(8, indicator.Height));
+        Assert.All(lightIndicators, indicator => Assert.Equal(0, indicator.MinHeight));
+        Assert.All(lightIndicators, indicator => Assert.Equal(8, indicator.DesiredHeight));
+
+        scope.Theme = RayoThemes.Dark;
+        carousel.MeasureUpdate(440, 180);
+
+        var darkIndicators = Descendants(carousel)
+            .OfType<Button>()
+            .Where(button => string.IsNullOrEmpty(button.Text))
+            .ToArray();
+        Assert.Equal(3, darkIndicators.Length);
+        Assert.All(darkIndicators, indicator => Assert.Equal(8, indicator.DesiredHeight));
+        Assert.Equal(lightIndicators, darkIndicators);
+        Assert.Equal(
+            RayoThemes.Dark.Colors.Primary,
+            darkIndicators[carousel.SelectedIndex].Background.PrimaryColor);
     }
 
     [Fact]

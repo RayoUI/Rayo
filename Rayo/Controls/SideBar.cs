@@ -257,7 +257,7 @@ public class SideBar : BorderCompositeView<SideBar>
         SetThemeValue(nameof(ItemBackground), (Brush)Color.Transparent, value => ItemBackground = value);
         SetThemeValue(nameof(ItemHoverColor), (Brush)palette.SurfaceHover, value => ItemHoverColor = value);
         SetThemeValue(nameof(ItemSelectedColor), (Brush)palette.Primary, value => ItemSelectedColor = value);
-        SetThemeValue(nameof(ItemTextColor), (Brush)palette.OnDisabled, value => ItemTextColor = value);
+        SetThemeValue(nameof(ItemTextColor), (Brush)palette.OnSurface, value => ItemTextColor = value);
         SetThemeValue(nameof(ItemSelectedTextColor), (Brush)palette.OnPrimary, value => ItemSelectedTextColor = value);
         SetThemeValue(nameof(ItemIconColor), (Brush)palette.OnSurface, value => ItemIconColor = value);
         SetThemeValue(nameof(ItemSelectedIconColor), (Brush)palette.OnPrimary, value => ItemSelectedIconColor = value);
@@ -266,6 +266,7 @@ public class SideBar : BorderCompositeView<SideBar>
         {
             ApplyCollapseToggleTheme(palette);
         }
+        RefreshItemVisuals();
     }
 
     protected override void OnBorderBrushChanged()
@@ -443,6 +444,15 @@ public class SideBar : BorderCompositeView<SideBar>
     {
         Width = IsCollapsed ? CollapsedWidth : ExpandedWidth;
         InvalidateMeasure();
+    }
+
+    private void RefreshItemVisuals()
+    {
+        if (_itemsContainer == null)
+            return;
+
+        foreach (var itemButton in _itemsContainer.GetChildren().OfType<SideBarItemButton>())
+            itemButton.RefreshVisuals();
     }
 
     private void RebuildItems()
@@ -666,6 +676,7 @@ internal class SideBarItemButton : Frame, Rayo.Core.Input.IPointerHandler
         {
             _textLabel.Foreground = new StateMap<Brush>(_sideBar.ItemTextColor)
                 .With(ControlState.Selected, _sideBar.ItemSelectedTextColor)
+                .With(ControlState.Disabled, (Brush)_sideBar.EffectiveTheme.Colors.OnDisabled)
                 .Resolve(state);
         }
 
@@ -673,6 +684,7 @@ internal class SideBarItemButton : Frame, Rayo.Core.Input.IPointerHandler
         {
             _iconLabel.Foreground = new StateMap<Brush>(_sideBar.ItemIconColor)
                 .With(ControlState.Selected, _sideBar.ItemSelectedIconColor)
+                .With(ControlState.Disabled, (Brush)_sideBar.EffectiveTheme.Colors.OnDisabled)
                 .Resolve(state);
         }
         MarkNeedsPaint();

@@ -5,7 +5,6 @@ using Rayo.Core;
 using Rayo.Gestures.Components;
 using Rayo.Layout;
 using Rayo.Rendering;
-using Rayo.Rendering.Graphics.VectorGraphics;
 using Rayo.Styling;
 using Rayo.Controls.Shapes;
 using RayoMenu = Rayo.Controls.Menu;
@@ -110,14 +109,12 @@ public sealed class ThemeCatalogApp : Component
         };
         compact = compact.WithToken(accentKey, new Color(139, 92, 246));
 
-        return new HStack()
-            .Spacing(12)
-            .Children(
-                ScopePreview("Light scope", RayoThemes.Light),
-                ScopePreview("Dark scope", RayoThemes.Dark),
-                ScopePreview(
+        return Wrap(
+            ScopePreview("Light scope", RayoThemes.Light),
+            ScopePreview("Dark scope", RayoThemes.Dark),
+            ScopePreview(
                     $"Compact scope · token #{ToHex(compact.GetToken(accentKey))}",
-                    compact));
+                compact));
     }
 
     private static VisualElement ScopePreview(string title, ThemeData theme) =>
@@ -185,10 +182,7 @@ public sealed class ThemeCatalogApp : Component
                 Wrap(
                     new DatePicker().Width(220),
                     new TimePicker().Width(220),
-                    new PathPicker().Width(340),
-                    new FilePicker().Width(340),
-                    new FolderPicker().Width(340),
-                    new SaveFilePicker().Width(340)),
+                    new PathPicker().Width(340)),
                 Wrap(
                     new Button().Text("Open ColorPicker")
                         .OnTapped(() => ColorPicker.ShowDialog((UIApplication.Current?.ActiveTheme ?? RayoThemes.Light).Colors.Primary, _ => { })),
@@ -293,20 +287,28 @@ public sealed class ThemeCatalogApp : Component
                 DemoTile("B", 130, 58).AbsolutePosition(105, 42),
                 DemoTile("C", 110, 58).AbsolutePosition(225, 18));
 
-        var stacks = new HStack()
-            .Spacing(18)
-            .Children(
-                new VStack()
-                    .Spacing(6)
-                    .Children(DemoTile("V1", 90, 36), DemoTile("V2", 90, 36)),
-                new HStack()
-                    .Spacing(6)
-                    .Children(DemoTile("H1", 70, 78), DemoTile("H2", 70, 78)),
-                new LStack()
-                    .Orientation(Rayo.Layout.Orientation.Horizontal)
-                    .Spacing(6)
-                    .Alignment(Alignment.Center)
-                    .Children(DemoTile("L1", 70, 50), DemoTile("L2", 70, 70)));
+        var horizontalFlex = new Flex
+        {
+            Direction = FlexDirection.Row,
+            Wrap = FlexWrap.Wrap,
+            Gap = 6,
+            RowGap = 6,
+            AlignItems = Alignment.Center,
+            VerticalAlignment = VerticalAlignment.Top,
+        };
+        horizontalFlex.AddChild(DemoTile("F1", 70, 78));
+        horizontalFlex.AddChild(DemoTile("F2", 70, 78));
+
+        var stacks = Wrap(
+            new VStack()
+                .Spacing(6)
+                .Children(DemoTile("V1", 90, 36), DemoTile("V2", 90, 36)),
+            horizontalFlex,
+            new LStack()
+                .Orientation(Rayo.Layout.Orientation.Horizontal)
+                .Spacing(6)
+                .Alignment(Alignment.Center)
+                .Children(DemoTile("L1", 70, 50), DemoTile("L2", 70, 70)));
 
         var gestureDetector = new GestureDetector(
                 DemoTile("Tap GestureDetector", 260, 70))
@@ -324,7 +326,7 @@ public sealed class ThemeCatalogApp : Component
             NamedDemo("Grid", grid),
             NamedDemo("Flex", flex),
             NamedDemo("Absolute", absolute),
-            NamedDemo("VStack, HStack and LStack", stacks),
+            NamedDemo("VStack, Flex and LStack", stacks),
             NamedDemo("GestureDetector", gestureDetector),
             NamedDemo(
                 "ScrollView",
@@ -455,23 +457,6 @@ public sealed class ThemeCatalogApp : Component
         Wrap(
             new Icon(Icons.Heart).Size(36),
             new Image("Assets/robot.png").Width(90).Height(70),
-            new VectorShape
-            {
-                Path = VectorPath.Star(35, 35, 32, 15, 5),
-                Width = 70,
-                Height = 70,
-                FillColor = (UIApplication.Current?.ActiveTheme ?? RayoThemes.Light).Colors.Primary,
-                StrokeColor = (UIApplication.Current?.ActiveTheme ?? RayoThemes.Light).Colors.Focus,
-                StrokeWidth = 2,
-            },
-            new Rayo.Controls.Shape(Rayo.Controls.Shape.ShapeKind.Star)
-            {
-                Width = 70,
-                Height = 60,
-                FillColor = (UIApplication.Current?.ActiveTheme ?? RayoThemes.Light).Colors.Info,
-                StrokeColor = (UIApplication.Current?.ActiveTheme ?? RayoThemes.Light).Colors.Focus,
-                StrokeWidth = 2,
-            },
             new RayoRectangle(80, 55)
                 .Fill((UIApplication.Current?.ActiveTheme ?? RayoThemes.Light).Colors.Primary)
                 .Stroke((UIApplication.Current?.ActiveTheme ?? RayoThemes.Light).Colors.Focus)
@@ -534,12 +519,23 @@ public sealed class ThemeCatalogApp : Component
         return tile;
     }
 
-    private static HStack Wrap(params VisualElement[] children) =>
-        new HStack()
-            .Spacing(14)
-            .Wrap(true)
-            .Alignment(Alignment.Center)
-            .Children(children);
+    private static Flex Wrap(params VisualElement[] children)
+    {
+        var flex = new Flex
+        {
+            Direction = FlexDirection.Row,
+            Wrap = FlexWrap.Wrap,
+            Gap = 14,
+            RowGap = 14,
+            AlignItems = Alignment.Center,
+            VerticalAlignment = VerticalAlignment.Top,
+        };
+
+        foreach (var child in children)
+            flex.AddChild(child);
+
+        return flex;
+    }
 
     private static VisualElement CenteredText(string text) =>
         new ThemeFrame()
