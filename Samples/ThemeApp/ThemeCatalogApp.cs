@@ -361,17 +361,54 @@ public sealed class ThemeCatalogApp : Component
                 CenteredText("Carousel slide 2"),
                 CenteredText("Carousel slide 3"));
 
+        var sideBarContentTitle = new ThemeLabel(colors => colors.OnSurface, "Home")
+            .FontSize(20)
+            .FontWeight(FontWeight.Bold);
+        var sideBarContentDescription = new ThemeLabel(
+            colors => colors.OnSurface,
+            "Main content associated with the selected navigation item.");
+
+        void ShowSideBarContent(string title, string description)
+        {
+            sideBarContentTitle.Text = title;
+            sideBarContentDescription.Text = description;
+        }
+
         var sideBar = new SideBar()
             .ExpandedWidth(180)
+            .CollapsedWidth(60)
+            .HorizontalAlignment(HorizontalAlignment.Left)
+            .VerticalAlignment(VerticalAlignment.Stretch)
             .AddCollapseToggle()
-            .AddItem("Home", "H")
-            .AddItem("Themes", "T")
-            .AddItem("Settings", "S");
+            .AddItem("Home", "H", () => ShowSideBarContent(
+                "Home",
+                "Main content associated with the selected navigation item."))
+            .AddItem("Themes", "T", () => ShowSideBarContent(
+                "Themes",
+                "Theme configuration and live preview content."))
+            .AddItem("Settings", "S", () => ShowSideBarContent(
+                "Settings",
+                "Application settings content."))
+            .SelectedKey("Home");
+
+        var sideBarContent = new ThemeFrame()
+            .Padding(new Thickness(20))
+            .HorizontalAlignment(HorizontalAlignment.Stretch)
+            .VerticalAlignment(VerticalAlignment.Stretch)
+            .Content(new VStack()
+                .Spacing(8)
+                .Children(sideBarContentTitle, sideBarContentDescription));
+
+        var sideBarLayout = new HStack()
+            .HorizontalAlignment(HorizontalAlignment.Stretch)
+            .VerticalAlignment(VerticalAlignment.Stretch)
+            .Children(sideBar, sideBarContent);
 
         var sideBarHost = new ThemeFrame()
             .Width(440)
             .Height(240)
-            .Content(sideBar);
+            .Padding(0)
+            .Content(sideBarLayout);
 
         var splitter = new Splitter()
             .Orientation(SplitterOrientation.Horizontal)

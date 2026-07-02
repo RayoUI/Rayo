@@ -444,6 +444,9 @@ public class SideBar : BorderCompositeView<SideBar>
     {
         Width = IsCollapsed ? CollapsedWidth : ExpandedWidth;
         InvalidateMeasure();
+        // The explicit width is a measure boundary, but collapsing changes the
+        // amount of space that the parent can allocate to adjacent content.
+        Parent?.InvalidateMeasure();
     }
 
     private void RefreshItemVisuals()

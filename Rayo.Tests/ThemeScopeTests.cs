@@ -1,5 +1,6 @@
 using Rayo.Controls;
 using Rayo.Core;
+using Rayo.Layout;
 using Rayo.Rendering;
 using Rayo.Rendering.Brushes;
 using Rayo.Styling;
@@ -245,6 +246,63 @@ public sealed class ThemeScopeTests
             .Single(label => label.Text == stepper.Value.ToString(stepper.ValueFormat));
         Assert.Equal(secondColor, stepper.ValueTextColor.PrimaryColor);
         Assert.Equal(secondColor, valueLabel.Foreground.PrimaryColor);
+    }
+
+    [Fact]
+    public void Sidebar_collapse_reallocates_space_to_sibling_content()
+    {
+        var sidebar = new SideBar
+        {
+            ExpandedWidth = 180,
+            CollapsedWidth = 60,
+            HorizontalAlignment = HorizontalAlignment.Left,
+        };
+        sidebar
+            .AddItem("Home", "H")
+            .AddItem("Themes", "T")
+            .AddItem("Settings", "S");
+        var content = new Frame
+        {
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+        };
+        var layout = new HStack
+        {
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch,
+        };
+        layout.AddChild(sidebar);
+        layout.AddChild(content);
+        var host = new Frame(layout)
+        {
+            Width = 440,
+            Height = 240,
+        };
+        using var app = new UIApplication();
+        app.Tree.SetRoot(host);
+
+        app.Tree.Update(440, 240);
+        Assert.Equal(180, sidebar.ComputedWidth);
+        var expandedContentWidth = content.ComputedWidth;
+
+        sidebar.IsCollapsed = true;
+        app.Tree.Update(440, 240);
+        Assert.Equal(60, sidebar.ComputedWidth);
+        Assert.True(content.ComputedWidth > expandedContentWidth);
+        var collapsedIcons = Descendants(sidebar)
+            .OfType<Label>()
+            .Where(label => label.Text is "H" or "T" or "S")
+            .ToArray();
+        Assert.Equal(3, collapsedIcons.Length);
+        Assert.All(collapsedIcons, icon =>
+        {
+            Assert.True(icon.ComputedWidth > 0);
+            Assert.True(icon.ComputedHeight > 0);
+        });
+
+        sidebar.IsCollapsed = false;
+        app.Tree.Update(440, 240);
+        Assert.Equal(180, sidebar.ComputedWidth);
+        Assert.Equal(expandedContentWidth, content.ComputedWidth);
     }
 
     private static IEnumerable<VisualElement> Descendants(VisualElement root)

@@ -352,7 +352,10 @@ public class UITree
                 if (FindOwningOverlay(root) != null)
                     continue;
 
-                if (!root.HasValidMeasure)
+                bool hasPreviousMeasureConstraints =
+                    !float.IsNaN(root.LastMeasuredAvailableWidth) &&
+                    !float.IsNaN(root.LastMeasuredAvailableHeight);
+                if (!hasPreviousMeasureConstraints)
                 {
                     _needsMeasure = true;
                     return ProcessIncrementalMeasureRootsFallback(width, height);
@@ -379,9 +382,9 @@ public class UITree
 
         Rayo.DevTools.PerformanceTracker.RecordRelayoutRoot();
         Rayo.DevTools.PerformanceTracker.RecordMeasured();
-        Root.MeasureUpdate(width, height);
+        Root.ForceMeasure(width, height);
         Rayo.DevTools.PerformanceTracker.RecordArranged();
-        Root.ArrangeUpdate(0, 0, width, height);
+        Root.ForceArrange(0, 0, width, height);
         ClearDirtyFlags(Root);
         LayoutOverlays(_overlays, width, height);
         _needsMeasure = false;
