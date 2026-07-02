@@ -13,6 +13,8 @@ namespace Rayo.DevTool.Frames;
 
 public class TreeFrame : Component
 {
+    private const float NodeRowContentHeight = 24f;
+    private const float NodeChevronSize = 24f;
     private readonly DevToolState _state;
     private readonly Dictionary<string, VisualElement> _nodeRows = new();
     private ScrollView? _treeScroll;
@@ -274,16 +276,18 @@ public class TreeFrame : Component
         ButtonIcon? chevronButton = null;
         VisualElement chevronElement = hasChildren
             ? chevronButton = new ButtonIcon(isExpanded.Value ? Icons.ChevronDown : Icons.ChevronRight)
-                .Size(20)
-                .IconSize(12)
+                .MinWidth(0)
+                .MinHeight(0)
+                .Size(NodeChevronSize)
+                .IconSize(14)
                 .IconColor(DevToolTheme.Colors.OnDisabled)
                 .Background(Color.Transparent)
                 .HoverBackground(DevToolTheme.Colors.SurfaceHover)
                 .PressedBackground(DevToolTheme.Colors.SurfacePressed)
                 .BorderThickness(0)
-                .Padding(new Thickness(4))
+                .Padding(new Thickness(5))
                 .BorderRadius(new CornerRadius(3))
-            : new Frame().Width(20).Height(20);
+            : new Frame().Width(NodeChevronSize).Height(NodeChevronSize);
 
         if (chevronButton != null)
         {
@@ -300,6 +304,8 @@ public class TreeFrame : Component
         var titleButton = (HoverableTreeNodeButton)new HoverableTreeNodeButton()
             .TextAlignment(HorizontalAlignment.Left)
             .Padding(new Thickness(0, 3, 0, 3))
+            .MinHeight(0)
+            .Height(NodeRowContentHeight)
             .Text(displayText)
             .TextColor(hasInvalidDimensions ? DevToolTheme.Colors.Warning : DevToolTheme.Colors.OnSurface)
             .FontSize(12)
@@ -314,7 +320,7 @@ public class TreeFrame : Component
 
         var headerGrid = new Grid()
             .Rows(GridLength.Auto)
-            .Columns(GridLength.Pixels(indent + 4), GridLength.Pixels(20), GridLength.Star, GridLength.Auto)
+            .Columns(GridLength.Pixels(indent + 4), GridLength.Pixels(NodeChevronSize), GridLength.Star, GridLength.Auto)
             .Padding(new Thickness(0, 2, 4, 2))
             .VerticalAlignment(VerticalAlignment.Top)
             .HorizontalAlignment(HorizontalAlignment.Stretch)
@@ -326,6 +332,9 @@ public class TreeFrame : Component
             var badge = new Button()
                 .Text($"{node.Children.Count}")
                 .FontSize(9)
+                .MinWidth(0)
+                .MinHeight(0)
+                .Height(18)
                 .TextColor(_state.LayoutOutlineElementIds.Map(ids =>
                     ids.Contains(node.Id) ? DevToolTheme.Colors.OnPrimary : DevToolTheme.Colors.OnSurface))
                 .Padding(new Thickness(4, 1))

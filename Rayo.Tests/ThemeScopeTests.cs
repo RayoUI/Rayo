@@ -176,6 +176,9 @@ public sealed class ThemeScopeTests
             buttons,
             button => Assert.Equal(second.Colors.OnPrimary, button.TextColor.PrimaryColor));
         Assert.Equal(second.Colors.OnSurface, valueLabel.Foreground.PrimaryColor);
+        Assert.All(
+            descendants.OfType<Frame>(),
+            frame => Assert.Equal(second.Colors.Surface, frame.Background.PrimaryColor));
     }
 
     [Fact]

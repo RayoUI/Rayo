@@ -15,6 +15,7 @@ public class PropertyFrame : Component
 
     // Width of the left (name) column in property rows, matching VS Properties panel style
     private const float LabelColumnWidth = 130f;
+    private const float CompactEditorHeight = 26f;
 
     public PropertyFrame(DevToolState state)
     {
@@ -167,6 +168,8 @@ public class PropertyFrame : Component
                 .Text("")
                 .Placeholder("null")
                 .FontSize(11)
+                .MinHeight(0)
+                .Height(CompactEditorHeight)
                 .HorizontalAlignment(HorizontalAlignment.Stretch);
         }
 
@@ -209,6 +212,8 @@ public class PropertyFrame : Component
              .Placeholder(isNull ? "null" : "")
              .HorizontalAlignment(HorizontalAlignment.Stretch)
              .FontSize(11)
+             .MinHeight(0)
+             .Height(CompactEditorHeight)
              .OnValueChanged(async value =>
              {
                  var v = ClampToBounds((float)value, bounds);
@@ -225,6 +230,8 @@ public class PropertyFrame : Component
             .Placeholder(isNull ? "null" : "")
             .HorizontalAlignment(HorizontalAlignment.Stretch)
             .FontSize(11)
+            .MinHeight(0)
+            .Height(CompactEditorHeight)
             .OnTextChanged(async text =>
             {
                 await SetPropertyValueAsync(elementId, prop, text);
@@ -238,6 +245,9 @@ public class PropertyFrame : Component
 
         return new HStack()
             .Spacing(6)
+            .MinHeight(0)
+            .Height(CompactEditorHeight)
+            .VerticalAlignment(VerticalAlignment.Center)
             .Children(
                 new Frame()
                     .Size(16)
@@ -247,6 +257,8 @@ public class PropertyFrame : Component
                     .Text(hex)
                     .HorizontalAlignment(HorizontalAlignment.Stretch)
                     .FontSize(11)
+                    .MinHeight(0)
+                    .Height(CompactEditorHeight)
                     .OnTextChanged(async text =>
                     {
                         if (ParseHexColor(text, out _))
@@ -281,7 +293,8 @@ public class PropertyFrame : Component
             .Text("...")
             .Variant(ButtonVariant.Secondary)
             .Width(40)
-            .Height(26)
+            .MinHeight(0)
+            .Height(CompactEditorHeight)
             .FontSize(10);
 
         button.OnTapped(() =>
@@ -303,6 +316,9 @@ public class PropertyFrame : Component
         return new HStack()
             .Spacing(6)
             .Alignment(Alignment.Center)
+            .MinHeight(0)
+            .Height(CompactEditorHeight)
+            .VerticalAlignment(VerticalAlignment.Center)
             .Children(
                 swatch,
                 valueLabel,
@@ -321,6 +337,9 @@ public class PropertyFrame : Component
         var comboBox = new ComboBox()
             .Items(enumValues)
             .ItemTextAlignment(HorizontalAlignment.Left)
+            .MinHeight(0)
+            .Height(CompactEditorHeight)
+            .Padding(new Thickness(8, 2))
             .HorizontalAlignment(HorizontalAlignment.Stretch);
 
         // Set initial selection index (after Items is assigned so count is correct)
@@ -399,6 +418,7 @@ public class PropertyFrame : Component
             .Rows(GridLength.Auto, GridLength.Auto)
             .Columns(GridLength.Star, GridLength.Star)
             .HorizontalAlignment(HorizontalAlignment.Stretch)
+            .VerticalAlignment(VerticalAlignment.Top)
             .AddChild(topLeft, 0, 0)
             .AddChild(topRight, 0, 1)
             .AddChild(bottomLeft, 1, 0)
@@ -418,6 +438,8 @@ public class PropertyFrame : Component
         };
         miniEntry.Text(FormatFloat(initialValue))
                  .FontSize(11)
+                 .MinHeight(0)
+                 .Height(CompactEditorHeight)
                  .HorizontalAlignment(HorizontalAlignment.Stretch)
                  .OnValueChanged(value => onChange(allowNegative ? (float)value : Math.Max(0f, (float)value)));
 

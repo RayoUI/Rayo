@@ -127,30 +127,68 @@ public class Grid : Layout<Grid>
 
         if (RowDefinitions.Count > 0 && ColumnDefinitions.Count > 0)
         {
+            float contentAvailableWidth = Math.Max(0, availableWidth - Padding.Horizontal);
+            float contentAvailableHeight = Math.Max(0, availableHeight - Padding.Vertical);
+
+            // First determine the natural widths required by Auto columns.
             foreach (var child in ChildrenInternal.ToArray())
             {
                 if (_cellPositions.TryGetValue(child, out var pos))
                 {
-                    // Pass available space to children for measurement
-                    // Note: This is an approximation as we don't know the exact cell size yet
-                    // But for Auto/content sizing, this usually works
+                    float childAvailableHeight =
+                        pos.row < RowDefinitions.Count &&
+                        RowDefinitions[pos.row].Type == GridLength.GridUnitType.Auto
+                            ? float.PositiveInfinity
+                            : contentAvailableHeight;
                     child.MeasureUpdate(
-                        availableWidth - Padding.Horizontal,
-                        availableHeight - Padding.Vertical
+                        contentAvailableWidth,
+                        childAvailableHeight
                     );
-
-                    // Track maximum size needed for Auto rows/cols
-                    if (pos.row < RowDefinitions.Count && RowDefinitions[pos.row].Type == GridLength.GridUnitType.Auto)
-                    {
-                        float childHeight = child.DesiredHeight > 0 ? child.DesiredHeight : child.Height;
-                        autoRowHeights[pos.row] = Math.Max(autoRowHeights[pos.row], childHeight + child.Margin.Vertical);
-                    }
 
                     if (pos.col < ColumnDefinitions.Count && ColumnDefinitions[pos.col].Type == GridLength.GridUnitType.Auto)
                     {
                         float childWidth = child.DesiredWidth > 0 ? child.DesiredWidth : child.Width;
                         autoColWidths[pos.col] = Math.Max(autoColWidths[pos.col], childWidth + child.Margin.Horizontal);
                     }
+                }
+            }
+
+            // Then measure Auto rows using the actual width allocated to each
+            // cell. Text and editors can become taller after wrapping in a
+            // Pixel/Star column, so measuring rows with the full grid width
+            // underestimates their height and makes adjacent rows overlap.
+            var measuredColumnWidths = CalculateTrackSizes(
+                ColumnDefinitions,
+                contentAvailableWidth,
+                ColumnSpacing,
+                autoColWidths);
+
+            foreach (var child in ChildrenInternal.ToArray())
+            {
+                if (!_cellPositions.TryGetValue(child, out var pos))
+                    continue;
+
+                int col = Math.Min(pos.col, measuredColumnWidths.Length - 1);
+                int colSpan = Math.Min(pos.colSpan, measuredColumnWidths.Length - col);
+                float cellWidth = 0;
+                for (int i = col; i < col + colSpan; i++)
+                    cellWidth += measuredColumnWidths[i];
+                if (colSpan > 1)
+                    cellWidth += ColumnSpacing * (colSpan - 1);
+
+                child.MeasureUpdate(
+                    Math.Max(0, cellWidth - child.Margin.Horizontal),
+                    pos.row < RowDefinitions.Count &&
+                    RowDefinitions[pos.row].Type == GridLength.GridUnitType.Auto
+                        ? float.PositiveInfinity
+                        : contentAvailableHeight);
+
+                if (pos.row < RowDefinitions.Count && RowDefinitions[pos.row].Type == GridLength.GridUnitType.Auto)
+                {
+                    float childHeight = child.DesiredHeight > 0 ? child.DesiredHeight : child.Height;
+                    autoRowHeights[pos.row] = Math.Max(
+                        autoRowHeights[pos.row],
+                        childHeight + child.Margin.Vertical);
                 }
             }
         }

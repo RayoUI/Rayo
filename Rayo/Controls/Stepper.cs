@@ -14,6 +14,7 @@ using Rayo.Styling;
 public class Stepper : BorderCompositeView<Stepper>
 {
     private Frame? _container;
+    private Frame? _valueLabelContainer;
     private Button? _decrementButton;
     private Button? _incrementButton;
     private Label? _valueLabel;
@@ -185,6 +186,8 @@ public class Stepper : BorderCompositeView<Stepper>
             _incrementButton.TextColor = TextColor;
         if (_container != null)
             _container.Background = Background;
+        if (_valueLabelContainer != null)
+            _valueLabelContainer.Background = Background;
 
         UpdateButtonStates();
     }
@@ -206,6 +209,7 @@ public class Stepper : BorderCompositeView<Stepper>
         // Clear existing children
         ClearChildren();
         _container = null;
+        _valueLabelContainer = null;
 
         _decrementButton = new Button
         {
@@ -233,14 +237,14 @@ public class Stepper : BorderCompositeView<Stepper>
             IsVisible = ShowValue
         };
 
-        var valueLabelContainer = new Frame
+        _valueLabelContainer = new Frame
         {
             Background = Background,
             HorizontalAlignment = HorizontalAlignment.Stretch,
             VerticalAlignment = VerticalAlignment.Stretch,
             Padding = new Thickness(8, 0, 8, 0)
         };
-        valueLabelContainer.Content(_valueLabel);
+        _valueLabelContainer.Content(_valueLabel);
 
         _incrementButton = new Button
         {
@@ -269,7 +273,7 @@ public class Stepper : BorderCompositeView<Stepper>
                 VerticalAlignment = VerticalAlignment.Stretch
             };
             hstack.AddChild(_decrementButton);
-            hstack.AddChild(valueLabelContainer);
+            hstack.AddChild(_valueLabelContainer);
             hstack.AddChild(_incrementButton);
             content = hstack;
         }
@@ -283,7 +287,7 @@ public class Stepper : BorderCompositeView<Stepper>
                 VerticalAlignment = VerticalAlignment.Stretch
             };
             vstack.AddChild(_incrementButton);
-            vstack.AddChild(valueLabelContainer);
+            vstack.AddChild(_valueLabelContainer);
             vstack.AddChild(_decrementButton);
             content = vstack;
         }

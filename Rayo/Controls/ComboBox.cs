@@ -309,11 +309,22 @@ public class ComboBox : BorderCompositeView<ComboBox>,
         SetThemeValue(nameof(SelectedTextColor), (Brush)palette.OnPrimary, value => SelectedTextColor = value);
         SetThemeValue(nameof(PlaceholderColor), (Brush)palette.OnDisabled, value => PlaceholderColor = value);
         SetThemeValue(nameof(BorderBrush), (Brush)palette.Border, value => BorderBrush = value);
+        SetThemeValue(nameof(Padding), theme.ControlPadding, value => Padding = value);
 
         if (_dropdownButton != null)
+        {
             _dropdownButton.Background = Background;
+            _dropdownButton.Padding = Padding;
+        }
         if (_dropdownFrame != null)
             _dropdownFrame.Background = Background;
+    }
+
+    protected override void OnPropertyChanged(string? propertyName)
+    {
+        base.OnPropertyChanged(propertyName);
+        if (propertyName == nameof(Padding) && _dropdownButton != null)
+            _dropdownButton.Padding = Padding;
     }
 
     protected override void OnBorderBrushChanged()
@@ -361,7 +372,7 @@ public class ComboBox : BorderCompositeView<ComboBox>,
             .Background(Background)
             .BorderBrush(BorderBrush)
             .BorderThickness(BorderThickness)
-            .Padding(new Thickness(12, 8, 12, 8))
+            .Padding(Padding)
             .HorizontalAlignment(HorizontalAlignment.Stretch)
             .VerticalAlignment(VerticalAlignment.Stretch)
             .SetInputTransparent(true); // Make Frame transparent to input
