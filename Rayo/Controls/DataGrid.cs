@@ -1,4 +1,4 @@
-﻿namespace Rayo.Controls;
+namespace Rayo.Controls;
 
 using Rayo;
 using Rayo.Core;
@@ -210,13 +210,10 @@ public class DataGrid : BorderCompositeView<DataGrid>
     public DataGrid()
     {
         InitializeTheme();
-        Width = 600;
-        Height = 400;
-        BorderRadius = new CornerRadius(8);
         BuildGrid();
     }
 
-    protected override void OnThemeApplied(Theme theme)
+    protected override void OnThemeApplied(ThemeData theme)
     {
         var palette = theme.Colors;
         var header = theme.Buttons.Secondary;

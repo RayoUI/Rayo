@@ -34,6 +34,7 @@ public class DevToolState : System.IDisposable
     public Signal<bool> IsExtendedStatsEnabled   { get; } = new(false);
     public Signal<PerformanceStatsResponse?> PerformanceStats { get; } = new(null);
     public Signal<List<DirtyEntryDto>> DirtyLog { get; } = new(new List<DirtyEntryDto>());
+    public Signal<ThemeSnapshotResponse?> ThemeSnapshot { get; } = new(null);
 
     // Persist expanded state across tree rebuilds (keyed by element ID)
     public Dictionary<string, bool> ExpandedStates { get; } = new();
@@ -53,6 +54,7 @@ public class DevToolState : System.IDisposable
             IsConnected.Value = true;
             ConnectionStatus.Value = $"Connected to {Host.Value}:{Port.Value}";
             _ = RefreshTreeAsync();
+            _ = RefreshThemeAsync();
 
             // If Record was already ON before this (re)connect, restart the poll loop.
             // The IsPerformancePanelOpen subscription won't re-fire because the value didn't change.
@@ -74,6 +76,7 @@ public class DevToolState : System.IDisposable
             IsHighlightEnabled.Value = false;
             LayoutOutlineElementIds.Value = new HashSet<string>();
             Properties.Value = new List<PropertyInfo>();
+            ThemeSnapshot.Value = null;
             ExpandedStates.Clear();
 
             if (_manualDisconnect)
@@ -120,6 +123,14 @@ public class DevToolState : System.IDisposable
                 {
                     Properties.Value = propertiesResponse.Properties ?? new List<PropertyInfo>();
                 }
+            }
+            else if (msg is ThemeChangedEvent)
+            {
+                _ = RefreshThemeAsync(SelectedElementId.Value);
+            }
+            else if (msg is ThemeSnapshotResponse themeResponse)
+            {
+                ThemeSnapshot.Value = themeResponse;
             }
             else if (msg is LogMessage logMsg)
             {
@@ -251,6 +262,16 @@ public class DevToolState : System.IDisposable
             ElementId = elementId,
             IncludeComputed = ShowComputedProperties.Value
         });
+        await RefreshThemeAsync(elementId);
+    }
+
+    public async Task RefreshThemeAsync(string? elementId = null)
+    {
+        if (!Client.IsConnected)
+            return;
+        var response = await Client.GetThemeSnapshotAsync(elementId);
+        if (response != null)
+            ThemeSnapshot.Value = response;
     }
 
     public void HoverElement(string elementId)

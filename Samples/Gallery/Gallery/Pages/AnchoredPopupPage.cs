@@ -104,8 +104,8 @@ public class AnchoredPopupPage : Component
 
         var content = new Frame()
             .Width(240)
-            .Background(RayoThemes.Current.Colors.Surface)
-            .BorderBrush(RayoThemes.Current.Colors.Border)
+            .Background((UIApplication.Current?.ActiveTheme ?? RayoThemes.Light).Colors.Surface)
+            .BorderBrush((UIApplication.Current?.ActiveTheme ?? RayoThemes.Light).Colors.Border)
             .BorderThickness(1)
             .BorderRadius(new CornerRadius(10))
             .Padding(new Thickness(14))
@@ -115,10 +115,10 @@ public class AnchoredPopupPage : Component
                     .Children(
                         new Label(title)
                             .FontSize(15)
-                            .Foreground(RayoThemes.Current.Colors.OnSurface),
+                            .Foreground((UIApplication.Current?.ActiveTheme ?? RayoThemes.Light).Colors.OnSurface),
                         new Label("This can contain any Rayo visual tree.")
                             .FontSize(12)
-                            .Foreground(RayoThemes.Current.Colors.OnDisabled),
+                            .Foreground((UIApplication.Current?.ActiveTheme ?? RayoThemes.Light).Colors.OnDisabled),
                         closeButton));
 
         _activePopup = AnchoredPopup.Show(anchor, content, popup =>

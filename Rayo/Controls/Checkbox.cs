@@ -1,4 +1,4 @@
-﻿namespace Rayo.Controls;
+namespace Rayo.Controls;
 
 using Rayo.Core;
 using Rayo.Core.Input;
@@ -246,7 +246,7 @@ public class Checkbox : Rayo.Core.View<Checkbox>,
         IsChecked = !IsChecked;
     }
 
-    protected override void OnThemeApplied(Theme theme)
+    protected override void OnThemeApplied(ThemeData theme)
     {
         var palette = theme.Colors;
         SetThemeValue(nameof(Background), (Brush)palette.Surface, value => Background = value);
@@ -264,6 +264,21 @@ public class Checkbox : Rayo.Core.View<Checkbox>,
             (Brush)(luminance > 0.5f ? Color.Black : Color.White),
             value => LabelColor = value);
         SetThemeValue(nameof(BoxBorderBrush), (Brush)palette.Border, value => BoxBorderBrush = value);
+        SetThemeValue(
+            nameof(BoxSize),
+            theme.Density switch
+            {
+                ThemeDensity.Compact => 18f,
+                ThemeDensity.Touch => 24f,
+                _ => 20f,
+            },
+            value => BoxSize = value);
+        SetThemeValue(nameof(BoxPadding), theme.Spacing.Xs, value => BoxPadding = value);
+        SetThemeValue(nameof(LabelSpacing), theme.Spacing.Md, value => LabelSpacing = value);
+        SetThemeValue(
+            nameof(FontSize),
+            theme.Typography.Label.FontSize * theme.Preferences.TextScale,
+            value => FontSize = value);
     }
 
     // =========================================================================
@@ -309,9 +324,15 @@ public class Checkbox : Rayo.Core.View<Checkbox>,
 
     private void UpdateVisualState()
     {
-        _currentBackground = IsPressed ? PressedBackground :
-                           IsHovered ? HoverBackground :
-                           (IsChecked ? CheckedBackground : Background);
+        var state = ControlState.Normal;
+        if (IsChecked) state |= ControlState.Checked;
+        if (IsHovered) state |= ControlState.Hovered;
+        if (IsPressed) state |= ControlState.Pressed;
+        _currentBackground = new StateMap<Brush>(Background)
+            .With(ControlState.Checked, CheckedBackground)
+            .With(ControlState.Hovered, HoverBackground)
+            .With(ControlState.Pressed, PressedBackground)
+            .Resolve(state);
     }
 
     protected override void Measure(float availableWidth, float availableHeight)

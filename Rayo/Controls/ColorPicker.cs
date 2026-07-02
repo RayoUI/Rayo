@@ -1,4 +1,4 @@
-﻿namespace Rayo.Controls;
+namespace Rayo.Controls;
 
 using Rayo;
 using Rayo.Core;
@@ -33,7 +33,7 @@ public class ColorPicker : Component, Rayo.Core.Interfaces.IGlobalPointerHandler
 
     public ColorPicker()
     {
-        var initial = RayoThemes.Current.Colors.Primary;
+        var initial = EffectiveTheme.Colors.Primary;
         _colorState = new Signal<Color>(initial);
     }
 
@@ -90,7 +90,7 @@ public class ColorPicker : Component, Rayo.Core.Interfaces.IGlobalPointerHandler
             : BuildDialogOverlay(ConfirmSelection, CancelSelection);
 
         _isOpen = true;
-        Rayo.Core.OverlayManager.AddOverlay(_activeOverlay);
+        Rayo.Core.OverlayManager.AddOverlay(_activeOverlay, _popupAnchor ?? this);
         Rayo.Core.OverlayManager.EventManager?.RegisterGlobalPointerHandler(this);
     }
 
@@ -202,8 +202,8 @@ public class ColorPicker : Component, Rayo.Core.Interfaces.IGlobalPointerHandler
         overlay.VerticalAlignment(VerticalAlignment.Stretch);
 
         Frame card = new Frame();
-        card.Background(RayoThemes.Current.Colors.Surface);
-        card.BorderBrush = RayoThemes.Current.Colors.Border;
+        card.Background(EffectiveTheme.Colors.Surface);
+        card.BorderBrush = EffectiveTheme.Colors.Border;
         card.BorderThickness = 1;
         card.BorderRadius(new CornerRadius(14));
         card.Padding(new Thickness(16));
@@ -315,8 +315,8 @@ public class ColorPicker : Component, Rayo.Core.Interfaces.IGlobalPointerHandler
 
         return new Frame()
             .Width(352)
-            .Background(RayoThemes.Current.Colors.Surface)
-            .BorderBrush(RayoThemes.Current.Colors.Border)
+            .Background(EffectiveTheme.Colors.Surface)
+            .BorderBrush(EffectiveTheme.Colors.Border)
             .BorderThickness(1)
             .BorderRadius(new CornerRadius(10))
             .Padding(new Thickness(10))
@@ -343,7 +343,7 @@ public class ColorPicker : Component, Rayo.Core.Interfaces.IGlobalPointerHandler
         return entry;
     }
 
-    private static VisualElement BuildChannelField(string label, EntryNumber entry)
+    private VisualElement BuildChannelField(string label, EntryNumber entry)
     {
         return new VStack()
             .Spacing(3)
@@ -351,7 +351,7 @@ public class ColorPicker : Component, Rayo.Core.Interfaces.IGlobalPointerHandler
                 entry,
                 new Label(label)
                     .FontSize(11)
-                    .Foreground(RayoThemes.Current.Colors.OnDisabled)
+                    .Foreground(EffectiveTheme.Colors.OnDisabled)
                     .HorizontalAlignment(HorizontalAlignment.Center));
     }
 
@@ -369,7 +369,7 @@ public class ColorPicker : Component, Rayo.Core.Interfaces.IGlobalPointerHandler
         // -- Header -----------------------------------------------------------
         var header = new Label("Pick a color")
             .FontSize(18)
-            .Foreground(RayoThemes.Current.Colors.OnSurface);
+            .Foreground(EffectiveTheme.Colors.OnSurface);
 
         // -- Preview card (mirrors TimePicker/DatePicker preview style) --------
         var colorSwatch = new Frame();
@@ -378,15 +378,15 @@ public class ColorPicker : Component, Rayo.Core.Interfaces.IGlobalPointerHandler
         colorSwatch.BorderRadius(new CornerRadius(10));
         colorSwatch.Background = new SolidColorBrush(currentColor);
         colorSwatch.BorderThickness = 1;
-        colorSwatch.BorderBrush = RayoThemes.Current.Colors.Border;
+        colorSwatch.BorderBrush = EffectiveTheme.Colors.Border;
 
         var previewHex = new Label(FormatHex(currentColor, _showAlpha))
             .FontSize(16)
-            .Foreground(RayoThemes.Current.Colors.OnSurface);
+            .Foreground(EffectiveTheme.Colors.OnSurface);
 
         var previewSubLabel = new Label("Selected color")
             .FontSize(12)
-            .Foreground(RayoThemes.Current.Colors.OnDisabled);
+            .Foreground(EffectiveTheme.Colors.OnDisabled);
 
         var previewInfo = new VStack()
             .Spacing(2)
@@ -399,7 +399,7 @@ public class ColorPicker : Component, Rayo.Core.Interfaces.IGlobalPointerHandler
             .Children(colorSwatch, previewInfo);
 
         var previewFrame = new Frame();
-        previewFrame.Background(RayoThemes.Current.Colors.SurfaceHover);
+        previewFrame.Background(EffectiveTheme.Colors.SurfaceHover);
         previewFrame.BorderRadius(new CornerRadius(12));
         previewFrame.Padding(new Thickness(16, 12, 16, 12));
         previewFrame.HorizontalAlignment(HorizontalAlignment.Stretch);
@@ -467,7 +467,7 @@ public class ColorPicker : Component, Rayo.Core.Interfaces.IGlobalPointerHandler
         var interactiveContent = new VStack().Spacing(14);
         interactiveContent.AddChild(new Label("Quick colors")
             .FontSize(12)
-            .Foreground(RayoThemes.Current.Colors.OnDisabled));
+            .Foreground(EffectiveTheme.Colors.OnDisabled));
         interactiveContent.AddChild(gradientSampler);
         interactiveContent.AddChild(BuildSliderSection("Hue", hueSlider, hueValueLabel));
         interactiveContent.AddChild(BuildSliderSection("Saturation", satSlider, satValueLabel));
@@ -478,10 +478,10 @@ public class ColorPicker : Component, Rayo.Core.Interfaces.IGlobalPointerHandler
         }
 
         var selectionSurface = new Frame();
-        selectionSurface.Background(RayoThemes.Current.Colors.Surface);
+        selectionSurface.Background(EffectiveTheme.Colors.Surface);
         selectionSurface.BorderRadius(new CornerRadius(12));
         selectionSurface.BorderThickness(1);
-        selectionSurface.BorderBrush = RayoThemes.Current.Colors.Border;
+        selectionSurface.BorderBrush = EffectiveTheme.Colors.Border;
         selectionSurface.Padding(new Thickness(14));
         selectionSurface.HorizontalAlignment(HorizontalAlignment.Stretch);
         selectionSurface.Content(interactiveContent);
@@ -563,18 +563,18 @@ public class ColorPicker : Component, Rayo.Core.Interfaces.IGlobalPointerHandler
         return slider;
     }
 
-    private static Label CreateValueLabel(string text)
+    private Label CreateValueLabel(string text)
     {
         return new Label(text)
             .FontSize(12)
-            .Foreground(RayoThemes.Current.Colors.OnDisabled);
+            .Foreground(EffectiveTheme.Colors.OnDisabled);
     }
 
-    private static VisualElement BuildSliderSection(string title, Slider slider, Label valueLabel)
+    private VisualElement BuildSliderSection(string title, Slider slider, Label valueLabel)
     {
         var titleLabel = new Label(title)
             .FontSize(12)
-            .Foreground(RayoThemes.Current.Colors.OnDisabled);
+            .Foreground(EffectiveTheme.Colors.OnDisabled);
 
         var headerRow = new HStack()
             .JustifyContent(JustifyContent.SpaceBetween);
@@ -730,7 +730,7 @@ public class ColorPicker : Component, Rayo.Core.Interfaces.IGlobalPointerHandler
             Height = height;
             BorderRadius = new CornerRadius(0);
             BorderThickness = 1;
-            BorderBrush = RayoThemes.Current.Colors.Border;
+            BorderBrush = EffectiveTheme.Colors.Border;
 
             Background = CreateSpectrumBrush();
         }

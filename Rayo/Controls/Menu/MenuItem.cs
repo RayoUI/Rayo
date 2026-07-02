@@ -165,7 +165,7 @@ internal sealed class MenuEntryView : Frame, IPointerHandler
         InitializeTheme();
     }
 
-    protected override void OnThemeApplied(Theme theme)
+    protected override void OnThemeApplied(ThemeData theme)
     {
         var background = _isPressed
             ? theme.Colors.SurfacePressed
@@ -207,7 +207,7 @@ internal sealed class MenuEntryView : Frame, IPointerHandler
     }
 
     private void ApplyCurrentTheme() =>
-        OnThemeApplied(UIApplication.Current?.ActiveTheme ?? RayoThemes.Light);
+        OnThemeApplied(EffectiveTheme);
 
     private static VisualElement BuildLeadingIcon(MenuItem item)
     {

@@ -148,12 +148,6 @@ public class ButtonIcon : BorderView<ButtonIcon>,
         // Initialize reactive properties
         IconSize = 24;
         InitializeTheme();
-        BorderThickness = 0;
-
-        // Touch-friendly sizing
-        // Minimum recommended size for touch: 44x44 (iOS HIG) or 48x48 (Material Design)
-        Padding = new Thickness(8);
-        BorderRadius = new CornerRadius(4);
 
         UpdateVisualState();
 
@@ -179,9 +173,9 @@ public class ButtonIcon : BorderView<ButtonIcon>,
     }
 
     private void ApplyActiveTheme() =>
-        OnThemeApplied(UIApplication.Current?.ActiveTheme ?? RayoThemes.Light);
+        OnThemeApplied(EffectiveTheme);
 
-    protected override void OnThemeApplied(Theme theme)
+    protected override void OnThemeApplied(ThemeData theme)
     {
         var colors = Variant switch
         {
@@ -196,6 +190,11 @@ public class ButtonIcon : BorderView<ButtonIcon>,
         SetThemeValue(nameof(PressedBackground), (Brush)colors.PressedBackground, value => PressedBackground = value);
         SetThemeValue(nameof(IconColor), (Brush)colors.Foreground, value => IconColor = value);
         SetThemeValue(nameof(BorderBrush), (Brush)colors.Border, value => BorderBrush = value);
+        SetThemeValue(nameof(BorderThickness), new Thickness(0), value => BorderThickness = value);
+        SetThemeValue(nameof(Padding), new Thickness(theme.Spacing.Md), value => Padding = value);
+        SetThemeValue(nameof(BorderRadius), theme.Buttons.Radius, value => BorderRadius = value);
+        SetThemeValue(nameof(MinWidth), theme.ControlHeight, value => MinWidth = value);
+        SetThemeValue(nameof(MinHeight), theme.ControlHeight, value => MinHeight = value);
     }
 
     // =========================================================================
@@ -260,10 +259,15 @@ public class ButtonIcon : BorderView<ButtonIcon>,
 
     private void UpdateVisualState()
     {
-        // Determine current background based on state
-        _currentBackground = IsPressed ? PressedBackground :
-                           IsHovered ? HoverBackground :
-                           Background;
+        var state = IsPressed
+            ? ControlState.Pressed
+            : IsHovered
+                ? ControlState.Hovered
+                : ControlState.Normal;
+        _currentBackground = new StateMap<Brush>(Background)
+            .With(ControlState.Hovered, HoverBackground)
+            .With(ControlState.Pressed, PressedBackground)
+            .Resolve(state);
     }
 
     // =========================================================================

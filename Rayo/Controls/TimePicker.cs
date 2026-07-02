@@ -148,9 +148,6 @@ public class TimePicker : BorderCompositeView<TimePicker>,
     public TimePicker()
     {
         InitializeTheme();
-        Width = 180;
-        Height = 44;
-        BorderThickness = 1;
         UpdateFromTimeSpan(SelectedTime);
         BuildComponents();
 
@@ -160,7 +157,7 @@ public class TimePicker : BorderCompositeView<TimePicker>,
         }
     }
 
-    protected override void OnThemeApplied(Theme theme)
+    protected override void OnThemeApplied(ThemeData theme)
     {
         var palette = theme.Colors;
         SetThemeValue(nameof(Background), (Brush)palette.Surface, value => Background = value);
@@ -342,7 +339,7 @@ public class TimePicker : BorderCompositeView<TimePicker>,
             ? BuildPopupOverlay(_pickerFrame)
             : BuildDialogOverlay(_pickerFrame);
 
-        Rayo.Core.OverlayManager.AddOverlay(_dialogOverlay);
+        Rayo.Core.OverlayManager.AddOverlay(_dialogOverlay, this);
         Rayo.Core.OverlayManager.EventManager?.RegisterGlobalPointerHandler(this);
     }
 
@@ -626,7 +623,7 @@ public class TimePicker : BorderCompositeView<TimePicker>,
                 Height = (int)ItemHeight,
                 Background = isSelected ? SelectedColor : (Brush)Color.Transparent,
                 HoverBackground = isSelected ? SelectedColor : HoverColor,
-                TextColor = isSelected ? (Brush)RayoThemes.Current.Colors.OnPrimary : TextColor,
+                TextColor = isSelected ? (Brush)EffectiveTheme.Colors.OnPrimary : TextColor,
                 BorderThickness = 0,
                 BorderRadius = new CornerRadius(6)
             };
@@ -687,7 +684,7 @@ public class TimePicker : BorderCompositeView<TimePicker>,
             Height = 40,
             Background = !_isPM ? SelectedColor : (Brush)Color.Transparent,
             HoverBackground = !_isPM ? SelectedColor : HoverColor,
-            TextColor = !_isPM ? (Brush)RayoThemes.Current.Colors.OnPrimary : TextColor,
+            TextColor = !_isPM ? (Brush)EffectiveTheme.Colors.OnPrimary : TextColor,
             BorderThickness = 0,
             BorderRadius = new CornerRadius(6)
         };
@@ -706,7 +703,7 @@ public class TimePicker : BorderCompositeView<TimePicker>,
             Height = 40,
             Background = _isPM ? SelectedColor : (Brush)Color.Transparent,
             HoverBackground = _isPM ? SelectedColor : HoverColor,
-            TextColor = _isPM ? (Brush)RayoThemes.Current.Colors.OnPrimary : TextColor,
+            TextColor = _isPM ? (Brush)EffectiveTheme.Colors.OnPrimary : TextColor,
             BorderThickness = 0,
             BorderRadius = new CornerRadius(6)
         };

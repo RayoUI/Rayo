@@ -86,7 +86,7 @@ public class ToolbarFrame : Component
     private VisualElement BuildThemeButton()
     {
         var app = UIApplication.Current;
-        var isDark = app?.ActiveTheme == RayoThemes.Dark;
+        var isDark = app?.ActiveTheme.Brightness == ThemeBrightness.Dark;
         var button = new ButtonIcon(isDark ? Icons.Sun : Icons.Moon)
         {
             Width = 30,
@@ -105,7 +105,7 @@ public class ToolbarFrame : Component
                 return;
 
             currentApp.UseTheme(
-                currentApp.ActiveTheme == RayoThemes.Dark
+                currentApp.ActiveTheme.Brightness == ThemeBrightness.Dark
                     ? RayoThemes.Light
                     : RayoThemes.Dark);
         };

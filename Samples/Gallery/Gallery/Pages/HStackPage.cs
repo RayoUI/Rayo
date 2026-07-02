@@ -1,4 +1,4 @@
-﻿using Rayo;
+using Rayo;
 using Rayo.Controls;
 using Rayo.Core;
 using Rayo.Layout;
@@ -92,7 +92,7 @@ public class HStackPage : Component
             .BorderRadius(8);
     }
 
-    private VisualElement CreatePaletteSquare(float size, Func<Rayo.Styling.ColorPalette, Color> color)
+    private VisualElement CreatePaletteSquare(float size, Func<Rayo.Styling.ColorScheme, Color> color)
     {
         return new PaletteFrame(color)
             .Size(new Size(size, size))

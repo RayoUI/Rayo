@@ -7,19 +7,19 @@ namespace Notepad.Controls;
 
 internal sealed class ThemeFrame : Frame
 {
-    private readonly Func<ColorPalette, Color> _backgroundSelector;
-    private readonly Func<ColorPalette, Color>? _borderSelector;
+    private readonly Func<ColorScheme, Color> _backgroundSelector;
+    private readonly Func<ColorScheme, Color>? _borderSelector;
 
     public ThemeFrame(
-        Func<ColorPalette, Color> backgroundSelector,
-        Func<ColorPalette, Color>? borderSelector = null)
+        Func<ColorScheme, Color> backgroundSelector,
+        Func<ColorScheme, Color>? borderSelector = null)
     {
         _backgroundSelector = backgroundSelector;
         _borderSelector = borderSelector;
         InitializeTheme();
     }
 
-    protected override void OnThemeApplied(Theme theme)
+    protected override void OnThemeApplied(ThemeData theme)
     {
         SetThemeValue(
             nameof(Background),
@@ -38,15 +38,15 @@ internal sealed class ThemeFrame : Frame
 
 internal sealed class ThemeLabel : Label
 {
-    private readonly Func<ColorPalette, Color> _foregroundSelector;
+    private readonly Func<ColorScheme, Color> _foregroundSelector;
 
-    public ThemeLabel(Func<ColorPalette, Color> foregroundSelector)
+    public ThemeLabel(Func<ColorScheme, Color> foregroundSelector)
     {
         _foregroundSelector = foregroundSelector;
         ResetThemeValues();
     }
 
-    protected override void OnThemeApplied(Theme theme)
+    protected override void OnThemeApplied(ThemeData theme)
     {
         if (_foregroundSelector == null)
             return;

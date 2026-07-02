@@ -1,4 +1,4 @@
-﻿namespace Rayo.Controls;
+namespace Rayo.Controls;
 
 using Rayo.Core;
 using Rayo.Core.Input;
@@ -127,7 +127,7 @@ public class Splitter : Rayo.Core.Layout<Splitter>, IPointerHandler, IInputHandl
         VerticalAlignment = VerticalAlignment.Stretch;
     }
 
-    protected override void OnThemeApplied(Theme theme)
+    protected override void OnThemeApplied(ThemeData theme)
     {
         var palette = theme.Colors;
         SetThemeValue(nameof(SplitterColor), (Brush)palette.Border, value => SplitterColor = value);

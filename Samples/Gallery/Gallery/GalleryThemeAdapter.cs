@@ -47,10 +47,10 @@ internal sealed class GalleryPageHost : Frame
         _page = page;
         Content = _pageFactory(page);
         CaptureThemeBindings();
-        ApplyThemeBindings(RayoThemes.Current);
+        ApplyThemeBindings((UIApplication.Current?.ActiveTheme ?? RayoThemes.Light));
     }
 
-    protected override void OnThemeApplied(Theme theme)
+    protected override void OnThemeApplied(ThemeData theme)
     {
         base.OnThemeApplied(theme);
         if (_isReady)
@@ -245,7 +245,7 @@ internal sealed class GalleryPageHost : Frame
         };
     }
 
-    private void ApplyThemeBindings(Theme theme)
+    private void ApplyThemeBindings(ThemeData theme)
     {
         foreach (var binding in _colorBindings)
         {
@@ -258,7 +258,7 @@ internal sealed class GalleryPageHost : Frame
         }
     }
 
-    private static Color ResolveThemeColor(ColorPalette palette, GalleryColorRole role) => role switch
+    private static Color ResolveThemeColor(ColorScheme palette, GalleryColorRole role) => role switch
     {
         GalleryColorRole.Primary => palette.Primary,
         GalleryColorRole.PrimaryHover => palette.PrimaryHover,
@@ -322,9 +322,9 @@ internal sealed class GalleryPageHost : Frame
         MatchesEitherPalette(color, colors => colors.OnDanger) ||
         MatchesEitherPalette(color, colors => colors.OnInfo);
 
-    private static bool MatchesEitherPalette(Color color, Func<ColorPalette, Color> selector) =>
-        MatchesRgb(color, selector(ColorPalettes.Light)) ||
-        MatchesRgb(color, selector(ColorPalettes.Dark));
+    private static bool MatchesEitherPalette(Color color, Func<ColorScheme, Color> selector) =>
+        MatchesRgb(color, selector(ColorSchemes.Light)) ||
+        MatchesRgb(color, selector(ColorSchemes.Dark));
 
     private static bool MatchesRgb(Color left, Color right)
     {

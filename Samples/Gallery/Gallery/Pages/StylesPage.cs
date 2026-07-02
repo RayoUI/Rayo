@@ -123,7 +123,7 @@ public class StylesPage : Component
                 ),
 
                 // ── Design Tokens ─────────────────────────────────────────────────
-                Helper.CreateExampleSection("Design Tokens — StyleTokens",
+                Helper.CreateExampleSection("Design Tokens — ThemeTokenSet",
                     BuildTokensDemo()
                 ),
 
@@ -189,25 +189,28 @@ public class StylesPage : Component
 
     private static VisualElement BuildTokensDemo()
     {
-        // Define a token set — like CSS custom properties
-        var tokens = new StyleTokens()
-            .Set("--color-accent",  new Color(139, 92, 246))
-            .Set("--color-surface", new Color(40, 42, 55))
-            .Set("--radius",        8f)
-            .Set("--spacing",       12f);
+        var accent = new ThemeKey<Color>("color.accent");
+        var surface = new ThemeKey<Color>("color.surface");
+        var radius = new ThemeKey<float>("radius");
+        var spacing = new ThemeKey<float>("spacing");
+        var tokens = ThemeTokenSet.Empty
+            .Set(accent, new Color(139, 92, 246))
+            .Set(surface, new Color(40, 42, 55))
+            .Set(radius, 8f)
+            .Set(spacing, 12f);
 
         StyleSheet sheet =
         [
             new Style<Button>()
-                .Background(tokens.Get<Color>("--color-accent"))
-                .Set(b => b.BorderRadius = new CornerRadius(tokens.Get<float>("--radius")))
+                .Background(tokens.Get(accent))
+                .Set(b => b.BorderRadius = new CornerRadius(tokens.Get(radius)))
                 .Set(b => b.Height = 36)
                 .Set(b => b.TextColor = Color.White),
 
             new Style<Frame>()
-                .Background(tokens.Get<Color>("--color-surface"))
-                .Set(f => f.BorderRadius = new CornerRadius(tokens.Get<float>("--radius")))
-                .Set(f => f.Padding = new Thickness(tokens.Get<float>("--spacing"))),
+                .Background(tokens.Get(surface))
+                .Set(f => f.BorderRadius = new CornerRadius(tokens.Get(radius)))
+                .Set(f => f.Padding = new Thickness(tokens.Get(spacing))),
         ];
 
         var container = new VStack()

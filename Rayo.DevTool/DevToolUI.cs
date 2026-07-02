@@ -1,4 +1,4 @@
-﻿using Rayo.Controls;
+using Rayo.Controls;
 using Rayo.Core;
 using Rayo.Layout;
 using Rayo.Rendering;
@@ -24,7 +24,7 @@ public class DevToolUI : Component
         UIApplication.ThemeChanged -= HandleThemeChanged;
     }
 
-    private void HandleThemeChanged(Theme _)
+    private void HandleThemeChanged(ThemeData _)
     {
         Rebuild();
     }
@@ -60,6 +60,9 @@ public class DevToolUI : Component
                                         .HorizontalAlignment(HorizontalAlignment.Stretch)
                                         .VerticalAlignment(VerticalAlignment.Stretch))
                                     .AddTab("Performance", new PerformanceFrame(_state)
+                                        .HorizontalAlignment(HorizontalAlignment.Stretch)
+                                        .VerticalAlignment(VerticalAlignment.Stretch))
+                                    .AddTab("Theme", new ThemeInspectorFrame(_state)
                                         .HorizontalAlignment(HorizontalAlignment.Stretch)
                                         .VerticalAlignment(VerticalAlignment.Stretch))
                             ),

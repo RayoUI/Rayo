@@ -137,7 +137,6 @@ public class Link : View<Link>,
     public Link()
     {
         InitializeTheme();
-        Padding = new Thickness(0);
         Cursor = CursorShape.Hand;
 
         _tapRecognizer = new TapRecognizer(
@@ -148,7 +147,7 @@ public class Link : View<Link>,
         GestureRecognizers.Add(_tapRecognizer);
     }
 
-    protected override void OnThemeApplied(Theme theme)
+    protected override void OnThemeApplied(ThemeData theme)
     {
         var palette = theme.Colors;
         SetThemeValue(nameof(NormalColor), (Brush)palette.Primary, value => NormalColor = value);
@@ -266,17 +265,14 @@ public class Link : View<Link>,
 
     private Brush GetCurrentColor()
     {
-        if (IsPressed)
-        {
-            return PressedColor;
-        }
+        var state = ControlState.Normal;
+        if (IsHovered) state |= ControlState.Hovered;
+        if (IsPressed) state |= ControlState.Pressed;
 
-        if (IsHovered)
-        {
-            return HoverColor;
-        }
-
-        return IsVisited ? VisitedColor : NormalColor;
+        return new StateMap<Brush>(IsVisited ? VisitedColor : NormalColor)
+            .With(ControlState.Hovered, HoverColor)
+            .With(ControlState.Pressed, PressedColor)
+            .Resolve(state);
     }
 
     private float EstimateTextWidth(string text)

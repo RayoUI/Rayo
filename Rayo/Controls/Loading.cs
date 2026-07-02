@@ -1,4 +1,4 @@
-﻿namespace Rayo.Controls;
+namespace Rayo.Controls;
 
 using Silk.NET.Core.Native;
 using Rayo.Animation;
@@ -103,10 +103,9 @@ public class Loading : Rayo.Core.View<Loading>, IFrameAnimation, IFrameAnimation
     public Loading()
     {
         InitializeTheme();
-        Size(40f);
     }
 
-    protected override void OnThemeApplied(Theme theme)
+    protected override void OnThemeApplied(ThemeData theme)
     {
         var palette = theme.Colors;
         SetThemeValue(nameof(Color), (Brush)palette.Primary, value => Color = value);
@@ -356,7 +355,7 @@ public class LoadingOverlay : Frame
     public LoadingOverlay()
     {
         // Semi-transparent backdrop
-        this.Background(RayoThemes.Current.Colors.Surface.WithAlpha(0.78f));
+        this.Background(EffectiveTheme.Colors.Surface.WithAlpha(0.78f));
     }
 
     public LoadingOverlay Show(string? text = null, SpinnerType type = SpinnerType.Circle)

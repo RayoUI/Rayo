@@ -1,4 +1,4 @@
-﻿namespace Rayo.Core;
+namespace Rayo.Core;
 
 using Rayo.Controls;
 using Rayo.Layout;
@@ -15,13 +15,13 @@ public static class UIHelpers
     /// </summary>
     public static class ColorDefault
     {
-        public static Color Primary => RayoThemes.Current.Colors.Primary;
-        public static Color Success => RayoThemes.Current.Colors.Success;
-        public static Color Warning => RayoThemes.Current.Colors.Warning;
-        public static Color Danger => RayoThemes.Current.Colors.Danger;
-        public static Color Info => RayoThemes.Current.Colors.Info;
-        public static Color Secondary => RayoThemes.Current.Colors.Secondary;
-        public static Color Dark => RayoThemes.Current.Colors.Background;
-        public static Color Light => RayoThemes.Current.Colors.SurfaceHover;
+        public static Color Primary => (UIApplication.Current?.ActiveTheme ?? RayoThemes.Light).Colors.Primary;
+        public static Color Success => (UIApplication.Current?.ActiveTheme ?? RayoThemes.Light).Colors.Success;
+        public static Color Warning => (UIApplication.Current?.ActiveTheme ?? RayoThemes.Light).Colors.Warning;
+        public static Color Danger => (UIApplication.Current?.ActiveTheme ?? RayoThemes.Light).Colors.Danger;
+        public static Color Info => (UIApplication.Current?.ActiveTheme ?? RayoThemes.Light).Colors.Info;
+        public static Color Secondary => (UIApplication.Current?.ActiveTheme ?? RayoThemes.Light).Colors.Secondary;
+        public static Color Dark => (UIApplication.Current?.ActiveTheme ?? RayoThemes.Light).Colors.Background;
+        public static Color Light => (UIApplication.Current?.ActiveTheme ?? RayoThemes.Light).Colors.SurfaceHover;
     }
 }

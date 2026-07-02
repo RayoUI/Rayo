@@ -1,4 +1,4 @@
-﻿#nullable enable
+#nullable enable
 
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -792,12 +792,12 @@ namespace Rayo.Reactivity
                     sb.AppendLine("                {");
                     sb.AppendLine("                    global::Rayo.Reactivity.UIUpdateQueue.EnqueueUIUpdate(self, () =>");
                     sb.AppendLine("                    {");
-                    sb.AppendLine($"                        self.{propertyName} = new{propertyName};");
+                    sb.AppendLine($"                        self.ApplyBindingValue(() => self.{propertyName} = new{propertyName});");
                     sb.AppendLine("                    });");
                     sb.AppendLine("                });");
                     sb.AppendLine();
                     sb.AppendLine("                self.RegisterDisposable(subscription);");
-                    sb.AppendLine($"                self.{propertyName} = {paramName}Signal.Value;");
+                    sb.AppendLine($"                self.ApplyBindingValue(() => self.{propertyName} = {paramName}Signal.Value);");
                     sb.AppendLine();
                     sb.AppendLine($"                return {returnExpression};");
                     sb.AppendLine("            }");
@@ -817,12 +817,12 @@ namespace Rayo.Reactivity
                     sb.AppendLine("                {");
                     sb.AppendLine("                    global::Rayo.Reactivity.UIUpdateQueue.EnqueueUIUpdate(self, () =>");
                     sb.AppendLine("                    {");
-                    sb.AppendLine($"                        self.{propertyName} = new global::System.Collections.Generic.List<{elementTypeString}>(new{propertyName} ?? global::System.Linq.Enumerable.Empty<{elementTypeString}>());");
+                    sb.AppendLine($"                        self.ApplyBindingValue(() => self.{propertyName} = new global::System.Collections.Generic.List<{elementTypeString}>(new{propertyName} ?? global::System.Linq.Enumerable.Empty<{elementTypeString}>()));");
                     sb.AppendLine("                    });");
                     sb.AppendLine("                });");
                     sb.AppendLine();
                     sb.AppendLine("                self.RegisterDisposable(subscription);");
-                    sb.AppendLine($"                self.{propertyName} = new global::System.Collections.Generic.List<{elementTypeString}>({paramName}Signal.Value ?? global::System.Linq.Enumerable.Empty<{elementTypeString}>());");
+                    sb.AppendLine($"                self.ApplyBindingValue(() => self.{propertyName} = new global::System.Collections.Generic.List<{elementTypeString}>({paramName}Signal.Value ?? global::System.Linq.Enumerable.Empty<{elementTypeString}>()));");
                     sb.AppendLine();
                     sb.AppendLine($"                return {returnExpression};");
                     sb.AppendLine("            }");
@@ -932,12 +932,12 @@ namespace Rayo.Reactivity
                     sb.AppendLine("                {");
                     sb.AppendLine("                    global::Rayo.Reactivity.UIUpdateQueue.EnqueueUIUpdate(self, () =>");
                     sb.AppendLine("                    {");
-                    sb.AppendLine($"                        self.{propertyName} = new{propertyName};");
+                    sb.AppendLine($"                        self.ApplyBindingValue(() => self.{propertyName} = new{propertyName});");
                     sb.AppendLine("                    });");
                     sb.AppendLine("                });");
                     sb.AppendLine();
                     sb.AppendLine("                self.RegisterDisposable(subscription);");
-                    sb.AppendLine($"                self.{propertyName} = {paramName}Signal.Value;");
+                    sb.AppendLine($"                self.ApplyBindingValue(() => self.{propertyName} = {paramName}Signal.Value);");
                     sb.AppendLine();
                     sb.AppendLine($"                return {returnExpression};");
                     sb.AppendLine("            }");
@@ -957,12 +957,12 @@ namespace Rayo.Reactivity
                         sb.AppendLine("                {");
                         sb.AppendLine("                    global::Rayo.Reactivity.UIUpdateQueue.EnqueueUIUpdate(self, () =>");
                         sb.AppendLine("                    {");
-                        sb.AppendLine($"                        self.{propertyName} = new{propertyName};");
+                        sb.AppendLine($"                        self.ApplyBindingValue(() => self.{propertyName} = new{propertyName});");
                         sb.AppendLine("                    });");
                         sb.AppendLine("                });");
                         sb.AppendLine();
                         sb.AppendLine("                self.RegisterDisposable(subscription);");
-                        sb.AppendLine($"                self.{propertyName} = {paramName}Signal.Value;");
+                        sb.AppendLine($"                self.ApplyBindingValue(() => self.{propertyName} = {paramName}Signal.Value);");
                         sb.AppendLine();
                         sb.AppendLine($"                return {returnExpression};");
                         sb.AppendLine("            }");
@@ -1018,12 +1018,12 @@ namespace Rayo.Reactivity
                         sb.AppendLine("                {");
                         sb.AppendLine("                    global::Rayo.Reactivity.UIUpdateQueue.EnqueueUIUpdate(self, () =>");
                         sb.AppendLine("                    {");
-                        sb.AppendLine($"                        self.{propertyName} = new{propertyName}?.ToList() ?? new global::System.Collections.Generic.List<{collectionElementTypeString}>();");
+                        sb.AppendLine($"                        self.ApplyBindingValue(() => self.{propertyName} = new{propertyName}?.ToList() ?? new global::System.Collections.Generic.List<{collectionElementTypeString}>());");
                         sb.AppendLine("                    });");
                         sb.AppendLine("                });");
                         sb.AppendLine();
                         sb.AppendLine("                self.RegisterDisposable(subscription);");
-                        sb.AppendLine($"                self.{propertyName} = {paramName}Signal.Value?.ToList() ?? new global::System.Collections.Generic.List<{collectionElementTypeString}>();");
+                        sb.AppendLine($"                self.ApplyBindingValue(() => self.{propertyName} = {paramName}Signal.Value?.ToList() ?? new global::System.Collections.Generic.List<{collectionElementTypeString}>());");
                         sb.AppendLine();
                         sb.AppendLine($"                return {returnExpression};");
                         sb.AppendLine("            }");
@@ -1043,12 +1043,12 @@ namespace Rayo.Reactivity
                         sb.AppendLine("                {");
                         sb.AppendLine("                    global::Rayo.Reactivity.UIUpdateQueue.EnqueueUIUpdate(self, () =>");
                         sb.AppendLine("                    {");
-                        sb.AppendLine($"                        self.{propertyName} = new{propertyName};");
+                        sb.AppendLine($"                        self.ApplyBindingValue(() => self.{propertyName} = new{propertyName});");
                         sb.AppendLine("                    });");
                         sb.AppendLine("                });");
                         sb.AppendLine();
                         sb.AppendLine("                self.RegisterDisposable(subscription);");
-                        sb.AppendLine($"                self.{propertyName} = {paramName}Signal.Value?.ToList() ?? new global::System.Collections.Generic.List<{collectionElementTypeString}>();");
+                        sb.AppendLine($"                self.ApplyBindingValue(() => self.{propertyName} = {paramName}Signal.Value?.ToList() ?? new global::System.Collections.Generic.List<{collectionElementTypeString}>());");
                         sb.AppendLine();
                         sb.AppendLine($"                return {returnExpression};");
                         sb.AppendLine("            }");

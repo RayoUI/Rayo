@@ -73,7 +73,7 @@ public class CarouselPage : Component
     private static VisualElement CreateFeatureSlide(
         string title,
         string body,
-        Func<Rayo.Styling.ColorPalette, Color> accent)
+        Func<Rayo.Styling.ColorScheme, Color> accent)
     {
         return new PaletteFrame(colors => colors.Surface)
             .BorderRadius(8)
@@ -153,7 +153,7 @@ public class CarouselPage : Component
     private static VisualElement CreateStepSlide(
         string step,
         string title,
-        Func<Rayo.Styling.ColorPalette, Color> accent)
+        Func<Rayo.Styling.ColorScheme, Color> accent)
     {
         return new PaletteFrame(colors => colors.Surface)
             .BorderRadius(8)

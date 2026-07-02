@@ -1,4 +1,4 @@
-﻿using PaintApp.ViewModels;
+using PaintApp.ViewModels;
 using Rayo;
 using Rayo.Controls;
 using Rayo.Rendering;
@@ -8,7 +8,7 @@ using Rayo.Layout;
 namespace PaintApp.Views;
 
 /// <summary>Color palette strip — 24 preset swatches that update the active draw color.</summary>
-public class ColorPaletteView : Component
+public class ColorSchemeView : Component
 {
     private readonly PaintViewState _vm;
 
@@ -28,7 +28,7 @@ public class ColorPaletteView : Component
         new(255, 105, 180), new(64, 0, 128),
     ];
 
-    public ColorPaletteView(PaintViewState vm) => _vm = vm;
+    public ColorSchemeView(PaintViewState vm) => _vm = vm;
 
     public override VisualElement Build()
     {

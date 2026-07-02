@@ -1,4 +1,4 @@
-﻿namespace Rayo.Controls;
+namespace Rayo.Controls;
 
 using Rayo.Core;
 using Rayo.Layout;
@@ -117,7 +117,7 @@ public class Dialog : Component
         // Overlay background (semi-transparent black)
         var dialogBox = new Frame();
         dialogBox.Width(420);
-        dialogBox.Background = new SolidColorBrush(RayoThemes.Current.Colors.Surface);
+        dialogBox.Background = new SolidColorBrush(EffectiveTheme.Colors.Surface);
         dialogBox.BorderRadius(_borderRadius);
         dialogBox.BorderThickness = 1;
         dialogBox.Padding(new Thickness(0));
@@ -125,7 +125,7 @@ public class Dialog : Component
         dialogBox.VerticalAlignment(VerticalAlignment.Center);
 
         Frame buttonSection = new Frame();
-        buttonSection.Background(RayoThemes.Current.Colors.SurfaceHover);
+        buttonSection.Background(EffectiveTheme.Colors.SurfaceHover);
         buttonSection.Padding(new Thickness(24, 16, 24, 16));
         buttonSection.BorderRadius(new CornerRadius(0, 0, _borderRadius, _borderRadius));
         var buttons = new HStack()
@@ -168,7 +168,7 @@ public class Dialog : Component
     {
         var titleLabel = new Label(_title)
             .FontSize(16)
-            .Foreground(RayoThemes.Current.Colors.OnSurface)
+            .Foreground(EffectiveTheme.Colors.OnSurface)
             .HorizontalAlignment(HorizontalAlignment.Stretch)
             .VerticalAlignment(VerticalAlignment.Center);
 
@@ -179,9 +179,9 @@ public class Dialog : Component
                 .Size(32)
                 .IconSize(18)
                 .Background(Color.Transparent)
-                .HoverBackground(RayoThemes.Current.Colors.Surface)
-                .PressedBackground(RayoThemes.Current.Colors.SurfaceHover)
-                .IconColor(RayoThemes.Current.Colors.OnSurface)
+                .HoverBackground(EffectiveTheme.Colors.Surface)
+                .PressedBackground(EffectiveTheme.Colors.SurfaceHover)
+                .IconColor(EffectiveTheme.Colors.OnSurface)
                 .BorderThickness(0)
                 .Padding(new Thickness(7))
                 .HorizontalAlignment(HorizontalAlignment.Right)
@@ -200,7 +200,7 @@ public class Dialog : Component
         }
 
         Frame Frame = new Frame();
-        Frame.Background(RayoThemes.Current.Colors.SurfaceHover);
+        Frame.Background(EffectiveTheme.Colors.SurfaceHover);
         Frame.Padding(new Thickness(24, 16, 16, 16));
         Frame.BorderRadius(new CornerRadius(_borderRadius, _borderRadius, 0, 0));
         Frame.Content(titleContent);
@@ -212,7 +212,7 @@ public class Dialog : Component
         VisualElement content = _content ?? new Label()
             .Text(_message)
             .FontSize(14)
-            .Foreground(RayoThemes.Current.Colors.OnDisabled)
+            .Foreground(EffectiveTheme.Colors.OnDisabled)
             .HorizontalAlignment(HorizontalAlignment.Left);
 
         Frame Frame = new Frame();
@@ -263,7 +263,8 @@ public class Dialog : Component
         Func<bool>? validate = null,
         string okText = "OK",
         string cancelText = "Cancel",
-        bool showCloseButton = true)
+        bool showCloseButton = true,
+        VisualElement? owner = null)
     {
         VisualElement? overlay = null;
 
@@ -291,7 +292,7 @@ public class Dialog : Component
             cancelText,
             showCloseButton).Build(); // We need the built element (Frame)
 
-        Rayo.Core.OverlayManager.AddOverlay(overlay);
+        Rayo.Core.OverlayManager.AddOverlay(overlay, owner);
     }
 
     public static void Show(
@@ -303,7 +304,8 @@ public class Dialog : Component
         Func<bool>? validate = null,
         string okText = "OK",
         string cancelText = "Cancel",
-        bool showCloseButton = true)
+        bool showCloseButton = true,
+        VisualElement? owner = null)
     {
         VisualElement? overlay = null;
 
@@ -331,6 +333,6 @@ public class Dialog : Component
             cancelText,
             showCloseButton).Build();
 
-        Rayo.Core.OverlayManager.AddOverlay(overlay);
+        Rayo.Core.OverlayManager.AddOverlay(overlay, owner);
     }
 }

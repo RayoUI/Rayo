@@ -17,9 +17,12 @@ public sealed class NotepadWorkspace
 
     public Signal<string> StatusText { get; } = new("Ready");
     public Signal<string> CaretText { get; } = new("Ln 1, Col 1");
-    public bool IsLightTheme() => ReferenceEquals(RayoThemes.Current, RayoThemes.Light);
-    public bool IsDarkTheme() => ReferenceEquals(RayoThemes.Current, RayoThemes.Dark);
-    public bool IsNeonTheme() => ReferenceEquals(RayoThemes.Current, NotepadThemes.Neon);
+    public bool IsLightTheme() =>
+        (UIApplication.Current?.ActiveTheme ?? RayoThemes.Light).Brightness == ThemeBrightness.Light;
+    public bool IsDarkTheme() =>
+        (UIApplication.Current?.ActiveTheme ?? RayoThemes.Light).Name == RayoThemes.Dark.Name;
+    public bool IsNeonTheme() =>
+        (UIApplication.Current?.ActiveTheme ?? RayoThemes.Light).Name == NotepadThemes.Neon.Name;
 
     public void Attach(TabControl tabs)
     {

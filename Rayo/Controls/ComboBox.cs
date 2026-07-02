@@ -1,4 +1,4 @@
-﻿namespace Rayo.Controls;
+namespace Rayo.Controls;
 
 using Rayo.Core;
 using Rayo.Core.Interactions;
@@ -290,9 +290,6 @@ public class ComboBox : BorderCompositeView<ComboBox>,
     public ComboBox()
     {
         InitializeTheme();
-        Width = 200;
-        Height = 32;
-        BorderThickness = 1;
         BuildComponents();
 
         // Add the dropdown button as a child so it's part of the UI tree
@@ -302,7 +299,7 @@ public class ComboBox : BorderCompositeView<ComboBox>,
         }
     }
 
-    protected override void OnThemeApplied(Theme theme)
+    protected override void OnThemeApplied(ThemeData theme)
     {
         var palette = theme.Colors;
         SetThemeValue(nameof(Background), (Brush)palette.Surface, value => Background = value);
@@ -502,7 +499,7 @@ public class ComboBox : BorderCompositeView<ComboBox>,
         _dropdownFrame.X(x);
         _dropdownFrame.Y(y);
 
-        Rayo.Core.OverlayManager.AddOverlay(_dropdownFrame);
+        Rayo.Core.OverlayManager.AddOverlay(_dropdownFrame, this);
         
         // Register for global pointer events
         Rayo.Core.OverlayManager.EventManager?.RegisterGlobalPointerHandler(this);

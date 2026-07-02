@@ -1,4 +1,4 @@
-﻿using Rayo;
+using Rayo;
 using Rayo.Controls;
 using Rayo.Core;
 using Rayo.Core.Platform;
@@ -52,7 +52,11 @@ public static class Helper
 
     private static void ToggleTheme()
     {
-        RayoThemes.UseTheme(RayoThemes.Current == RayoThemes.Dark ? RayoThemes.Light : RayoThemes.Dark);
+        var current = UIApplication.Current?.ActiveTheme ?? RayoThemes.Light;
+        RayoThemes.UseTheme(
+            current.Brightness == ThemeBrightness.Dark
+                ? RayoThemes.Light
+                : RayoThemes.Dark);
     }
 
     // Creates a section with a title and content for examples.
@@ -108,7 +112,7 @@ public static class Helper
 /// </summary>
 public static class GalleryPalette
 {
-    private static ColorPalette Colors => RayoThemes.Current.Colors;
+    private static ColorScheme Colors => (UIApplication.Current?.ActiveTheme ?? RayoThemes.Light).Colors;
 
     public static Color Primary => Colors.Primary;
     public static Color PrimaryHover => Colors.PrimaryHover;

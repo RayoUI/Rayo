@@ -104,6 +104,15 @@ public class SetInspectModeRequest : DevToolMessage
     public bool Enabled { get; set; }
 }
 
+/// <summary>Requests the effective theme for the app root or a specific element.</summary>
+public class GetThemeSnapshotRequest : DevToolMessage
+{
+    public override string Type => "get_theme_snapshot";
+
+    [JsonPropertyName("elementId")]
+    public string? ElementId { get; set; }
+}
+
 // ============================================================================
 // RESPONSE MESSAGES (Agent -> DevTool)
 // ============================================================================
@@ -164,6 +173,69 @@ public class ResultResponse : DevToolMessage
     public string RequestId { get; set; } = "";
 }
 
+/// <summary>Serializable view of the effective theme in the connected application.</summary>
+public class ThemeSnapshotResponse : DevToolMessage
+{
+    public override string Type => "theme_snapshot";
+
+    [JsonPropertyName("requestId")]
+    public string RequestId { get; set; } = "";
+
+    [JsonPropertyName("name")]
+    public string Name { get; set; } = "";
+
+    [JsonPropertyName("brightness")]
+    public string Brightness { get; set; } = "";
+
+    [JsonPropertyName("density")]
+    public string Density { get; set; } = "";
+
+    [JsonPropertyName("textScale")]
+    public float TextScale { get; set; } = 1f;
+
+    [JsonPropertyName("highContrast")]
+    public bool HighContrast { get; set; }
+
+    [JsonPropertyName("reduceMotion")]
+    public bool ReduceMotion { get; set; }
+
+    [JsonPropertyName("colors")]
+    public List<ThemeColorDto> Colors { get; set; } = new();
+
+    [JsonPropertyName("tokens")]
+    public List<ThemeTokenDto> Tokens { get; set; } = new();
+}
+
+public class ThemeColorDto
+{
+    [JsonPropertyName("name")]
+    public string Name { get; set; } = "";
+
+    [JsonPropertyName("value")]
+    public string Value { get; set; } = "";
+
+    [JsonPropertyName("onValue")]
+    public string OnValue { get; set; } = "";
+
+    [JsonPropertyName("contrast")]
+    public float Contrast { get; set; }
+}
+
+public class ThemeTokenDto
+{
+    [JsonPropertyName("name")]
+    public string Name { get; set; } = "";
+
+    [JsonPropertyName("type")]
+    public string ValueType { get; set; } = "";
+
+    [JsonPropertyName("value")]
+    public string Value { get; set; } = "";
+
+    [JsonPropertyName("color")]
+    public string? Color { get; set; }
+}
+
 /// <summary>
 /// Event notification when main tree changes (hot reload)
 /// </summary>
@@ -189,6 +261,11 @@ public class InspectElementSelectedEvent : DevToolMessage
 
     [JsonPropertyName("elementId")]
     public string ElementId { get; set; } = "";
+}
+
+public class ThemeChangedEvent : DevToolMessage
+{
+    public override string Type => "theme_changed";
 }
 
 // ============================================================================
@@ -294,6 +371,7 @@ public static class MessageSerializer
             "highlight" => JsonSerializer.Deserialize<HighlightElementRequest>(json, Options),
             "set_layout_outline" => JsonSerializer.Deserialize<SetLayoutOutlineRequest>(json, Options),
             "set_inspect_mode" => JsonSerializer.Deserialize<SetInspectModeRequest>(json, Options),
+            "get_theme_snapshot" => JsonSerializer.Deserialize<GetThemeSnapshotRequest>(json, Options),
             "get_perf_stats"    => JsonSerializer.Deserialize<GetPerformanceStatsRequest>(json, Options),
             "set_dirty_heatmap" => JsonSerializer.Deserialize<SetDirtyHeatmapRequest>(json, Options),
             "set_overdraw"      => JsonSerializer.Deserialize<SetOverdrawVisualizerRequest>(json, Options),
@@ -304,9 +382,11 @@ public static class MessageSerializer
             "overlays" => JsonSerializer.Deserialize<OverlaysResponse>(json, Options),
             "properties" => JsonSerializer.Deserialize<PropertiesResponse>(json, Options),
             "result" => JsonSerializer.Deserialize<ResultResponse>(json, Options),
+            "theme_snapshot" => JsonSerializer.Deserialize<ThemeSnapshotResponse>(json, Options),
             "tree_changed" => JsonSerializer.Deserialize<TreeChangedEvent>(json, Options),
             "overlays_changed" => JsonSerializer.Deserialize<OverlaysChangedEvent>(json, Options),
             "inspect_element_selected" => JsonSerializer.Deserialize<InspectElementSelectedEvent>(json, Options),
+            "theme_changed" => JsonSerializer.Deserialize<ThemeChangedEvent>(json, Options),
             "log_message" => JsonSerializer.Deserialize<LogMessage>(json, Options),
             _ => null
         };

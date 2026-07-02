@@ -150,7 +150,7 @@ public class Menu : Component, IGlobalPointerHandler
     private void AddPopup(int depth, VisualElement popup)
     {
         _openOverlays.Add((depth, popup));
-        OverlayManager.AddOverlay(popup);
+        OverlayManager.AddOverlay(popup, this);
         OverlayManager.EventManager?.RegisterGlobalPointerHandler(this);
     }
 
@@ -226,7 +226,7 @@ public class Menu : Component, IGlobalPointerHandler
 /// <summary>Ghost button whose foreground follows surface content colors.</summary>
 internal sealed class MenuButton : Button
 {
-    protected override void OnThemeApplied(Theme theme)
+    protected override void OnThemeApplied(ThemeData theme)
     {
         base.OnThemeApplied(theme);
         SetThemeValue(nameof(TextColor), (Brush)theme.Colors.OnSurface, value => TextColor = value);
@@ -241,7 +241,7 @@ internal sealed class MenuSurfaceFrame : Frame
         InitializeTheme();
     }
 
-    protected override void OnThemeApplied(Theme theme)
+    protected override void OnThemeApplied(ThemeData theme)
     {
         SetThemeValue(nameof(Background), (Brush)theme.Colors.Surface, value => Background = value);
         SetThemeValue(nameof(BorderBrush), (Brush)theme.Colors.Border, value => BorderBrush = value);

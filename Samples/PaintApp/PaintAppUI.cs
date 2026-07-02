@@ -1,4 +1,4 @@
-﻿using PaintApp.Controls;
+using PaintApp.Controls;
 using PaintApp.ViewModels;
 using PaintApp.Views;
 using Rayo;
@@ -25,7 +25,7 @@ public class PaintAppUI : Component
             .Children(
                 new ToolbarView(vm, canvas),
                 MakeScrollView(canvas),
-                new ColorPaletteView(vm),
+                new ColorSchemeView(vm),
                 new StatusBarView(vm)
             );
     }

@@ -1,4 +1,4 @@
-﻿using Rayo.Controls;
+using Rayo.Controls;
 using Rayo.Core.Interfaces;
 using Rayo.Reactivity;
 using Rayo.Rendering;
@@ -201,7 +201,7 @@ public abstract class Component : ContentView<Component>, IUIBuilder, IReactiveO
         MarkNeedsPaint();
     }
 
-    private void OnColorSchemeChanged(ColorScheme _)
+    private void OnColorSchemeChanged(PreferredColorScheme _)
     {
         if (Content == null) return;
 
@@ -217,7 +217,7 @@ public abstract class Component : ContentView<Component>, IUIBuilder, IReactiveO
         MarkNeedsPaint();
     }
 
-    private void OnThemeChanged(Theme _)
+    private void OnThemeChanged(ThemeData _)
     {
         if (Content == null) return;
 
@@ -286,9 +286,9 @@ public abstract class Component : ContentView<Component>, IUIBuilder, IReactiveO
         if (HasCustomBreakpointStyles(globalStyles, componentStyles))
             BreakpointHelper.WindowResized += OnWindowResized;
 
-        ColorSchemeHelper.ColorSchemeChanged -= OnColorSchemeChanged;
+        PreferredColorSchemeHelper.ColorSchemeChanged -= OnColorSchemeChanged;
         if (HasColorSchemeStyles(globalStyles, componentStyles))
-            ColorSchemeHelper.ColorSchemeChanged += OnColorSchemeChanged;
+            PreferredColorSchemeHelper.ColorSchemeChanged += OnColorSchemeChanged;
 
         OrientationHelper.OrientationChanged -= OnOrientationChanged;
         if (HasOrientationStyles(globalStyles, componentStyles))
@@ -378,7 +378,7 @@ public abstract class Component : ContentView<Component>, IUIBuilder, IReactiveO
         UIApplication.ThemeChanged -= OnThemeChanged;
         BreakpointHelper.BreakpointChanged -= OnBreakpointChanged;
         BreakpointHelper.WindowResized -= OnWindowResized;
-        ColorSchemeHelper.ColorSchemeChanged -= OnColorSchemeChanged;
+        PreferredColorSchemeHelper.ColorSchemeChanged -= OnColorSchemeChanged;
         OrientationHelper.OrientationChanged -= OnOrientationChanged;
         VisualElement.ClassesChanged -= OnClassesChanged;
         OnDispose();

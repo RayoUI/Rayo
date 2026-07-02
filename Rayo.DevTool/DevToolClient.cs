@@ -327,6 +327,32 @@ public class DevToolClient : IDisposable
         return await tcs.Task;
     }
 
+    public async Task<ThemeSnapshotResponse?> GetThemeSnapshotAsync(string? elementId = null)
+    {
+        var request = new GetThemeSnapshotRequest { ElementId = elementId };
+        var tcs = new TaskCompletionSource<ThemeSnapshotResponse?>();
+
+        void Handler(DevToolMessage msg)
+        {
+            if (msg is ThemeSnapshotResponse response && response.RequestId == request.Id)
+            {
+                MessageReceived -= Handler;
+                tcs.TrySetResult(response);
+            }
+        }
+
+        MessageReceived += Handler;
+        await SendAsync(request);
+
+        var timeout = Task.Delay(5000);
+        if (await Task.WhenAny(tcs.Task, timeout) == timeout)
+        {
+            MessageReceived -= Handler;
+            return null;
+        }
+        return await tcs.Task;
+    }
+
     public async Task SetDirtyHeatmapAsync(bool enabled) =>
         await SendAsync(new SetDirtyHeatmapRequest { Enabled = enabled });
 

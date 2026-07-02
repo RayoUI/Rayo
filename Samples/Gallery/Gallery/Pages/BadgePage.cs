@@ -1,4 +1,4 @@
-﻿using Rayo;
+using Rayo;
 using Rayo.Controls;
 using Rayo.Core;
 using Rayo.Layout;
@@ -246,8 +246,8 @@ public class BadgePage : Component
     private VisualElement CreateBadgedIcon(
         IconData icon,
         int count,
-        Func<ColorPalette, Color> badgeColor,
-        Func<ColorPalette, Color> textColor)
+        Func<ColorScheme, Color> badgeColor,
+        Func<ColorScheme, Color> textColor)
     {
         return new BadgeContainer()
             .Content(
@@ -271,8 +271,8 @@ public class BadgePage : Component
 
     private VisualElement CreateBadgedIconDot(
         IconData icon,
-        Func<ColorPalette, Color> badgeColor,
-        Func<ColorPalette, Color> textColor)
+        Func<ColorScheme, Color> badgeColor,
+        Func<ColorScheme, Color> textColor)
     {
         return new BadgeContainer()
             .Content(

@@ -1,4 +1,4 @@
-﻿namespace Rayo.Controls;
+namespace Rayo.Controls;
 
 using Rayo.Core;
 using Rayo.Layout;
@@ -185,7 +185,7 @@ public class Badge : BorderCompositeView<Badge>
         _countValue = count;
     }
 
-    protected override void OnThemeApplied(Theme theme)
+    protected override void OnThemeApplied(ThemeData theme)
     {
         var palette = theme.Colors;
         SetThemeValue(nameof(Background), (Brush)palette.Danger, value => Background = value);

@@ -1,4 +1,4 @@
-﻿using Gallery;
+using Gallery;
 using Rayo;
 using Rayo.Controls;
 using Rayo.Core;
@@ -75,7 +75,7 @@ public class ColorPickerPage : Component
                                 .FontSize(13)
                                 .Foreground(ColorDefault.Secondary),
                             bindingPreview,
-                            CreateColorLauncher("Theme color", "Updates the live preview", bindingColorState)
+                            CreateColorLauncher("ThemeData color", "Updates the live preview", bindingColorState)
                         )
                 ),
 

@@ -1,4 +1,4 @@
-﻿namespace Rayo.Controls;
+namespace Rayo.Controls;
 
 using Rayo.Animation;
 using Rayo.Core;
@@ -29,7 +29,8 @@ public class ToggleSwitch : Rayo.Core.View<ToggleSwitch>,
     private bool _isAnimating;
     private bool _isAnimationRegistered;
     private bool _hasBeenRendered = false;
-    private const float AnimationDuration = 0.2f;
+    private float AnimationDuration =>
+        Math.Max(0.001f, (float)EffectiveTheme.Motion.Normal.TotalSeconds);
 
 
     // =========================================================================
@@ -135,6 +136,15 @@ public class ToggleSwitch : Rayo.Core.View<ToggleSwitch>,
                 }
                 else
                 {
+                    if (EffectiveTheme.Preferences.ReduceMotion)
+                    {
+                        _animationProgress = field ? 1f : 0f;
+                        _isAnimating = false;
+                        UnregisterFromAnimation();
+                        MarkNeedsPaint();
+                        Toggled?.Invoke(field);
+                        return;
+                    }
                     _animationStartProgress = _animationProgress;
                     _animationTargetProgress = field ? 1f : 0f;
                     _animationElapsed = 0f;
@@ -189,8 +199,6 @@ public class ToggleSwitch : Rayo.Core.View<ToggleSwitch>,
     public ToggleSwitch()
     {
         InitializeTheme();
-        Width = 50;
-        Height = 26;
 
         // Setup gesture recognizers
         _tapRecognizer = new TapRecognizer(
@@ -202,7 +210,7 @@ public class ToggleSwitch : Rayo.Core.View<ToggleSwitch>,
         GestureRecognizers.Add(_tapRecognizer);
     }
 
-    protected override void OnThemeApplied(Theme theme)
+    protected override void OnThemeApplied(ThemeData theme)
     {
         var palette = theme.Colors;
         SetThemeValue(nameof(OnColor), (Brush)palette.Primary, value => OnColor = value);
@@ -210,6 +218,16 @@ public class ToggleSwitch : Rayo.Core.View<ToggleSwitch>,
         SetThemeValue(nameof(OnBorderBrush), (Brush)palette.PrimaryPressed, value => OnBorderBrush = value);
         SetThemeValue(nameof(OffBorderBrush), (Brush)palette.Border, value => OffBorderBrush = value);
         SetThemeValue(nameof(ThumbColor), (Brush)palette.OnPrimary, value => ThumbColor = value);
+        var height = theme.Density switch
+        {
+            ThemeDensity.Compact => 22f,
+            ThemeDensity.Touch => 30f,
+            _ => 26f,
+        };
+        SetThemeValue(nameof(SwitchHeight), height, value => SwitchHeight = value);
+        SetThemeValue(nameof(SwitchWidth), height * 1.92f, value => SwitchWidth = value);
+        SetThemeValue(nameof(ThumbSize), height - 6f, value => ThumbSize = value);
+        SetThemeValue(nameof(BorderThickness), theme.Shapes.BorderThick, value => BorderThickness = value);
     }
 
     // =========================================================================

@@ -20,19 +20,19 @@ namespace Gallery;
 /// </summary>
 internal sealed class PaletteFrame : Frame
 {
-    private readonly Func<ColorPalette, Color> _colorSelector;
-    private readonly Func<ColorPalette, Color>? _borderSelector;
+    private readonly Func<ColorScheme, Color> _colorSelector;
+    private readonly Func<ColorScheme, Color>? _borderSelector;
 
     public PaletteFrame(
-        Func<ColorPalette, Color> colorSelector,
-        Func<ColorPalette, Color>? borderSelector = null)
+        Func<ColorScheme, Color> colorSelector,
+        Func<ColorScheme, Color>? borderSelector = null)
     {
         _colorSelector = colorSelector;
         _borderSelector = borderSelector;
         InitializeTheme();
     }
 
-    protected override void OnThemeApplied(Theme theme)
+    protected override void OnThemeApplied(ThemeData theme)
     {
         SetThemeValue(nameof(Background), (Brush)_colorSelector(theme.Colors), value => Background = value);
         if (_borderSelector != null)
@@ -42,15 +42,15 @@ internal sealed class PaletteFrame : Frame
 
 internal sealed class PaletteLabel : Label
 {
-    private readonly Func<ColorPalette, Color> _colorSelector;
+    private readonly Func<ColorScheme, Color> _colorSelector;
 
-    public PaletteLabel(string text, Func<ColorPalette, Color> colorSelector) : base(text)
+    public PaletteLabel(string text, Func<ColorScheme, Color> colorSelector) : base(text)
     {
         _colorSelector = colorSelector;
         ResetThemeValues();
     }
 
-    protected override void OnThemeApplied(Theme theme)
+    protected override void OnThemeApplied(ThemeData theme)
     {
         if (_colorSelector == null)
             return;
@@ -62,19 +62,19 @@ internal sealed class PaletteLabel : Label
 
 internal sealed class PaletteBorder : Border
 {
-    private readonly Func<ColorPalette, Color>? _backgroundSelector;
-    private readonly Func<ColorPalette, Color> _borderSelector;
+    private readonly Func<ColorScheme, Color>? _backgroundSelector;
+    private readonly Func<ColorScheme, Color> _borderSelector;
 
     public PaletteBorder(
-        Func<ColorPalette, Color> borderSelector,
-        Func<ColorPalette, Color>? backgroundSelector = null)
+        Func<ColorScheme, Color> borderSelector,
+        Func<ColorScheme, Color>? backgroundSelector = null)
     {
         _borderSelector = borderSelector;
         _backgroundSelector = backgroundSelector;
         ResetThemeValues();
     }
 
-    protected override void OnThemeApplied(Theme theme)
+    protected override void OnThemeApplied(ThemeData theme)
     {
         base.OnThemeApplied(theme);
         if (_borderSelector == null)
@@ -88,16 +88,16 @@ internal sealed class PaletteBorder : Border
 
 internal sealed class PaletteIcon : Icon
 {
-    private readonly Func<ColorPalette, Color> _colorSelector;
+    private readonly Func<ColorScheme, Color> _colorSelector;
 
-    public PaletteIcon(IconData icon, Func<ColorPalette, Color> colorSelector)
+    public PaletteIcon(IconData icon, Func<ColorScheme, Color> colorSelector)
         : base(icon)
     {
         _colorSelector = colorSelector;
         ResetThemeValues();
     }
 
-    protected override void OnThemeApplied(Theme theme)
+    protected override void OnThemeApplied(ThemeData theme)
     {
         base.OnThemeApplied(theme);
         if (_colorSelector != null)
@@ -107,13 +107,13 @@ internal sealed class PaletteIcon : Icon
 
 internal sealed class PaletteBadge : Badge
 {
-    private readonly Func<ColorPalette, Color> _backgroundSelector;
-    private readonly Func<ColorPalette, Color> _textSelector;
+    private readonly Func<ColorScheme, Color> _backgroundSelector;
+    private readonly Func<ColorScheme, Color> _textSelector;
 
     public PaletteBadge(
         string text,
-        Func<ColorPalette, Color> backgroundSelector,
-        Func<ColorPalette, Color> textSelector)
+        Func<ColorScheme, Color> backgroundSelector,
+        Func<ColorScheme, Color> textSelector)
         : base(text)
     {
         _backgroundSelector = backgroundSelector;
@@ -123,8 +123,8 @@ internal sealed class PaletteBadge : Badge
 
     public PaletteBadge(
         int count,
-        Func<ColorPalette, Color> backgroundSelector,
-        Func<ColorPalette, Color> textSelector)
+        Func<ColorScheme, Color> backgroundSelector,
+        Func<ColorScheme, Color> textSelector)
         : base(count)
     {
         _backgroundSelector = backgroundSelector;
@@ -132,7 +132,7 @@ internal sealed class PaletteBadge : Badge
         ResetThemeValues();
     }
 
-    protected override void OnThemeApplied(Theme theme)
+    protected override void OnThemeApplied(ThemeData theme)
     {
         base.OnThemeApplied(theme);
         if (_backgroundSelector == null || _textSelector == null)
@@ -153,10 +153,10 @@ internal sealed class ThemeToggleButton : ButtonIcon
         VerticalAlignment = VerticalAlignment.Center;
     }
 
-    protected override void OnThemeApplied(Theme theme)
+    protected override void OnThemeApplied(ThemeData theme)
     {
         base.OnThemeApplied(theme);
-        IconData = theme == RayoThemes.Dark ? Icons.Sun : Icons.Moon;
+        IconData = theme.Brightness == ThemeBrightness.Dark ? Icons.Sun : Icons.Moon;
         SetThemeValue(nameof(IconColor), (Brush)theme.Colors.OnSurface, value => IconColor = value);
         SetThemeValue(nameof(Background), (Brush)Color.Transparent, value => Background = value);
         SetThemeValue(nameof(HoverBackground), (Brush)theme.Colors.SurfacePressed, value => HoverBackground = value);
@@ -230,15 +230,15 @@ internal class NavItem : Frame, IPointerHandler
     public void SetSelected(bool isSelected)
     {
         _isSelected = isSelected;
-        ApplyAppearance(RayoThemes.Current);
+        ApplyAppearance((UIApplication.Current?.ActiveTheme ?? RayoThemes.Light));
     }
 
-    protected override void OnThemeApplied(Theme theme)
+    protected override void OnThemeApplied(ThemeData theme)
     {
         ApplyAppearance(theme);
     }
 
-    private void ApplyAppearance(Theme theme)
+    private void ApplyAppearance(ThemeData theme)
     {
         var palette = theme.Colors;
         Background = _isSelected ? palette.Primary.WithAlpha(0.22f) : Color.Transparent;
@@ -685,10 +685,14 @@ public class GalleryBuilder : Component
 
     private void ToggleTheme()
     {
-        ApplyTheme(RayoThemes.Current == RayoThemes.Dark ? RayoThemes.Light : RayoThemes.Dark);
+        var current = UIApplication.Current?.ActiveTheme ?? RayoThemes.Light;
+        ApplyTheme(
+            current.Brightness == ThemeBrightness.Dark
+                ? RayoThemes.Light
+                : RayoThemes.Dark);
     }
 
-    private void ApplyTheme(Theme theme)
+    private void ApplyTheme(ThemeData theme)
     {
         RayoThemes.UseTheme(theme);
     }

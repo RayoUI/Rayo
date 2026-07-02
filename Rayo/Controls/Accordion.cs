@@ -1,4 +1,4 @@
-﻿namespace Rayo.Controls;
+namespace Rayo.Controls;
 
 using Rayo.Animation;
 using Rayo.Core;
@@ -165,7 +165,6 @@ public class Expander : BorderCompositeView<Expander>
     public Expander()
     {
         InitializeTheme();
-        BorderThickness = 1;
         BuildComponents();
     }
 
@@ -178,7 +177,7 @@ public class Expander : BorderCompositeView<Expander>
         }
     }
 
-    protected override void OnThemeApplied(Theme theme)
+    protected override void OnThemeApplied(ThemeData theme)
     {
         var palette = theme.Colors;
         SetThemeValue(nameof(HeaderBackground), (Brush)palette.SurfaceHover, value => HeaderBackground = value);

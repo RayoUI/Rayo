@@ -1,4 +1,4 @@
-﻿namespace Rayo.Controls;
+namespace Rayo.Controls;
 
 using Rayo.Core;
 using Rayo.Reactivity;
@@ -116,10 +116,9 @@ public class ProgressBar : Rayo.Core.View<ProgressBar>
     public ProgressBar()
     {
         InitializeTheme();
-        Height = 4;
     }
 
-    protected override void OnThemeApplied(Theme theme)
+    protected override void OnThemeApplied(ThemeData theme)
     {
         var palette = theme.Colors;
         SetThemeValue(nameof(Background), (Brush)palette.SurfacePressed, value => Background = value);

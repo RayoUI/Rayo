@@ -11,12 +11,14 @@ public class Overlay : Component
 {
     private readonly VisualElement _content;
     private readonly UIApplication _app;
+    private readonly VisualElement? _owner;
     private bool _isAdded = false;
 
-    public Overlay(UIApplication app, VisualElement content)
+    public Overlay(UIApplication app, VisualElement content, VisualElement? owner = null)
     {
         _app = app;
         _content = content;
+        _owner = owner;
     }
 
     public override VisualElement Build()
@@ -49,7 +51,7 @@ public class Overlay : Component
     {
         if (!_isAdded)
         {
-            _app.AddOverlay(_content);
+            _app.AddOverlay(_content, _owner);
             _isAdded = true;
         }
     }

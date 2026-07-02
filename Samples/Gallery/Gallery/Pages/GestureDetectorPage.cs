@@ -1,4 +1,4 @@
-﻿using Rayo;
+using Rayo;
 using Rayo.Controls;
 using Rayo.Core;
 using Rayo.Gestures.Components;
@@ -321,7 +321,7 @@ public class GestureDetectorPage : Component
 
     private static Color GetOnColor(Color background)
     {
-        var colors = Rayo.Styling.RayoThemes.Current.Colors;
+        var colors = (UIApplication.Current?.ActiveTheme ?? Rayo.Styling.RayoThemes.Light).Colors;
         if (background == colors.Success) return colors.OnSuccess;
         if (background == colors.Warning) return colors.OnWarning;
         if (background == colors.Danger) return colors.OnDanger;

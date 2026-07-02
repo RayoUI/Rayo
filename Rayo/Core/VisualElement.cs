@@ -1,4 +1,4 @@
-﻿using System.Reflection;
+using System.Reflection;
 using System.Numerics;
 using Rayo.Core.Interfaces; // Added for IInputTransparent
 using Rayo.Reactivity;
@@ -21,11 +21,38 @@ public abstract class VisualElement : BindableObject, IDisposable, IInputTranspa
 {
     [ThreadStatic]
     private static VisualElement? s_themeApplicationOwner;
+    [ThreadStatic]
+    private static PropertyValueOrigin s_valueOrigin;
 
     private readonly HashSet<string> _themeManagedProperties = new();
     private readonly HashSet<string> _themeOverrides = new();
+    private readonly Dictionary<string, PropertyValueOrigin> _valueOrigins = new();
     private bool _isApplyingTheme;
     private bool _isTrackingThemeOverrides;
+    private ThemeData? _effectiveTheme;
+    private ThemeData? _detachedTheme;
+
+    /// <summary>
+    /// Theme resolved from the nearest scope, then the application, then the built-in default.
+    /// </summary>
+    public ThemeData EffectiveTheme =>
+        _effectiveTheme ??
+        ScopedTheme ??
+        _detachedTheme ??
+        Parent?.EffectiveTheme ??
+        UIApplication.Current?.ActiveTheme ??
+        UIApplication.FallbackTheme;
+
+    /// <summary>Theme introduced by this element for itself and its descendants.</summary>
+    internal virtual ThemeData? ScopedTheme => null;
+
+    internal void CaptureDetachedTheme(VisualElement? owner)
+    {
+        if (owner == null)
+            return;
+        _detachedTheme = owner.EffectiveTheme;
+        NotifyThemeChanged(_detachedTheme);
+    }
 
     /// <summary>
     /// Static event fired when any element's children are added, removed, or cleared.
@@ -127,6 +154,7 @@ public abstract class VisualElement : BindableObject, IDisposable, IInputTranspa
         }
         else if (_isTrackingThemeOverrides &&
                  !_isApplyingTheme &&
+                 CurrentValueOrigin >= PropertyValueOrigin.Binding &&
                  _themeManagedProperties.Contains(propertyName))
         {
             _themeOverrides.Add(propertyName);
@@ -148,8 +176,17 @@ public abstract class VisualElement : BindableObject, IDisposable, IInputTranspa
         Action? onBeforeChanged = null,
         [System.Runtime.CompilerServices.CallerMemberName] string? propertyName = null)
     {
+        PrepareCompositeThemeWrite(propertyName);
+        if (!CanApplyValue(propertyName))
+        {
+            UpdateSuppressedStyleBaseline(propertyName, value);
+            return false;
+        }
         TrackThemeOverride(propertyName);
-        return base.SetProperty(ref field, value, onBeforeChanged, propertyName);
+        var changed = base.SetProperty(ref field, value, onBeforeChanged, propertyName);
+        if (changed)
+            RecordValueOrigin(propertyName);
+        return changed;
     }
 
     public override bool SetPropertyCondition<T>(
@@ -159,8 +196,105 @@ public abstract class VisualElement : BindableObject, IDisposable, IInputTranspa
         Action? onBeforeChanged = null,
         [System.Runtime.CompilerServices.CallerMemberName] string? propertyName = null)
     {
+        PrepareCompositeThemeWrite(propertyName);
+        if (!CanApplyValue(propertyName))
+        {
+            UpdateSuppressedStyleBaseline(propertyName, value);
+            return false;
+        }
         TrackThemeOverride(propertyName);
-        return base.SetPropertyCondition(ref field, value, shouldUpdate, onBeforeChanged, propertyName);
+        var changed = base.SetPropertyCondition(
+            ref field,
+            value,
+            shouldUpdate,
+            onBeforeChanged,
+            propertyName);
+        if (changed)
+            RecordValueOrigin(propertyName);
+        return changed;
+    }
+
+    public PropertyValueOrigin GetValueOrigin(string propertyName) =>
+        _valueOrigins.TryGetValue(propertyName, out var origin)
+            ? origin
+            : PropertyValueOrigin.Default;
+
+    /// <summary>
+    /// Applies a reactive binding update with binding precedence.
+    /// Generated signal bindings use this method automatically.
+    /// </summary>
+    public void ApplyBindingValue(Action setter)
+    {
+        ArgumentNullException.ThrowIfNull(setter);
+        using var valueOrigin = EnterValueOrigin(PropertyValueOrigin.Binding);
+        setter();
+    }
+
+    internal static IDisposable EnterValueOrigin(PropertyValueOrigin origin)
+    {
+        var previous = s_valueOrigin;
+        s_valueOrigin = origin;
+        return new ValueOriginScope(previous);
+    }
+
+    private bool CanApplyValue(string? propertyName)
+    {
+        if (propertyName == null || !_valueOrigins.TryGetValue(propertyName, out var current))
+            return true;
+        var incoming = CurrentValueOrigin;
+        return incoming >= current;
+    }
+
+    private void UpdateSuppressedStyleBaseline<T>(string? propertyName, T value)
+    {
+        if (propertyName == null ||
+            CurrentValueOrigin != PropertyValueOrigin.Theme ||
+            GetValueOrigin(propertyName) != PropertyValueOrigin.Style ||
+            _styleBaseline == null)
+        {
+            return;
+        }
+
+        _styleBaseline[propertyName] = value;
+        _styleBaselineOrigins ??= new Dictionary<string, PropertyValueOrigin>();
+        _styleBaselineOrigins[propertyName] = PropertyValueOrigin.Theme;
+    }
+
+    private void RecordValueOrigin(string? propertyName)
+    {
+        if (propertyName == null)
+            return;
+        var origin = CurrentValueOrigin;
+        if (origin != PropertyValueOrigin.Default)
+            _valueOrigins[propertyName] = origin;
+    }
+
+    private PropertyValueOrigin CurrentValueOrigin =>
+        _isApplyingTheme || s_themeApplicationOwner != null
+            ? PropertyValueOrigin.Theme
+            : s_valueOrigin != PropertyValueOrigin.Default
+                ? s_valueOrigin
+                : _isTrackingThemeOverrides
+                    ? PropertyValueOrigin.Local
+                    : PropertyValueOrigin.Default;
+
+    private void PrepareCompositeThemeWrite(string? propertyName)
+    {
+        if (propertyName == null ||
+            s_themeApplicationOwner == null ||
+            s_themeApplicationOwner == this)
+        {
+            return;
+        }
+
+        _themeOverrides.Remove(propertyName);
+        if (_valueOrigins.GetValueOrDefault(propertyName) == PropertyValueOrigin.Local)
+            _valueOrigins.Remove(propertyName);
+    }
+
+    private readonly struct ValueOriginScope(PropertyValueOrigin previous) : IDisposable
+    {
+        public void Dispose() => s_valueOrigin = previous;
     }
 
     private void TrackThemeOverride(string? propertyName)
@@ -180,6 +314,7 @@ public abstract class VisualElement : BindableObject, IDisposable, IInputTranspa
 
         if (_isTrackingThemeOverrides &&
             !_isApplyingTheme &&
+            CurrentValueOrigin >= PropertyValueOrigin.Binding &&
             _themeManagedProperties.Contains(propertyName))
         {
             _themeOverrides.Add(propertyName);
@@ -200,6 +335,7 @@ public abstract class VisualElement : BindableObject, IDisposable, IInputTranspa
             return;
 
         _themeManagedProperties.Add(propertyName);
+        value = EffectiveTheme.Components.Resolve(GetType(), propertyName, value);
         bool wasApplyingTheme = _isApplyingTheme;
         _isApplyingTheme = true;
         try
@@ -217,7 +353,7 @@ public abstract class VisualElement : BindableObject, IDisposable, IInputTranspa
     /// </summary>
     protected void InitializeTheme()
     {
-        ApplyTheme(RayoThemes.Current);
+        ApplyTheme(EffectiveTheme);
     }
 
     /// <summary>
@@ -226,14 +362,20 @@ public abstract class VisualElement : BindableObject, IDisposable, IInputTranspa
     protected void ResetThemeValues()
     {
         _themeOverrides.Clear();
-        ApplyTheme(RayoThemes.Current);
+        foreach (var propertyName in _themeManagedProperties)
+        {
+            if (_valueOrigins.GetValueOrDefault(propertyName) == PropertyValueOrigin.Local)
+                _valueOrigins.Remove(propertyName);
+        }
+        ApplyTheme(EffectiveTheme);
     }
 
     /// <summary>Called whenever a theme must be applied to this element.</summary>
-    protected virtual void OnThemeApplied(Theme theme) { }
+    protected virtual void OnThemeApplied(ThemeData theme) { }
 
-    private void ApplyTheme(Theme theme)
+    private void ApplyTheme(ThemeData theme)
     {
+        _effectiveTheme = theme;
         var previousOwner = s_themeApplicationOwner;
         bool wasApplyingTheme = _isApplyingTheme;
         s_themeApplicationOwner = this;
@@ -241,6 +383,7 @@ public abstract class VisualElement : BindableObject, IDisposable, IInputTranspa
         try
         {
             OnThemeApplied(theme);
+            ApplyComponentThemeOverrides(theme);
             _isTrackingThemeOverrides = true;
         }
         finally
@@ -250,16 +393,37 @@ public abstract class VisualElement : BindableObject, IDisposable, IInputTranspa
         }
     }
 
-    internal void NotifyThemeChanged(Theme theme)
+    private void ApplyComponentThemeOverrides(ThemeData theme)
     {
+        foreach (var (propertyName, value) in theme.Components.GetOverrides(GetType()))
+        {
+            if (_themeOverrides.Contains(propertyName))
+                continue;
+
+            var property = GetType().GetProperty(
+                propertyName,
+                BindingFlags.Instance | BindingFlags.Public);
+            if (property?.CanWrite != true)
+                continue;
+            if (value != null && !property.PropertyType.IsInstanceOfType(value))
+                continue;
+
+            _themeManagedProperties.Add(propertyName);
+            property.SetValue(this, value);
+        }
+    }
+
+    internal void NotifyThemeChanged(ThemeData theme)
+    {
+        var effectiveTheme = ScopedTheme ?? _detachedTheme ?? theme;
         // Apply descendants first. Composite controls then get the final word
         // over their implementation details, matching a style cascade while
         // preserving explicit customizations on public/user-owned children.
         foreach (var child in GetChildren().ToArray())
         {
-            child.NotifyThemeChanged(theme);
+            child.NotifyThemeChanged(effectiveTheme);
         }
-        ApplyTheme(theme);
+        ApplyTheme(effectiveTheme);
     }
 
     internal virtual CornerRadius VisualCornerRadius => CornerRadius.None;
@@ -733,6 +897,7 @@ public abstract class VisualElement : BindableObject, IDisposable, IInputTranspa
     /// Used to restore inline-set values when <see cref="Classes"/> changes and styles are re-applied.
     /// </summary>
     private Dictionary<string, object?>? _styleBaseline;
+    private Dictionary<string, PropertyValueOrigin>? _styleBaselineOrigins;
 
     /// <summary>
     /// Captures ALL public settable properties of this element's runtime type as the
@@ -746,10 +911,15 @@ public abstract class VisualElement : BindableObject, IDisposable, IInputTranspa
 
         var props = GetStyleableProperties(GetType());
         _styleBaseline = new Dictionary<string, object?>(props.Length + 2);
+        _styleBaselineOrigins = new Dictionary<string, PropertyValueOrigin>(props.Length);
 
         foreach (var prop in props)
         {
-            try { _styleBaseline[prop.Name] = prop.GetValue(this); }
+            try
+            {
+                _styleBaseline[prop.Name] = prop.GetValue(this);
+                _styleBaselineOrigins[prop.Name] = GetValueOrigin(prop.Name);
+            }
             catch { /* skip properties that throw on read */ }
         }
 
@@ -771,11 +941,23 @@ public abstract class VisualElement : BindableObject, IDisposable, IInputTranspa
 
         foreach (var prop in props)
         {
-            if (_styleBaseline.TryGetValue(prop.Name, out var value))
+            if (GetValueOrigin(prop.Name) != PropertyValueOrigin.Style ||
+                !_styleBaseline.TryGetValue(prop.Name, out var value))
             {
-                try { prop.SetValue(this, value); }
-                catch { /* skip read-only or incompatible properties */ }
+                continue;
             }
+
+            var baselineOrigin = _styleBaselineOrigins?.GetValueOrDefault(prop.Name)
+                ?? PropertyValueOrigin.Default;
+            _valueOrigins.Remove(prop.Name);
+            try
+            {
+                using var valueOrigin = EnterValueOrigin(baselineOrigin);
+                prop.SetValue(this, value);
+                if (baselineOrigin == PropertyValueOrigin.Default)
+                    _valueOrigins.Remove(prop.Name);
+            }
+            catch { /* skip read-only or incompatible properties */ }
         }
 
         // Undo the HasExplicitWidth/Height side-effect caused by the Width/Height setters.
@@ -807,6 +989,8 @@ public abstract class VisualElement : BindableObject, IDisposable, IInputTranspa
     {
         if (_styleBaseline == null) return;
         _styleBaseline[propertyName] = value;
+        _styleBaselineOrigins ??= new Dictionary<string, PropertyValueOrigin>();
+        _styleBaselineOrigins[propertyName] = PropertyValueOrigin.Local;
 
         // Keep the HasExplicitWidth/Height sentinels in sync when Width/Height are overridden.
         if (propertyName == nameof(Width))
@@ -1422,7 +1606,12 @@ public abstract class VisualElement : BindableObject, IDisposable, IInputTranspa
 
     internal void NotifyMounted()
     {
-        ApplyTheme(RayoThemes.Current);
+        ApplyTheme(
+            ScopedTheme ??
+            _detachedTheme ??
+            Parent?.EffectiveTheme ??
+            UIApplication.Current?.ActiveTheme ??
+            UIApplication.FallbackTheme);
         OnMounted();
         // Use ToArray to avoid collection modification during iteration
         foreach (var child in GetChildren().ToArray())

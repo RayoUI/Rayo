@@ -9,11 +9,11 @@ namespace Notepad;
 /// </summary>
 internal static class NotepadThemes
 {
-    public static Theme Neon { get; } = CreateNeonTheme();
+    public static ThemeData Neon { get; } = CreateNeonTheme();
 
-    private static Theme CreateNeonTheme()
+    private static ThemeData CreateNeonTheme()
     {
-        var palette = ColorPalettes.Dark with
+        var palette = ColorSchemes.Dark with
         {
             Primary = new Color(0, 255, 213),
             PrimaryHover = new Color(72, 255, 225),
@@ -47,6 +47,9 @@ internal static class NotepadThemes
             OnInfo = Color.White,
         };
 
-        return new Theme("notepad-neon", palette);
+        return new ThemeData(
+            "notepad-neon",
+            palette,
+            brightness: ThemeBrightness.Dark);
     }
 }

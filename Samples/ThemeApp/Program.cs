@@ -17,7 +17,7 @@ public static class Program
             },
             configureWindow: config =>
             {
-                config.Title = "Rayo Theme App";
+                config.Title = "Rayo ThemeData App";
                 config.Width = 1180;
                 config.Height = 820;
                 config.CanResize = true;

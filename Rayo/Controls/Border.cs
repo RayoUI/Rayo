@@ -1,4 +1,4 @@
-﻿namespace Rayo.Controls;
+namespace Rayo.Controls;
 
 using Rayo.Core;
 using Rayo.Reactivity;
@@ -35,7 +35,7 @@ public class Border : ContentView<Border>
         InitializeTheme();
     }
 
-    protected override void OnThemeApplied(Theme theme)
+    protected override void OnThemeApplied(ThemeData theme)
     {
         SetThemeValue(nameof(BorderBrush), (Brush)theme.Colors.Border, value => BorderBrush = value);
     }

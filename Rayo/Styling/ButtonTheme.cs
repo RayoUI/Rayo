@@ -12,6 +12,11 @@ public sealed record ButtonColors
     public required Color PressedBackground { get; init; }
     public required Color Foreground { get; init; }
     public required Color Border { get; init; }
+
+    public StateMap<Color> Backgrounds =>
+        new StateMap<Color>(Background)
+            .With(ControlState.Hovered, HoverBackground)
+            .With(ControlState.Pressed, PressedBackground);
 }
 
 /// <summary>
@@ -23,8 +28,14 @@ public sealed record ButtonTheme
     public required ButtonColors Secondary { get; init; }
     public required ButtonColors Danger { get; init; }
     public required ButtonColors Ghost { get; init; }
+    public Thickness Padding { get; init; } = new(12, 6, 12, 6);
+    public CornerRadius Radius { get; init; } = new(4);
+    public TypographyStyle Typography { get; init; } =
+        new() { FontSize = 14, FontWeight = Rayo.Core.FontWeight.Medium };
+    public float MinHeight { get; init; } = 32;
+    public float BorderThickness { get; init; } = 2;
 
-    public static ButtonTheme FromPalette(ColorPalette palette)
+    public static ButtonTheme FromScheme(ColorScheme palette)
     {
         ArgumentNullException.ThrowIfNull(palette);
 
@@ -66,5 +77,12 @@ public sealed record ButtonTheme
     }
 
     private static Color Shade(Color color, float factor) =>
-        new(color.R * factor, color.G * factor, color.B * factor, color.A);
+        ThemeColorUtilities.AdjustLightness(color, factor - 1f);
+
+    internal void Validate()
+    {
+        if (MinHeight < 0 || BorderThickness < 0)
+            throw new ArgumentOutOfRangeException(nameof(ButtonTheme));
+        Typography.Validate(nameof(Typography));
+    }
 }

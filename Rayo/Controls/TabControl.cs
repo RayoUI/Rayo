@@ -310,7 +310,7 @@ public class TabControl : CompositeView<TabControl>, IFrameAnimation
         CreateVisualTree();
     }
 
-    protected override void OnThemeApplied(Theme theme)
+    protected override void OnThemeApplied(ThemeData theme)
     {
         var palette = theme.Colors;
         _isApplyingThemeStyle = true;
@@ -743,10 +743,10 @@ public class TabControl : CompositeView<TabControl>, IFrameAnimation
             ? TabCloseButtonHitSize + 14f
             : 10f;
         var textColor = !tab.IsEnabled
-            ? RayoThemes.Current.Colors.OnDisabled
+            ? EffectiveTheme.Colors.OnDisabled
             : isSelected
-                ? RayoThemes.Current.Colors.OnSurface
-                : RayoThemes.Current.Colors.OnDisabled;
+                ? EffectiveTheme.Colors.OnSurface
+                : EffectiveTheme.Colors.OnDisabled;
 
         return new HStack()
             .Spacing(0)
@@ -1385,10 +1385,10 @@ public class TabControl : CompositeView<TabControl>, IFrameAnimation
             if (_owner.TabHeaderTemplate == null)
             {
                 var textColor = !_tab.IsEnabled
-                    ? RayoThemes.Current.Colors.OnDisabled
+                    ? EffectiveTheme.Colors.OnDisabled
                     : _owner.SelectedIndex == _index
-                        ? RayoThemes.Current.Colors.OnSurface
-                        : RayoThemes.Current.Colors.OnDisabled;
+                        ? EffectiveTheme.Colors.OnSurface
+                        : EffectiveTheme.Colors.OnDisabled;
                 ApplyHeaderTextColor(_contentRoot, textColor);
             }
         }
@@ -1562,7 +1562,7 @@ internal class TabScrollButton : ButtonIcon
         Tapped += _ => onTap();
     }
 
-    protected override void OnThemeApplied(Theme theme)
+    protected override void OnThemeApplied(ThemeData theme)
     {
         base.OnThemeApplied(theme);
         SetThemeValue(

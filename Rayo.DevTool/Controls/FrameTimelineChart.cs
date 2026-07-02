@@ -1,4 +1,4 @@
-﻿using Rayo.Core;
+using Rayo.Core;
 using Rayo.Reactivity;
 using Rayo.Rendering;
 using Rayo.Styling;
@@ -32,7 +32,7 @@ public class FrameTimelineChart : BorderView<FrameTimelineChart>
     }
     #endregion
 
-    protected override void OnThemeApplied(Theme theme)
+    protected override void OnThemeApplied(ThemeData theme)
     {
         base.OnThemeApplied(theme);
         _colorEvents = theme.Colors.Danger;

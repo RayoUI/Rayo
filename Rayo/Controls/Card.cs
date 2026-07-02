@@ -1,4 +1,4 @@
-﻿namespace Rayo.Controls;
+namespace Rayo.Controls;
 
 using Rayo.Core;
 using Rayo.Layout;
@@ -156,11 +156,10 @@ public class Card : BorderCompositeView<Card>
     public Card()
     {
         InitializeTheme();
-        BorderThickness = 1;
         BuildComponents();
     }
 
-    protected override void OnThemeApplied(Theme theme)
+    protected override void OnThemeApplied(ThemeData theme)
     {
         var palette = theme.Colors;
         SetThemeValue(nameof(Background), (Brush)palette.Surface, value => Background = value);

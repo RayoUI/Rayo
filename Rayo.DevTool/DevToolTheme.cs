@@ -8,6 +8,6 @@ namespace Rayo.DevTool;
 /// </summary>
 internal static class DevToolTheme
 {
-    public static ColorPalette Colors =>
-        UIApplication.Current?.ActiveTheme.Colors ?? RayoThemes.Current.Colors;
+    public static ColorScheme Colors =>
+        (UIApplication.Current?.ActiveTheme ?? RayoThemes.Light).Colors;
 }

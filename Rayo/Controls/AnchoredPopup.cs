@@ -126,7 +126,7 @@ public sealed class AnchoredPopup : Frame, IGlobalPointerHandler
         }
 
         _isOpen = true;
-        OverlayManager.AddOverlay(this);
+        OverlayManager.AddOverlay(this, Anchor);
         OverlayManager.EventManager?.RegisterGlobalPointerHandler(this);
         Opened?.Invoke();
     }

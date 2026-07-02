@@ -111,10 +111,11 @@ public class UITree
     /// Adds an overlay element that renders on top of the main UI.
     /// Used by Drawer, Dialog, Menu, etc. on platforms without UIApplication.
     /// </summary>
-    public void AddOverlay(VisualElement overlay)
+    public void AddOverlay(VisualElement overlay, VisualElement? owner = null)
     {
         if (!_overlays.Contains(overlay))
         {
+            overlay.CaptureDetachedTheme(owner);
             _overlays.Add(overlay);
             overlay.NotifyMounted();
             MarkOverlayLayerDirty(overlay);

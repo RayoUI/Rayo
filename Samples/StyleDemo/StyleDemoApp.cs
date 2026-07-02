@@ -1,4 +1,4 @@
-﻿using Rayo;
+using Rayo;
 using Rayo.Controls;
 using Rayo.Core;
 using Rayo.Layout;
@@ -17,8 +17,8 @@ namespace StyleDemo;
 //     UseGlobalStyles() is called from the theme switcher buttons
 //
 // Features demonstrated:
-//    1. Design tokens      — AppThemes builds StyleSheets from StyleTokens
-//    2. Theme switch       — UseGlobalStyles() fires GlobalStylesChanged; all live
+//    1. Design tokens      — AppThemes builds StyleSheets from ThemeTokenSet
+//    2. ThemeData switch       — UseGlobalStyles() fires GlobalStylesChanged; all live
 //                            UserControls re-apply styles instantly (no rebuild)
 //    3. @extend            — btnBase shared across .primary/.secondary/.danger/.ghost
 //    4. Class selector     — buttons tagged .primary, .danger, .theme-btn etc.
@@ -189,7 +189,7 @@ public class StyleDemoApp : Component
     private VisualElement BuildTokensSection() =>
         Card(
             "Design Tokens",
-            "Each theme is built from a StyleTokens dictionary — the single source of truth for colours and sizes.",
+            "Each theme is built from typed ThemeKey values — the single source of truth for colours and sizes.",
             new HStack()
                 .Spacing(10f)
                 .Children(

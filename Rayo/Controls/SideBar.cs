@@ -246,12 +246,11 @@ public class SideBar : BorderCompositeView<SideBar>
     public SideBar()
     {
         InitializeTheme();
-        BorderThickness = 1;
         Width = ExpandedWidth;
         BuildComponents();
     }
 
-    protected override void OnThemeApplied(Theme theme)
+    protected override void OnThemeApplied(ThemeData theme)
     {
         var palette = theme.Colors;
         SetThemeValue(nameof(Background), (Brush)palette.Background, value => Background = value);
@@ -418,7 +417,7 @@ public class SideBar : BorderCompositeView<SideBar>
         if (_headerContainer != null)
         {
             _collapseToggleButton = toggleButton;
-            ApplyCollapseToggleTheme(RayoThemes.Current.Colors);
+            ApplyCollapseToggleTheme(EffectiveTheme.Colors);
             _headerContainer.Padding(new Thickness(8));
             _headerContainer.AddChild(toggleButton);
         }
@@ -426,7 +425,7 @@ public class SideBar : BorderCompositeView<SideBar>
         return this;
     }
 
-    private void ApplyCollapseToggleTheme(ColorPalette palette)
+    private void ApplyCollapseToggleTheme(ColorScheme palette)
     {
         if (_collapseToggleButton == null)
         {
@@ -456,25 +455,22 @@ public class SideBar : BorderCompositeView<SideBar>
         {
             var itemButton = CreateItemButton(item);
             _itemsContainer.AddChild(itemButton);
+            // Adding the subtree lets Label apply its own semantic foreground.
+            // Re-apply the SideBar-specific state afterwards so ItemTextColor and
+            // ItemIconColor remain the final component-theme values.
+            itemButton.RefreshVisuals();
         }
 
         InvalidateMeasure();
     }
 
-    private VisualElement CreateItemButton(SideBarItem item)
+    private SideBarItemButton CreateItemButton(SideBarItem item)
     {
-        bool isSelected = item.Key == SelectedKey;
-
-        var bgColor = isSelected ? ItemSelectedColor : ItemBackground;
-        var textColor = isSelected ? ItemSelectedTextColor : ItemTextColor;
-        var iconColor = isSelected ? ItemSelectedIconColor : ItemIconColor;
-
         if (IsCollapsed)
         {
             // Collapsed mode: show only icon
             var iconText = new Label()
                 .Text(item.Icon)
-                .Foreground(iconColor.PrimaryColor)
                 .FontSize(IconSize)
                 .Width(CollapsedWidth)
                 .Height(ItemHeight)
@@ -485,7 +481,6 @@ public class SideBar : BorderCompositeView<SideBar>
             iconText.TextHorizontalAlignment = HorizontalAlignment.Center;
 
             var button = new Frame()
-                .Background(bgColor)
                 .Height(ItemHeight)
                 .Padding(new Thickness(0))
                 .HorizontalAlignment(HorizontalAlignment.Stretch)
@@ -494,10 +489,18 @@ public class SideBar : BorderCompositeView<SideBar>
                 .BorderRadius(ItemBorderRadius)
                 .Content(iconText);
 
-            return new SideBarItemButton(this, item, bgColor, ItemHoverColor.PrimaryColor)
-                .Height(ItemHeight)
-                .HorizontalAlignment(HorizontalAlignment.Stretch)
-                .Content(button);
+            var itemButton = new SideBarItemButton(
+                this,
+                item,
+                button,
+                textLabel: null,
+                iconLabel: iconText)
+            {
+                Height = ItemHeight,
+                HorizontalAlignment = HorizontalAlignment.Stretch,
+            };
+            itemButton.Content(button);
+            return itemButton;
         }
         else
         {
@@ -508,27 +511,23 @@ public class SideBar : BorderCompositeView<SideBar>
             content.VerticalAlignment(VerticalAlignment.Center);
             content.SetInputTransparent(true);
 
+            Label? iconLabel = null;
             if (!string.IsNullOrEmpty(item.Icon))
             {
-                content.AddChild(
-                    new Label()
-                        .Text(item.Icon)
-                        .Foreground(iconColor.PrimaryColor)
-                        .FontSize(IconSize)
-                        .SetInputTransparent(true)
-                );
+                iconLabel = new Label()
+                    .Text(item.Icon)
+                    .FontSize(IconSize)
+                    .SetInputTransparent(true);
+                content.AddChild(iconLabel);
             }
 
-            content.AddChild(
-                new Label()
-                    .Text(item.Text)
-                    .Foreground(textColor.PrimaryColor)
-                    .FontSize(FontSize)
-                    .SetInputTransparent(true)
-            );
+            var textLabel = new Label()
+                .Text(item.Text)
+                .FontSize(FontSize)
+                .SetInputTransparent(true);
+            content.AddChild(textLabel);
 
             var button = new Frame()
-                .Background(bgColor)
                 .Padding(ItemPadding)
                 .Height(ItemHeight)
                 .HorizontalAlignment(HorizontalAlignment.Stretch)
@@ -536,10 +535,13 @@ public class SideBar : BorderCompositeView<SideBar>
                 .BorderRadius(ItemBorderRadius)
                 .Content(content);
 
-            return new SideBarItemButton(this, item, bgColor, ItemHoverColor.PrimaryColor)
-                .Height(ItemHeight)
-                .HorizontalAlignment(HorizontalAlignment.Stretch)
-                .Content(button);
+            var itemButton = new SideBarItemButton(this, item, button, textLabel, iconLabel)
+            {
+                Height = ItemHeight,
+                HorizontalAlignment = HorizontalAlignment.Stretch,
+            };
+            itemButton.Content(button);
+            return itemButton;
         }
     }
 
@@ -597,19 +599,26 @@ internal class SideBarItemButton : Frame, Rayo.Core.Input.IPointerHandler
 {
     private readonly SideBar _sideBar;
     private readonly SideBarItem _item;
-    private readonly Rendering.Brushes.Brush _normalColor;
-    private readonly Color _hoverColor;
+    private readonly Label? _textLabel;
+    private readonly Label? _iconLabel;
     private Frame? _innerFrame;
 
     // Internal state management
     private bool _isPressed;
+    private bool _isHovered;
 
-    public SideBarItemButton(SideBar sideBar, SideBarItem item, Rendering.Brushes.Brush normalColor, Color hoverColor)
+    public SideBarItemButton(
+        SideBar sideBar,
+        SideBarItem item,
+        Frame innerFrame,
+        Label? textLabel,
+        Label? iconLabel)
     {
         _sideBar = sideBar;
         _item = item;
-        _normalColor = normalColor;
-        _hoverColor = hoverColor;
+        _innerFrame = innerFrame;
+        _textLabel = textLabel;
+        _iconLabel = iconLabel;
     }
 
     public new SideBarItemButton Content(VisualElement child)
@@ -625,13 +634,47 @@ internal class SideBarItemButton : Frame, Rayo.Core.Input.IPointerHandler
 
     private void OnMouseEnter()
     {
-        _innerFrame?.Background(_hoverColor);
-        MarkNeedsPaint();
+        _isHovered = true;
+        RefreshVisuals();
     }
 
     private void OnMouseLeave()
     {
-        _innerFrame?.Background(_normalColor);
+        _isHovered = false;
+        _isPressed = false;
+        RefreshVisuals();
+    }
+
+    internal void RefreshVisuals()
+    {
+        var state = ControlState.Normal;
+        if (_item.Key == _sideBar.SelectedKey) state |= ControlState.Selected;
+        if (_isHovered) state |= ControlState.Hovered;
+        if (_isPressed) state |= ControlState.Pressed;
+        if (!_item.IsEnabled) state |= ControlState.Disabled;
+
+        if (_innerFrame != null)
+        {
+            _innerFrame.Background = new StateMap<Brush>(_sideBar.ItemBackground)
+                .With(ControlState.Hovered, _sideBar.ItemHoverColor)
+                .With(ControlState.Pressed, _sideBar.ItemHoverColor)
+                .With(ControlState.Selected, _sideBar.ItemSelectedColor)
+                .Resolve(state);
+        }
+
+        if (_textLabel != null)
+        {
+            _textLabel.Foreground = new StateMap<Brush>(_sideBar.ItemTextColor)
+                .With(ControlState.Selected, _sideBar.ItemSelectedTextColor)
+                .Resolve(state);
+        }
+
+        if (_iconLabel != null)
+        {
+            _iconLabel.Foreground = new StateMap<Brush>(_sideBar.ItemIconColor)
+                .With(ControlState.Selected, _sideBar.ItemSelectedIconColor)
+                .Resolve(state);
+        }
         MarkNeedsPaint();
     }
 
@@ -652,7 +695,7 @@ internal class SideBarItemButton : Frame, Rayo.Core.Input.IPointerHandler
     void Rayo.Core.Input.IPointerHandler.OnPointerPressed(Rayo.Core.Input.PointerEventArgs e)
     {
         _isPressed = true;
-        MarkNeedsPaint();
+        RefreshVisuals();
     }
 
     void Rayo.Core.Input.IPointerHandler.OnPointerReleased(Rayo.Core.Input.PointerEventArgs e)
@@ -665,6 +708,6 @@ internal class SideBarItemButton : Frame, Rayo.Core.Input.IPointerHandler
             _sideBar.SelectItem(_item);
         }
         _isPressed = false;
-        MarkNeedsPaint();
+        RefreshVisuals();
     }
 }

@@ -1,4 +1,4 @@
-﻿namespace Rayo.Controls;
+namespace Rayo.Controls;
 
 using System;
 using System.Collections.Generic;
@@ -286,7 +286,7 @@ public class Editor : TextBox<Editor>, IScrollable
     } = Color.Transparent;
     #endregion
 
-    protected override void OnThemeApplied(Theme theme)
+    protected override void OnThemeApplied(ThemeData theme)
     {
         base.OnThemeApplied(theme);
         SetThemeValue(nameof(ScrollbarBackground), (Brush)theme.Colors.SurfacePressed, value => ScrollbarBackground = value);

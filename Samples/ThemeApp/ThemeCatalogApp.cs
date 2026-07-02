@@ -33,16 +33,17 @@ public sealed class ThemeCatalogApp : Component
                         new Button().Text("Close").OnTapped(() => _drawer?.Close())));
 
         var themeSelector = new ButtonGroup()
-            .AddItems("Light", "Dark", "Neon", "Obsidian")
-            .SelectedIndex(GetThemeIndex(RayoThemes.Current))
+            .AddItems("Light", "Dark", "Neon", "Obsidian", "High contrast", "System")
+            .SelectedIndex(GetThemeIndex((UIApplication.Current?.ActiveTheme ?? RayoThemes.Light)))
             .OnSelectedIndexChanged(ApplyTheme)
-            .Width(420);
+            .Width(680);
 
         var catalog = new VStack()
             .Spacing(18)
             .Padding(new Thickness(24))
             .Children(
                 Intro(),
+                Section("Theme scopes, density and typed tokens", ThemeSystemControls()),
                 Section("Buttons and actions", Buttons()),
                 Section("Text and input", TextInputs()),
                 Section("Selection and values", SelectionControls()),
@@ -89,6 +90,54 @@ public sealed class ThemeCatalogApp : Component
                         colors => colors.OnDisabled,
                         "Choose a theme above. Mounted controls, popups, dialogs and overlays update without rebuilding the page.")
                     .FontSize(14));
+
+    private static VisualElement ThemeSystemControls()
+    {
+        var accentKey = new ThemeKey<Color>("demo.accent");
+        var compact = RayoThemes.Light with
+        {
+            Name = "compact-preview",
+            Density = ThemeDensity.Compact,
+            Components = RayoThemes.Light.Components with
+            {
+                Buttons = RayoThemes.Light.Buttons with
+                {
+                    Padding = new Thickness(8, 3),
+                    Radius = new CornerRadius(2),
+                    MinHeight = 28,
+                },
+            },
+        };
+        compact = compact.WithToken(accentKey, new Color(139, 92, 246));
+
+        return new HStack()
+            .Spacing(12)
+            .Children(
+                ScopePreview("Light scope", RayoThemes.Light),
+                ScopePreview("Dark scope", RayoThemes.Dark),
+                ScopePreview(
+                    $"Compact scope · token #{ToHex(compact.GetToken(accentKey))}",
+                    compact));
+    }
+
+    private static VisualElement ScopePreview(string title, ThemeData theme) =>
+        new ThemeScope(
+            theme,
+            new ThemeFrame()
+                .Width(250)
+                .Padding(new Thickness(14))
+                .Content(
+                    new VStack()
+                        .Spacing(8)
+                        .Children(
+                            new ThemeLabel(colors => colors.OnSurface, title)
+                                .FontWeight(FontWeight.SemiBold),
+                            new Entry().Placeholder("Scoped input"),
+                            new Button().Text("Scoped action"),
+                            new Button().Text("Disabled").IsEnabled(false))));
+
+    private static string ToHex(Color color) =>
+        $"{(byte)MathF.Round(color.R * 255):X2}{(byte)MathF.Round(color.G * 255):X2}{(byte)MathF.Round(color.B * 255):X2}";
 
     private static VisualElement Buttons() =>
         Wrap(
@@ -142,7 +191,7 @@ public sealed class ThemeCatalogApp : Component
                     new SaveFilePicker().Width(340)),
                 Wrap(
                     new Button().Text("Open ColorPicker")
-                        .OnTapped(() => ColorPicker.ShowDialog(RayoThemes.Current.Colors.Primary, _ => { })),
+                        .OnTapped(() => ColorPicker.ShowDialog((UIApplication.Current?.ActiveTheme ?? RayoThemes.Light).Colors.Primary, _ => { })),
                     new Button().Text("Choose a folder")
                         .Variant(ButtonVariant.Secondary)
                         .OnTapped(() => PathPicker.ShowDialog(PathPickerMode.Folder, _ => { }))));
@@ -171,7 +220,7 @@ public sealed class ThemeCatalogApp : Component
                     loadingOverlay,
                     new Button().Text("Hover for Tooltip").WithTooltip("Theme-aware Tooltip"),
                     new Button().Text("Show Toast")
-                        .OnTapped(() => ToastService.ShowSuccess("Theme applied successfully"))),
+                        .OnTapped(() => ToastService.ShowSuccess("ThemeData applied successfully"))),
                 new ProgressBar().Value(78).Width(520));
     }
 
@@ -411,35 +460,35 @@ public sealed class ThemeCatalogApp : Component
                 Path = VectorPath.Star(35, 35, 32, 15, 5),
                 Width = 70,
                 Height = 70,
-                FillColor = RayoThemes.Current.Colors.Primary,
-                StrokeColor = RayoThemes.Current.Colors.Focus,
+                FillColor = (UIApplication.Current?.ActiveTheme ?? RayoThemes.Light).Colors.Primary,
+                StrokeColor = (UIApplication.Current?.ActiveTheme ?? RayoThemes.Light).Colors.Focus,
                 StrokeWidth = 2,
             },
             new Rayo.Controls.Shape(Rayo.Controls.Shape.ShapeKind.Star)
             {
                 Width = 70,
                 Height = 60,
-                FillColor = RayoThemes.Current.Colors.Info,
-                StrokeColor = RayoThemes.Current.Colors.Focus,
+                FillColor = (UIApplication.Current?.ActiveTheme ?? RayoThemes.Light).Colors.Info,
+                StrokeColor = (UIApplication.Current?.ActiveTheme ?? RayoThemes.Light).Colors.Focus,
                 StrokeWidth = 2,
             },
             new RayoRectangle(80, 55)
-                .Fill(RayoThemes.Current.Colors.Primary)
-                .Stroke(RayoThemes.Current.Colors.Focus)
+                .Fill((UIApplication.Current?.ActiveTheme ?? RayoThemes.Light).Colors.Primary)
+                .Stroke((UIApplication.Current?.ActiveTheme ?? RayoThemes.Light).Colors.Focus)
                 .StrokeThickness(2),
             new Ellipse(64, 64)
-                .Fill(RayoThemes.Current.Colors.Secondary),
+                .Fill((UIApplication.Current?.ActiveTheme ?? RayoThemes.Light).Colors.Secondary),
             Polygon.Star(5, 32, 15, 32, 32)
-                .Fill(RayoThemes.Current.Colors.Warning),
+                .Fill((UIApplication.Current?.ActiveTheme ?? RayoThemes.Light).Colors.Warning),
             new Line(0, 0, 90, 50)
-                .Stroke(RayoThemes.Current.Colors.Info)
+                .Stroke((UIApplication.Current?.ActiveTheme ?? RayoThemes.Light).Colors.Info)
                 .StrokeThickness(4),
             new Polyline()
                 .Points(new Vector2(0, 35), new Vector2(35, 0), new Vector2(70, 35))
-                .Stroke(RayoThemes.Current.Colors.Success)
+                .Stroke((UIApplication.Current?.ActiveTheme ?? RayoThemes.Light).Colors.Success)
                 .StrokeThickness(4),
             new RayoPath("M 0 20 L 40 0 L 80 20 L 40 50 Z")
-                .Fill(RayoThemes.Current.Colors.Danger));
+                .Fill((UIApplication.Current?.ActiveTheme ?? RayoThemes.Light).Colors.Danger));
 
     private static VisualElement Section(string title, VisualElement content) =>
         new Card()
@@ -501,25 +550,34 @@ public sealed class ThemeCatalogApp : Component
 
     private static void ApplyTheme(int index)
     {
-        Theme theme = index switch
+        ThemeData theme = index switch
         {
             1 => RayoThemes.Dark,
             2 => ThemeAppThemes.Neon,
             3 => ThemeAppThemes.Obsidian,
+            4 => RayoThemes.HighContrast,
             _ => RayoThemes.Light,
         };
 
-        RayoThemes.UseTheme(theme);
+        if (index == 5 && UIApplication.Current is { } app)
+            app.UseThemeMode(ThemeMode.System);
+        else
+            RayoThemes.UseTheme(theme);
     }
 
-    private static int GetThemeIndex(Theme theme) =>
-        theme.Name switch
+    private static int GetThemeIndex(ThemeData theme)
+    {
+        if (UIApplication.Current?.ThemeMode == ThemeMode.System)
+            return 5;
+        return theme.Name switch
         {
             "dark" => 1,
             "neon" => 2,
             "obsidian" => 3,
+            "high-contrast" => 4,
             _ => 0,
         };
+    }
 }
 
 internal sealed class ThemeBackground : Frame
@@ -531,7 +589,7 @@ internal sealed class ThemeBackground : Frame
         InitializeTheme();
     }
 
-    protected override void OnThemeApplied(Theme theme)
+    protected override void OnThemeApplied(ThemeData theme)
     {
         Background = theme.Colors.Background;
     }
@@ -544,7 +602,7 @@ internal class ThemeFrame : Frame
         InitializeTheme();
     }
 
-    protected override void OnThemeApplied(Theme theme)
+    protected override void OnThemeApplied(ThemeData theme)
     {
         Background = theme.Colors.Surface;
         BorderBrush = theme.Colors.Border;
@@ -553,7 +611,7 @@ internal class ThemeFrame : Frame
 
 internal sealed class ThemeToolbar : ThemeFrame
 {
-    protected override void OnThemeApplied(Theme theme)
+    protected override void OnThemeApplied(ThemeData theme)
     {
         base.OnThemeApplied(theme);
         BorderThickness = new Thickness(0, 0, 0, 1);
@@ -562,16 +620,16 @@ internal sealed class ThemeToolbar : ThemeFrame
 
 internal sealed class ThemeLabel : Label
 {
-    private readonly Func<ColorPalette, Color>? _color;
+    private readonly Func<ColorScheme, Color>? _color;
 
-    public ThemeLabel(Func<ColorPalette, Color> color, string text)
+    public ThemeLabel(Func<ColorScheme, Color> color, string text)
         : base(text)
     {
         _color = color;
         ResetThemeValues();
     }
 
-    protected override void OnThemeApplied(Theme theme)
+    protected override void OnThemeApplied(ThemeData theme)
     {
         if (_color == null)
         {

@@ -1,4 +1,4 @@
-﻿namespace Rayo.Controls;
+namespace Rayo.Controls;
 
 using Rayo.Core;
 using Rayo.Core.Input;
@@ -153,11 +153,9 @@ public class Slider : Rayo.Core.View<Slider>,
     public Slider()
     {
         InitializeTheme();
-        Width = 200;
-        Height = 30;
     }
 
-    protected override void OnThemeApplied(Theme theme)
+    protected override void OnThemeApplied(ThemeData theme)
     {
         var palette = theme.Colors;
         SetThemeValue(nameof(TrackBackground), (Brush)palette.SurfacePressed, value => TrackBackground = value);

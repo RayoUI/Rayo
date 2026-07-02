@@ -70,4 +70,5 @@
   </Folder>
   <Project Path="Rayo.Reactivity/Rayo.FluentApiGenerator.csproj" />
   <Project Path="Rayo/Rayo.csproj" />
+  <Project Path="Rayo.Tests/Rayo.Tests.csproj" />
 </Solution>

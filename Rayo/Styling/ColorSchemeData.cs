@@ -6,7 +6,7 @@ using Rayo.Rendering;
 /// Immutable semantic color roles shared by Rayo controls.
 /// Create variants from an existing palette with a <c>with</c> expression.
 /// </summary>
-public sealed record ColorPalette
+public sealed record ColorScheme
 {
     public required Color Primary { get; init; }
     public required Color PrimaryHover { get; init; }
@@ -43,9 +43,9 @@ public sealed record ColorPalette
 /// <summary>
 /// Built-in semantic color palettes.
 /// </summary>
-public static class ColorPalettes
+public static class ColorSchemes
 {
-    public static ColorPalette Light { get; } = new()
+    public static ColorScheme Light { get; } = new()
     {
         Primary = new Color(59, 130, 246),
         PrimaryHover = new Color(37, 99, 235),
@@ -79,7 +79,7 @@ public static class ColorPalettes
         OnInfo = Color.White,
     };
 
-    public static ColorPalette Dark { get; } = new()
+    public static ColorScheme Dark { get; } = new()
     {
         Primary = new Color(96, 165, 250),
         PrimaryHover = new Color(59, 130, 246),
@@ -111,5 +111,39 @@ public static class ColorPalettes
         OnDanger = new Color(17, 24, 39),
         Info = new Color(167, 139, 250),
         OnInfo = new Color(17, 24, 39),
+    };
+
+    public static ColorScheme HighContrast { get; } = new()
+    {
+        Primary = new Color(255, 255, 0),
+        PrimaryHover = new Color(255, 255, 128),
+        PrimaryPressed = new Color(255, 215, 0),
+        OnPrimary = Color.Black,
+
+        Secondary = new Color(0, 255, 255),
+        SecondaryHover = new Color(128, 255, 255),
+        SecondaryPressed = new Color(0, 215, 215),
+        OnSecondary = Color.Black,
+
+        Background = Color.Black,
+        OnBackground = Color.White,
+        Surface = Color.Black,
+        SurfaceHover = new Color(32, 32, 32),
+        SurfacePressed = new Color(64, 64, 64),
+        OnSurface = Color.White,
+
+        Border = Color.White,
+        Focus = new Color(255, 255, 0),
+        Disabled = new Color(48, 48, 48),
+        OnDisabled = new Color(192, 192, 192),
+
+        Success = new Color(0, 255, 0),
+        OnSuccess = Color.Black,
+        Warning = new Color(255, 255, 0),
+        OnWarning = Color.Black,
+        Danger = new Color(255, 96, 96),
+        OnDanger = Color.Black,
+        Info = new Color(0, 255, 255),
+        OnInfo = Color.Black,
     };
 }

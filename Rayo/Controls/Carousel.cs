@@ -310,7 +310,7 @@ public class Carousel : BorderCompositeView<Carousel>, IFrameAnimation
         RefreshNavigation();
     }
 
-    protected override void OnThemeApplied(Theme theme)
+    protected override void OnThemeApplied(ThemeData theme)
     {
         var palette = theme.Colors;
         SetThemeValue(nameof(SlideBackground), (Brush)palette.Surface, value => SlideBackground = value);

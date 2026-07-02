@@ -1,4 +1,4 @@
-﻿using Rayo;
+using Rayo;
 using Rayo.Controls;
 using Rayo.Core;
 using Rayo.Core.Platform;
@@ -14,7 +14,7 @@ public class ShadowPage : Component
 {
     public override VisualElement Build()
     {
-        var palette = RayoThemes.Current.Colors;
+        var palette = (UIApplication.Current?.ActiveTheme ?? RayoThemes.Light).Colors;
 
         if (PlatformDetector.IsMobile)
         {
@@ -261,22 +261,22 @@ public class ShadowPage : Component
                     .Content(
                         new Border()
                             .CornerRadius(new CornerRadius(8))
-                            .Background(RayoThemes.Current.Colors.Surface)
-                            .BorderBrush(RayoThemes.Current.Colors.Border)
+                            .Background((UIApplication.Current?.ActiveTheme ?? RayoThemes.Light).Colors.Surface)
+                            .BorderBrush((UIApplication.Current?.ActiveTheme ?? RayoThemes.Light).Colors.Border)
                             .BorderThickness(new Thickness(1))
                             .Shadow(shadow)
                             .Padding(new Thickness(20, 12))
                             .Content(
                                 new Label("Aa")
                                     .FontSize(16).FontWeight(FontWeight.SemiBold)
-                                    .Foreground(RayoThemes.Current.Colors.OnSurface)
+                                    .Foreground((UIApplication.Current?.ActiveTheme ?? RayoThemes.Light).Colors.OnSurface)
                                     .HorizontalAlignment(HorizontalAlignment.Center)
                                     .VerticalAlignment(VerticalAlignment.Center)
                             )
                     ),
                 new Label(label)
                     .FontSize(11)
-                    .Foreground(RayoThemes.Current.Colors.OnDisabled)
+                    .Foreground((UIApplication.Current?.ActiveTheme ?? RayoThemes.Light).Colors.OnDisabled)
                     .TextHorizontalAlignment(HorizontalAlignment.Center)
             );
     }
@@ -294,7 +294,7 @@ public class ShadowPage : Component
                     .Content(
                         new Border()
                             .CornerRadius(new CornerRadius(8))
-                            .Background(RayoThemes.Current.Colors.Surface)
+                            .Background((UIApplication.Current?.ActiveTheme ?? RayoThemes.Light).Colors.Surface)
                             .BorderBrush(accent.WithAlpha(0.3f))
                             .BorderThickness(new Thickness(1))
                             .Shadow(shadow)
@@ -309,10 +309,10 @@ public class ShadowPage : Component
                     ),
                 new Label(label)
                     .FontSize(11)
-                    .Foreground(RayoThemes.Current.Colors.OnDisabled)
+                    .Foreground((UIApplication.Current?.ActiveTheme ?? RayoThemes.Light).Colors.OnDisabled)
                     .TextHorizontalAlignment(HorizontalAlignment.Center)
             );
     }
 
-    private static Color GetTileBackground() => RayoThemes.Current.Colors.SurfaceHover;
+    private static Color GetTileBackground() => (UIApplication.Current?.ActiveTheme ?? RayoThemes.Light).Colors.SurfaceHover;
 }

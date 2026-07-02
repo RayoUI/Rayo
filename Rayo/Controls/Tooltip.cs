@@ -1,4 +1,4 @@
-﻿namespace Rayo.Controls;
+namespace Rayo.Controls;
 
 using Rayo.Core;
 using Rayo.Core.Interfaces;
@@ -43,23 +43,22 @@ internal class TooltipFrame : Frame
         HorizontalAlignment = HorizontalAlignment.Left;
         VerticalAlignment = VerticalAlignment.Top;
         Text = text;
-        this.Padding(new Thickness(HorizontalPadding, VerticalPadding + ArrowLength, HorizontalPadding, VerticalPadding));
-        BorderRadius = new CornerRadius(5);
 
         _label = new Label(text)
             .TextHorizontalAlignment(HorizontalAlignment.Center)
-            .TextVerticalAlignment(VerticalAlignment.Center)
-            .Foreground(RayoThemes.Current.Colors.OnSurface)
-            .FontSize(12);
+            .TextVerticalAlignment(VerticalAlignment.Center);
 
         this.Content(_label);
     }
 
-    protected override void OnThemeApplied(Theme theme)
+    protected override void OnThemeApplied(ThemeData theme)
     {
         SetThemeValue(nameof(Background), (Brush)theme.Colors.SurfacePressed, value => Background = value);
         if (_label != null)
+        {
             _label.Foreground = theme.Colors.OnSurface;
+            _label.FontSize = theme.Typography.Caption.FontSize * theme.Preferences.TextScale;
+        }
     }
 
     public void UpdateText(string text)
@@ -269,7 +268,7 @@ public class TooltipHost : Rayo.Core.CompositeView<TooltipHost>, Rayo.Core.Input
         _tooltipFrame.X(x);
         _tooltipFrame.Y(y);
 
-        app.AddOverlay(_tooltipFrame);
+        app.AddOverlay(_tooltipFrame, this);
         _isShowing = true;
     }
 

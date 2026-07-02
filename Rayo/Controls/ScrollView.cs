@@ -1,4 +1,4 @@
-﻿namespace Rayo.Controls;
+namespace Rayo.Controls;
 
 using Rayo.Core;
 using Rayo.Core.Interactions;
@@ -252,7 +252,7 @@ public class ScrollView : CompositeView<ScrollView>, IInputHandler, IScrollable,
         VerticalAlignment = VerticalAlignment.Stretch;
     }
 
-    protected override void OnThemeApplied(Theme theme)
+    protected override void OnThemeApplied(ThemeData theme)
     {
         var palette = theme.Colors;
         SetThemeValue(nameof(ScrollbarBackground), (Brush)palette.SurfacePressed, value => ScrollbarBackground = value);

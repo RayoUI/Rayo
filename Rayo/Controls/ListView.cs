@@ -1,4 +1,4 @@
-﻿namespace Rayo.Controls;
+namespace Rayo.Controls;
 
 using Rayo.Core;
 using Rayo.Core.Input;
@@ -364,7 +364,7 @@ public class ListView<T> : Rayo.Core.CompositeView<ListView<T>>, IInputHandler, 
         RebuildItems();
     }
 
-    protected override void OnThemeApplied(Theme theme)
+    protected override void OnThemeApplied(ThemeData theme)
     {
         var palette = theme.Colors;
         SetThemeValue(nameof(ItemBackground), (Brush)palette.Surface, value => ItemBackground = value);

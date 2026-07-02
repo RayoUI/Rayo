@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection;
 using Silk.NET.Input;
 using Silk.NET.Maths;
 using Silk.NET.OpenGL;
@@ -17,6 +17,7 @@ namespace Rayo.Core;
 
 public class UIApplication : IDisposable
 {
+    private static ThemeData _fallbackTheme = RayoThemes.Light;
     private IWindow? _window;
     private GL? _gl;  // Kept for compatibility with IconFont and direct access
     private IGraphicsContext? _graphicsContext;
@@ -25,6 +26,7 @@ public class UIApplication : IDisposable
     private EventManager _eventManager;
     private HotReloadManager? _hotReload;
     private readonly ConcurrentQueue<Action> _mainThreadActions = new();
+    private readonly List<ThemeHotReloadWatcher> _themeWatchers = new();
     private WindowConfiguration _windowConfig;
     // Tracks the last polled window size so we detect maximise/restore on Windows,
     // where the Silk.NET Resize event may not fire for state-based size changes.
@@ -158,26 +160,40 @@ public class UIApplication : IDisposable
     public float WindowHeight => _lastPolledSize.Y > 0 ? _lastPolledSize.Y : _window?.Size.Y ?? 768f;
 
     /// <summary>
-    /// The currently active <see cref="Rayo.Styling.Theme"/>.
+    /// The currently active <see cref="Rayo.Styling.ThemeData"/>.
     /// Defaults to <see cref="Rayo.Styling.RayoThemes.Light"/>.
     /// </summary>
-    public Theme ActiveTheme { get; private set; } = RayoThemes.Light;
+    public ThemeData ActiveTheme { get; private set; } = _fallbackTheme;
+
+    public ThemeMode ThemeMode { get; private set; } = ThemeMode.Light;
+    public HostThemePreferences HostThemePreferences { get; private set; } =
+        HostThemePreferences.Default;
+
+    internal static ThemeData FallbackTheme => _fallbackTheme;
+
+    internal static void SetFallbackTheme(ThemeData theme)
+    {
+        _fallbackTheme = theme ?? throw new ArgumentNullException(nameof(theme));
+    }
 
     /// <summary>
     /// Fired after <see cref="UseTheme"/> switches the active theme, so that already-built
     /// <see cref="Component"/> subtrees can re-apply styles with the new token values.
     /// </summary>
-    public static event Action<Theme>? ThemeChanged;
+    public static event Action<ThemeData>? ThemeChanged;
 
     /// <summary>
     /// Sets the active theme at runtime. Fires <see cref="ThemeChanged"/> so that
     /// <see cref="Component"/> instances can re-apply their styles with the new token values.
     /// </summary>
-    public UIApplication UseTheme(Theme theme)
+    public UIApplication UseTheme(ThemeData theme)
     {
         ArgumentNullException.ThrowIfNull(theme);
         ActiveTheme = theme;
-        RayoThemes.SetCurrent(theme);
+        ThemeMode = theme.Brightness == ThemeBrightness.Dark
+            ? ThemeMode.Dark
+            : ThemeMode.Light;
+        SetFallbackTheme(theme);
         NotifyThemeChanged(theme);
 
         _tree.Root?.NotifyThemeChanged(theme);
@@ -192,7 +208,60 @@ public class UIApplication : IDisposable
         return this;
     }
 
-    internal static void NotifyThemeChanged(Theme theme)
+    /// <summary>
+    /// Selects a built-in theme mode. System mode follows the live host color preference.
+    /// </summary>
+    public UIApplication UseThemeMode(ThemeMode mode)
+    {
+        if (mode == ThemeMode.System)
+        {
+            return UseSystemPreferences(PreferredColorSchemeHelper.CurrentHostPreferences);
+        }
+
+        UseTheme(mode == ThemeMode.Dark ? RayoThemes.Dark : RayoThemes.Light);
+        ThemeMode = mode;
+        return this;
+    }
+
+    /// <summary>Applies live appearance and accessibility preferences from a platform host.</summary>
+    public UIApplication UseSystemPreferences(HostThemePreferences preferences)
+    {
+        ArgumentNullException.ThrowIfNull(preferences);
+        preferences.Validate();
+        HostThemePreferences = preferences;
+        UseTheme(RayoThemes.ResolveSystem(preferences));
+        ThemeMode = ThemeMode.System;
+        return this;
+    }
+
+    /// <summary>
+    /// Loads a JSON theme and applies future valid file updates atomically on the UI thread.
+    /// Invalid updates leave the last valid theme active.
+    /// </summary>
+    public ThemeHotReloadWatcher WatchThemeFile(
+        string path,
+        Func<string, ThemeData?>? baseThemeResolver = null,
+        Action<string>? onLoadFailed = null,
+        ThemeJsonRegistry? registry = null)
+    {
+        var watcher = new ThemeHotReloadWatcher(path, baseThemeResolver, registry);
+        watcher.ThemeChanged += theme => RunOnMainThread(() => UseTheme(theme));
+        if (onLoadFailed != null)
+            watcher.LoadFailed += error => RunOnMainThread(() => onLoadFailed(error));
+        _themeWatchers.Add(watcher);
+        UseTheme(watcher.Current);
+        return watcher;
+    }
+
+    private void OnHostPreferencesChanged(HostThemePreferences preferences)
+    {
+        if (ThemeMode != ThemeMode.System)
+            return;
+
+        UseSystemPreferences(preferences);
+    }
+
+    internal static void NotifyThemeChanged(ThemeData theme)
     {
         ThemeChanged?.Invoke(theme);
     }
@@ -372,6 +441,7 @@ public class UIApplication : IDisposable
         _tree = new UITree();
         _tree.OnNeedsRenderChanged = OnTreeNeedsRender;
         _eventManager = new EventManager(_tree, this);
+        PreferredColorSchemeHelper.HostPreferencesChanged += OnHostPreferencesChanged;
 
         _enableVSync = config.VSync;
         _targetFrameTime = 1.0 / config.TargetFPS;
@@ -398,7 +468,7 @@ public class UIApplication : IDisposable
         }
 
         _nextColorSchemePollAtMs = nowMs + ColorSchemePollIntervalMs;
-        Rayo.Styling.ColorSchemeHelper.NotifyIfChanged();
+        Rayo.Styling.PreferredColorSchemeHelper.NotifyIfChanged();
     }
 
     private void WaitForNextFrame(double remainingMs)
@@ -673,10 +743,11 @@ public class UIApplication : IDisposable
         _windowConfig.Height = height;
     }
 
-    public void AddOverlay(VisualElement overlay)
+    public void AddOverlay(VisualElement overlay, VisualElement? owner = null)
     {
         if (!_overlays.Contains(overlay))
         {
+            overlay.CaptureDetachedTheme(owner);
             _overlays.Add(overlay);
             _tree.AddOverlay(overlay);
         }
@@ -1230,6 +1301,10 @@ public class UIApplication : IDisposable
 
     public void Dispose()
     {
+        PreferredColorSchemeHelper.HostPreferencesChanged -= OnHostPreferencesChanged;
+        foreach (var watcher in _themeWatchers)
+            watcher.Dispose();
+        _themeWatchers.Clear();
         if (Current == this) Current = null;
         _window?.Dispose();
     }

@@ -1,4 +1,4 @@
-﻿namespace Rayo.Controls;
+namespace Rayo.Controls;
 
 using Rayo.Core;
 using Rayo.Core.Input;
@@ -183,15 +183,7 @@ public class Button : BorderView<Button>,
     {
         // Initialize reactive properties (cannot use initializers on partial properties)
         Text = string.Empty;
-        FontSize = 14;
         InitializeTheme();
-        BorderThickness = 2;
-
-        // Touch-friendly sizing
-        // Minimum recommended size for touch: 44x44 (iOS HIG) or 48x48 (Material Design)
-        // We don't enforce it here to allow flexibility, but callers should consider it
-        Padding = new Thickness(12, 6, 12, 6);
-        BorderRadius = new CornerRadius(4);
 
         // Visual state is updated directly in property setters
 
@@ -212,7 +204,7 @@ public class Button : BorderView<Button>,
     /// Creates a button with explicit colors derived from a semantic palette.
     /// Explicit palette colors are preserved when the global theme changes.
     /// </summary>
-    public Button(ColorPalette palette) : this()
+    public Button(ColorScheme palette) : this()
     {
         ApplyPalette(palette);
     }
@@ -220,7 +212,7 @@ public class Button : BorderView<Button>,
     /// <summary>
     /// Applies the button-related roles from a semantic color palette.
     /// </summary>
-    public Button ApplyPalette(ColorPalette palette)
+    public Button ApplyPalette(ColorScheme palette)
     {
         ArgumentNullException.ThrowIfNull(palette);
 
@@ -243,9 +235,9 @@ public class Button : BorderView<Button>,
     }
 
     private void ApplyActiveTheme() =>
-        OnThemeApplied(UIApplication.Current?.ActiveTheme ?? RayoThemes.Light);
+        OnThemeApplied(EffectiveTheme);
 
-    protected override void OnThemeApplied(Theme theme)
+    protected override void OnThemeApplied(ThemeData theme)
     {
         var colors = Variant switch
         {
@@ -260,6 +252,17 @@ public class Button : BorderView<Button>,
         SetThemeValue(nameof(PressedBackground), (Brush)colors.PressedBackground, value => PressedBackground = value);
         SetThemeValue(nameof(TextColor), (Brush)colors.Foreground, value => TextColor = value);
         SetThemeValue(nameof(BorderBrush), (Brush)colors.Border, value => BorderBrush = value);
+        SetThemeValue(
+            nameof(FontSize),
+            theme.Buttons.Typography.FontSize * theme.Preferences.TextScale,
+            value => FontSize = value);
+        SetThemeValue(nameof(Padding), theme.Buttons.Padding, value => Padding = value);
+        SetThemeValue(nameof(MinHeight), theme.Buttons.MinHeight, value => MinHeight = value);
+        SetThemeValue(
+            nameof(BorderThickness),
+            new Thickness(theme.Buttons.BorderThickness),
+            value => BorderThickness = value);
+        SetThemeValue(nameof(BorderRadius), theme.Buttons.Radius, value => BorderRadius = value);
     }
 
     // =========================================================================
@@ -324,10 +327,15 @@ public class Button : BorderView<Button>,
 
     private void UpdateVisualState()
     {
-        // Determine current background based on state
-        _currentBackground = IsPressed ? PressedBackground :
-                           IsHovered ? HoverBackground :
-                           Background;
+        var state = IsPressed
+            ? ControlState.Pressed
+            : IsHovered
+                ? ControlState.Hovered
+                : ControlState.Normal;
+        _currentBackground = new StateMap<Brush>(Background)
+            .With(ControlState.Hovered, HoverBackground)
+            .With(ControlState.Pressed, PressedBackground)
+            .Resolve(state);
     }
 
     protected override void Measure(float availableWidth, float availableHeight)

@@ -71,6 +71,7 @@ public class DevToolAgent : IDisposable, IGlobalPointerHandler
 
         // Subscribe to structural changes (add/remove children)
         VisualElement.TreeStructureChanged += OnTreeStructureChanged;
+        UIApplication.ThemeChanged += OnThemeChanged;
 
     }
 
@@ -241,6 +242,7 @@ public class DevToolAgent : IDisposable, IGlobalPointerHandler
                 HighlightElementRequest req => HandleHighlight(req),
                 SetLayoutOutlineRequest req => HandleSetLayoutOutline(req),
                 SetInspectModeRequest req => HandleSetInspectMode(req),
+                GetThemeSnapshotRequest req => HandleGetThemeSnapshot(req),
                 GetPerformanceStatsRequest => HandleGetPerformanceStats(),
                 SetDirtyHeatmapRequest req => HandleSetDirtyHeatmap(req),
                 SetOverdrawVisualizerRequest req => HandleSetOverdraw(req),
@@ -314,6 +316,72 @@ public class DevToolAgent : IDisposable, IGlobalPointerHandler
         }
 
         return response;
+    }
+
+    private ThemeSnapshotResponse HandleGetThemeSnapshot(GetThemeSnapshotRequest request)
+    {
+        var element = request.ElementId == null ? null : GetElementById(request.ElementId);
+        var theme = element?.EffectiveTheme ??
+            _uiTree.Root?.EffectiveTheme ??
+            UIApplication.Current?.ActiveTheme ??
+            UIApplication.FallbackTheme;
+        var colors = theme.Colors;
+
+        var response = new ThemeSnapshotResponse
+        {
+            RequestId = request.Id,
+            Name = theme.Name,
+            Brightness = theme.Brightness.ToString(),
+            Density = theme.Density.ToString(),
+            TextScale = theme.Preferences.TextScale,
+            HighContrast = theme.Preferences.HighContrast,
+            ReduceMotion = theme.Preferences.ReduceMotion,
+        };
+
+        AddColor(response, "Primary", colors.Primary, colors.OnPrimary);
+        AddColor(response, "Secondary", colors.Secondary, colors.OnSecondary);
+        AddColor(response, "Background", colors.Background, colors.OnBackground);
+        AddColor(response, "Surface", colors.Surface, colors.OnSurface);
+        AddColor(response, "Success", colors.Success, colors.OnSuccess);
+        AddColor(response, "Warning", colors.Warning, colors.OnWarning);
+        AddColor(response, "Danger", colors.Danger, colors.OnDanger);
+        AddColor(response, "Info", colors.Info, colors.OnInfo);
+
+        foreach (var token in theme.Tokens.Snapshot())
+        {
+            response.Tokens.Add(new ThemeTokenDto
+            {
+                Name = token.Name,
+                ValueType = token.ValueType.Name,
+                Value = token.Value?.ToString() ?? "(null)",
+                Color = token.Value is Color color ? ToHexColor(color) : null,
+            });
+        }
+
+        return response;
+    }
+
+    private static void AddColor(
+        ThemeSnapshotResponse response,
+        string name,
+        Color value,
+        Color onValue)
+    {
+        response.Colors.Add(new ThemeColorDto
+        {
+            Name = name,
+            Value = ToHexColor(value),
+            OnValue = ToHexColor(onValue),
+            Contrast = ThemeColorUtilities.ContrastRatio(onValue, value),
+        });
+    }
+
+    private void OnThemeChanged(ThemeData theme)
+    {
+        _ = theme;
+        if (!IsConnected)
+            return;
+        _ = Task.Run(() => SendMessageAsync(new ThemeChangedEvent()));
     }
 
     private ElementNode BuildElementNode(VisualElement element)
@@ -1625,6 +1693,7 @@ public class DevToolAgent : IDisposable, IGlobalPointerHandler
         _uiTree.RootChanged -= OnTreeChanged;
         _uiTree.OverlaysChanged -= OnOverlaysChanged;
         VisualElement.TreeStructureChanged -= OnTreeStructureChanged;
+        UIApplication.ThemeChanged -= OnThemeChanged;
         UnsubscribeLogBridge();
         Stop();
     }

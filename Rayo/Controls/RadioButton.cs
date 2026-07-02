@@ -1,4 +1,4 @@
-﻿namespace Rayo.Controls;
+namespace Rayo.Controls;
 
 using Rayo.Core;
 using Rayo.Core.Input;
@@ -188,7 +188,6 @@ public class RadioButton : BorderView<RadioButton>,
     public RadioButton()
     {
         InitializeTheme();
-        BorderThickness = 2;
 
         // Setup gesture recognizers
         _tapRecognizer = new TapRecognizer(
@@ -208,7 +207,7 @@ public class RadioButton : BorderView<RadioButton>,
         GroupName = groupName;
     }
 
-    protected override void OnThemeApplied(Theme theme)
+    protected override void OnThemeApplied(ThemeData theme)
     {
         var palette = theme.Colors;
         SetThemeValue(nameof(Background), (Brush)palette.Surface, value => Background = value);
@@ -263,9 +262,16 @@ public class RadioButton : BorderView<RadioButton>,
 
     private void UpdateVisualState()
     {
-        _currentBackground = IsPressed ? PressedBackground :
-                           IsHovered ? HoverBackground :
-                           Background;
+        var state = ControlState.Normal;
+        if (IsChecked) state |= ControlState.Checked;
+        if (IsHovered) state |= ControlState.Hovered;
+        if (IsPressed) state |= ControlState.Pressed;
+
+        _currentBackground = new StateMap<Brush>(Background)
+            .With(ControlState.Checked, CheckedBackground)
+            .With(ControlState.Hovered, HoverBackground)
+            .With(ControlState.Pressed, PressedBackground)
+            .Resolve(state);
     }
 
     private void UncheckSiblings()

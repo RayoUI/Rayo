@@ -420,20 +420,19 @@ new Style<Label>(".danger.override")
 
 ## 9. Design tokens
 
-`StyleTokens` is a named-value dictionary that lets you define a centralised palette and reference it from multiple rules. When a theme is active, `Get<T>()` checks the theme first before its own dictionary.
+`ThemeTokenSet` is an immutable, typed token collection. `ThemeKey<T>`
+prevents name/type mismatches and tokens are resolved from each element's
+effective theme when using the `Style.Set(key, setter)` overload.
 
 ```csharp
-var tokens = new StyleTokens()
-    .Set("--primary",    new Color(0, 120, 212))
-    .Set("--surface",    new Color(35, 35, 44))
-    .Set("--text",       new Color(230, 230, 240))
-    .Set("--radius",     8f)
-    .Set("--spacing",    16f);
+var primary = new ThemeKey<Color>("color.primary");
+var primaryDim = new ThemeKey<Color>("color.primary.dim");
+var radius = new ThemeKey<float>("radius");
 
-// Computed tokens � evaluated lazily on each Get(), not at Set() time
-tokens
-    .Set("--primary-dim",  t => t.Get<Color>("--primary").WithAlpha(0.6f))
-    .Set("--large-radius", t => t.Get<float>("--radius") * 2f);
+var tokens = ThemeTokenSet.Empty
+    .Set(primary, new Color(0, 120, 212))
+    .Set(radius, 8f)
+    .Set(primaryDim, t => t.Get(primary).WithAlpha(0.6f));
 ```
 
 **Using tokens in style rules:**
@@ -442,44 +441,41 @@ tokens
 StyleSheet sheet =
 [
     new Style<Button>()
-        .Background(tokens.Get<Color>("--primary"))
-        .BorderRadius(tokens.Get<float>("--radius")),
-
-    new Style<Frame>()
-        .Background(tokens.Get<Color>("--surface"))
-        .Padding(tokens.Get<float>("--spacing")),
+        .Set(primary, (button, color) => button.Background = color)
+        .Set(button => button.BorderRadius = new CornerRadius(tokens.Get(radius))),
 ];
 ```
 
-**StyleTokens API:**
+**ThemeTokenSet API:**
 
 | Method                                   | Description                                               |
 |------------------------------------------|-----------------------------------------------------------|
-| `Set<T>(name, value)`                    | Registers a concrete value                                |
-| `Set<T>(name, Func<StyleTokens, T>)`     | Registers a computed (lazy) token, evaluated on each `Get` |
-| `Get<T>(name)`                           | Reads the value; throws if missing or wrong type          |
-| `Get<T>(name, fallback)`                 | Reads the value, returning `fallback` on any error        |
-| `TryGet<T>(name, out T? value)`          | Attempts to read without throwing                         |
-| `Contains(name)`                         | Returns `true` if the token exists                        |
-| `Remove(name)`                           | Removes a token                                           |
+| `Set(ThemeKey<T>, value)` | Returns a new collection containing a concrete token |
+| `Set(ThemeKey<T>, factory)` | Returns a new collection containing a computed token |
+| `Get(ThemeKey<T>)` | Reads a typed token |
+| `TryGet(ThemeKey<T>, out value)` | Attempts to read without throwing |
+| `Contains(ThemeKey<T>)` | Checks whether the token exists |
 
 ---
 
 ## 10. Theme system
 
-The current theme system includes semantic colors (`ColorPalette`), typed
-button tokens (`ButtonTheme`), free-form token overrides and runtime propagation
-through the visual tree and overlays.
+The theme system uses immutable `ThemeData`, semantic `ColorScheme` values,
+typed component defaults, scoped inheritance and runtime propagation through
+the visual tree and detached overlays.
 
 ```csharp
-var brandPalette = ColorPalettes.Dark with
+var brandColors = ColorSchemes.Dark with
 {
     Primary = new Color(236, 72, 153),
     PrimaryHover = new Color(219, 39, 119),
     PrimaryPressed = new Color(190, 24, 93),
 };
 
-var brandTheme = new Theme("brand", brandPalette);
+var brandTheme = new ThemeData(
+    "brand",
+    brandColors,
+    brightness: ThemeBrightness.Dark);
 
 // Portable across UIApplication and hostless/mobile UITree hosts.
 RayoThemes.UseTheme(brandTheme);
@@ -489,7 +485,7 @@ RayoThemes.UseTheme(brandTheme);
 preserve consumer-assigned property values when the global theme changes.
 
 See [THEME_SYSTEM.md](THEME_SYSTEM.md) for the complete model, palette roles,
-custom themes, control integration, explicit overrides, `StyleTokens`,
+custom themes, control integration, explicit overrides, typed tokens,
 propagation and the distinction between application themes and the operating
 system color scheme.
 
@@ -720,12 +716,10 @@ StyleEngine.Apply(sheet, root, StyleScope.Local)
 StyleEngine.GetComputedStyle(element, sheet)  // returns IReadOnlyList<MatchedRule>
 
 // Tokens
-var tokens = new StyleTokens()
-    .Set("--key", value)
-    .Set("--key", t => t.Get<T>("--other"))   // computed (lazy)
-tokens.Get<T>("--key")
-tokens.Get<T>("--key", fallback)
-tokens.TryGet<T>("--key", out value)
+var key = new ThemeKey<Color>("color.key");
+var tokens = ThemeTokenSet.Empty.Set(key, value);
+tokens.Get(key)
+tokens.TryGet(key, out var resolved)
 ```
 
 ---

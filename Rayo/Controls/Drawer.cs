@@ -1,4 +1,4 @@
-﻿namespace Rayo.Controls;
+namespace Rayo.Controls;
 
 using Rayo.Core;
 using Rayo.Core.Input;
@@ -210,7 +210,7 @@ public class Drawer : BorderCompositeView<Drawer>, IFrameAnimation
         ClipToBounds = true;
     }
 
-    protected override void OnThemeApplied(Theme theme)
+    protected override void OnThemeApplied(ThemeData theme)
     {
         SetThemeValue(nameof(Background), (Brush)theme.Colors.Surface, value => Background = value);
         SetThemeValue(nameof(BorderBrush), (Brush)theme.Colors.Border, value => BorderBrush = value);
@@ -250,13 +250,13 @@ public class Drawer : BorderCompositeView<Drawer>, IFrameAnimation
         var app = UIApplication.Current;
         if (app != null)
         {
-            app.AddOverlay(_overlay);
+            app.AddOverlay(_overlay, this);
         }
         else
         {
             // Find the UITree from the element hierarchy
             var tree = FindUITree();
-            tree?.AddOverlay(_overlay);
+            tree?.AddOverlay(_overlay, this);
         }
 
         // Start open animation
@@ -522,7 +522,7 @@ internal class DrawerOverlay : Rayo.Core.CompositeView<DrawerOverlay>, Rayo.Core
         AddChild(_drawerFrame);
     }
 
-    protected override void OnThemeApplied(Theme theme)
+    protected override void OnThemeApplied(ThemeData theme)
     {
         _drawer.NotifyThemeChanged(theme);
         if (_drawerFrame == null)

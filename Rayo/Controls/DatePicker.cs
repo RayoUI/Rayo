@@ -233,9 +233,6 @@ public class DatePicker : BorderCompositeView<DatePicker>,
     public DatePicker()
     {
         InitializeTheme();
-        Width = 240;
-        Height = 44;
-        BorderThickness = 1;
         BuildComponents();
 
         // Add the date button as a child so it's part of the UI tree
@@ -245,7 +242,7 @@ public class DatePicker : BorderCompositeView<DatePicker>,
         }
     }
 
-    protected override void OnThemeApplied(Theme theme)
+    protected override void OnThemeApplied(ThemeData theme)
     {
         var palette = theme.Colors;
         SetThemeValue(nameof(Background), (Brush)palette.Surface, value => Background = value);
@@ -371,7 +368,7 @@ public class DatePicker : BorderCompositeView<DatePicker>,
             ? BuildPopupOverlay()
             : BuildDialogOverlay();
 
-        Rayo.Core.OverlayManager.AddOverlay(_dialogOverlay);
+        Rayo.Core.OverlayManager.AddOverlay(_dialogOverlay, this);
         Rayo.Core.OverlayManager.EventManager?.RegisterGlobalPointerHandler(this);
     }
 
@@ -706,7 +703,7 @@ public class DatePicker : BorderCompositeView<DatePicker>,
                                    isToday ? TodayColor :
                                    (Brush)Color.Transparent;
 
-                    Brush fgColor = isSelected ? (Brush)RayoThemes.Current.Colors.OnPrimary : TextColor;
+                    Brush fgColor = isSelected ? (Brush)EffectiveTheme.Colors.OnPrimary : TextColor;
 
                     int day = currentDay; // Capture for closure
                     var button = new Button

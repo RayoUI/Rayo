@@ -1,377 +1,187 @@
-# Theme System
+# Theme system
 
-This guide describes Rayo's current `Theme` system: how themes are defined, how
-controls consume them, how themes change at runtime, and how they interact with
-`StyleTokens` and the operating system color scheme.
-
-## Contents
-
-1. [System model](#system-model)
-2. [Quick start](#quick-start)
-3. [Semantic color palette](#semantic-color-palette)
-4. [Typed button tokens](#typed-button-tokens)
-5. [Creating a theme](#creating-a-theme)
-6. [Applying and reading the active theme](#applying-and-reading-the-active-theme)
-7. [Theme change propagation](#theme-change-propagation)
-8. [Explicit values and theme values](#explicit-values-and-theme-values)
-9. [Integrating custom controls](#integrating-custom-controls)
-10. [StyleTokens integration](#styletokens-integration)
-11. [Theme and the operating system color scheme](#theme-and-the-operating-system-color-scheme)
-12. [Quick API reference](#quick-api-reference)
-13. [Current considerations](#current-considerations)
-
-## System model
-
-The system has four layers:
-
-| Layer | Type | Responsibility |
-|---|---|---|
-| Global theme | `Theme` | Groups a name, a palette, button tokens, and free-form overrides |
-| Semantic colors | `ColorPalette` | Defines roles such as `Primary`, `Surface`, and `Danger`, including their contrast colors |
-| Control tokens | `ButtonTheme` | Defines the visual states of each button variant |
-| Free-form tokens | `Theme.Set<T>()` + `StyleTokens` | Lets an application define custom named tokens |
-
-Rayo includes two ready-to-use themes:
-
-- `RayoThemes.Light`
-- `RayoThemes.Dark`
-
-The initial `UIApplication` theme is `RayoThemes.Light`.
-
-## Quick start
-
-```csharp
-using Rayo.Core;
-using Rayo.Styling;
-
-var app = new UIApplication("My application", 1280, 720)
-    .UseTheme(RayoThemes.Dark);
-
-app.Run();
-```
-
-To change it at runtime:
-
-```csharp
-RayoThemes.UseTheme(RayoThemes.Light);
-```
-
-`RayoThemes.UseTheme()` is the most portable entry point. When a
-`UIApplication` exists, it delegates to `UIApplication.UseTheme()`. On mobile
-hosts where a `UIApplication` may not exist, it updates the active `UITree`
-directly.
-
-## Semantic color palette
-
-`ColorPalette` is an immutable `record`. Controls consume roles instead of
-locally meaningful colors, allowing the entire visual identity to be replaced
-without rewriting each control.
-
-| Group | Roles |
-|---|---|
-| Primary | `Primary`, `PrimaryHover`, `PrimaryPressed`, `OnPrimary` |
-| Secondary | `Secondary`, `SecondaryHover`, `SecondaryPressed`, `OnSecondary` |
-| Background | `Background`, `OnBackground` |
-| Surface | `Surface`, `SurfaceHover`, `SurfacePressed`, `OnSurface` |
-| General state | `Border`, `Focus`, `Disabled`, `OnDisabled` |
-| Semantic state | `Success`/`OnSuccess`, `Warning`/`OnWarning`, `Danger`/`OnDanger`, `Info`/`OnInfo` |
-
-The `On...` prefix represents the content color that should be drawn over the
-corresponding role. For example, text placed over `Primary` should use
-`OnPrimary`.
-
-The built-in palettes are `ColorPalettes.Light` and `ColorPalettes.Dark`.
-Because `ColorPalette` is a `record`, the usual way to customize a palette is to
-derive it from an existing one:
-
-```csharp
-var brandPalette = ColorPalettes.Dark with
-{
-    Primary = new Color(236, 72, 153),
-    PrimaryHover = new Color(219, 39, 119),
-    PrimaryPressed = new Color(190, 24, 93),
-    OnPrimary = Color.White,
-    Focus = new Color(244, 114, 182),
-};
-```
-
-Every `ColorPalette` property is `required`. Starting from an existing palette
-avoids leaving any role undefined.
-
-## Typed button tokens
-
-`ButtonTheme` contains four variants:
-
-- `Primary`
-- `Secondary`
-- `Danger`
-- `Ghost`
-
-Each variant is a `ButtonColors` value containing `Background`,
-`HoverBackground`, `PressedBackground`, `Foreground`, and `Border`.
-
-When a `Theme` is created with only a palette, Rayo generates these tokens with
-`ButtonTheme.FromPalette()`. They can also be customized independently:
-
-```csharp
-var buttons = ButtonTheme.FromPalette(brandPalette);
-
-buttons = buttons with
-{
-    Ghost = buttons.Ghost with
-    {
-        Foreground = brandPalette.Primary,
-        Border = brandPalette.Primary.WithAlpha(0.35f),
-    },
-};
-
-var brandTheme = new Theme("brand", brandPalette, buttons);
-```
-
-Changing the palette later with `theme.UseColors(palette)` regenerates
-`ButtonTheme` from that palette. Apply `UseButtons()` afterwards when button
-overrides are required.
+Rayo themes are immutable `ThemeData` values. A theme contains semantic colors,
+typography, spacing, shapes, elevation, motion, density, component defaults,
+typed custom tokens and third-party extensions.
 
 ## Creating a theme
 
-The constructor without a palette uses the light palette:
+Start from a complete built-in theme and use record `with` expressions:
 
 ```csharp
-var theme = new Theme("custom");
-```
-
-For a complete visual identity:
-
-```csharp
-var theme = new Theme("brand", brandPalette)
-    .Set("--panel-radius", 12f)
-    .Set("--hero-spacing", 24f);
-```
-
-The available fluent API is:
-
-```csharp
-theme
-    .UseColors(brandPalette)
-    .UseButtons(buttons)
-    .Set("--app-token", value);
-```
-
-`Theme.Get<T>()`, `TryGet<T>()`, and `Contains()` read free-form tokens. The
-theme name must not be empty.
-
-## Applying and reading the active theme
-
-With a desktop application:
-
-```csharp
-UIApplication.Current?.UseTheme(theme);
-
-Theme current = UIApplication.Current?.ActiveTheme
-    ?? RayoThemes.Current;
-```
-
-From code shared across hosts:
-
-```csharp
-RayoThemes.UseTheme(theme);
-Theme current = RayoThemes.Current;
-```
-
-`UIApplication.ActiveTheme` is never null and starts as `RayoThemes.Light`.
-`RayoThemes.Current` returns the application's `ActiveTheme` when an application
-exists; otherwise, it returns the last theme set through `RayoThemes`.
-
-To observe global changes:
-
-```csharp
-UIApplication.ThemeChanged += OnThemeChanged;
-
-static void OnThemeChanged(Theme theme)
-{
-    Console.WriteLine($"Active theme: {theme.Name}");
-}
-```
-
-The event is static. Its owner should unsubscribe when the subscription is no
-longer needed to avoid retaining references accidentally.
-
-## Theme change propagation
-
-Calling `UseTheme()` performs the following operations:
-
-1. Updates `UIApplication.ActiveTheme` and `RayoThemes.Current`.
-2. Raises `UIApplication.ThemeChanged`.
-3. Walks the visual root and its descendants.
-4. Updates both application overlays and `UITree` overlays.
-5. Calls `OnThemeApplied(theme)` on each `VisualElement`.
-6. Makes built `Component` instances reapply global and local styles and request
-   a repaint.
-
-Tree propagation processes children before their composite control. This gives
-the composite control the final word over its implementation details while
-preserving explicit customizations on public children.
-
-Built-in controls do not require a tree rebuild when the theme changes.
-
-## Explicit values and theme values
-
-Controls apply defaults through `SetThemeValue()`. When the application
-explicitly assigns a theme-managed property, that property stops following
-subsequent global theme changes:
-
-```csharp
-var button = new Button()
-    .Variant(ButtonVariant.Primary)
-    .Background(new Color(20, 90, 180)); // Application override
-```
-
-After a theme change, the button's other theme properties may update, while
-`Background` keeps the explicitly assigned value.
-
-`Button` and `ButtonIcon` expose `UseThemeDefaults()` to remove their color
-overrides and immediately reapply the active theme:
-
-```csharp
-button.UseThemeDefaults();
-```
-
-The `Button(ColorPalette)` constructor and `ApplyPalette()` produce explicit
-colors. By design, those colors also survive global theme changes.
-
-## Integrating custom controls
-
-A control participates in the theme system by overriding `OnThemeApplied()` and
-applying its defaults with `SetThemeValue()`:
-
-```csharp
-public sealed class BrandCard : Card
-{
-    protected override void OnThemeApplied(Theme theme)
+var brandTheme = (RayoThemes.Dark with
     {
-        base.OnThemeApplied(theme);
+        Name = "brand",
+        Colors = RayoThemes.Dark.Colors with
+        {
+            Primary = new Color(236, 72, 153),
+            PrimaryHover = new Color(219, 39, 119),
+            PrimaryPressed = new Color(190, 24, 93),
+        },
+        Shapes = RayoThemes.Dark.Shapes with
+        {
+            Medium = new CornerRadius(8),
+        },
+    })
+    .RebuildComponentDefaults();
 
-        SetThemeValue(
-            nameof(BorderBrush),
-            (Brush)theme.Colors.Primary,
-            value => BorderBrush = value);
-    }
-}
+app.UseTheme(brandTheme);
 ```
 
-Important rules:
+When changing typography, spacing, shapes, density, colors or preferences,
+call `RebuildComponentDefaults()` before applying custom component overrides.
+Component defaults deliberately remain immutable; a record `with` expression
+does not mutate or silently regenerate them.
 
-- Call `base.OnThemeApplied(theme)` when extending an already themed control.
-- Use `SetThemeValue()` for properties that must respect consumer overrides.
-- A control built directly on `VisualElement` must call `InitializeTheme()` once
-  its required properties are ready.
-- To expose a public reset operation, wrap `ResetThemeValues()` in a control
-  method such as `UseThemeDefaults()`.
-- Use `RayoThemes.Current` as the current theme source in code that supports
-  hosts without a `UIApplication`.
+`RayoThemes.Light`, `RayoThemes.Dark` and `RayoThemes.HighContrast` are
+immutable and complete. Calling
+`UseTheme` reapplies themed properties throughout the mounted visual tree while
+preserving explicit values assigned by the consumer.
 
-Many built-in controls currently override `OnThemeApplied()`, including buttons,
-text fields, labels, selection controls, navigation, menus, pickers, lists,
-tables, progress indicators, loading indicators, cards, and overlays.
+## Theme scopes
 
-## StyleTokens integration
-
-`Theme` can also override free-form tokens consumed by `StyleTokens`.
-`StyleTokens.Get<T>(name)` uses the following resolution order:
-
-1. Token from `UIApplication.ActiveTheme`.
-2. Computed `StyleTokens` factory.
-3. Concrete `StyleTokens` value.
+`ThemeScope` changes the effective theme only for its content:
 
 ```csharp
-var tokens = new StyleTokens()
-    .Set("--panel", ColorPalettes.Light.Surface)
-    .Set("--radius", 8f);
-
-var dark = new Theme("dark", ColorPalettes.Dark)
-    .Set("--panel", ColorPalettes.Dark.Surface);
+var preview = new ThemeScope(
+    brandTheme,
+    new VStack().Children(
+        new Label("Brand preview"),
+        new Button().Text("Action")));
 ```
 
-A `StyleSheet` stores actions and is normally built only once. To resolve a
-token again when a `Component` reapplies styles after a theme change, read it
-inside `Set()`:
+Scopes can be nested. `VisualElement.EffectiveTheme` resolves the nearest
+`ThemeScope`, then `UIApplication.ActiveTheme`, then `RayoThemes.Light`.
+Popups, menus, drawers, pickers and tooltips capture the effective theme of the
+element that opens them even though they render in a detached overlay layer.
+
+## Component customization
+
+Buttons have a complete typed theme:
 
 ```csharp
-protected override StyleSheet? BuildStyles() =>
-[
-    new Style<Frame>().Set(frame =>
-        frame.Background = tokens.Get<Color>("--panel")),
-];
+var compact = RayoThemes.Light with
+{
+    Components = RayoThemes.Light.Components with
+    {
+        Buttons = RayoThemes.Light.Buttons with
+        {
+            Padding = new Thickness(8, 4),
+            Radius = new CornerRadius(2),
+        },
+    },
+};
 ```
 
-This form resolves the token every time the rule is applied. In contrast:
+Every built-in or third-party control can also receive compile-time checked
+property defaults:
 
 ```csharp
-new Style<Frame>().Background(tokens.Get<Color>("--panel"))
+var inputs = ComponentTheme<TextBox>.Empty
+    .Set(input => input.FontSize, 16f)
+    .Set(input => input.BorderRadius, new CornerRadius(10));
+
+var theme = RayoThemes.Light.WithComponentTheme(inputs);
 ```
 
-resolves the value while building the `StyleSheet` and retains that value in the
-rule.
+Component defaults participate in the normal cascade and never replace explicit
+property values.
 
-Theme overrides in `StyleTokens` are read from
-`UIApplication.Current.ActiveTheme`. On a host without a `UIApplication`,
-built-in controls still follow `RayoThemes.Current`, but `StyleTokens` uses its
-own values or factories.
-
-## Theme and the operating system color scheme
-
-`Theme` and `ColorScheme` are independent mechanisms:
-
-- `Theme` is an application visual identity decision.
-- `ColorSchemeHelper` detects the operating system `Light`/`Dark` scheme and
-  activates `Style.When(ColorScheme, ...)` blocks.
-
-Changing the system scheme does not automatically select `RayoThemes.Light` or
-`RayoThemes.Dark`, and applying a `Theme` does not change
-`ColorSchemeHelper.Current`. An application that wants to follow the system must
-translate the change explicitly:
+## Typed custom tokens
 
 ```csharp
-ColorSchemeHelper.ColorSchemeChanged += scheme =>
-    RayoThemes.UseTheme(
-        scheme == ColorScheme.Dark
-            ? RayoThemes.Dark
-            : RayoThemes.Light);
+static readonly ThemeKey<Color> Accent = new("color.accent");
+static readonly ThemeKey<Color> AccentMuted = new("color.accent-muted");
+
+var theme = RayoThemes.Dark
+    .WithToken(Accent, new Color(80, 120, 220))
+    .WithComputedToken(
+        AccentMuted,
+        tokens => tokens.Get(Accent).WithAlpha(0.6f));
+
+Color muted = theme.GetToken(AccentMuted);
 ```
 
-## Quick API reference
+Keys are typed, missing or mismatched values produce descriptive exceptions,
+and circular computed-token references report the complete dependency path.
+Styles can resolve a token from each matching element's effective theme:
 
-| API | Function |
-|---|---|
-| `new Theme(name)` | Creates a theme with the light palette |
-| `new Theme(name, colors, buttons?)` | Creates a theme with a palette and optional button tokens |
-| `Theme.Colors` | Semantic palette active in the theme |
-| `Theme.Buttons` | Typed tokens for button variants |
-| `Theme.UseColors(colors)` | Replaces the palette and regenerates button tokens |
-| `Theme.UseButtons(buttons)` | Replaces the button tokens |
-| `Theme.Set<T>(name, value)` | Defines a free-form token |
-| `Theme.Get<T>(name, fallback)` | Reads a token or returns the fallback |
-| `Theme.TryGet<T>(name, out value)` | Attempts to read a typed token |
-| `Theme.Contains(name)` | Checks whether the theme contains a token |
-| `RayoThemes.Light` / `Dark` | Built-in themes |
-| `RayoThemes.Current` | Current global theme, with or without `UIApplication` |
-| `RayoThemes.UseTheme(theme)` | Portable entry point for changing the theme |
-| `UIApplication.ActiveTheme` | Application theme; initially `Light` |
-| `UIApplication.UseTheme(theme)` | Changes and propagates the theme |
-| `UIApplication.ThemeChanged` | Static event raised after a change |
+```csharp
+new Style<Button>(".accent")
+    .Set(Accent, (button, color) => button.Background = color);
+```
 
-## Current considerations
+## States and accessibility
 
-- `Theme` is mutable. Calling `Set()`, `UseColors()`, or `UseButtons()` does not
-  raise a notification by itself. If the instance is already active, call
-  `UseTheme(theme)` again to propagate its new values.
-- `UseColors()` regenerates every button token and replaces any previous
-  `ButtonTheme` customization.
-- Free-form tokens are identified by `string`. A read with the wrong type does
-  not match the theme override and may fall back to the `StyleTokens` value.
-- Styles whose values are resolved during `BuildStyles()` retain those values.
-  Use a setter that reads the token when the rule is applied for dynamic
-  resolution.
-- Automatic override tracking only covers properties the control previously
-  registered through `SetThemeValue()`.
+`StateMap<T>` resolves combinations of `Hovered`, `Pressed`, `Focused`,
+`Disabled`, `Selected`, `Checked` and `Error`. Exact combinations win; subset
+fallback uses the documented priority:
 
+```text
+disabled > error > pressed > selected/checked > hovered > focused > normal
+```
+
+`ThemePreferences` carries high-contrast, reduced-motion and text-scale
+preferences. `ThemeColorUtilities` provides WCAG contrast checks and OKLab
+lightness adjustment for perceptual color variants.
+
+Applications can use `ThemeMode.Light`, `Dark` or `System`:
+
+```csharp
+app.UseThemeMode(ThemeMode.System);
+```
+
+Desktop and Android hosts propagate color scheme, high contrast, reduced
+motion, text scale and density changes at runtime. Custom hosts can provide the
+same information explicitly:
+
+```csharp
+app.UseSystemPreferences(new HostThemePreferences
+{
+    PrefersDark = true,
+    ReduceMotion = true,
+    TextScale = 1.25f,
+    Density = ThemeDensity.Touch,
+});
+```
+
+## JSON and hot reload
+
+JSON themes use a versioned schema, support `basedOn`, typed tokens, component
+overrides and registered third-party extensions. Extension identifiers are
+provided through an explicit registry:
+
+```csharp
+var registry = new ThemeJsonRegistry()
+    .Register<ChartTheme>("chart");
+
+var json = ThemeJson.Serialize(theme, registry: registry);
+var restored = ThemeJson.Deserialize(json, registry: registry);
+```
+
+Hot reload retains the last valid theme and applies successful updates on the
+UI thread:
+
+```csharp
+app.WatchThemeFile(
+    "theme.json",
+    onLoadFailed: error => Console.Error.WriteLine(error),
+    registry: registry);
+```
+
+The DevTool Theme tab reads the effective theme from the connected process. If
+an element is selected, the inspector shows that element's scoped theme.
+
+## Resolution order
+
+The intended precedence is:
+
+1. Local values and bindings.
+2. Matching stylesheet declarations.
+3. Component-theme defaults.
+4. Semantic values from the effective `ThemeData`.
+5. Defensive control defaults.
+
+Controls implement `OnThemeApplied(ThemeData)` and call `SetThemeValue` for
+theme-managed properties. `UseThemeDefaults()` on supported controls clears
+their local overrides and reapplies the effective theme.

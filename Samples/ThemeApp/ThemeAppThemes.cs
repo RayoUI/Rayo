@@ -5,7 +5,7 @@ namespace ThemeApp;
 
 internal static class ThemeAppThemes
 {
-    public static Theme Neon { get; } = new("neon", new ColorPalette
+    public static ThemeData Neon { get; } = new("neon", new ColorScheme
     {
         Primary = new Color(0, 255, 194),
         PrimaryHover = new Color(51, 255, 211),
@@ -37,9 +37,9 @@ internal static class ThemeAppThemes
         OnDanger = Color.White,
         Info = new Color(69, 124, 255),
         OnInfo = Color.White,
-    });
+    }, brightness: ThemeBrightness.Dark);
 
-    public static Theme Obsidian { get; } = new("obsidian", new ColorPalette
+    public static ThemeData Obsidian { get; } = new("obsidian", new ColorScheme
     {
         Primary = new Color(196, 143, 255),
         PrimaryHover = new Color(214, 174, 255),
@@ -71,5 +71,5 @@ internal static class ThemeAppThemes
         OnDanger = Color.White,
         Info = new Color(111, 154, 232),
         OnInfo = new Color(8, 17, 32),
-    });
+    }, brightness: ThemeBrightness.Dark);
 }

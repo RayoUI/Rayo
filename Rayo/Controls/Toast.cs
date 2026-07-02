@@ -1,4 +1,4 @@
-﻿namespace Rayo.Controls;
+namespace Rayo.Controls;
 
 using Rayo.Core;
 using Rayo.Layout;
@@ -266,7 +266,7 @@ internal class ToastNotification : Frame
         _onDismiss = onDismiss;
 
         // Set colors based on type
-        var palette = RayoThemes.Current.Colors;
+        var palette = EffectiveTheme.Colors;
         var (bgColor, iconText, textColor) = type switch
         {
             ToastType.Info => (palette.Info, "ℹ", palette.OnInfo),

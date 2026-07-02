@@ -1,4 +1,4 @@
-﻿using Rayo;
+using Rayo;
 using Rayo.Controls;
 using Rayo.Core;
 using Rayo.Core.Platform;
@@ -17,28 +17,28 @@ public static class AppThemes
     // -----------------------------------------------------------------------
     // Token names (constants avoid typos across themes and rules)
     // -----------------------------------------------------------------------
-    public const string BgApp         = "--bg-app";
-    public const string BgCard        = "--bg-card";
-    public const string BgHeader      = "--bg-header";
-    public const string Primary       = "--color-primary";
-    public const string PrimaryHv     = "--color-primary-hover";
-    public const string PrimaryPr     = "--color-primary-pressed";
-    public const string Secondary     = "--color-secondary";
-    public const string Danger        = "--color-danger";
-    public const string DangerHv      = "--color-danger-hover";
-    public const string Success       = "--color-success";
-    public const string TextMain      = "--text-main";
-    public const string TextMuted     = "--text-muted";
-    public const string TextOnPrimary = "--text-on-primary";
-    public const string Radius        = "--radius";
-    public const string RadiusSm      = "--radius-sm";
+    public static readonly ThemeKey<Color> BgApp = new("bg.app");
+    public static readonly ThemeKey<Color> BgCard = new("bg.card");
+    public static readonly ThemeKey<Color> BgHeader = new("bg.header");
+    public static readonly ThemeKey<Color> Primary = new("color.primary");
+    public static readonly ThemeKey<Color> PrimaryHv = new("color.primary.hover");
+    public static readonly ThemeKey<Color> PrimaryPr = new("color.primary.pressed");
+    public static readonly ThemeKey<Color> Secondary = new("color.secondary");
+    public static readonly ThemeKey<Color> Danger = new("color.danger");
+    public static readonly ThemeKey<Color> DangerHv = new("color.danger.hover");
+    public static readonly ThemeKey<Color> Success = new("color.success");
+    public static readonly ThemeKey<Color> TextMain = new("text.main");
+    public static readonly ThemeKey<Color> TextMuted = new("text.muted");
+    public static readonly ThemeKey<Color> TextOnPrimary = new("text.on-primary");
+    public static readonly ThemeKey<float> Radius = new("radius");
+    public static readonly ThemeKey<float> RadiusSm = new("radius.small");
 
     // -----------------------------------------------------------------------
     // Dark theme
     // -----------------------------------------------------------------------
     public static StyleSheet Dark()
     {
-        var t = new StyleTokens()
+        var t = ThemeTokenSet.Empty
             .Set(BgApp,          new Color(22,  22,  30))
             .Set(BgCard,         new Color(34,  34,  46))
             .Set(BgHeader,       new Color(16,  16,  24))
@@ -63,7 +63,7 @@ public static class AppThemes
     // -----------------------------------------------------------------------
     public static StyleSheet Light()
     {
-        var t = new StyleTokens()
+        var t = ThemeTokenSet.Empty
             .Set(BgApp,          new Color(242, 242, 248))
             .Set(BgCard,         new Color(255, 255, 255))
             .Set(BgHeader,       new Color(225, 225, 235))
@@ -88,7 +88,7 @@ public static class AppThemes
     // -----------------------------------------------------------------------
     public static StyleSheet Neon()
     {
-        var t = new StyleTokens()
+        var t = ThemeTokenSet.Empty
             .Set(BgApp,          new Color(8,   8,   18))
             .Set(BgCard,         new Color(16,  16,  32))
             .Set(BgHeader,       new Color(5,   5,   15))
@@ -125,7 +125,7 @@ public static class AppThemes
     //   � Multi-class selector (.adv-btn.accent)
     //   � Important()          � override specificity
     // -----------------------------------------------------------------------
-    private static StyleSheet BuildSheet(StyleTokens t)
+    private static StyleSheet BuildSheet(ThemeTokenSet t)
     {
         // Shared base style � @extended by all primary button variants
         var btnBase = new Style<Button>()
@@ -330,15 +330,15 @@ public static class AppThemes
                 .BorderRadius(20f)
                 .Padding(new Thickness(14f, 8f))
                 .Background(t.Get<Color>(Secondary))
-                .When(ColorScheme.Dark,  s => s.Background(new Color(30,  30,  55)))
-                .When(ColorScheme.Light, s => s.Background(new Color(225, 230, 255))),
+                .When(PreferredColorScheme.Dark,  s => s.Background(new Color(30,  30,  55)))
+                .When(PreferredColorScheme.Light, s => s.Background(new Color(225, 230, 255))),
 
             new Style<Label>(".scheme-label")
                 .Foreground(t.Get<Color>(TextMuted))
                 .FontSize(13f)
                 .Text("Detecting�")
-                .When(ColorScheme.Dark,  s => s.Foreground(new Color(140, 160, 255)).Text("OS: Dark mode"))
-                .When(ColorScheme.Light, s => s.Foreground(new Color(40,  70,  200)).Text("OS: Light mode")),
+                .When(PreferredColorScheme.Dark,  s => s.Foreground(new Color(140, 160, 255)).Text("OS: Dark mode"))
+                .When(PreferredColorScheme.Light, s => s.Foreground(new Color(40,  70,  200)).Text("OS: Light mode")),
 
             // ----------------------------------------------------------------
             // SECTION 7 � Orientation

@@ -1,4 +1,4 @@
-﻿namespace Rayo.Controls;
+namespace Rayo.Controls;
 
 using Rayo.Core;
 using Rayo.Core.Assets;
@@ -184,9 +184,24 @@ public class Label : BorderView<Label>
         InitializeTheme();
     }
 
-    protected override void OnThemeApplied(Theme theme)
+    protected override void OnThemeApplied(ThemeData theme)
     {
         SetThemeValue(nameof(Foreground), (Brush)theme.Colors.OnSurface, value => Foreground = value);
+        SetThemeValue(
+            nameof(FontSize),
+            theme.Typography.Body.FontSize * theme.Preferences.TextScale,
+            value => FontSize = value);
+        SetThemeValue(
+            nameof(FontWeight),
+            theme.Typography.Body.FontWeight,
+            value => FontWeight = value);
+        if (!string.IsNullOrWhiteSpace(theme.Typography.Body.FontFamily))
+        {
+            SetThemeValue(
+                nameof(FontFamily),
+                theme.Typography.Body.FontFamily,
+                value => FontFamily = value);
+        }
     }
 
     public Label(string text) : this()

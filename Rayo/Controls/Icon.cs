@@ -1,4 +1,4 @@
-﻿namespace Rayo.Controls;
+namespace Rayo.Controls;
 
 using Rayo.Core;
 using Rayo.Reactivity;
@@ -53,7 +53,6 @@ public class Icon : View<Icon>
     public Icon()
     {
         InitializeTheme();
-        Size(DefaultIconSize);
     }
 
     public Icon(IconData iconData)
@@ -62,7 +61,7 @@ public class Icon : View<Icon>
         IconData = iconData;
     }
 
-    protected override void OnThemeApplied(Theme theme)
+    protected override void OnThemeApplied(ThemeData theme)
     {
         SetThemeValue(nameof(Color), (Brush)theme.Colors.OnSurface, value => Color = value);
     }

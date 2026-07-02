@@ -92,7 +92,7 @@ new Style<Button>().ChildOf<Frame>()   // direct child
 ```
 
 `StyleScope.Local` on a `UserControl` stops global styles from cascading into it.
-`StyleTokens`: `Set<T>(name, value)` / `Get<T>(name)`.
+`ThemeTokenSet`: immutable `Set(ThemeKey<T>, value)` / `Get(ThemeKey<T>)`.
 
 See `Help/STYLE_ENGINE.md` for current style-engine reference.
 

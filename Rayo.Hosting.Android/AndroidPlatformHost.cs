@@ -6,6 +6,9 @@ using Rayo.Core.Platform;
 using Android.Views;
 using Android.OS;
 using Android.Content.PM;
+using Android.Content.Res;
+using Android.Provider;
+using Rayo.Styling;
 
 namespace Rayo.Hosting.Android;
 
@@ -49,6 +52,7 @@ public abstract class AndroidPlatformHost : Activity, IPlatformHost
 
         // Detect and set screen density for proper scaling
         DetectScreenDensity();
+        ApplyHostThemePreferences();
 
         // Create configuration
         var windowConfig = CreateDefaultConfiguration();
@@ -108,7 +112,16 @@ public abstract class AndroidPlatformHost : Activity, IPlatformHost
     protected override void OnResume()
     {
         base.OnResume();
+        ApplyHostThemePreferences();
         _glSurfaceView?.OnResume();
+        _glSurfaceView?.ScheduleResumeRender();
+    }
+
+    public override void OnConfigurationChanged(Configuration newConfig)
+    {
+        base.OnConfigurationChanged(newConfig);
+        DetectScreenDensity();
+        ApplyHostThemePreferences();
         _glSurfaceView?.ScheduleResumeRender();
     }
 
@@ -168,6 +181,38 @@ public abstract class AndroidPlatformHost : Activity, IPlatformHost
             _capabilities.DpiScale = scaleFactor;
             Rayo.Rendering.SkiaSharp.SkiaSharpRenderer.SetDpiScaleFactor(scaleFactor);
         }
+    }
+
+    private void ApplyHostThemePreferences()
+    {
+        var configuration = Resources?.Configuration;
+        var prefersDark = configuration != null &&
+            (configuration.UiMode & UiMode.NightMask) == UiMode.NightYes;
+        var textScale = Math.Clamp(configuration?.FontScale ?? 1f, 0.5f, 3f);
+
+        var highContrast = Settings.Secure.GetInt(
+            ContentResolver,
+            "high_text_contrast_enabled",
+            0) != 0;
+
+        var animationScale = Settings.Global.GetFloat(
+            ContentResolver,
+            "animator_duration_scale",
+            1f);
+
+        var preferences = new HostThemePreferences
+        {
+            PrefersDark = prefersDark,
+            HighContrast = highContrast,
+            ReduceMotion = animationScale == 0f,
+            TextScale = textScale,
+            Density = ThemeDensity.Touch,
+        };
+
+        if (Rayo.Core.UIApplication.Current is { } app)
+            app.UseSystemPreferences(preferences);
+        else
+            RayoThemes.UseTheme(RayoThemes.ResolveSystem(preferences));
     }
 
     /// <summary>

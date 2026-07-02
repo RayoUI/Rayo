@@ -1,4 +1,4 @@
-﻿namespace Rayo.Controls;
+namespace Rayo.Controls;
 
 using System;
 using System.Threading;
@@ -292,13 +292,9 @@ public abstract class TextBox<T> : BorderView<T>, IInputHandler, IFocusable, Ray
     public TextBox()
     {
         InitializeTheme();
-        // Remove hardcoded size - let it size dynamically
-        Padding = new Thickness(10, 6, 10, 6);
-        BorderThickness = 2;
-        BorderRadius = new CornerRadius(4);
     }
 
-    protected override void OnThemeApplied(Theme theme)
+    protected override void OnThemeApplied(ThemeData theme)
     {
         var palette = theme.Colors;
         SetThemeValue(nameof(Background), (Brush)palette.Surface, value => Background = value);
@@ -311,12 +307,23 @@ public abstract class TextBox<T> : BorderView<T>, IInputHandler, IFocusable, Ray
             (Brush)GetSelectionBackground(theme),
             value => SelectionBackground = value);
         SetThemeValue(nameof(BorderBrush), (Brush)palette.Border, value => BorderBrush = value);
+        SetThemeValue(
+            nameof(FontSize),
+            theme.Typography.Body.FontSize * theme.Preferences.TextScale,
+            value => FontSize = value);
+        SetThemeValue(nameof(Padding), theme.ControlPadding, value => Padding = value);
+        SetThemeValue(
+            nameof(BorderThickness),
+            new Thickness(theme.Shapes.BorderThick),
+            value => BorderThickness = value);
+        SetThemeValue(nameof(BorderRadius), theme.Shapes.Medium, value => BorderRadius = value);
+        SetThemeValue(nameof(MinHeight), theme.ControlHeight, value => MinHeight = value);
     }
 
-    private static Color GetSelectionBackground(Theme theme)
+    private static Color GetSelectionBackground(ThemeData theme)
     {
         var palette = theme.Colors;
-        return theme == RayoThemes.Dark
+        return theme.Brightness is ThemeBrightness.Dark or ThemeBrightness.HighContrast
             ? palette.Primary.WithAlpha(0.42f)
             : palette.Primary.WithAlpha(0.20f);
     }

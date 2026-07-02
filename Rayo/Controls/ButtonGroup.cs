@@ -175,10 +175,9 @@ public class ButtonGroup : BorderCompositeView<ButtonGroup>
     {
         InitializeTheme();
         Cursor = CursorShape.Hand;
-        BorderThickness = 1f;
     }
 
-    protected override void OnThemeApplied(Theme theme)
+    protected override void OnThemeApplied(ThemeData theme)
     {
         var palette = theme.Colors;
         SetThemeValue(nameof(Background), (Brush)palette.Surface, value => Background = value);
@@ -493,9 +492,18 @@ public class ButtonGroup : BorderCompositeView<ButtonGroup>
 
         public override void Render(IRenderer renderer)
         {
-            Brush background = GetBackground();
-            Brush foreground = _isSelected ? _owner.SelectedTextColor : _owner.TextColor;
-            Brush border = _isSelected ? _owner.SelectedBorderBrush : _owner.BorderBrush;
+            var state = GetControlState();
+            Brush background = new StateMap<Brush>(_owner.Background)
+                .With(ControlState.Hovered, _owner.HoverBackground)
+                .With(ControlState.Pressed, _owner.PressedBackground)
+                .With(ControlState.Selected, _owner.SelectedBackground)
+                .Resolve(state);
+            Brush foreground = new StateMap<Brush>(_owner.TextColor)
+                .With(ControlState.Selected, _owner.SelectedTextColor)
+                .Resolve(state);
+            Brush border = new StateMap<Brush>(_owner.BorderBrush)
+                .With(ControlState.Selected, _owner.SelectedBorderBrush)
+                .Resolve(state);
 
             var path = VectorPath.RoundedRectangle(
                 ComputedX,
@@ -524,24 +532,13 @@ public class ButtonGroup : BorderCompositeView<ButtonGroup>
             }
         }
 
-        private Brush GetBackground()
+        private ControlState GetControlState()
         {
-            if (_isSelected)
-            {
-                return _owner.SelectedBackground;
-            }
-
-            if (IsPressed)
-            {
-                return _owner.PressedBackground;
-            }
-
-            if (IsHovered)
-            {
-                return _owner.HoverBackground;
-            }
-
-            return _owner.Background;
+            var state = ControlState.Normal;
+            if (_isSelected) state |= ControlState.Selected;
+            if (IsHovered) state |= ControlState.Hovered;
+            if (IsPressed) state |= ControlState.Pressed;
+            return state;
         }
 
         private void UpdateZIndex()

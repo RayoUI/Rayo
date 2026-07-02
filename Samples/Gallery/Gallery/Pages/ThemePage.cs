@@ -9,11 +9,11 @@ namespace Gallery.Pages;
 
 public sealed class ThemePage : Component
 {
-    private readonly Action<Theme> _applyTheme;
+    private readonly Action<ThemeData> _applyTheme;
 
-    public static Theme BrandTheme { get; } = CreateBrandTheme();
+    public static ThemeData BrandTheme { get; } = CreateBrandTheme();
 
-    public ThemePage(Action<Theme> applyTheme)
+    public ThemePage(Action<ThemeData> applyTheme)
     {
         _applyTheme = applyTheme;
     }
@@ -110,7 +110,7 @@ public sealed class ThemePage : Component
             );
     }
 
-    private Button CreateThemeButton(string text, Theme theme, ButtonVariant variant)
+    private Button CreateThemeButton(string text, ThemeData theme, ButtonVariant variant)
     {
         return new Button()
             .Text(text)
@@ -131,8 +131,8 @@ public sealed class ThemePage : Component
 
     private static VisualElement CreateSwatch(
         string name,
-        Func<ColorPalette, Color> background,
-        Func<ColorPalette, Color> foreground)
+        Func<ColorScheme, Color> background,
+        Func<ColorScheme, Color> foreground)
     {
         return new PaletteFrame(background)
             .Width(92)
@@ -147,9 +147,9 @@ public sealed class ThemePage : Component
             );
     }
 
-    private static Theme CreateBrandTheme()
+    private static ThemeData CreateBrandTheme()
     {
-        var palette = ColorPalettes.Dark with
+        var palette = ColorSchemes.Dark with
         {
             Primary = new Color(236, 72, 153),
             PrimaryHover = new Color(219, 39, 119),
@@ -162,7 +162,7 @@ public sealed class ThemePage : Component
             Focus = new Color(244, 114, 182),
         };
 
-        var buttons = ButtonTheme.FromPalette(palette);
+        var buttons = ButtonTheme.FromScheme(palette);
         buttons = buttons with
         {
             Ghost = buttons.Ghost with
@@ -172,6 +172,10 @@ public sealed class ThemePage : Component
             },
         };
 
-        return new Theme("rayo-brand", palette, buttons);
+        return new ThemeData(
+            "rayo-brand",
+            palette,
+            buttons,
+            ThemeBrightness.Dark);
     }
 }

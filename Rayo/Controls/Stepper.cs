@@ -1,4 +1,4 @@
-﻿namespace Rayo.Controls;
+namespace Rayo.Controls;
 
 using Rayo.Core;
 using Rayo.Layout;
@@ -165,18 +165,10 @@ public class Stepper : BorderCompositeView<Stepper>
     public Stepper()
     {
         InitializeTheme();
-        Width = 140;
-        Height = 36;
-        BorderThickness = 1;
         BuildComponents();
-
-        if (_container != null)
-        {
-            AddChild(_container);
-        }
     }
 
-    protected override void OnThemeApplied(Theme theme)
+    protected override void OnThemeApplied(ThemeData theme)
     {
         var palette = theme.Colors;
         SetThemeValue(nameof(Background), (Brush)palette.Surface, value => Background = value);
@@ -193,6 +185,7 @@ public class Stepper : BorderCompositeView<Stepper>
             _incrementButton.TextColor = TextColor;
         if (_container != null)
             _container.Background = Background;
+
         UpdateButtonStates();
     }
 

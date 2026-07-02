@@ -1,4 +1,4 @@
-﻿namespace Rayo.Controls;
+namespace Rayo.Controls;
 
 /// <summary>
 /// Librería de iconos predefinidos inspirados en Material Design Icons.
@@ -798,7 +798,7 @@ public static class Icons
     /// <summary>
     /// Icono de paleta de colores
     /// </summary>
-    public static IconData ColorPalette => new IconData("colorPalette")
+    public static IconData ColorScheme => new IconData("colorPalette")
         .AddCircle(12f, 12f, 10f, filled: false, strokeWidth: 2f)
         .AddCircle(8f, 10f, 1.5f, filled: true)
         .AddCircle(12f, 8f, 1.5f, filled: true)

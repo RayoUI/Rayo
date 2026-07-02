@@ -20,16 +20,16 @@ public static class OverlayManager
     public static float WindowWidth => _windowWidth;
     public static float WindowHeight => _windowHeight;
 
-    public static void AddOverlay(VisualElement overlay)
+    public static void AddOverlay(VisualElement overlay, VisualElement? owner = null)
     {
         var app = UIApplication.Current;
         if (app != null)
         {
-            app.AddOverlay(overlay);
+            app.AddOverlay(overlay, owner);
             return;
         }
 
-        _currentTree?.AddOverlay(overlay);
+        _currentTree?.AddOverlay(overlay, owner);
     }
 
     public static void RemoveOverlay(VisualElement overlay)

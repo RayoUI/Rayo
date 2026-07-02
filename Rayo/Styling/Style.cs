@@ -1,4 +1,4 @@
-﻿using Rayo.Core;
+using Rayo.Core;
 using Rayo.Core.Platform;
 
 namespace Rayo.Styling;
@@ -21,7 +21,7 @@ namespace Rayo.Styling;
 ///   <item><see cref="When(Breakpoint,Action{Style{T}})"/>     — named window-width tiers</item>
 ///   <item><see cref="When(Func{float,bool},Action{Style{T}})"/> — custom width predicate</item>
 ///   <item><see cref="When(PlatformType,Action{Style{T}})"/>   — OS platform</item>
-///   <item><see cref="When(ColorScheme,Action{Style{T}})"/>    — light / dark OS theme</item>
+///   <item><see cref="When(PreferredColorScheme,Action{Style{T}})"/> — light / dark OS theme</item>
 ///   <item><see cref="When(Orientation,Action{Style{T}})"/>    — portrait / landscape</item>
 ///   <item><see cref="When(ScreenDensity,Action{Style{T}})"/>  — display DPI tier</item>
 /// </list>
@@ -96,7 +96,7 @@ public sealed class Style<T> : StyleRule where T : VisualElement
     // ------------------------------------------------------------------
     // ColorScheme-conditional setters
     // ------------------------------------------------------------------
-    private List<(ColorScheme Scheme, List<Action<T>> Setters)>? _colorSchemeBlocks;
+    private List<(PreferredColorScheme Scheme, List<Action<T>> Setters)>? _colorSchemeBlocks;
 
     // ------------------------------------------------------------------
     // Orientation-conditional setters
@@ -244,6 +244,7 @@ public sealed class Style<T> : StyleRule where T : VisualElement
     public override void Apply(VisualElement element)
     {
         if (element is not T typed) return;
+        using var valueOrigin = VisualElement.EnterValueOrigin(PropertyValueOrigin.Style);
 
         // 1. Base setters (always)
         foreach (var setter in _setters)
@@ -285,7 +286,7 @@ public sealed class Style<T> : StyleRule where T : VisualElement
         // 6. ColorScheme-conditional setters
         if (_colorSchemeBlocks != null)
         {
-            var current = ColorSchemeHelper.Current;
+            var current = PreferredColorSchemeHelper.Current;
             foreach (var (scheme, setters) in _colorSchemeBlocks)
                 if (scheme == current)
                     foreach (var setter in setters) setter(typed);
@@ -318,6 +319,19 @@ public sealed class Style<T> : StyleRule where T : VisualElement
     public Style<T> Set(Action<T> setter)
     {
         _setters.Add(setter);
+        return this;
+    }
+
+    /// <summary>
+    /// Adds a setter whose value is resolved from each element's effective theme.
+    /// </summary>
+    public Style<T> Set<TValue>(
+        ThemeKey<TValue> key,
+        Action<T, TValue> setter)
+    {
+        ArgumentNullException.ThrowIfNull(key);
+        ArgumentNullException.ThrowIfNull(setter);
+        _setters.Add(element => setter(element, element.EffectiveTheme.GetToken(key)));
         return this;
     }
 
@@ -385,7 +399,7 @@ public sealed class Style<T> : StyleRule where T : VisualElement
     /// Adds conditional setters applied when the OS color-scheme preference matches
     /// <paramref name="scheme"/> (Light or Dark).
     /// </summary>
-    public Style<T> When(ColorScheme scheme, Action<Style<T>> configure)
+    public Style<T> When(PreferredColorScheme scheme, Action<Style<T>> configure)
     {
         _colorSchemeBlocks ??= new();
         var block = new Style<T>();

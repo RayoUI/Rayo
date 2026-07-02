@@ -66,9 +66,6 @@ public class PathPicker : BorderCompositeView<PathPicker>, IPointerHandler, IGlo
     public PathPicker()
     {
         InitializeTheme();
-        Width = 320;
-        Height = 44;
-        BorderThickness = 1;
         CurrentDirectory = ResolveInitialDirectory(null);
         BuildComponents();
 
@@ -270,7 +267,7 @@ public class PathPicker : BorderCompositeView<PathPicker>, IPointerHandler, IGlo
 
     public event Action? SelectionCanceled;
 
-    protected override void OnThemeApplied(Theme theme)
+    protected override void OnThemeApplied(ThemeData theme)
     {
         var palette = theme.Colors;
         SetThemeValue(nameof(Background), (Brush)palette.Surface, value => Background = value);
@@ -333,7 +330,7 @@ public class PathPicker : BorderCompositeView<PathPicker>, IPointerHandler, IGlo
         ClearLoadedEntries();
         _dialogOverlay = BuildDialogOverlay();
 
-        OverlayManager.AddOverlay(_dialogOverlay);
+        OverlayManager.AddOverlay(_dialogOverlay, this);
         OverlayManager.EventManager?.RegisterGlobalPointerHandler(this);
     }
 
@@ -487,8 +484,8 @@ public class PathPicker : BorderCompositeView<PathPicker>, IPointerHandler, IGlo
         _dialogCard = new Frame()
             .Width(620)
             .Height(560)
-            .Background(RayoThemes.Current.Colors.Surface)
-            .BorderBrush(RayoThemes.Current.Colors.Border)
+            .Background(EffectiveTheme.Colors.Surface)
+            .BorderBrush(EffectiveTheme.Colors.Border)
             .BorderThickness(1)
             .BorderRadius(new CornerRadius(14))
             .Padding(new Thickness(16))
@@ -515,7 +512,7 @@ public class PathPicker : BorderCompositeView<PathPicker>, IPointerHandler, IGlo
 
         var pathFrame = new Frame()
             .Height(42)
-            .Background(RayoThemes.Current.Colors.SurfaceHover)
+            .Background(EffectiveTheme.Colors.SurfaceHover)
             .BorderRadius(new CornerRadius(10))
             .Padding(new Thickness(12, 8, 12, 8))
             .HorizontalAlignment(HorizontalAlignment.Stretch)
@@ -529,8 +526,8 @@ public class PathPicker : BorderCompositeView<PathPicker>, IPointerHandler, IGlo
             .Foreground(string.IsNullOrEmpty(statusText) ? Color.Transparent : PlaceholderColor);
 
         _listFrame = new Frame()
-            .Background(RayoThemes.Current.Colors.Surface)
-            .BorderBrush(RayoThemes.Current.Colors.Border)
+            .Background(EffectiveTheme.Colors.Surface)
+            .BorderBrush(EffectiveTheme.Colors.Border)
             .BorderThickness(1)
             .BorderRadius(new CornerRadius(12))
             .Padding(new Thickness(8))
@@ -729,7 +726,7 @@ public class PathPicker : BorderCompositeView<PathPicker>, IPointerHandler, IGlo
             ItemHeight = 38,
             ItemSpacing = 4,
             ItemBackground = Color.Transparent,
-            ItemHoverBackground = RayoThemes.Current.Colors.SurfaceHover,
+            ItemHoverBackground = EffectiveTheme.Colors.SurfaceHover,
             ItemSelectedBackground = GetSelectedEntryBackground(),
             ItemFactory = CreateEntryRow,
             ItemBinder = BindEntryRow,
@@ -847,8 +844,8 @@ public class PathPicker : BorderCompositeView<PathPicker>, IPointerHandler, IGlo
         _fileNameEntry = new Entry(fileName)
         {
             Height = 34,
-            Background = RayoThemes.Current.Colors.SurfaceHover,
-            BorderBrush = RayoThemes.Current.Colors.Border,
+            Background = EffectiveTheme.Colors.SurfaceHover,
+            BorderBrush = EffectiveTheme.Colors.Border,
             BorderThickness = 1,
             TextColor = TextColor,
             Placeholder = "File name",
@@ -951,7 +948,7 @@ public class PathPicker : BorderCompositeView<PathPicker>, IPointerHandler, IGlo
         row.NormalBackground = isSelected || IsPendingSelection(entry.Path)
             ? GetSelectedEntryBackground()
             : Color.Transparent;
-        row.HoverBackground = RayoThemes.Current.Colors.SurfaceHover;
+        row.HoverBackground = EffectiveTheme.Colors.SurfaceHover;
         row.PressedBackground = AccentColor.PrimaryColor.WithAlpha(0.45f);
         row.OnTap(() => HandleEntryTap(entry));
     }

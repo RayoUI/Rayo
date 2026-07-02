@@ -1,4 +1,4 @@
-﻿namespace Rayo.Controls;
+namespace Rayo.Controls;
 
 using Rayo.Core;
 using Rayo.Core.Input;
@@ -795,12 +795,11 @@ public class TreeView : BorderCompositeView<TreeView>
     public TreeView()
     {
         InitializeTheme();
-        BorderThickness = 1;
         BuildComponents();
         ApplyStyles();
     }
 
-    protected override void OnThemeApplied(Theme theme)
+    protected override void OnThemeApplied(ThemeData theme)
     {
         var palette = theme.Colors;
         SetThemeValue(nameof(Background), (Brush)palette.Surface, value => Background = value);
