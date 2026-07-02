@@ -305,6 +305,81 @@ public sealed class ThemeScopeTests
         Assert.Equal(expandedContentWidth, content.ComputedWidth);
     }
 
+    [Fact]
+    public void Mounted_sidebar_items_keep_their_geometry_after_application_theme_change()
+    {
+        using var app = new UIApplication();
+        app.UseTheme(RayoThemes.Light);
+        var sidebar = new SideBar()
+            .ExpandedWidth(180)
+            .AddItem("Home", "H")
+            .AddItem("Themes", "T")
+            .AddItem("Settings", "S")
+            .SelectedKey("Home");
+        var content = new Frame
+        {
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+        };
+        var layout = new HStack
+        {
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch,
+        };
+        layout.AddChild(sidebar);
+        layout.AddChild(content);
+        app.Tree.SetRoot(new Frame(layout)
+        {
+            Width = 440,
+            Height = 240,
+        });
+        app.Tree.Update(440, 240);
+        var lightLabels = Descendants(sidebar)
+            .OfType<Label>()
+            .Where(label => label.Text is "Home" or "Themes" or "Settings")
+            .ToArray();
+
+        app.UseTheme(RayoThemes.Dark);
+        app.Tree.Update(440, 240);
+
+        var darkLabels = Descendants(sidebar)
+            .OfType<Label>()
+            .Where(label => label.Text is "Home" or "Themes" or "Settings")
+            .ToArray();
+        Assert.Equal(lightLabels, darkLabels);
+        Assert.All(darkLabels, label =>
+        {
+            Assert.True(label.ComputedWidth > 0);
+            Assert.True(label.ComputedHeight > 0);
+        });
+        Assert.Equal(RayoThemes.Dark.Colors.OnPrimary, darkLabels[0].Foreground.PrimaryColor);
+        Assert.Equal(RayoThemes.Dark.Colors.OnSurface, darkLabels[1].Foreground.PrimaryColor);
+        Assert.Equal(RayoThemes.Dark.Colors.OnSurface, darkLabels[2].Foreground.PrimaryColor);
+
+        sidebar.IsCollapsed = true;
+        app.Tree.Update(440, 240);
+        var darkIcons = Descendants(sidebar)
+            .OfType<Label>()
+            .Where(label => label.Text is "H" or "T" or "S")
+            .ToArray();
+
+        app.UseTheme(RayoThemes.Light);
+        app.Tree.Update(440, 240);
+
+        var lightIcons = Descendants(sidebar)
+            .OfType<Label>()
+            .Where(label => label.Text is "H" or "T" or "S")
+            .ToArray();
+        Assert.Equal(darkIcons, lightIcons);
+        Assert.All(lightIcons, icon =>
+        {
+            Assert.True(icon.ComputedWidth > 0);
+            Assert.True(icon.ComputedHeight > 0);
+        });
+        Assert.Equal(RayoThemes.Light.Colors.OnPrimary, lightIcons[0].Foreground.PrimaryColor);
+        Assert.Equal(RayoThemes.Light.Colors.OnSurface, lightIcons[1].Foreground.PrimaryColor);
+        Assert.Equal(RayoThemes.Light.Colors.OnSurface, lightIcons[2].Foreground.PrimaryColor);
+    }
+
     private static IEnumerable<VisualElement> Descendants(VisualElement root)
     {
         var getChildren = typeof(VisualElement).GetMethod(

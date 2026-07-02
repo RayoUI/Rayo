@@ -113,7 +113,7 @@ public class SideBar : BorderCompositeView<SideBar>
     public Rendering.Brushes.Brush ItemBackground
     {
         get => field;
-        set => this.SetProperty(ref field, value, RebuildItems);
+        set => this.SetProperty(ref field, value, RefreshItemVisuals);
     } = Color.Transparent;
     #endregion
 
@@ -121,7 +121,7 @@ public class SideBar : BorderCompositeView<SideBar>
     public Brush ItemHoverColor
     {
         get => field;
-        set => this.SetProperty(ref field, value, RebuildItems);
+        set => this.SetProperty(ref field, value, RefreshItemVisuals);
     } = Color.Transparent;
     #endregion
 
@@ -129,7 +129,7 @@ public class SideBar : BorderCompositeView<SideBar>
     public Brush ItemSelectedColor
     {
         get => field;
-        set => this.SetProperty(ref field, value, RebuildItems);
+        set => this.SetProperty(ref field, value, RefreshItemVisuals);
     } = Color.Transparent;
     #endregion
 
@@ -137,7 +137,7 @@ public class SideBar : BorderCompositeView<SideBar>
     public Brush ItemTextColor
     {
         get => field;
-        set => this.SetProperty(ref field, value, RebuildItems);
+        set => this.SetProperty(ref field, value, RefreshItemVisuals);
     } = Color.Transparent;
     #endregion
 
@@ -145,7 +145,7 @@ public class SideBar : BorderCompositeView<SideBar>
     public Brush ItemSelectedTextColor
     {
         get => field;
-        set => this.SetProperty(ref field, value, RebuildItems);
+        set => this.SetProperty(ref field, value, RefreshItemVisuals);
     } = Color.Transparent;
     #endregion
 
@@ -153,7 +153,7 @@ public class SideBar : BorderCompositeView<SideBar>
     public Brush ItemIconColor
     {
         get => field;
-        set => this.SetProperty(ref field, value, RebuildItems);
+        set => this.SetProperty(ref field, value, RefreshItemVisuals);
     } = Color.Transparent;
     #endregion
 
@@ -161,7 +161,7 @@ public class SideBar : BorderCompositeView<SideBar>
     public Brush ItemSelectedIconColor
     {
         get => field;
-        set => this.SetProperty(ref field, value, RebuildItems);
+        set => this.SetProperty(ref field, value, RefreshItemVisuals);
     } = Color.Transparent;
     #endregion
 
@@ -210,7 +210,7 @@ public class SideBar : BorderCompositeView<SideBar>
             if (this.SetProperty(ref field, value))
             {
                 SelectionChanged?.Invoke(field);
-                RebuildItems();
+                RefreshItemVisuals();
             }
         }
     } = string.Empty;
