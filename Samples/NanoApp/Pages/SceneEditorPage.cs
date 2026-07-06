@@ -67,6 +67,11 @@ public sealed class SceneEditorPage : Component
         return workspace;
     }
 
+    public void OpenEntityDrawer()
+    {
+        _entityDrawer.Open();
+    }
+
     private VisualElement BuildEntityPanel()
     {
         return new Frame()

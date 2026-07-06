@@ -536,23 +536,45 @@ public class NodeEditorCanvas : CompositeView<NodeEditorCanvas>,
         UpdateNodeTransforms();
     }
 
+    protected override bool RendersChildrenManually => true;
+
     public override void Render(IRenderer renderer)
     {
-        renderer.DrawRect(
+        renderer.PushScissor(
             ComputedX,
             ComputedY,
             ComputedWidth,
-            ComputedHeight,
-            new Color(22, 22, 28));
-        RenderGrid(renderer);
-
-        // Drop target highlight
-        if (IsDropTargetActive)
+            ComputedHeight);
+        try
         {
-            renderer.DrawRectOutline(
-                ComputedX + 2, ComputedY + 2,
-                ComputedWidth - 4, ComputedHeight - 4,
-                2f, new Color(80, 140, 255, 120));
+            renderer.DrawRect(
+                ComputedX,
+                ComputedY,
+                ComputedWidth,
+                ComputedHeight,
+                new Color(22, 22, 28));
+            RenderGrid(renderer);
+
+            _overlay.Render(renderer);
+            foreach (var node in _nodeControls.OrderBy(node => node.ZIndex))
+            {
+                if (node.IsVisible)
+                {
+                    node.Render(renderer);
+                }
+            }
+
+            if (IsDropTargetActive)
+            {
+                renderer.DrawRectOutline(
+                    ComputedX + 2, ComputedY + 2,
+                    ComputedWidth - 4, ComputedHeight - 4,
+                    2f, new Color(80, 140, 255, 120));
+            }
+        }
+        finally
+        {
+            renderer.PopScissor();
         }
     }
 

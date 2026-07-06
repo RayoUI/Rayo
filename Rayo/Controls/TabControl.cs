@@ -75,6 +75,7 @@ public class TabControl : CompositeView<TabControl>, IFrameAnimation
     private VisualElement _headerStrip = null!;
     private TabHeadersScrollView _headerScroll = null!;
     private OverlayPanel _headerOverlay = null!;
+    private Grid _headerHost = null!;
     private Frame _contentFrame = null!;
     private TabScrollButton _scrollBackwardButton = null!;
     private TabScrollButton _scrollForwardButton = null!;
@@ -169,6 +170,36 @@ public class TabControl : CompositeView<TabControl>, IFrameAnimation
                 _root.Background = value;
         });
     } = Color.Transparent;
+    #endregion
+
+    #region HeaderBackground
+    public Brush HeaderBackground
+    {
+        get => field;
+        set => this.SetProperty(ref field, value, () =>
+        {
+            if (_headerHost != null)
+                _headerHost.Background = value;
+        });
+    } = Color.Transparent;
+    #endregion
+
+    #region HeaderPadding
+    [LayoutProperty]
+    public Thickness HeaderPadding
+    {
+        get => field;
+        set => this.SetProperty(ref field, value, RebuildLayout);
+    } = new Thickness(0);
+    #endregion
+
+    #region HeaderContentSpacing
+    [LayoutProperty]
+    public float HeaderContentSpacing
+    {
+        get => field;
+        set => this.SetProperty(ref field, value, RebuildLayout);
+    } = 0f;
     #endregion
 
     #region TabHeight
@@ -294,6 +325,30 @@ public class TabControl : CompositeView<TabControl>, IFrameAnimation
     }
     #endregion
 
+    #region Header slots
+    /// <summary>
+    /// Optional factory for fixed content before the scrollable tab strip.
+    /// For vertical tab positions this slot is placed above the tabs.
+    /// </summary>
+    [NotFluent]
+    public Func<VisualElement>? HeaderStartTemplate
+    {
+        get => field;
+        set => this.SetProperty(ref field, value, RebuildLayout);
+    }
+
+    /// <summary>
+    /// Optional factory for fixed content after the scrollable tab strip.
+    /// For vertical tab positions this slot is placed below the tabs.
+    /// </summary>
+    [NotFluent]
+    public Func<VisualElement>? HeaderEndTemplate
+    {
+        get => field;
+        set => this.SetProperty(ref field, value, RebuildLayout);
+    }
+    #endregion
+
     public event Action<int>? TabChanged;
 
     public event Action<int, int>? TabReordered;
@@ -324,6 +379,7 @@ public class TabControl : CompositeView<TabControl>, IFrameAnimation
             SetThemeValue(nameof(TabAccentColor), palette.Primary, value => TabAccentColor = value);
             SetThemeValue(nameof(TabDropIndicatorColor), palette.Primary, value => TabDropIndicatorColor = value);
             SetThemeValue(nameof(ContentBackground), (Brush)palette.Surface, value => ContentBackground = value);
+            SetThemeValue(nameof(HeaderBackground), (Brush)palette.SurfaceHover, value => HeaderBackground = value);
         }
         finally
         {
@@ -364,6 +420,24 @@ public class TabControl : CompositeView<TabControl>, IFrameAnimation
     public TabControl WithTabHeaderTemplate(Func<TabItem, int, bool, VisualElement> factory)
     {
         TabHeaderTemplate = factory;
+        return this;
+    }
+
+    /// <summary>
+    /// Sets a factory for fixed content before the scrollable tabs.
+    /// </summary>
+    public TabControl HeaderStart(Func<VisualElement> factory)
+    {
+        HeaderStartTemplate = factory;
+        return this;
+    }
+
+    /// <summary>
+    /// Sets a factory for fixed content after the scrollable tabs.
+    /// </summary>
+    public TabControl HeaderEnd(Func<VisualElement> factory)
+    {
+        HeaderEndTemplate = factory;
         return this;
     }
 
@@ -538,6 +612,8 @@ public class TabControl : CompositeView<TabControl>, IFrameAnimation
 
     private void CreateVisualTree()
     {
+        _contentFrame?.ClearContent();
+        _headerHost?.ClearChildren();
         ClearChildren();
 
         bool isHorizontal = IsHorizontalPosition();
@@ -609,6 +685,8 @@ public class TabControl : CompositeView<TabControl>, IFrameAnimation
         _headerOverlay.AddChild(_scrollBackwardButton);
         _headerOverlay.AddChild(_scrollForwardButton);
 
+        _headerHost = BuildHeaderHost(isHorizontal, headerCrossSize);
+
         _contentFrame = new Frame
         {
             Background = ContentBackground,
@@ -632,28 +710,88 @@ public class TabControl : CompositeView<TabControl>, IFrameAnimation
                 .Spacing(0)
                 .HorizontalAlignment(HorizontalAlignment.Stretch)
                 .VerticalAlignment(VerticalAlignment.Stretch)
-                .Children(_headerOverlay, _contentFrame),
+                .Children(_headerHost, _contentFrame),
             TabPosition.Bottom => new VStack()
                 .Spacing(0)
                 .HorizontalAlignment(HorizontalAlignment.Stretch)
                 .VerticalAlignment(VerticalAlignment.Stretch)
-                .Children(_contentFrame, _headerOverlay),
+                .Children(_contentFrame, _headerHost),
             TabPosition.Left => new HStack()
                 .Spacing(0)
                 .HorizontalAlignment(HorizontalAlignment.Stretch)
                 .VerticalAlignment(VerticalAlignment.Stretch)
-                .Children(_headerOverlay, _contentFrame),
+                .Children(_headerHost, _contentFrame),
             TabPosition.Right => new HStack()
                 .Spacing(0)
                 .HorizontalAlignment(HorizontalAlignment.Stretch)
                 .VerticalAlignment(VerticalAlignment.Stretch)
-                .Children(_contentFrame, _headerOverlay),
+                .Children(_contentFrame, _headerHost),
             _ => new VStack()
                 .Spacing(0)
                 .HorizontalAlignment(HorizontalAlignment.Stretch)
                 .VerticalAlignment(VerticalAlignment.Stretch)
-                .Children(_headerOverlay, _contentFrame)
+                .Children(_headerHost, _contentFrame)
         };
+    }
+
+    private Grid BuildHeaderHost(bool isHorizontal, float headerCrossSize)
+    {
+        var start = HeaderStartTemplate?.Invoke();
+        var end = HeaderEndTemplate?.Invoke();
+        var host = new Grid
+        {
+            Background = HeaderBackground,
+            Padding = HeaderPadding,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch
+        };
+
+        if (isHorizontal)
+        {
+            host.Height = headerCrossSize + HeaderPadding.Vertical;
+            host.RowDefinitions.Add(GridLength.Star);
+            host.ColumnSpacing = HeaderContentSpacing;
+
+            int column = 0;
+            if (start != null)
+            {
+                host.ColumnDefinitions.Add(GridLength.Auto);
+                host.AddChild(start, 0, column++);
+            }
+
+            host.ColumnDefinitions.Add(GridLength.Star);
+            host.AddChild(_headerOverlay, 0, column++);
+
+            if (end != null)
+            {
+                host.ColumnDefinitions.Add(GridLength.Auto);
+                host.AddChild(end, 0, column);
+            }
+        }
+        else
+        {
+            host.Width = headerCrossSize + HeaderPadding.Horizontal;
+            host.ColumnDefinitions.Add(GridLength.Star);
+            host.RowSpacing = HeaderContentSpacing;
+
+            int row = 0;
+            if (start != null)
+            {
+                host.RowDefinitions.Add(GridLength.Auto);
+                host.AddChild(start, row++, 0);
+            }
+
+            host.RowDefinitions.Add(GridLength.Star);
+            host.AddChild(_headerOverlay, row++, 0);
+
+            if (end != null)
+            {
+                host.RowDefinitions.Add(GridLength.Auto);
+                host.AddChild(end, row, 0);
+            }
+        }
+
+        return host;
     }
 
     private void RebuildLayout()
