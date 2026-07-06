@@ -485,10 +485,9 @@ public class NodeEditorCanvas : CompositeView<NodeEditorCanvas>,
 
     private void OnConnectionReleased(PortModel sourcePort, float mx, float my)
     {
-        // Find a compatible port at the release position
-        var targetPort = FindPortAt(mx, my);
+        var targetPort = FindCompatiblePortAt(sourcePort, mx, my);
 
-        if (targetPort != null && targetPort != sourcePort && sourcePort.CanConnectTo(targetPort))
+        if (targetPort != null)
         {
             PortModel output = sourcePort.Direction == PortDirection.Output ? sourcePort : targetPort;
             PortModel input  = sourcePort.Direction == PortDirection.Input  ? sourcePort : targetPort;
@@ -506,16 +505,32 @@ public class NodeEditorCanvas : CompositeView<NodeEditorCanvas>,
         _overlay.CancelPendingConnection();
     }
 
-    /// <summary>Searches all node controls for a port within hit-test range of (wx, wy).</summary>
-    private PortModel FindPortAt(float wx, float wy)
+    /// <summary>Returns the closest compatible port within hit-test range.</summary>
+    private PortModel FindCompatiblePortAt(
+        PortModel sourcePort,
+        float wx,
+        float wy)
     {
+        PortModel closestPort = null;
+        float closestDistanceSquared = float.MaxValue;
+
         foreach (var node in _nodeControls)
         {
-            var port = node.HitTestPort(wx, wy, 14f / _zoom);
-            if (port != null)
-                return port;
+            var port = node.HitTestCompatiblePort(
+                sourcePort,
+                wx,
+                wy,
+                14f / _zoom,
+                out var distanceSquared);
+
+            if (port != null && distanceSquared < closestDistanceSquared)
+            {
+                closestPort = port;
+                closestDistanceSquared = distanceSquared;
+            }
         }
-        return null;
+
+        return closestPort;
     }
 
     // -------------------------------------------------------------------------

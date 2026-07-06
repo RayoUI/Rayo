@@ -32,8 +32,11 @@ public sealed class NodeEditorTouchTests
         Assert.Equal(110, node.Y);
     }
 
-    [Fact]
-    public void Touch_can_connect_compatible_ports()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Touch_can_connect_value_and_math_ports_in_both_directions(
+        bool startFromMathInput)
     {
         var graph = new NodeGraph();
         graph.AddNode(NodeFactory.Create(NodeTypeId.NumberValue, 60, 80));
@@ -42,21 +45,27 @@ public sealed class NodeEditorTouchTests
         tree.Update(800, 500);
 
         var output = graph.Nodes[0].OutputPorts.Single();
-        var input = graph.Nodes[1].InputPorts.First();
-        var start = new Vector2(output.WorldX, output.WorldY);
-        var end = new Vector2(input.WorldX, input.WorldY);
+        var input = graph.Nodes[1].InputPorts.Last();
+        var outputPoint = new Vector2(output.WorldX, output.WorldY);
+        var inputPoint = new Vector2(input.WorldX, input.WorldY);
+        var start = startFromMathInput ? inputPoint : outputPoint;
+        var end = startFromMathInput ? outputPoint : inputPoint;
 
         Assert.IsType<ScriptNode>(Hit(tree, start));
         Assert.IsType<ScriptNode>(Hit(tree, end));
 
         var sourceNode = Assert.IsType<ScriptNode>(Hit(tree, start));
-        Assert.Same(output, sourceNode.HitTestPort(start.X, start.Y));
+        Assert.Same(
+            startFromMathInput ? input : output,
+            sourceNode.HitTestPort(start.X, start.Y));
 
         tree.EventManager!.ProcessTouchDown(PointerEventArgs.FromTouch(1, start));
         tree.EventManager.ProcessTouchMove(PointerEventArgs.FromTouch(1, end));
         tree.EventManager.ProcessTouchUp(PointerEventArgs.FromTouch(1, end));
 
-        Assert.Single(graph.Connections);
+        var connection = Assert.Single(graph.Connections);
+        Assert.Same(output, connection.OutputPort);
+        Assert.Same(input, connection.InputPort);
     }
 
     [Fact]

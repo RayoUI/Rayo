@@ -333,6 +333,9 @@ public class ScriptNode : View<ScriptNode>, IInputHandler, IFocusable, IPointerH
 
     public PortModel HitTestPort(float wx, float wy, float extraTolerance = 0)
     {
+        PortModel closestPort = null;
+        float closestDistanceSquared = float.MaxValue;
+
         foreach (var port in Model.Ports)
         {
             float tolerance = port.Type == PortType.Flow
@@ -341,10 +344,49 @@ public class ScriptNode : View<ScriptNode>, IInputHandler, IFocusable, IPointerH
 
             float dx = wx - port.WorldX;
             float dy = wy - port.WorldY;
-            if (dx * dx + dy * dy <= tolerance * tolerance)
-                return port;
+            float distanceSquared = dx * dx + dy * dy;
+            if (distanceSquared <= tolerance * tolerance &&
+                distanceSquared < closestDistanceSquared)
+            {
+                closestPort = port;
+                closestDistanceSquared = distanceSquared;
+            }
         }
-        return null;
+
+        return closestPort;
+    }
+
+    public PortModel HitTestCompatiblePort(
+        PortModel sourcePort,
+        float wx,
+        float wy,
+        float extraTolerance,
+        out float distanceSquared)
+    {
+        PortModel closestPort = null;
+        distanceSquared = float.MaxValue;
+
+        foreach (var port in Model.Ports)
+        {
+            if (!sourcePort.CanConnectTo(port))
+                continue;
+
+            float tolerance = port.Type == PortType.Flow
+                ? ExecPortSize + 4f + extraTolerance
+                : DataPortRadius + 5f + extraTolerance;
+            float dx = wx - port.WorldX;
+            float dy = wy - port.WorldY;
+            float candidateDistanceSquared = dx * dx + dy * dy;
+
+            if (candidateDistanceSquared <= tolerance * tolerance &&
+                candidateDistanceSquared < distanceSquared)
+            {
+                closestPort = port;
+                distanceSquared = candidateDistanceSquared;
+            }
+        }
+
+        return closestPort;
     }
 
     // -------------------------------------------------------------------------
