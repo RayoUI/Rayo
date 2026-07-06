@@ -41,6 +41,13 @@ public interface IDraggable
     float DragThreshold => 5f;
 
     /// <summary>
+    /// Optional delay before a touch gesture can become a drag. This lets
+    /// scrollable parents capture a normal swipe while still supporting a
+    /// deliberate press-and-drag gesture. Mouse dragging is never delayed.
+    /// </summary>
+    TimeSpan TouchDragStartDelay => TimeSpan.Zero;
+
+    /// <summary>
     /// Allows customizing the rendering during the drag.
     /// Returns true to use the default rendering, false to show nothing during the drag.
     /// </summary>

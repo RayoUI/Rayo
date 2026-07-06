@@ -18,6 +18,8 @@ public class DragDropManager
     private float _dragStartY;
     private float _lastMouseX;
     private float _lastMouseY;
+    private DateTime _dragCandidateStartedAt;
+    private bool _isTouchCandidate;
 
     // Offset del mouse relativo al elemento cuando se inició el drag
     private float _mouseOffsetX;
@@ -61,7 +63,11 @@ public class DragDropManager
         return TryStartDrag(element, mouseX, mouseY);
     }
 
-    public bool TryStartDrag(IDraggable? draggable, float mouseX, float mouseY)
+    public bool TryStartDrag(
+        IDraggable? draggable,
+        float mouseX,
+        float mouseY,
+        bool isTouch = false)
     {
         if (_isDragging || draggable == null) return false;
 
@@ -70,6 +76,8 @@ public class DragDropManager
         _lastMouseX = mouseX;
         _lastMouseY = mouseY;
         _currentDraggable = draggable;
+        _dragCandidateStartedAt = DateTime.UtcNow;
+        _isTouchCandidate = isTouch;
 
         // No iniciamos el drag inmediatamente, esperamos el threshold
         return true;
@@ -91,7 +99,12 @@ public class DragDropManager
             float distance = MathF.Sqrt(dx * dx + dy * dy);
 
             // Verificar si hemos superado el threshold
-            if (distance >= _currentDraggable.DragThreshold)
+            bool delayElapsed =
+                !_isTouchCandidate ||
+                DateTime.UtcNow - _dragCandidateStartedAt >=
+                    _currentDraggable.TouchDragStartDelay;
+
+            if (distance >= _currentDraggable.DragThreshold && delayElapsed)
             {
                 // Iniciar el drag
                 _currentDragData = _currentDraggable.OnDragStart(_dragStartX, _dragStartY);
@@ -214,6 +227,7 @@ public class DragDropManager
         _currentDropTarget = null;
         _currentDragData = null;
         _isDragging = false;
+        _isTouchCandidate = false;
 
         _tree.MarkNeedsRender();
     }
@@ -241,6 +255,7 @@ public class DragDropManager
         _currentDropTarget = null;
         _currentDragData = null;
         _isDragging = false;
+        _isTouchCandidate = false;
 
         _tree.MarkNeedsRender();
     }

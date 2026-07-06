@@ -738,13 +738,6 @@ public class EventManager
         var position = mouse.Position;
         _needsRenderThisFrame = false;
 
-        // Try to start universal drag & drop (will wait for threshold)
-        _dragDropManager.TryStartDrag(position.X, position.Y);
-
-        // REFACTORED: DO NOT attempt drag immediately
-        // Only save position for threshold check in OnMouseMove
-        // Drag will activate if user moves mouse > threshold
-
         // Clear all IDragScrollable
         CleanupAllDragScrollables(_tree.Root);
 
@@ -811,6 +804,15 @@ public class EventManager
                 break;  // Handler consumed the event for global handlers only
             }
         }
+
+        // Use the overlay-aware hit result just like the touch path. Searching
+        // only from _tree.Root misses draggables hosted by drawers and dialogs.
+        _dragDropManager.TryStartDrag(
+            hitResult?.Element is { } hitElement
+                ? FindDraggableAncestor(hitElement)
+                : null,
+            position.X,
+            position.Y);
 
         if (hitResult?.Element != null)
         {
@@ -1890,7 +1892,11 @@ public class EventManager
 
         if (hitResult?.Element != null)
         {
-            _dragDropManager.TryStartDrag(FindDraggableAncestor(hitResult.Element), pointerArgs.Position.X, pointerArgs.Position.Y);
+            _dragDropManager.TryStartDrag(
+                FindDraggableAncestor(hitResult.Element),
+                pointerArgs.Position.X,
+                pointerArgs.Position.Y,
+                isTouch: true);
             state.CapturedElement = hitResult.Element;
             // Elements that handle their own drag exclusively (Slider, Splitter)
             // should never have scroll capture transferred away from them.
@@ -1969,6 +1975,15 @@ public class EventManager
 
             if (distance >= TouchScrollThreshold)
             {
+                // A delayed touch drag must yield to a normal scroll swipe.
+                // Once scrolling captures the gesture it must not become a
+                // drag later merely because its long-press delay elapsed.
+                if (!_dragDropManager.IsDragging &&
+                    _dragDropManager.CurrentDraggable != null)
+                {
+                    _dragDropManager.CancelDrag();
+                }
+
                 state.IsScrollCaptured = true;
 
                 if (state.CapturedElement != state.ScrollCaptureTarget)
