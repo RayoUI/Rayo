@@ -263,8 +263,9 @@ public class HitTestEngine
         if (!element.IsEffectivelyEnabled())
             return false;
 
-        return element is IInputHandler 
-            or Rayo.Core.Input.IPointerHandler;
+        return element is IInputHandler
+            or Rayo.Core.Input.IPointerHandler
+            or IDraggable;
     }
 
     /// <summary>
