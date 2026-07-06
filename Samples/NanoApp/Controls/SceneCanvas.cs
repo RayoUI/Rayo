@@ -212,7 +212,31 @@ public sealed class SceneCanvas : View<SceneCanvas>, IPointerHandler, IDropTarge
             return false;
         }
 
-        var point = ToScene(new Vector2(mouseX, mouseY));
+        AddEntity(kind, new Vector2(mouseX, mouseY));
+        ClearDropPreview();
+        MarkNeedsPaint();
+        return true;
+    }
+
+    internal bool TryAddEntityAt(SceneEntityKind kind, float screenX, float screenY)
+    {
+        if (screenX < ComputedX ||
+            screenX > ComputedX + ComputedWidth ||
+            screenY < ComputedY ||
+            screenY > ComputedY + ComputedHeight)
+        {
+            return false;
+        }
+
+        AddEntity(kind, new Vector2(screenX, screenY));
+        ClearDropPreview();
+        MarkNeedsPaint();
+        return true;
+    }
+
+    private void AddEntity(SceneEntityKind kind, Vector2 screenPoint)
+    {
+        var point = ToScene(screenPoint);
         var entity = new SceneEntity
         {
             Kind = kind,
@@ -223,9 +247,6 @@ public sealed class SceneCanvas : View<SceneCanvas>, IPointerHandler, IDropTarge
 
         _entities.Add(entity);
         SelectEntity(entity);
-        ClearDropPreview();
-        MarkNeedsPaint();
-        return true;
     }
 
     private SceneEntity? HitTest(Vector2 point)

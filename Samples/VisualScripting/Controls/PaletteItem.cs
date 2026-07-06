@@ -4,6 +4,8 @@ using Rayo.Core.Interfaces;
 using Rayo.Rendering;
 using VisualScripting.NodeTypes;
 
+#nullable disable
+
 namespace VisualScripting.Controls;
 
 /// <summary>
@@ -55,6 +57,7 @@ public class PaletteItem : View<PaletteItem>, IDraggable, IPointerHandler
     }
 
     public float DragThreshold => 6f;
+    public TimeSpan TouchDragStartDelay => TimeSpan.FromMilliseconds(280);
     public bool ShouldRenderWhileDragging => true;
 
     // -------------------------------------------------------------------------

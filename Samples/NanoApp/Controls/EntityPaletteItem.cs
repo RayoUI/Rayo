@@ -12,11 +12,18 @@ public sealed class EntityPaletteItem : View<EntityPaletteItem>, IDraggable
 
     private readonly SceneEntityKind _kind;
     private readonly string _label;
+    private readonly Func<SceneEntityKind, float, float, bool>? _fallbackDrop;
+    private float _lastDragX;
+    private float _lastDragY;
 
-    public EntityPaletteItem(SceneEntityKind kind, string label)
+    public EntityPaletteItem(
+        SceneEntityKind kind,
+        string label,
+        Func<SceneEntityKind, float, float, bool>? fallbackDrop = null)
     {
         _kind = kind;
         _label = label;
+        _fallbackDrop = fallbackDrop;
         Height = 70;
         HorizontalAlignment = HorizontalAlignment.Stretch;
         VerticalAlignment = VerticalAlignment.Top;
@@ -29,6 +36,8 @@ public sealed class EntityPaletteItem : View<EntityPaletteItem>, IDraggable
     public DragData? OnDragStart(float mouseX, float mouseY)
     {
         IsDragging = true;
+        _lastDragX = mouseX;
+        _lastDragY = mouseY;
         MarkNeedsPaint();
 
         return new DragData(DragDataType, _kind, this)
@@ -37,6 +46,8 @@ public sealed class EntityPaletteItem : View<EntityPaletteItem>, IDraggable
 
     public void OnDragging(float mouseX, float mouseY)
     {
+        _lastDragX = mouseX;
+        _lastDragY = mouseY;
         MarkNeedsPaint();
     }
 
@@ -44,6 +55,11 @@ public sealed class EntityPaletteItem : View<EntityPaletteItem>, IDraggable
     {
         IsDragging = false;
         MarkNeedsPaint();
+
+        if (!wasDropped)
+        {
+            _fallbackDrop?.Invoke(_kind, _lastDragX, _lastDragY);
+        }
     }
 
     protected override void Measure(float availableWidth, float availableHeight)

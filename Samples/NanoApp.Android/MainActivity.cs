@@ -30,6 +30,7 @@ public sealed class MainActivity : AndroidPlatformHost
 
         if (config is AndroidWindowConfiguration androidConfig)
         {
+            androidConfig.NativeConfiguration.Android.ImmersiveMode = true;
             androidConfig.NativeConfiguration.Android.Orientation =
                 Rayo.Core.Platform.ScreenOrientation.Landscape;
         }

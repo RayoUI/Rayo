@@ -1,3 +1,5 @@
+#nullable disable
+
 namespace VisualScripting.Models;
 
 public enum PortDirection

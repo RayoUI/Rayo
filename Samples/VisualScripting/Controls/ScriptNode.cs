@@ -1,7 +1,11 @@
 ﻿using Rayo.Core;
+using Rayo.Core.Input;
 using Rayo.Core.Interfaces;
 using Rayo.Rendering;
+using System.Numerics;
 using VisualScripting.Models;
+
+#nullable disable
 
 namespace VisualScripting.Controls;
 
@@ -13,7 +17,7 @@ namespace VisualScripting.Controls;
 ///   • Enables keyboard events (Delete key removes the node)
 ///   • Notifies the properties panel via OnSelected callback
 /// </summary>
-public class ScriptNode : View<ScriptNode>, IInputHandler, IFocusable
+public class ScriptNode : View<ScriptNode>, IInputHandler, IFocusable, IPointerHandler
 {
     private const float HeaderHeight   = 28f;
     private const float PortRowHeight  = 22f;
@@ -52,6 +56,13 @@ public class ScriptNode : View<ScriptNode>, IInputHandler, IFocusable
 
     /// <summary>Called when Delete is pressed while this node is focused.</summary>
     public Action             OnDeleteRequested { get; set; }
+    public Func<Vector2, Vector2> ToCanvasPosition { get; set; } = position => position;
+    public Func<float> CanvasScale { get; set; } = () => 1f;
+    public Func<Vector2> CanvasOrigin { get; set; } = () => Vector2.Zero;
+    public Action PositionChanged { get; set; }
+
+    private float _pointerHitTolerance;
+    private float _viewportScale = 1f;
 
     public ScriptNode(NodeModel model)
     {
@@ -121,16 +132,34 @@ public class ScriptNode : View<ScriptNode>, IInputHandler, IFocusable
 
     protected override void Measure(float availableWidth, float availableHeight)
     {
-        DesiredWidth  = NodeWidth;
-        DesiredHeight = ComputeHeight();
+        DesiredWidth  = NodeWidth * _viewportScale;
+        DesiredHeight = ComputeHeight() * _viewportScale;
     }
 
     protected override void Arrange(float x, float y, float width, float height)
     {
-        base.Arrange(x - PortHitZone, y, NodeWidth + 2f * PortHitZone, ComputeHeight());
+        base.Arrange(
+            x - PortHitZone * _viewportScale,
+            y,
+            (NodeWidth + 2f * PortHitZone) * _viewportScale,
+            ComputeHeight() * _viewportScale);
 
         // Update port positions after arrange to ensure they're in sync with layout
         UpdatePortPositions();
+    }
+
+    public void ApplyViewportLayout(float bodyX, float bodyY, float scale)
+    {
+        _viewportScale = scale;
+        var parentOrigin = Parent is null
+            ? Vector2.Zero
+            : new Vector2(Parent.ComputedX, Parent.ComputedY);
+
+        X = bodyX - parentOrigin.X;
+        Y = bodyY - parentOrigin.Y;
+        Width = NodeWidth * scale;
+        Height = ComputeHeight() * scale;
+        ArrangeUpdate(bodyX, bodyY, Width, Height);
     }
 
     // -------------------------------------------------------------------------
@@ -141,6 +170,13 @@ public class ScriptNode : View<ScriptNode>, IInputHandler, IFocusable
 
     public bool HandleInput(InputEventArgs args)
     {
+        if (args.EventType is InputEventType.MouseDown
+            or InputEventType.MouseDrag
+            or InputEventType.MouseUp)
+        {
+            args.Position = ToCanvasPosition(args.Position);
+        }
+
         switch (args.EventType)
         {
             case InputEventType.MouseDown:
@@ -148,7 +184,10 @@ public class ScriptNode : View<ScriptNode>, IInputHandler, IFocusable
                 // Only handle left-button interactions (connections, node drag)
                 if (args.Button != InputMouseButton.Left) return false;
 
-                var port = HitTestPort(args.Position.X, args.Position.Y);
+                var port = HitTestPort(
+                    args.Position.X,
+                    args.Position.Y,
+                    _pointerHitTolerance);
 
                 if (port != null)
                 {
@@ -177,11 +216,8 @@ public class ScriptNode : View<ScriptNode>, IInputHandler, IFocusable
                 {
                     Model.X = args.Position.X - _dragOffsetX;
                     Model.Y = args.Position.Y - _dragOffsetY;
-                    X = Model.X;
-                    Y = Model.Y;
-
-                    // Arrange invalidation updates the port positions without forcing re-measure.
-                    InvalidateArrange();
+                    PositionChanged?.Invoke();
+                    MarkNeedsPaint();
                     return true;
                 }
 
@@ -231,17 +267,77 @@ public class ScriptNode : View<ScriptNode>, IInputHandler, IFocusable
         return false;
     }
 
+    void IPointerHandler.OnPointerPressed(PointerEventArgs e)
+    {
+        if (e.PointerType != PointerType.Touch)
+            return;
+
+        _pointerHitTolerance =
+            MathF.Max(12f, e.ContactRadius * 0.35f) /
+            MathF.Max(0.1f, CanvasScale());
+        var handled = HandleInput(new InputEventArgs
+        {
+            Position = e.Position,
+            EventType = InputEventType.MouseDown,
+            Button = InputMouseButton.Left,
+            Timestamp = e.Timestamp
+        });
+        _pointerHitTolerance = 0;
+        e.Handled |= handled;
+    }
+
+    void IPointerHandler.OnPointerMoved(PointerEventArgs e)
+    {
+        if (e.PointerType != PointerType.Touch)
+            return;
+
+        e.Handled |= HandleInput(new InputEventArgs
+        {
+            Position = e.Position,
+            EventType = InputEventType.MouseDrag,
+            Button = InputMouseButton.Left,
+            Timestamp = e.Timestamp
+        });
+    }
+
+    void IPointerHandler.OnPointerReleased(PointerEventArgs e)
+    {
+        if (e.PointerType != PointerType.Touch)
+            return;
+
+        e.Handled |= HandleInput(new InputEventArgs
+        {
+            Position = e.Position,
+            EventType = InputEventType.MouseUp,
+            Button = InputMouseButton.Left,
+            Timestamp = e.Timestamp
+        });
+    }
+
+    public void CancelPointerInteraction()
+    {
+        _isDragging = false;
+        if (_isConnecting)
+        {
+            _isConnecting = false;
+            _connectingPort = null;
+            OnConnectionCancelled?.Invoke();
+        }
+
+        MarkNeedsPaint();
+    }
+
     // -------------------------------------------------------------------------
     // Port hit testing
     // -------------------------------------------------------------------------
 
-    public PortModel HitTestPort(float wx, float wy)
+    public PortModel HitTestPort(float wx, float wy, float extraTolerance = 0)
     {
         foreach (var port in Model.Ports)
         {
             float tolerance = port.Type == PortType.Flow
-                ? ExecPortSize + 4f
-                : DataPortRadius + 5f;
+                ? ExecPortSize + 4f + extraTolerance
+                : DataPortRadius + 5f + extraTolerance;
 
             float dx = wx - port.WorldX;
             float dy = wy - port.WorldY;
@@ -261,9 +357,9 @@ public class ScriptNode : View<ScriptNode>, IInputHandler, IFocusable
     /// </summary>
     public void UpdatePortPositions()
     {
-        // Use ComputedX/ComputedY after Arrange, or X/Y during drag (they should be in sync)
-        float x = ComputedX + PortHitZone;
-        float y = ComputedY;
+        var origin = CanvasOrigin();
+        float x = origin.X + Model.X;
+        float y = origin.Y + Model.Y;
         float w = NodeWidth;
 
         var execInputs  = Model.InputPorts.Where(p  => p.Type == PortType.Flow).ToArray();
@@ -326,10 +422,27 @@ public class ScriptNode : View<ScriptNode>, IInputHandler, IFocusable
 
     public override void Render(IRenderer renderer)
     {
-        float x = ComputedX + PortHitZone; // visual body (compensate for hit zone expansion)
+        float x = ComputedX + PortHitZone * _viewportScale;
         float y = ComputedY;
         float w = NodeWidth;
-        float h = ComputedHeight;
+        float h = ComputeHeight();
+
+        renderer.PushTransform(
+            Matrix3x2.CreateScale(
+                _viewportScale,
+                new Vector2(x, y)));
+        try
+        {
+            RenderNode(renderer, x, y, w, h);
+        }
+        finally
+        {
+            renderer.PopTransform();
+        }
+    }
+
+    private void RenderNode(IRenderer renderer, float x, float y, float w, float h)
+    {
 
         // Selection glow (drawn behind node)
         if (IsFocused)

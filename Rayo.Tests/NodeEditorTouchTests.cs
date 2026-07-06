@@ -102,6 +102,37 @@ public sealed class NodeEditorTouchTests
             PointerEventArgs.FromTouch(2, second + new Vector2(85, 0)));
     }
 
+    [Fact]
+    public void Touch_double_tap_deletes_an_edge()
+    {
+        var graph = new NodeGraph();
+        var source = NodeFactory.Create(NodeTypeId.NumberValue, 60, 80);
+        var target = NodeFactory.Create(NodeTypeId.Add, 400, 100);
+        graph.AddNode(source);
+        graph.AddNode(target);
+        graph.AddConnection(
+            source.OutputPorts.Single(),
+            target.InputPorts.First());
+        var (tree, _, _) = CreateEditor(graph);
+        tree.Update(800, 500);
+
+        var connection = graph.Connections.Single();
+        var point = BezierMidpoint(
+            new Vector2(
+                connection.OutputPort.WorldX,
+                connection.OutputPort.WorldY),
+            new Vector2(
+                connection.InputPort.WorldX,
+                connection.InputPort.WorldY));
+        var firstTap = DateTime.UtcNow;
+        var secondTap = firstTap.AddMilliseconds(180);
+
+        Tap(tree, point, firstTap);
+        Tap(tree, point, secondTap);
+
+        Assert.Empty(graph.Connections);
+    }
+
     private static (UITree Tree, NodeEditorCanvas Editor, NodeGraph Graph) CreateEditor(
         NodeGraph? existingGraph = null)
     {
@@ -121,5 +152,34 @@ public sealed class NodeEditorTouchTests
             CheckClipping = true,
             RespectInputTransparency = true
         })?.Element;
+
+    private static void Tap(UITree tree, Vector2 point, DateTime timestamp)
+    {
+        var down = PointerEventArgs.FromTouch(1, point);
+        down.Timestamp = timestamp;
+        tree.EventManager!.ProcessTouchDown(down);
+
+        var up = PointerEventArgs.FromTouch(1, point);
+        up.Timestamp = timestamp.AddMilliseconds(40);
+        tree.EventManager.ProcessTouchUp(up);
+    }
+
+    private static Vector2 BezierMidpoint(Vector2 start, Vector2 end)
+    {
+        var distance = Vector2.Distance(start, end);
+        var dx = Math.Clamp(distance * 0.4f, 20f, 220f);
+        const float t = 0.5f;
+        const float u = 1f - t;
+
+        return new Vector2(
+            u * u * u * start.X +
+            3 * u * u * t * (start.X + dx) +
+            3 * u * t * t * (end.X - dx) +
+            t * t * t * end.X,
+            u * u * u * start.Y +
+            3 * u * u * t * start.Y +
+            3 * u * t * t * end.Y +
+            t * t * t * end.Y);
+    }
 
 }

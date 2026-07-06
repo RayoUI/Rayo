@@ -1,6 +1,9 @@
 ﻿using Rayo.Core;
 using Rayo.Rendering;
+using System.Numerics;
 using VisualScripting.Models;
+
+#nullable disable
 
 namespace VisualScripting.Controls;
 
@@ -15,6 +18,8 @@ namespace VisualScripting.Controls;
 public class ConnectionOverlay : View<ConnectionOverlay>
 {
     private readonly NodeGraph _graph;
+    public Func<Vector2, Vector2> ToScreenPosition { get; set; } =
+        position => position;
 
     // In-progress connection state - updated by ScriptNode during drag
     public PortModel PendingSource { get; private set; }
@@ -89,9 +94,15 @@ public class ConnectionOverlay : View<ConnectionOverlay>
         // Draw all established connections
         foreach (var conn in _graph.Connections)
         {
+            var start = ToScreenPosition(new Vector2(
+                conn.OutputPort.WorldX,
+                conn.OutputPort.WorldY));
+            var end = ToScreenPosition(new Vector2(
+                conn.InputPort.WorldX,
+                conn.InputPort.WorldY));
             DrawWire(renderer,
-                conn.OutputPort.WorldX, conn.OutputPort.WorldY,
-                conn.InputPort.WorldX,  conn.InputPort.WorldY,
+                start.X, start.Y,
+                end.X, end.Y,
                 GetPortColor(conn.OutputPort.Type),
                 2.5f);
         }
@@ -99,10 +110,16 @@ public class ConnectionOverlay : View<ConnectionOverlay>
         // Draw in-progress connection preview wire
         if (PendingSource != null)
         {
-            float sx = PendingSource.WorldX;
-            float sy = PendingSource.WorldY;
-            float ex = PendingMouseX;
-            float ey = PendingMouseY;
+            var start = ToScreenPosition(new Vector2(
+                PendingSource.WorldX,
+                PendingSource.WorldY));
+            var end = ToScreenPosition(new Vector2(
+                PendingMouseX,
+                PendingMouseY));
+            float sx = start.X;
+            float sy = start.Y;
+            float ex = end.X;
+            float ey = end.Y;
 
             // Flip direction so wire always flows left→right visually
             if (PendingSource.Direction == PortDirection.Input)
@@ -117,7 +134,7 @@ public class ConnectionOverlay : View<ConnectionOverlay>
                 2f);
 
             // Dot at cursor
-            renderer.DrawCircle(PendingMouseX, PendingMouseY, 5f,
+            renderer.DrawCircle(end.X, end.Y, 5f,
                 new Color(wireColor.R, wireColor.G, wireColor.B, 180));
         }
     }

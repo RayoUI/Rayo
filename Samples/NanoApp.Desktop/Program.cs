@@ -22,5 +22,6 @@ host.Run(
         if (host.GetNativeWindowConfiguration(config) is { } nativeConfig)
         {
             nativeConfig.StartupLocation = WindowStartupLocation.CenterScreen;
+            nativeConfig.Topmost = true;
         }
     });

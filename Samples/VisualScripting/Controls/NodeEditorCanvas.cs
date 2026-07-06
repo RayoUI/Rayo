@@ -5,6 +5,9 @@ using Rayo.Rendering;
 using VisualScripting.Models;
 using VisualScripting.NodeTypes;
 using Rayo.Core.Input;
+using System.Numerics;
+
+#nullable disable
 
 namespace VisualScripting.Controls;
 
@@ -25,13 +28,25 @@ namespace VisualScripting.Controls;
 ///   IDraggable PaletteItem is dragged → DragDropManager finds this IDropTarget
 ///   → OnDrop converts world coordinates to canvas-local and spawns the node.
 /// </summary>
-public class NodeEditorCanvas : CompositeView<NodeEditorCanvas>, IDropTarget, IInputHandler
+public class NodeEditorCanvas : CompositeView<NodeEditorCanvas>,
+    IDropTarget,
+    IInputHandler,
+    IPointerHandler,
+    IScrollable
 {
     public NodeGraph Graph { get; }
 
     private readonly Absolute _canvas;
     private readonly ConnectionOverlay _overlay;
     private readonly List<ScriptNode> _nodeControls = new();
+    private readonly Dictionary<int, Vector2> _touchPointers = new();
+
+    private float _zoom = 1f;
+    private Vector2 _panOffset;
+    private float _lastPinchDistance;
+    private Vector2 _lastPinchCenter;
+    private const float MinZoom = 0.35f;
+    private const float MaxZoom = 2.5f;
 
     // Stagger spawn position for toolbar-added nodes
     private float _nextNodeX = 60f;
@@ -66,12 +81,13 @@ public class NodeEditorCanvas : CompositeView<NodeEditorCanvas>, IDropTarget, II
 
         HorizontalAlignment = HorizontalAlignment.Stretch;
         VerticalAlignment   = VerticalAlignment.Stretch;
+        ClipToBounds = true;
 
         _overlay = new ConnectionOverlay(Graph);
+        _overlay.ToScreenPosition = ToScreenPosition;
 
         _canvas = new Absolute();
-        _canvas.Background   = new Color(22, 22, 28);
-        _canvas.ClipToBounds = true;
+        _canvas.Background   = Color.Transparent;
 
         _canvas.AddChild(_overlay); // Overlay is always the first child (renders behind nodes)
 
@@ -103,9 +119,9 @@ public class NodeEditorCanvas : CompositeView<NodeEditorCanvas>, IDropTarget, II
 
     public void SpawnNodeAt(NodeTypeId type, float worldX, float worldY)
     {
-        // Convert world position to canvas-local coordinates
-        float localX = worldX - _canvas.ComputedX;
-        float localY = worldY - _canvas.ComputedY;
+        var canvasPoint = ToCanvasPosition(new Vector2(worldX, worldY));
+        float localX = canvasPoint.X - _canvas.ComputedX;
+        float localY = canvasPoint.Y - _canvas.ComputedY;
 
         var model = NodeFactory.Create(type, localX, localY);
         Graph.Nodes.Add(model);
@@ -189,51 +205,173 @@ public class NodeEditorCanvas : CompositeView<NodeEditorCanvas>, IDropTarget, II
         if (args.EventType != InputEventType.MouseDown)
             return false;
 
-        float mx = args.Position.X;
-        float my = args.Position.Y;
-        var   now = args.Timestamp;
-
-        double elapsedMs = (now - _lastTapTime).TotalMilliseconds;
-        float  dist      = MathF.Sqrt((mx - _lastTapX) * (mx - _lastTapX) +
-                                       (my - _lastTapY) * (my - _lastTapY));
-
-        bool isDoubleTap = elapsedMs <= DoubleTapMaxMs && dist <= DoubleTapMaxDist;
-
-        _lastTapTime = now;
-        _lastTapX    = mx;
-        _lastTapY    = my;
-
-        if (isDoubleTap)
-        {
-            var conn = FindConnectionAt(mx, my);
-            if (conn != null)
-            {
-                Graph.RemoveConnection(conn);
-                args.Handled = true;
-                return true;
-            }
-        }
-
-        return false;
+        args.Handled = TryDeleteEdgeOnDoubleTap(args.Position, args.Timestamp);
+        return args.Handled;
     }
 
-    /// <summary>
-    /// Moves every node (model + visual position) by (dx, dy) to pan the viewport.
-    /// </summary>
     private void ApplyPan(float dx, float dy)
     {
-        foreach (var node in _nodeControls)
-        {
-            node.Model.X += dx;
-            node.Model.Y += dy;
-            node.X        = node.Model.X;
-            node.Y        = node.Model.Y;
-
-            // Update port positions immediately to prevent connection lag
-            node.UpdatePortPositions();
-        }
-        _canvas.InvalidateArrange();
+        _panOffset += new Vector2(dx, dy);
+        UpdateNodeTransforms();
+        MarkNeedsPaint();
         _overlay.MarkNeedsPaint();
+    }
+
+    public float ContentWidth => float.PositiveInfinity;
+    public float ContentHeight => float.PositiveInfinity;
+
+    public void Scroll(float deltaY)
+    {
+        var focus = new Vector2(
+            ComputedX + ComputedWidth / 2f,
+            ComputedY + ComputedHeight / 2f);
+        SetZoom(_zoom * MathF.Exp(-deltaY * 0.005f), focus);
+    }
+
+    public void ScrollHorizontal(float deltaX)
+    {
+        ApplyPan(-deltaX, 0);
+    }
+
+    void IPointerHandler.OnPointerPressed(PointerEventArgs e)
+    {
+        if (e.PointerType != PointerType.Touch)
+            return;
+
+        _touchPointers[e.PointerId] = e.Position;
+        if (_touchPointers.Count == 2)
+        {
+            _lastTapTime = DateTime.MinValue;
+            foreach (var node in _nodeControls)
+            {
+                node.CancelPointerInteraction();
+            }
+        }
+        else if (_touchPointers.Count == 1 && !IsPointOverNode(e.Position))
+        {
+            e.Handled |= TryDeleteEdgeOnDoubleTap(e.Position, e.Timestamp);
+        }
+
+        ResetPinchReference();
+    }
+
+    void IPointerHandler.OnPointerMoved(PointerEventArgs e)
+    {
+        if (e.PointerType != PointerType.Touch ||
+            !_touchPointers.ContainsKey(e.PointerId))
+        {
+            return;
+        }
+
+        _touchPointers[e.PointerId] = e.Position;
+
+        if (_touchPointers.Count >= 2)
+        {
+            var points = _touchPointers.Values.Take(2).ToArray();
+            var center = (points[0] + points[1]) / 2f;
+            var distance = Vector2.Distance(points[0], points[1]);
+
+            if (_lastPinchDistance > 0)
+            {
+                ApplyPan(
+                    center.X - _lastPinchCenter.X,
+                    center.Y - _lastPinchCenter.Y);
+                SetZoom(
+                    _zoom * distance / _lastPinchDistance,
+                    center);
+            }
+
+            _lastPinchCenter = center;
+            _lastPinchDistance = distance;
+            e.Handled = true;
+            return;
+        }
+
+        // One finger is reserved exclusively for node and port interaction.
+    }
+
+    void IPointerHandler.OnPointerReleased(PointerEventArgs e)
+    {
+        if (e.PointerType != PointerType.Touch)
+            return;
+
+        _touchPointers.Remove(e.PointerId);
+        ResetPinchReference();
+    }
+
+    private void ResetPinchReference()
+    {
+        _lastPinchDistance = 0;
+        if (_touchPointers.Count < 2)
+            return;
+
+        var points = _touchPointers.Values.Take(2).ToArray();
+        _lastPinchCenter = (points[0] + points[1]) / 2f;
+        _lastPinchDistance = Vector2.Distance(points[0], points[1]);
+    }
+
+    private bool TryDeleteEdgeOnDoubleTap(
+        Vector2 screenPosition,
+        DateTime timestamp)
+    {
+        var canvasPoint = ToCanvasPosition(screenPosition);
+        var elapsedMs = (timestamp - _lastTapTime).TotalMilliseconds;
+        var distance = Vector2.Distance(
+            canvasPoint,
+            new Vector2(_lastTapX, _lastTapY));
+        var isDoubleTap =
+            elapsedMs >= 0 &&
+            elapsedMs <= DoubleTapMaxMs &&
+            distance <= DoubleTapMaxDist / _zoom;
+
+        _lastTapTime = timestamp;
+        _lastTapX = canvasPoint.X;
+        _lastTapY = canvasPoint.Y;
+
+        if (!isDoubleTap)
+            return false;
+
+        var connection = FindConnectionAt(canvasPoint.X, canvasPoint.Y);
+        if (connection is null)
+            return false;
+
+        Graph.RemoveConnection(connection);
+        MarkNeedsPaint();
+        _overlay.MarkNeedsPaint();
+        return true;
+    }
+
+    private bool IsPointOverNode(Vector2 screenPosition)
+        => _nodeControls.Any(node =>
+            node.ContainsWindowPoint(screenPosition, 8f));
+
+    private void SetZoom(float zoom, Vector2 screenFocus)
+    {
+        zoom = Math.Clamp(zoom, MinZoom, MaxZoom);
+        if (MathF.Abs(zoom - _zoom) < 0.0001f)
+            return;
+
+        var center = new Vector2(
+            _canvas.ComputedX + _canvas.ComputedWidth / 2f,
+            _canvas.ComputedY + _canvas.ComputedHeight / 2f);
+        var logicalFocus = center +
+            (screenFocus - center - _panOffset) / _zoom;
+        var newPanOffset = screenFocus - center -
+            (logicalFocus - center) * zoom;
+
+        _zoom = zoom;
+        _panOffset = newPanOffset;
+        UpdateNodeTransforms();
+        MarkNeedsPaint();
+        _overlay.MarkNeedsPaint();
+    }
+
+    private Vector2 ToCanvasPosition(Vector2 screenPosition)
+    {
+        var center = new Vector2(
+            _canvas.ComputedX + _canvas.ComputedWidth / 2f,
+            _canvas.ComputedY + _canvas.ComputedHeight / 2f);
+        return center + (screenPosition - center - _panOffset) / _zoom;
     }
 
     /// <summary>
@@ -271,7 +409,7 @@ public class NodeEditorCanvas : CompositeView<NodeEditorCanvas>, IDropTarget, II
                          + t*t*t   * ey;
 
                 float d = MathF.Sqrt((bx - mx) * (bx - mx) + (by - my) * (by - my));
-                if (d <= ConnectionHitTolerance)
+                if (d <= ConnectionHitTolerance / _zoom)
                     return conn;
             }
         }
@@ -293,6 +431,21 @@ public class NodeEditorCanvas : CompositeView<NodeEditorCanvas>, IDropTarget, II
         node.OnConnectionReleased  = OnConnectionReleased;
         node.OnConnectionCancelled = OnConnectionCancelled;
         node.IsPendingConnectionActive = () => _overlay.HasPendingConnection;
+        node.ToCanvasPosition = ToCanvasPosition;
+        node.CanvasScale = () => _zoom;
+        node.CanvasOrigin = () => new Vector2(
+            _canvas.ComputedX,
+            _canvas.ComputedY);
+        node.PositionChanged = () =>
+        {
+            // Repaint the whole viewport on every drag step. Marking only the
+            // node would dirty its new bounds but leave the previous pixels in
+            // retained/partial rendering until touch-up.
+            MarkNeedsPaint();
+            UpdateNodeTransform(node);
+            node.MarkNeedsPaint();
+            _overlay.MarkNeedsPaint();
+        };
         node.OnSelected        = n => OnNodeSelected?.Invoke(n);
         node.OnDeleteRequested = () => DeleteNode(node);
 
@@ -358,7 +511,7 @@ public class NodeEditorCanvas : CompositeView<NodeEditorCanvas>, IDropTarget, II
     {
         foreach (var node in _nodeControls)
         {
-            var port = node.HitTestPort(wx, wy);
+            var port = node.HitTestPort(wx, wy, 14f / _zoom);
             if (port != null)
                 return port;
         }
@@ -380,10 +533,17 @@ public class NodeEditorCanvas : CompositeView<NodeEditorCanvas>, IDropTarget, II
     {
         base.Arrange(x, y, width, height);
         _canvas.ArrangeUpdate(x, y, width, height);
+        UpdateNodeTransforms();
     }
 
     public override void Render(IRenderer renderer)
     {
+        renderer.DrawRect(
+            ComputedX,
+            ComputedY,
+            ComputedWidth,
+            ComputedHeight,
+            new Color(22, 22, 28));
         RenderGrid(renderer);
 
         // Drop target highlight
@@ -399,11 +559,83 @@ public class NodeEditorCanvas : CompositeView<NodeEditorCanvas>, IDropTarget, II
     private void RenderGrid(IRenderer renderer)
     {
         const float spacing = 40f;
-        var dotColor = new Color(50, 50, 60, 180);
-        float x = ComputedX, y = ComputedY, w = ComputedWidth, h = ComputedHeight;
+        const int majorEvery = 4;
 
-        for (float gx = x + spacing; gx < x + w; gx += spacing)
-            for (float gy = y + spacing; gy < y + h; gy += spacing)
-                renderer.DrawCircle(gx, gy, 1f, dotColor);
+        var logicalTopLeft = ToCanvasPosition(
+            new Vector2(ComputedX, ComputedY));
+        var logicalBottomRight = ToCanvasPosition(
+            new Vector2(
+                ComputedX + ComputedWidth,
+                ComputedY + ComputedHeight));
+
+        var minX = MathF.Min(logicalTopLeft.X, logicalBottomRight.X);
+        var maxX = MathF.Max(logicalTopLeft.X, logicalBottomRight.X);
+        var minY = MathF.Min(logicalTopLeft.Y, logicalBottomRight.Y);
+        var maxY = MathF.Max(logicalTopLeft.Y, logicalBottomRight.Y);
+
+        var firstX = MathF.Floor(minX / spacing) * spacing;
+        var firstY = MathF.Floor(minY / spacing) * spacing;
+
+        for (var logicalX = firstX; logicalX <= maxX + spacing; logicalX += spacing)
+        {
+            var screenX = ToScreenPosition(new Vector2(logicalX, 0)).X;
+            var index = (int)MathF.Round(logicalX / spacing);
+            var color = index % majorEvery == 0
+                ? new Color(64, 68, 82, 190)
+                : new Color(43, 46, 57, 170);
+            renderer.DrawLine(
+                screenX,
+                ComputedY,
+                screenX,
+                ComputedY + ComputedHeight,
+                1,
+                color);
+        }
+
+        for (var logicalY = firstY; logicalY <= maxY + spacing; logicalY += spacing)
+        {
+            var screenY = ToScreenPosition(new Vector2(0, logicalY)).Y;
+            var index = (int)MathF.Round(logicalY / spacing);
+            var color = index % majorEvery == 0
+                ? new Color(64, 68, 82, 190)
+                : new Color(43, 46, 57, 170);
+            renderer.DrawLine(
+                ComputedX,
+                screenY,
+                ComputedX + ComputedWidth,
+                screenY,
+                1,
+                color);
+        }
+    }
+
+    private Vector2 ToScreenPosition(Vector2 canvasPosition)
+    {
+        var center = new Vector2(
+            _canvas.ComputedX + _canvas.ComputedWidth / 2f,
+            _canvas.ComputedY + _canvas.ComputedHeight / 2f);
+        return center +
+            (canvasPosition - center) * _zoom +
+            _panOffset;
+    }
+
+    private void UpdateNodeTransforms()
+    {
+        foreach (var node in _nodeControls)
+        {
+            UpdateNodeTransform(node);
+        }
+    }
+
+    private void UpdateNodeTransform(ScriptNode node)
+    {
+        var logicalBodyPosition = new Vector2(
+            _canvas.ComputedX + node.Model.X,
+            _canvas.ComputedY + node.Model.Y);
+        var screenBodyPosition = ToScreenPosition(logicalBodyPosition);
+        node.ApplyViewportLayout(
+            screenBodyPosition.X,
+            screenBodyPosition.Y,
+            _zoom);
     }
 }
