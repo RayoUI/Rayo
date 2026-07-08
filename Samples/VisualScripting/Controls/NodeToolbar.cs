@@ -58,39 +58,39 @@ public class NodeToolbar : CompositeView<NodeToolbar>
         title.HorizontalAlignment = HorizontalAlignment.Center;
         list.AddChild(title);
 
+        var accordion = new Accordion
+        {
+            Flush = true,
+            SingleExpand = true,
+            Spacing = 0f,
+            HorizontalAlignment = HorizontalAlignment.Stretch
+        };
+
+        var categoryIndex = 0;
         foreach (var (category, items) in NodeFactory.Categories)
         {
-            // Category header bar
-            var catLabel = new Label();
-            catLabel.Text      = category;
-            catLabel.FontSize  = 11;
-            catLabel.Foreground = Color.White;
-            catLabel.HorizontalAlignment = HorizontalAlignment.Center;
-            catLabel.VerticalAlignment   = VerticalAlignment.Center;
+            var categoryItems = new VStack();
+            categoryItems.Spacing = 3f;
+            categoryItems.HorizontalAlignment = HorizontalAlignment.Stretch;
 
-            var catFrame = new Frame(catLabel);
-            catFrame.Background  = CategoryColor(category);
-            catFrame.Height      = 22;
-            catFrame.BorderRadius = new Rayo.CornerRadius(4);
-            catFrame.HorizontalAlignment = HorizontalAlignment.Stretch;
-            list.AddChild(catFrame);
-
-            // One PaletteItem per node type (click or drag)
             foreach (var (label, type) in items)
             {
                 var captured = type;
                 var item = new PaletteItem(label, captured, CategoryColor(category));
                 item.OnTap = () => _editor.SpawnNode(captured);
-                list.AddChild(item);
+                categoryItems.AddChild(item);
             }
 
-            // Small gap between categories
-            var gap = new Frame();
-            gap.Height = 4;
-            gap.HorizontalAlignment = HorizontalAlignment.Stretch;
-            gap.Background = Color.Transparent;
-            list.AddChild(gap);
+            var categoryExpander = new Expander(category, categoryItems)
+            {
+                IsExpanded = categoryIndex == 0,
+                TextColor = CategoryColor(category)
+            };
+            accordion.AddExpander(categoryExpander);
+            categoryIndex++;
         }
+
+        list.AddChild(accordion);
 
         var scroll = new ScrollView();
         scroll.VerticalAlignment   = VerticalAlignment.Stretch;

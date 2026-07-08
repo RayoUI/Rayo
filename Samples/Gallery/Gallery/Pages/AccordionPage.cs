@@ -22,6 +22,7 @@ public class AccordionPage : Component
                 Helper.CreatePageHeader("Accordion and Expander Controls",
                     "Demonstration of Accordion and Expander controls with various configurations."),
                 CreateAccordionExample(),
+                CreateFlushAccordionExample(),
                 CreateExpandersExample(),
                 CreateEventsExample(),
                 CreateStyledExample()
@@ -64,7 +65,53 @@ public class AccordionPage : Component
     }
 
     /// <summary>
-    /// Example 2: Individual Expanders
+    /// Example 2: Flush Accordion
+    /// </summary>
+    private VisualElement CreateFlushAccordionExample()
+    {
+        return Helper.CreateExampleSection("Flush Accordion",
+            new Accordion()
+                .Flush(true)
+                .SingleExpand(false)
+                .AddItem("Project files",
+                    new VStack()
+                        .Spacing(6)
+                        .Children(
+                            new Label("Pages/AccordionPage.cs")
+                                .Foreground(GalleryPalette.Muted),
+                            new Label("Controls/Accordion.cs")
+                                .Foreground(GalleryPalette.Muted),
+                            new Label("Samples/VisualScripting/Controls/NodeToolbar.cs")
+                                .Foreground(GalleryPalette.Muted)
+                        ),
+                    startExpanded: true)
+                .AddItem("Palette sections",
+                    new VStack()
+                        .Spacing(6)
+                        .Children(
+                            new Label("Values")
+                                .Foreground(GalleryPalette.Muted),
+                            new Label("Math")
+                                .Foreground(GalleryPalette.Muted),
+                            new Label("Logic")
+                                .Foreground(GalleryPalette.Muted)
+                        ),
+                    startExpanded: true)
+                .AddItem("Usage notes",
+                    new VStack()
+                        .Spacing(6)
+                        .Children(
+                            new Label("Use Flush for sidebars and compact grouped lists.")
+                                .Foreground(GalleryPalette.Muted),
+                            new Label("It removes item chrome while preserving expand/collapse behavior.")
+                                .Foreground(GalleryPalette.Muted)
+                        ))
+                .Width(500)
+        );
+    }
+
+    /// <summary>
+    /// Example 3: Individual Expanders
     /// </summary>
     private VisualElement CreateExpandersExample()
     {
@@ -116,7 +163,7 @@ public class AccordionPage : Component
     }
 
     /// <summary>
-    /// Example 3: Expander with Events
+    /// Example 4: Expander with Events
     /// </summary>
     private VisualElement CreateEventsExample()
     {
@@ -165,7 +212,7 @@ public class AccordionPage : Component
     }
 
     /// <summary>
-    /// Example 4: Styled Expanders
+    /// Example 5: Styled Expanders
     /// </summary>
     private VisualElement CreateStyledExample()
     {

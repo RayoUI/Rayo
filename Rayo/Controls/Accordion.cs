@@ -30,6 +30,10 @@ public class Expander : BorderCompositeView<Expander>
     private bool _templateReady;
     private bool _suppressAnimation;
     private bool _isHeaderHovered;
+    private bool _isFlushAppearance;
+    private CornerRadius _headerCornerRadius = new CornerRadius(8, 8, 8, 8);
+    private CornerRadius _attachedHeaderCornerRadius = new CornerRadius(8, 8, 0, 0);
+    private CornerRadius _contentCornerRadius = new CornerRadius(0, 0, 8, 8);
 
     #region HeaderBackground
     [PaintProperty]
@@ -88,6 +92,39 @@ public class Expander : BorderCompositeView<Expander>
         get => field;
         set => this.SetProperty(ref field, value, () => _contentFrame?.Padding(value));
     } = new Thickness(16);
+    #endregion
+
+    #region HeaderCornerRadius
+    [LayoutProperty]
+    public CornerRadius HeaderCornerRadius
+    {
+        get => _headerCornerRadius;
+        set => this.SetProperty(ref _headerCornerRadius, value, UpdateHeaderVisuals);
+    }
+    #endregion
+
+    #region AttachedHeaderCornerRadius
+    [LayoutProperty]
+    public CornerRadius AttachedHeaderCornerRadius
+    {
+        get => _attachedHeaderCornerRadius;
+        set => this.SetProperty(ref _attachedHeaderCornerRadius, value, UpdateHeaderVisuals);
+    }
+    #endregion
+
+    #region ContentCornerRadius
+    [LayoutProperty]
+    public CornerRadius ContentCornerRadius
+    {
+        get => _contentCornerRadius;
+        set => this.SetProperty(ref _contentCornerRadius, value, () =>
+        {
+            if (_contentFrame != null)
+            {
+                _contentFrame.BorderRadius = value;
+            }
+        });
+    }
     #endregion
 
     #region AnimationDuration
@@ -180,11 +217,49 @@ public class Expander : BorderCompositeView<Expander>
     protected override void OnThemeApplied(ThemeData theme)
     {
         var palette = theme.Colors;
-        SetThemeValue(nameof(HeaderBackground), (Brush)palette.SurfaceHover, value => HeaderBackground = value);
+        SetThemeValue(
+            nameof(HeaderBackground),
+            _isFlushAppearance ? (Brush)Color.Transparent : palette.SurfaceHover,
+            value => HeaderBackground = value);
         SetThemeValue(nameof(HeaderHoverColor), (Brush)palette.SurfacePressed, value => HeaderHoverColor = value);
-        SetThemeValue(nameof(ContentBackground), (Brush)palette.Surface, value => ContentBackground = value);
+        SetThemeValue(
+            nameof(ContentBackground),
+            _isFlushAppearance ? (Brush)Color.Transparent : palette.Surface,
+            value => ContentBackground = value);
         SetThemeValue(nameof(TextColor), (Brush)palette.OnSurface, value => TextColor = value);
         SetThemeValue(nameof(BorderBrush), (Brush)palette.Border, value => BorderBrush = value);
+        SetThemeValue(
+            nameof(HeaderPadding),
+            _isFlushAppearance ? new Thickness(8, 7, 8, 7) : new Thickness(16, 12, 16, 12),
+            value => HeaderPadding = value);
+        SetThemeValue(
+            nameof(ContentPadding),
+            _isFlushAppearance ? new Thickness(8, 4, 8, 8) : new Thickness(16),
+            value => ContentPadding = value);
+        SetThemeValue(
+            nameof(HeaderCornerRadius),
+            _isFlushAppearance ? CornerRadius.None : new CornerRadius(8),
+            value => HeaderCornerRadius = value);
+        SetThemeValue(
+            nameof(AttachedHeaderCornerRadius),
+            _isFlushAppearance ? CornerRadius.None : new CornerRadius(8, 8, 0, 0),
+            value => AttachedHeaderCornerRadius = value);
+        SetThemeValue(
+            nameof(ContentCornerRadius),
+            _isFlushAppearance ? CornerRadius.None : new CornerRadius(0, 0, 8, 8),
+            value => ContentCornerRadius = value);
+    }
+
+    internal void SetFlushAppearance(bool isFlush)
+    {
+        if (_isFlushAppearance == isFlush)
+        {
+            return;
+        }
+
+        _isFlushAppearance = isFlush;
+        OnThemeApplied(EffectiveTheme);
+        InvalidateMeasure();
     }
 
     protected override void OnBorderBrushChanged()
@@ -233,7 +308,7 @@ public class Expander : BorderCompositeView<Expander>
             .HorizontalAlignment(HorizontalAlignment.Stretch)
             .SetInputTransparent(true);  // Let events pass through to parent ExpanderHeaderButton
         _headerFrame.Content(_headerContainer);
-        _headerFrame.BorderRadius = new CornerRadius(8, 8, 0, 0);
+        _headerFrame.BorderRadius = AttachedHeaderCornerRadius;
 
         // Make the header Frame clickable using IPointerHandler (store as field)
         _headerButton = new ExpanderHeaderButton(this, _headerFrame);
@@ -244,7 +319,7 @@ public class Expander : BorderCompositeView<Expander>
         _contentFrame.BorderBrush = BorderBrush.PrimaryColor;
         _contentFrame.BorderThickness = BorderThickness;
         _contentFrame.Padding = ContentPadding;
-        _contentFrame.BorderRadius = new CornerRadius(0, 0, 8, 8);
+        _contentFrame.BorderRadius = ContentCornerRadius;
         _contentFrame.IsVisible(false);
         AddChild(_contentFrame);
 
@@ -334,8 +409,8 @@ public class Expander : BorderCompositeView<Expander>
         // Update header Frame background
         _headerFrame.Background(GetHeaderBackground(_isHeaderHovered));
         _headerFrame.BorderRadius = contentAttached
-            ? new CornerRadius(8, 8, 0, 0)
-            : new CornerRadius(8, 8, 8, 8);
+            ? AttachedHeaderCornerRadius
+            : HeaderCornerRadius;
 
         MarkNeedsPaint();
     }
@@ -547,6 +622,15 @@ public class Accordion : CompositeView<Accordion>
     } = true;
     #endregion
 
+    #region Flush
+    [LayoutProperty]
+    public bool Flush
+    {
+        get => field;
+        set => this.SetProperty(ref field, value, ApplyFlushStyle);
+    }
+    #endregion
+
     public Accordion()
     {
         Spacing = 4;
@@ -561,6 +645,7 @@ public class Accordion : CompositeView<Accordion>
     {
         var expander = new Expander(header, content);
         expander.IsExpanded = startExpanded;
+        ApplyFlushStyle(expander);
 
         // Handle single-expand mode
         if (SingleExpand)
@@ -589,6 +674,8 @@ public class Accordion : CompositeView<Accordion>
 
     public Accordion AddExpander(Expander expander)
     {
+        ApplyFlushStyle(expander);
+
         // Handle single-expand mode
         if (SingleExpand)
         {
@@ -612,6 +699,23 @@ public class Accordion : CompositeView<Accordion>
         _layout?.AddChild(expander);
         InvalidateMeasure();
         return this;
+    }
+
+    private void ApplyFlushStyle()
+    {
+        _layout?.Spacing(Flush ? 0f : Spacing);
+
+        foreach (var expander in _expanders)
+        {
+            ApplyFlushStyle(expander);
+        }
+
+        InvalidateMeasure();
+    }
+
+    private void ApplyFlushStyle(Expander expander)
+    {
+        expander.SetFlushAppearance(Flush);
     }
 
     public Accordion ExpandItem(int index)

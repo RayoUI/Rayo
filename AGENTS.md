@@ -96,6 +96,13 @@ new Style<Button>().ChildOf<Frame>()   // direct child
 
 See `Help/STYLE_ENGINE.md` for current style-engine reference.
 
+### Creating and modifying controls
+
+- Treat theme changes as part of every control's lifecycle. Theme-dependent defaults must be assigned in `OnThemeApplied(ThemeData)` through `SetThemeValue(...)`, never captured once in a constructor or variant setter.
+- Visual variants must re-resolve their theme-managed values when the variant changes and when the effective theme changes. Switching a variant off must restore its normal theme defaults.
+- Preserve consumer precedence: do not clear explicit local values or bindings to apply a variant. Use the theme-value pipeline so consumer overrides remain authoritative.
+- Use semantic tokens from `ThemeData` instead of hard-coded light- or dark-theme colors. Verify new and modified controls in both light and dark themes, including hover, pressed, disabled, selected, and expanded states where applicable.
+
 ### Fluent DSL / source generator
 
 All classes inheriting from `VisualElement` **automatically** get fluent extension methods generated for every public property. Method names are **identical to the property name** — no `Set` prefix.
@@ -114,6 +121,13 @@ new Button()
 **CRTP pattern**: `public class MyWidget : View<MyWidget>` - fluent chain always returns the derived type.
 
 Do **not** add manual fluent setters for ordinary public properties on `VisualElement` descendants. The source generator already creates them, including inherited properties such as `MaxLength`, `IsReadOnly`, `IsPassword`, `HoverBackground`, etc. Only add manual fluent-style methods when they are not simple property setters, for example action/building APIs such as `AddItem(...)`, `ClearItems()`, `MoveTo(...)`, or grouped convenience methods that set multiple properties. Prefer generated property methods in samples and docs.
+
+### Creating examples
+
+- Structure samples and Gallery examples as declarative UI trees.
+- Use the generated Fluent API and existing fluent composition methods whenever they are available. Prefer chained configuration such as `new Button().Text("Save").Height(36)` over creating a control and assigning its public properties statement by statement.
+- Keep imperative code limited to event handling, state transitions, and APIs that inherently mutate collections, such as `AddItem(...)`.
+- Examples should demonstrate the public API that application authors are expected to use; do not rely on internal helpers or reproduce control implementation details.
 
 **`[NotFluent]`** skips generation for a class or property:
 - On a **class**: no fluent setters generated for any properties of that class
