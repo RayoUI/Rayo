@@ -28,6 +28,7 @@
 
   <ItemGroup>
     <AndroidResource Include="Resources\**" />
+    <None Include="StoreAssets\play_store_512.png" Pack="false" />
   </ItemGroup>
 
 </Project>
