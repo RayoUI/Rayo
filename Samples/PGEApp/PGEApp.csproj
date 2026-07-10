@@ -26,4 +26,8 @@
     <Compile Include="..\VisualScripting\Controls\ScriptNode.cs" Link="BehaviorEditor\Controls\ScriptNode.cs" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Assets\" />
+  </ItemGroup>
+
 </Project>
