@@ -4,7 +4,7 @@ using Rayo.Rendering;
 using Rayo.Rendering.Graphics.VectorGraphics;
 using IRenderer = Rayo.Rendering.IRenderer;
 
-namespace NanoApp.Controls;
+namespace PGEApp.Controls;
 
 public sealed class EntityPaletteItem : View<EntityPaletteItem>, IDraggable
 {

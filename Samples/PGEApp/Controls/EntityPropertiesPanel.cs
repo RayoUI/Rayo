@@ -5,7 +5,7 @@ using Rayo.Layout;
 using Rayo.Reactivity;
 using Rayo.Rendering;
 
-namespace NanoApp.Controls;
+namespace PGEApp.Controls;
 
 internal sealed class EntityPropertiesPanel : Component
 {

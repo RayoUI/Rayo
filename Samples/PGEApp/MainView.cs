@@ -1,9 +1,9 @@
-using NanoApp.Pages;
+using PGEApp.Pages;
 using Rayo;
 using Rayo.Controls;
 using Rayo.Core;
 
-namespace NanoApp;
+namespace PGEApp;
 
 public sealed class MainView : Component
 {

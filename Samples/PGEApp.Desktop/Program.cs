@@ -1,4 +1,4 @@
-using NanoApp;
+using PGEApp;
 using Rayo.Core.Platform;
 using Rayo.Hosting.Desktop;
 
@@ -12,7 +12,7 @@ host.Run(
     },
     configureWindow: config =>
     {
-        config.Title = "NanoApp";
+        config.Title = "PGEApp";
         config.Width = 763;
         config.Height = 391;
         config.CanResize = true;

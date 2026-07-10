@@ -45,12 +45,12 @@
     <Project Path="Samples/MobileApp.Desktop/MobileApp.Desktop.csproj" />
     <Project Path="Samples/MobileApp/MobileApp.csproj" />
   </Folder>
-  <Folder Name="/Samples/NanoApp/">
-    <Project Path="Samples/NanoApp.Android/NanoApp.Android.csproj">
+  <Folder Name="/Samples/PGEApp/">
+    <Project Path="Samples/PGEApp.Android/PGEApp.Android.csproj">
       <Deploy />
     </Project>
-    <Project Path="Samples/NanoApp.Desktop/NanoApp.Desktop.csproj" />
-    <Project Path="Samples/NanoApp/NanoApp.csproj" />
+    <Project Path="Samples/PGEApp.Desktop/PGEApp.Desktop.csproj" />
+    <Project Path="Samples/PGEApp/PGEApp.csproj" />
   </Folder>
   <Folder Name="/Samples/WeatherApp/">
     <Project Path="Samples/WeatherApp.Android/WeatherApp.Android.csproj">

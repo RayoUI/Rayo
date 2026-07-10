@@ -4,7 +4,7 @@ using Rayo.Core.Input;
 using Rayo.Rendering;
 using IRenderer = Rayo.Rendering.IRenderer;
 
-namespace NanoApp.Controls;
+namespace PGEApp.Controls;
 
 public sealed class SpriteDocument
 {

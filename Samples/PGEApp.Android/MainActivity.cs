@@ -1,15 +1,15 @@
 using Android.App;
 using Android.Content.PM;
-using NanoApp;
+using PGEApp;
 using Rayo.Hosting.Abstractions;
 using Rayo.Hosting.Android;
 
-namespace NanoApp.Android;
+namespace PGEApp.Android;
 
 [Activity(
     Label = "@string/app_name",
     MainLauncher = true,
-    Theme = "@style/Theme.NanoApp",
+    Theme = "@style/Theme.PGEApp",
     ConfigurationChanges = ConfigChanges.ScreenSize | ConfigChanges.Orientation | ConfigChanges.UiMode |
                            ConfigChanges.ScreenLayout | ConfigChanges.SmallestScreenSize | ConfigChanges.Density)]
 public sealed class MainActivity : AndroidPlatformHost
@@ -24,7 +24,7 @@ public sealed class MainActivity : AndroidPlatformHost
     {
         base.ConfigureWindow(config);
 
-        config.Title = "NanoApp";
+        config.Title = "PGEApp";
         config.VSync = true;
         config.Samples = 4;
 

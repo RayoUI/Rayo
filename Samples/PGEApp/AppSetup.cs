@@ -1,7 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Rayo.Styling;
 
-namespace NanoApp;
+namespace PGEApp;
 
 public static class AppSetup
 {

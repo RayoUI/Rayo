@@ -5,7 +5,7 @@ using Rayo.Core.Interfaces;
 using Rayo.Rendering;
 using IRenderer = Rayo.Rendering.IRenderer;
 
-namespace NanoApp.Controls;
+namespace PGEApp.Controls;
 
 public enum SceneEntityKind
 {

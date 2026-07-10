@@ -7,11 +7,11 @@
     <Nullable>enable</Nullable>
     <LangVersion>preview</LangVersion>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <AssemblyName>NanoApp.Desktop</AssemblyName>
+    <AssemblyName>PGEApp.Desktop</AssemblyName>
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\NanoApp\NanoApp.csproj" />
+    <ProjectReference Include="..\PGEApp\PGEApp.csproj" />
     <ProjectReference Include="..\..\Rayo.Hosting.Desktop\Rayo.Hosting.Desktop.csproj" />
   </ItemGroup>
 

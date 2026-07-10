@@ -1,11 +1,11 @@
-using NanoApp.Controls;
+using PGEApp.Controls;
 using Rayo;
 using Rayo.Controls;
 using Rayo.Core;
 using Rayo.Layout;
 using Rayo.Rendering;
 
-namespace NanoApp.Pages;
+namespace PGEApp.Pages;
 
 public sealed class SceneEditorPage : Component
 {

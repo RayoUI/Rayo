@@ -3,7 +3,7 @@ using Rayo.Layout;
 using VisualScripting.Controls;
 using VisualScripting.Models;
 
-namespace NanoApp.Pages;
+namespace PGEApp.Pages;
 
 public sealed class BehaviorEditorPage : Component
 {

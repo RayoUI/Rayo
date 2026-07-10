@@ -8,10 +8,10 @@
     <LangVersion>preview</LangVersion>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <NoWarn>$(NoWarn);XA0141</NoWarn>
-    <ApplicationId>com.rayoui.nanoapp</ApplicationId>
+    <ApplicationId>com.rayoui.pgeapp</ApplicationId>
     <ApplicationVersion>1</ApplicationVersion>
     <ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>
-    <ApplicationTitle>NanoApp</ApplicationTitle>
+    <ApplicationTitle>PGEApp</ApplicationTitle>
     <SupportedOSPlatformVersion>21</SupportedOSPlatformVersion>
   </PropertyGroup>
 
@@ -22,7 +22,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\NanoApp\NanoApp.csproj" />
+    <ProjectReference Include="..\PGEApp\PGEApp.csproj" />
     <ProjectReference Include="..\..\Rayo.Hosting.Android\Rayo.Hosting.Android.csproj" />
   </ItemGroup>
 
