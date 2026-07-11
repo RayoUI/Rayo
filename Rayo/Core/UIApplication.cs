@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using Silk.NET.Core;
 using Silk.NET.Input;
 using Silk.NET.Maths;
 using Silk.NET.OpenGL;
@@ -768,6 +769,8 @@ public class UIApplication : IDisposable
             throw new InvalidOperationException("No IGraphicsContext configured. Call SetGraphicsContext() before Initialize().");
         }
 
+        ApplyWindowIcon();
+
         // Let backend bootstrap with the native window (e.g. Vulkan needs IVkSurface).
         _graphicsContext.OnWindowCreated(_window!);
 
@@ -794,6 +797,17 @@ public class UIApplication : IDisposable
 
         // Notify that graphics context is initialized
         OnGLInitialized?.Invoke();
+    }
+
+    private void ApplyWindowIcon()
+    {
+        if (_window == null || _windowConfig.Icon is not { } icon)
+        {
+            return;
+        }
+
+        var rawIcon = new RawImage(icon.Width, icon.Height, icon.Pixels.AsMemory());
+        _window.SetWindowIcon(ref rawIcon);
     }
 
     private void OnResize(Vector2D<int> size)

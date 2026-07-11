@@ -2,6 +2,7 @@
 using Rayo.Hosting.Desktop;
 using Rayo.Hosting.Abstractions;
 using Rayo.Core.Platform;
+using System.IO;
 
 namespace Notepad;
 
@@ -9,10 +10,6 @@ public class Program
 {
     public static void Main(string[] args)
     {
-        Console.WriteLine("==========================================");
-        Console.WriteLine("Rayo Notepad Started");
-        Console.WriteLine("==========================================");
-
         var host = new DesktopPlatformHost();
 
         host.Run(
@@ -30,6 +27,7 @@ public class Program
                 config.Height = 768;
                 config.CanResize = true;
                 config.VSync = true;
+                config.SetIconFromFile(Path.Combine("Assets", "AppIcon.png"));
                 
                 if (host.GetNativeWindowConfiguration(config) is { } nativeConfig)
                 {

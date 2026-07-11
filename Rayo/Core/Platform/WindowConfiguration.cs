@@ -77,6 +77,11 @@ public class WindowConfiguration
     public SystemDecorations SystemDecorations { get; set; } = SystemDecorations.Full;
 
     /// <summary>
+    /// The desktop window icon. Pixel data must be tightly packed RGBA bytes.
+    /// </summary>
+    public WindowIcon? Icon { get; set; }
+
+    /// <summary>
     /// Whether the window background is transparent.
     /// </summary>
     public bool TransparentBackground { get; set; } = false;

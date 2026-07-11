@@ -12,6 +12,14 @@
   <ItemGroup>
     <Compile Remove="Generated\**" />
   </ItemGroup>
+	
+  <PropertyGroup>
+    <ApplicationIcon>Assets\AppIcon.ico</ApplicationIcon>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Content Include="Assets\AppIcon.png" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\..\Rayo\Rayo.csproj" />
