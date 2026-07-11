@@ -29,7 +29,6 @@
     <Project Path="Samples/TestApp/TestApp.csproj" />
     <Project Path="Samples/ThemeApp/ThemeApp.csproj" />
     <Project Path="Samples/ToDoList/ToDoList.csproj" />
-    <Project Path="Samples/VisualScripting/VisualScripting.csproj" />
   </Folder>
   <Folder Name="/Samples/CrossPlatformApp/">
     <Project Path="Samples/CrossPlatformApp.Android/CrossPlatformApp.Android.csproj">
@@ -44,13 +43,6 @@
     </Project>
     <Project Path="Samples/MobileApp.Desktop/MobileApp.Desktop.csproj" />
     <Project Path="Samples/MobileApp/MobileApp.csproj" />
-  </Folder>
-  <Folder Name="/Samples/PGEApp/">
-    <Project Path="Samples/PGEApp.Android/PGEApp.Android.csproj">
-      <Deploy />
-    </Project>
-    <Project Path="Samples/PGEApp.Desktop/PGEApp.Desktop.csproj" />
-    <Project Path="Samples/PGEApp/PGEApp.csproj" />
   </Folder>
   <Folder Name="/Samples/WeatherApp/">
     <Project Path="Samples/WeatherApp.Android/WeatherApp.Android.csproj">
@@ -76,6 +68,6 @@
     <Project Path="Samples/WebGPUApp/WebGPUApp.csproj" />
   </Folder>
   <Project Path="Rayo.Reactivity/Rayo.FluentApiGenerator.csproj" />
-  <Project Path="Rayo/Rayo.csproj" />
   <Project Path="Rayo.Tests/Rayo.Tests.csproj" />
+  <Project Path="Rayo/Rayo.csproj" />
 </Solution>

@@ -18,6 +18,5 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Rayo\Rayo.csproj" />
-    <ProjectReference Include="..\Samples\PGEApp\PGEApp.csproj" />
   </ItemGroup>
 </Project>
