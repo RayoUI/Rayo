@@ -16,10 +16,21 @@ function Invoke-DotNet
 {
     param([string[]]$Arguments)
 
-    & dotnet @Arguments
-    if ($LASTEXITCODE -ne 0)
+    $previousErrorActionPreference = $ErrorActionPreference
+    try
     {
-        throw "dotnet $($Arguments -join ' ') failed with exit code $LASTEXITCODE."
+        $ErrorActionPreference = 'Continue'
+        & dotnet @Arguments
+        $exitCode = $LASTEXITCODE
+    }
+    finally
+    {
+        $ErrorActionPreference = $previousErrorActionPreference
+    }
+
+    if ($exitCode -ne 0)
+    {
+        throw "dotnet $($Arguments -join ' ') failed with exit code $exitCode."
     }
 }
 
@@ -37,10 +48,10 @@ if (-not (Test-Path -LiteralPath $projectListPath))
     throw "NuGet project list was not found: $projectListPath"
 }
 
-$projects = Get-Content -LiteralPath $projectListPath |
+$projects = @(Get-Content -LiteralPath $projectListPath |
     ForEach-Object { $_.Trim() } |
     Where-Object { $_ -and -not $_.StartsWith('#') } |
-    ForEach-Object { Join-Path $repositoryRoot $_ }
+    ForEach-Object { Join-Path $repositoryRoot $_ })
 
 if ($projects.Count -eq 0)
 {

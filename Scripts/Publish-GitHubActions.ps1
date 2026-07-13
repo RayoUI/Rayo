@@ -18,13 +18,24 @@ function Invoke-Git
 {
     param([string[]]$Arguments)
 
-    $output = & git @Arguments 2>&1
-    if ($LASTEXITCODE -ne 0)
+    $previousErrorActionPreference = $ErrorActionPreference
+    try
+    {
+        $ErrorActionPreference = 'Continue'
+        $output = & git @Arguments 2>&1
+        $exitCode = $LASTEXITCODE
+    }
+    finally
+    {
+        $ErrorActionPreference = $previousErrorActionPreference
+    }
+
+    if ($exitCode -ne 0)
     {
         throw "git $($Arguments -join ' ') failed:`n$($output -join [Environment]::NewLine)"
     }
 
-    return $output
+    return @($output | Where-Object { $_ -isnot [System.Management.Automation.ErrorRecord] })
 }
 
 $repositoryRoot = Split-Path -Parent $PSScriptRoot
@@ -37,7 +48,7 @@ if (-not [string]::Equals(
     throw "Run this script from the Rayo repository. Expected: $repositoryRoot"
 }
 
-$workingTreeChanges = Invoke-Git @('status', '--porcelain')
+$workingTreeChanges = @(Invoke-Git @('status', '--porcelain'))
 if ($workingTreeChanges.Count -gt 0)
 {
     throw 'The working tree is not clean. Commit or stash all changes before creating a release tag.'
@@ -59,7 +70,7 @@ if (-not $PSCmdlet.ShouldProcess(
     return
 }
 
-$remoteTag = Invoke-Git @('ls-remote', '--tags', '--refs', $Remote, "refs/tags/$tag")
+$remoteTag = @(Invoke-Git @('ls-remote', '--tags', '--refs', $Remote, "refs/tags/$tag"))
 if ($remoteTag.Count -gt 0)
 {
     throw "The remote tag '$tag' already exists on '$Remote'."
