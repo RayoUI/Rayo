@@ -79,8 +79,18 @@ public class DesktopPlatformHost : PlatformHostBase
             };
         }
 
-        // Run the application.
-        app.Run();
+        void ReloadApplication(Type[]? updatedTypes) => HotReloadManager.UpdateApplication(updatedTypes);
+
+        HotReloadMediator.ReloadRequested += ReloadApplication;
+        try
+        {
+            // Run the application.
+            app.Run();
+        }
+        finally
+        {
+            HotReloadMediator.ReloadRequested -= ReloadApplication;
+        }
 
         OnAfterRun();
     }
