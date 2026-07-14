@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
@@ -8,6 +8,12 @@
     <OutputType>Library</OutputType>
     <RootNamespace>MobileApp</RootNamespace>
   </PropertyGroup>
+
+  <ItemGroup>
+    <Content Include="Assets\AppIcon\AppIcon.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\..\Rayo\Rayo.csproj" />

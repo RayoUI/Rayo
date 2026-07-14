@@ -18,6 +18,7 @@ host.Run(
         config.CanResize = defaults.CanResize;
         config.VSync = defaults.VSync;
         config.Samples = defaults.Samples;
+        config.SetIconFromFile(Path.Combine(AppContext.BaseDirectory, "Assets/AppIcon", "AppIcon.png"));
 
         if (host.GetNativeWindowConfiguration(config) is { } nativeConfig)
         {

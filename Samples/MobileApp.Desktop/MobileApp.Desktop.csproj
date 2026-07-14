@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -8,11 +8,16 @@
     <LangVersion>preview</LangVersion>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <AssemblyName>MobileApp.Desktop</AssemblyName>
+    <ApplicationIcon>..\MobileApp\Assets\AppIcon\AppIcon.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\MobileApp\MobileApp.csproj" />
     <ProjectReference Include="..\..\Rayo.Hosting.Desktop\Rayo.Hosting.Desktop.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\MobileApp\Assets\AppIcon\AppIcon.png" Link="Assets\AppIcon\AppIcon.png" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>
