@@ -23,7 +23,7 @@ public sealed class SpriteEditorPage : Component
     public override VisualElement Build()
     {
         return new Grid()
-            .Rows(GridLength.Star, GridLength.Auto, GridLength.Auto)
+            .Rows(GridLength.Star, GridLength.Auto, GridLength.Auto, GridLength.Auto)
             .Columns(GridLength.Star)
             .AddChild(
                 new ScrollView()
@@ -42,7 +42,8 @@ public sealed class SpriteEditorPage : Component
                 0,
                 0)
             .AddChild(CreatePalette(), 1, 0)
-            .AddChild(CreateToolbar(), 2, 0);
+            .AddChild(CreateToolbar(), 2, 0)
+            .AddChild(CreateToolbar(), 3, 0);
     }
 
     private VisualElement CreatePalette()

@@ -9,10 +9,13 @@ namespace Nano.Pages;
 
 public class HomePage : Component
 {
+    private readonly SpriteEditorPage _spriteEditorPage = new();
+    private VisualElement? _spriteEditorContent;
+
     public override VisualElement Build()
     {
         return new TabControl()
-            .AddTab("Inicio", new SpriteEditorPage())
+            .AddTab("Inicio", _spriteEditorContent ??= _spriteEditorPage.Build())
             .AddTab("Explorar", CreateTabContent("Contenido de la segunda pestana."))
             .AddTab("Ajustes", CreateTabContent("Contenido de la tercera pestana."));
     }

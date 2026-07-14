@@ -706,16 +706,16 @@ public class TabControl : CompositeView<TabControl>, IFrameAnimation
     {
         return Position switch
         {
-            TabPosition.Top => new VStack()
-                .Spacing(0)
-                .HorizontalAlignment(HorizontalAlignment.Stretch)
-                .VerticalAlignment(VerticalAlignment.Stretch)
-                .Children(_headerHost, _contentFrame),
-            TabPosition.Bottom => new VStack()
-                .Spacing(0)
-                .HorizontalAlignment(HorizontalAlignment.Stretch)
-                .VerticalAlignment(VerticalAlignment.Stretch)
-                .Children(_contentFrame, _headerHost),
+            TabPosition.Top => new Grid()
+                .Rows(GridLength.Auto, GridLength.Star)
+                .Columns(GridLength.Star)
+                .AddChild(_headerHost, 0, 0)
+                .AddChild(_contentFrame, 1, 0),
+            TabPosition.Bottom => new Grid()
+                .Rows(GridLength.Star, GridLength.Auto)
+                .Columns(GridLength.Star)
+                .AddChild(_contentFrame, 0, 0)
+                .AddChild(_headerHost, 1, 0),
             TabPosition.Left => new HStack()
                 .Spacing(0)
                 .HorizontalAlignment(HorizontalAlignment.Stretch)
