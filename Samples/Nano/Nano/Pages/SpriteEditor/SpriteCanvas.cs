@@ -39,7 +39,7 @@ public sealed class SpriteFrame
     }
 }
 
-public sealed class SpriteCanvas : View<SpriteCanvas>, IPointerHandler
+public sealed class SpriteCanvas : View<SpriteCanvas>, IPointerHandler, IExclusiveTouchHandler
 {
     private const int SpriteSize = 8;
     private const float BaseTileSize = 32f;
@@ -55,6 +55,8 @@ public sealed class SpriteCanvas : View<SpriteCanvas>, IPointerHandler
     private float _zoom = 1f;
     private (int Row, int Column)? _shapeStart;
     private int? _shapePointerId;
+    private int? _paintPointerId;
+    private bool _paintedDuringDrag;
 
     public Color SelectedColor
     {
@@ -81,12 +83,14 @@ public sealed class SpriteCanvas : View<SpriteCanvas>, IPointerHandler
     public SpriteCanvas()
     {
         _pixels = _frame.Pixels;
+        HorizontalAlignment = HorizontalAlignment.Stretch;
+        VerticalAlignment = VerticalAlignment.Stretch;
     }
 
     protected override void Measure(float availableWidth, float availableHeight)
     {
         DesiredWidth = float.IsInfinity(availableWidth) ? 320f : availableWidth;
-        DesiredHeight = 360f;
+        DesiredHeight = float.IsInfinity(availableHeight) ? 360f : availableHeight;
     }
 
     public override void Render(IRenderer renderer)
@@ -128,13 +132,17 @@ public sealed class SpriteCanvas : View<SpriteCanvas>, IPointerHandler
             }
             else
             {
-                PaintAt(e.Position);
+                // Defer a tap until release so a second finger can turn the
+                // interaction into a pan/zoom gesture without painting.
+                _paintPointerId = e.PointerId;
+                _paintedDuringDrag = false;
             }
         }
         else if (_touches.Count == 2)
         {
             _shapeStart = null;
             _shapePointerId = null;
+            _paintPointerId = null;
             BeginPinch();
         }
 
@@ -153,6 +161,12 @@ public sealed class SpriteCanvas : View<SpriteCanvas>, IPointerHandler
         {
             UpdatePinch();
         }
+        else if (_paintPointerId == e.PointerId && !IsShapeTool() &&
+                 (Tool is SpriteTool.Pencil or SpriteTool.Eraser))
+        {
+            PaintAt(e.Position);
+            _paintedDuringDrag = true;
+        }
 
         e.Handled = true;
     }
@@ -164,10 +178,16 @@ public sealed class SpriteCanvas : View<SpriteCanvas>, IPointerHandler
         {
             DrawShape(start, end);
         }
+        else if (_touches.Count == 1 && _paintPointerId == e.PointerId && !_paintedDuringDrag)
+        {
+            PaintAt(e.Position);
+        }
 
         _touches.Remove(e.PointerId);
         _shapeStart = null;
         _shapePointerId = null;
+        _paintPointerId = null;
+        _paintedDuringDrag = false;
         e.Handled = true;
     }
 

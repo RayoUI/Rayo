@@ -1900,7 +1900,8 @@ public class EventManager
             state.CapturedElement = hitResult.Element;
             // Elements that handle their own drag exclusively (Slider, Splitter)
             // should never have scroll capture transferred away from them.
-            if (hitResult.Element is Rayo.Controls.Slider ||
+            if (hitResult.Element is Rayo.Core.Input.IExclusiveTouchHandler ||
+                hitResult.Element is Rayo.Controls.Slider ||
                 hitResult.Element is Rayo.Controls.Splitter)
             {
                 state.ScrollCaptureTarget = null;

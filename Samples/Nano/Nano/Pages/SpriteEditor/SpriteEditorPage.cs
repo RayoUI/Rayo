@@ -23,26 +23,19 @@ public sealed class SpriteEditorPage : Component
     public override VisualElement Build()
     {
         return new Grid()
-            .Rows(GridLength.Star, GridLength.Auto, GridLength.Auto, GridLength.Auto)
+            .Rows(GridLength.Auto, GridLength.Star, GridLength.Auto, GridLength.Auto)
             .Columns(GridLength.Star)
             .AddChild(
-                new ScrollView()
-                    .Content(
-                        new VStack()
-                            .Spacing(16)
-                            .Padding(new Thickness(20))
-                            .Children(
-                                CreateFrameViewer(),
-                                new Frame()
-                                    .Height(360)
-                                    .Background(new Color(38, 48, 64))
-                                    .BorderRadius(12)
-                                    .Content(_canvas)
-                            )),
+                CreateFrameViewer(),
                 0,
                 0)
-            .AddChild(CreatePalette(), 1, 0)
-            .AddChild(CreateToolbar(), 2, 0)
+            .AddChild(
+                new Frame()
+                    .Background(new Color(38, 48, 64))
+                    .Content(_canvas),
+                1,
+                0)
+            .AddChild(CreatePalette(), 2, 0)
             .AddChild(CreateToolbar(), 3, 0);
     }
 
@@ -72,11 +65,10 @@ public sealed class SpriteEditorPage : Component
         return new VStack()
             .Spacing(4)
             .Children(
-                new ScrollView
-                {
-                    Orientation = ScrollOrientation.Horizontal,
-                    ShowHorizontalScrollbar = false
-                }.Height(82).Content(_frameList),
+                new ScrollView()
+                    .Orientation(ScrollOrientation.Horizontal)
+                    .Height(82)
+                    .Content(_frameList),
                 new HStack()
                     .Spacing(6)
                     .Children(
