@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <OutputType>Library</OutputType>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>preview</LangVersion>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
+    <CompilerGeneratedFilesOutputPath>Generated</CompilerGeneratedFilesOutputPath>
+    <RootNamespace>Nano</RootNamespace>
+    <AssemblyName>Nano</AssemblyName>
+    <RayoVersion>0.1.10</RayoVersion>
+    <SourceGeneratorNamespace>$(RootNamespace).Extensions</SourceGeneratorNamespace>
+    <HotReloadEnabled Condition="'$(Configuration)' == 'Debug'">true</HotReloadEnabled>
+    <HotReloadSupported Condition="'$(Configuration)' == 'Debug'">true</HotReloadSupported>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <CompilerVisibleProperty Include="RootNamespace" />
+    <CompilerVisibleProperty Include="SourceGeneratorNamespace" />
+    <Compile Remove="Generated\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\Rayo\Rayo.csproj" />
+  </ItemGroup>
+
+</Project>

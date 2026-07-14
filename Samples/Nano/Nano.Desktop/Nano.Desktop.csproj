@@ -1,0 +1,31 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>preview</LangVersion>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <RootNamespace>Nano.Desktop</RootNamespace>
+    <AssemblyName>Nano.Desktop</AssemblyName>
+    <ApplicationIcon>..\Nano\Assets\AppIcon\AppIcon.ico</ApplicationIcon>
+    <RayoVersion>0.1.10</RayoVersion>
+    <HotReloadEnabled Condition="'$(Configuration)' == 'Debug'">true</HotReloadEnabled>
+    <HotReloadSupported Condition="'$(Configuration)' == 'Debug'">true</HotReloadSupported>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\Rayo.Hosting.Desktop\Rayo.Hosting.Desktop.csproj" />
+    <ProjectReference Include="..\Nano\Nano.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--<PackageReference Include="Rayo.Hosting.Desktop" Version="$(RayoVersion)" />-->
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\Nano\Assets\AppIcon\AppIcon.png" Link="Assets\AppIcon\AppIcon.png" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,40 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0-android</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>preview</LangVersion>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <SupportedOSPlatformVersion>21</SupportedOSPlatformVersion>
+    <ApplicationTitle>Rayo Cross-Platform App</ApplicationTitle>
+    <ApplicationId>com.companyname.nano</ApplicationId>
+    <ApplicationVersion>1</ApplicationVersion>
+    <ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>
+    <NoWarn>$(NoWarn);XA0141</NoWarn>
+    <RootNamespace>Nano.Android</RootNamespace>
+    <AssemblyName>Nano.Android</AssemblyName>
+    <RayoVersion>0.1.10</RayoVersion>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)' == 'Debug'">
+    <RunAOTCompilation>false</RunAOTCompilation>
+    <UseInterpreter>true</UseInterpreter>
+    <AndroidEnableProfiledAOT>false</AndroidEnableProfiledAOT>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\Rayo.Hosting.Android\Rayo.Hosting.Android.csproj" />
+    <ProjectReference Include="..\Nano\Nano.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--<PackageReference Include="Rayo.Hosting.Android" Version="$(RayoVersion)" />-->
+  </ItemGroup>
+
+  <ItemGroup>
+    <AndroidResource Include="Resources\**" />
+  </ItemGroup>
+
+</Project>
