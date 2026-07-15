@@ -382,11 +382,21 @@ public class Grid : Layout<Grid>
                 float cellX = colPositions[col];
                 float cellY = rowPositions[row];
 
-                // Calculate cell width and height (with span)
-                // colPositions now correctly includes spacing only BETWEEN columns (not after last)
-                // so we can simply calculate the difference
-                float cellWidth = colPositions[col + colSpan] - colPositions[col];
-                float cellHeight = rowPositions[row + rowSpan] - rowPositions[row];
+                // A track position includes the spacing that follows the previous
+                // track. Sum the actual tracks here so a single-cell child does
+                // not stretch over the gap after it. Spans include only their
+                // internal gaps.
+                float cellWidth = 0;
+                for (int i = col; i < col + colSpan; i++)
+                    cellWidth += colWidths[i];
+                if (colSpan > 1)
+                    cellWidth += ColumnSpacing * (colSpan - 1);
+
+                float cellHeight = 0;
+                for (int i = row; i < row + rowSpan; i++)
+                    cellHeight += rowHeights[i];
+                if (rowSpan > 1)
+                    cellHeight += RowSpacing * (rowSpan - 1);
 
                 // Re-measure child with its specific cell size
                 // This ensures child knows the actual space available in its cell

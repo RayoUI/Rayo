@@ -99,32 +99,22 @@ public class MainView : Component
 
     private VisualElement BuildBreadcrumb()
     {
-        var items = new List<VisualElement>
-        {
-            new ButtonIcon(Icons.Home)
-                .Size(34)
-                .IconSize(18)
-                .IconColor(Color.White)
-                .Variant(ButtonVariant.Ghost)
-                .OnTapped(() => NavigateTo(string.Empty))
-        };
+        const float maximumSegmentWidth = 112;
+        var segments = new List<VisualElement>();
 
         var currentPath = string.Empty;
         foreach (var segment in _assetDirectory.Split('/', StringSplitOptions.RemoveEmptyEntries))
         {
             currentPath = string.IsNullOrEmpty(currentPath) ? segment : $"{currentPath}/{segment}";
             var targetPath = currentPath;
-            items.Add(new Label("/")
+            segments.Add(new Label("/")
                 .FontSize(13)
                 .Foreground(new Color(100, 116, 139))
                 .VerticalAlignment(VerticalAlignment.Center));
-            items.Add(new Button()
-                .Text(segment)
-                .Height(28)
-                .TextColor(new Color(191, 219, 254))
-                .Background(Color.Transparent)
-                .HoverBackground(new Color(45, 55, 72))
-                .OnTapped(() => NavigateTo(targetPath)));
+            segments.Add(new BreadcrumbSegment(
+                segment,
+                maximumSegmentWidth,
+                () => NavigateTo(targetPath)));
         }
 
         return new HStack()
@@ -132,7 +122,29 @@ public class MainView : Component
             .Height(34)
             .HorizontalAlignment(HorizontalAlignment.Stretch)
             .VerticalAlignment(VerticalAlignment.Center)
-            .Children(items.ToArray());
+            .Children(
+                new ButtonIcon(Icons.Home)
+                    .Size(34)
+                    .IconSize(18)
+                    .IconColor(Color.White)
+                    .Variant(ButtonVariant.Ghost)
+                    .OnTapped(() => NavigateTo(string.Empty)),
+                new ScrollView
+                {
+                    Orientation = ScrollOrientation.Horizontal,
+                    ShowHorizontalScrollbar = false,
+                    ShowVerticalScrollbar = false
+                }
+                .Height(34)
+                .HorizontalAlignment(HorizontalAlignment.Stretch)
+                .VerticalAlignment(VerticalAlignment.Center)
+                .Content(
+                    new HStack()
+                        .Spacing(2)
+                        .Height(34)
+                        .HorizontalAlignment(HorizontalAlignment.Left)
+                        .VerticalAlignment(VerticalAlignment.Center)
+                        .Children(segments.ToArray())));
     }
 
     private void ToggleAssetActionsMenu(VisualElement anchor)
@@ -252,6 +264,8 @@ public class MainView : Component
 
     private VisualElement BuildGridView(IReadOnlyList<VirtualAsset> assets)
     {
+        const int columnCount = 3;
+        const float gridGap = 8;
         var entries = new List<(string Name, bool IsDirectory, Action Action)>();
         if (!string.IsNullOrEmpty(_assetDirectory))
             entries.Add(("..", true, NavigateUp));
@@ -261,17 +275,20 @@ public class MainView : Component
             return new Label("This folder is empty").FontSize(13).Foreground(new Color(148, 163, 184));
 
         var grid = new Grid()
-            .Columns(GridLength.Star, GridLength.Star)
-            .ColumnSpacing(8)
-            .RowSpacing(8)
+            .Columns(GridLength.Star, GridLength.Star, GridLength.Star)
+            .ColumnSpacing(gridGap)
+            .RowSpacing(gridGap)
             .HorizontalAlignment(HorizontalAlignment.Stretch);
-        for (var row = 0; row < (int)Math.Ceiling(entries.Count / 2d); row++)
+        for (var row = 0; row < (int)Math.Ceiling(entries.Count / (double)columnCount); row++)
             grid.RowDefinitions.Add(GridLength.Pixels(104));
 
         for (var index = 0; index < entries.Count; index++)
         {
             var entry = entries[index];
-            grid.AddChild(CreateGridAssetItem(entry.Name, entry.IsDirectory, entry.Action), index / 2, index % 2);
+            grid.AddChild(
+                CreateGridAssetItem(entry.Name, entry.IsDirectory, entry.Action),
+                index / columnCount,
+                index % columnCount);
         }
 
         return grid;
@@ -280,64 +297,65 @@ public class MainView : Component
     private VisualElement CreateListAssetItem(string text, bool isDirectory, Action action)
     {
         var icon = GetAssetIcon(text, isDirectory);
-        return new HStack()
-            .Spacing(6)
+        return new AssetGridTile(action)
             .Height(40)
-            .HorizontalAlignment(HorizontalAlignment.Stretch)
-            .Children(
-                new ButtonIcon(icon)
-                    .Size(40)
-                    .IconSize(19)
-                    .IconColor(GetAssetIconColor(isDirectory))
-                    .Variant(ButtonVariant.Ghost)
-                    .OnTapped(action),
-                new Button()
-                    .Height(40)
-                    .Text(text)
-                    .TextAlignment(HorizontalAlignment.Left)
-                    .Padding(new Thickness(8, 0, 8, 0))
-                    .TextColor(new Color(226, 232, 240))
-                    .Background(Color.Transparent)
-                    .HoverBackground(new Color(45, 55, 72))
-                    .PressedBackground(new Color(62, 126, 214))
-                    .BorderThickness(0)
-                    .BorderRadius(8)
-                    .HorizontalAlignment(HorizontalAlignment.Stretch)
-                    .OnTapped(action));
+            .BorderThickness(0)
+            .BorderRadius(8)
+            .Padding(new Thickness(10, 0))
+            .Content(
+                new Grid()
+                    .Rows(GridLength.Star)
+                    .Columns(GridLength.Pixels(28), GridLength.Star)
+                    .ColumnSpacing(8)
+                    .AddChild(
+                        new Icon(icon)
+                            .Size(19)
+                            .Color(GetAssetIconColor(isDirectory))
+                            .HorizontalAlignment(HorizontalAlignment.Center)
+                            .VerticalAlignment(VerticalAlignment.Center),
+                        0,
+                        0)
+                    .AddChild(
+                        new Label()
+                            .Height(40)
+                            .Text(text)
+                            .FontSize(14)
+                            .Foreground(new Color(226, 232, 240))
+                            .TextTrimming(TextTrimming.CharacterEllipsis)
+                            .TextHorizontalAlignment(HorizontalAlignment.Left)
+                            .TextVerticalAlignment(VerticalAlignment.Center)
+                            .HorizontalAlignment(HorizontalAlignment.Stretch),
+                        0,
+                        1));
     }
 
     private VisualElement CreateGridAssetItem(string text, bool isDirectory, Action action)
     {
         var icon = GetAssetIcon(text, isDirectory);
-        return new Frame()
-            .Background(new Color(30, 41, 59))
+        return new AssetGridTile(action)
             .BorderBrush(new Color(51, 65, 85))
             .BorderThickness(1)
             .BorderRadius(8)
             .Padding(new Thickness(6))
             .Content(
                 new VStack()
-                    .Spacing(2)
+                    .Spacing(6)
                     .HorizontalAlignment(HorizontalAlignment.Stretch)
+                    .VerticalAlignment(VerticalAlignment.Center)
                     .Children(
-                        new ButtonIcon(icon)
-                            .Width(44)
-                            .Height(44)
-                            .IconSize(26)
-                            .IconColor(GetAssetIconColor(isDirectory))
-                            .Variant(ButtonVariant.Ghost)
+                        new Icon(icon)
+                            .Size(30)
+                            .Color(GetAssetIconColor(isDirectory))
                             .HorizontalAlignment(HorizontalAlignment.Center)
-                            .OnTapped(action),
-                        new Button()
-                            .Height(34)
+                            .VerticalAlignment(VerticalAlignment.Center),
+                        new Label()
                             .Text(text)
                             .FontSize(12)
-                            .TextColor(new Color(226, 232, 240))
-                            .Background(Color.Transparent)
-                            .HoverBackground(new Color(51, 65, 85))
-                            .PressedBackground(new Color(62, 126, 214))
-                            .BorderThickness(0)
-                            .OnTapped(action)));
+                            .Foreground(new Color(226, 232, 240))
+                            .TextTrimming(TextTrimming.CharacterEllipsis)
+                            .TextHorizontalAlignment(HorizontalAlignment.Center)
+                            .HorizontalAlignment(HorizontalAlignment.Stretch)
+                            .VerticalAlignment(VerticalAlignment.Center)));
     }
 
     private static IconData GetAssetIcon(string name, bool isDirectory)
@@ -458,6 +476,117 @@ public class MainView : Component
                                position.Y <= _menu.ComputedY + _menu.ComputedHeight;
             if (!isInsideMenu)
                 _close();
+        }
+    }
+
+    private sealed class BreadcrumbSegment : Frame, IPointerHandler
+    {
+        private static readonly Color HoverBackground = new(45, 55, 72);
+        private readonly Action _onTapped;
+        private bool _isTapPending;
+
+        public BreadcrumbSegment(string text, float maximumWidth, Action onTapped)
+        {
+            _onTapped = onTapped;
+            Height = 28;
+            MaxWidth = maximumWidth;
+            Padding = new Thickness(8, 0);
+            Background = Color.Transparent;
+            HorizontalAlignment = HorizontalAlignment.Left;
+            VerticalAlignment = VerticalAlignment.Center;
+            Content = new Label()
+                .Text(text)
+                .FontSize(14)
+                .Foreground(new Color(191, 219, 254))
+                .TextTrimming(TextTrimming.CharacterEllipsis)
+                .TextHorizontalAlignment(HorizontalAlignment.Left)
+                .TextVerticalAlignment(VerticalAlignment.Center)
+                .HorizontalAlignment(HorizontalAlignment.Stretch)
+                .VerticalAlignment(VerticalAlignment.Stretch);
+        }
+
+        public void OnPointerEntered(PointerEventArgs args)
+        {
+            if (args.PointerType == PointerType.Mouse)
+                Background = HoverBackground;
+        }
+
+        public void OnPointerExited(PointerEventArgs args)
+        {
+            if (args.PointerType == PointerType.Mouse)
+                Background = Color.Transparent;
+        }
+
+        public void OnPointerPressed(PointerEventArgs args)
+        {
+            // Do not show a pressed state: a touch drag belongs to the
+            // surrounding ScrollView and must remain visually neutral.
+            _isTapPending = args.Button == 0;
+        }
+
+        public void OnPointerReleased(PointerEventArgs args)
+        {
+            if (!_isTapPending)
+                return;
+
+            _isTapPending = false;
+            _onTapped();
+        }
+
+        public void OnPointerCanceled(PointerEventArgs args)
+        {
+            _isTapPending = false;
+            Background = Color.Transparent;
+        }
+    }
+
+    private sealed class AssetGridTile : Frame, IPointerHandler
+    {
+        private static readonly Color NormalBackground = new(30, 41, 59);
+        private static readonly Color HoverBackground = new(51, 65, 85);
+        private static readonly Color PressedBackground = new(62, 126, 214);
+        private readonly Action _action;
+        private bool _isPressed;
+
+        public AssetGridTile(Action action)
+        {
+            _action = action;
+            Background = NormalBackground;
+        }
+
+        public void OnPointerEntered(PointerEventArgs args)
+        {
+            if (!_isPressed)
+                Background = HoverBackground;
+        }
+
+        public void OnPointerExited(PointerEventArgs args) => ResetInteraction();
+
+        public void OnPointerPressed(PointerEventArgs args)
+        {
+            if (args.Button != 0)
+                return;
+
+            _isPressed = true;
+            Background = PressedBackground;
+        }
+
+        public void OnPointerReleased(PointerEventArgs args)
+        {
+            if (!_isPressed)
+                return;
+
+            _isPressed = false;
+            Background = HoverBackground;
+            _action();
+        }
+
+        public void OnPointerCanceled(PointerEventArgs args) => ResetInteraction();
+
+        private void ResetInteraction()
+        {
+            _isPressed = false;
+            Background = NormalBackground;
         }
     }
 }

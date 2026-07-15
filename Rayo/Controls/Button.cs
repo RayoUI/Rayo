@@ -313,6 +313,15 @@ public class Button : BorderView<Button>,
     }
 
     /// <summary>
+    /// Clears the pressed state when an ancestor takes ownership of the gesture,
+    /// such as a ScrollView capturing a touch drag.
+    /// </summary>
+    public void OnPointerCanceled(PointerEventArgs e)
+    {
+        IsPressed = false;
+    }
+
+    /// <summary>
     /// Called when a tap gesture is detected by the recognizer.
     /// </summary>
     private void OnTapDetected(TapGestureEventArgs e)

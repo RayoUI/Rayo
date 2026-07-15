@@ -161,6 +161,18 @@ public class Label : BorderView<Label>
     } = TextDecorations.None;
     #endregion
 
+    #region TextTrimming
+    /// <summary>
+    /// Controls whether text that exceeds the arranged width is truncated.
+    /// </summary>
+    [PaintProperty]
+    public TextTrimming TextTrimming
+    {
+        get => field;
+        set => this.SetProperty(ref field, value);
+    } = TextTrimming.None;
+    #endregion
+
     #region LineHeight
     /// <summary>
     /// Line height multiplier for multiline text (relative to FontSize).
@@ -325,6 +337,8 @@ public class Label : BorderView<Label>
             for (int i = 0; i < lines.Length; i++)
             {
                 var processedLine = lines[i].Replace("\t", "    ");
+                if (TextTrimming == TextTrimming.CharacterEllipsis)
+                    processedLine = TruncateLine(renderer, processedLine, activeFont, contentWidth);
                 if (string.IsNullOrEmpty(processedLine))
                     continue;
 
@@ -388,6 +402,35 @@ public class Label : BorderView<Label>
             }
         }
     }
+
+    private string TruncateLine(IRenderer renderer, string text, IFont? font, float maxWidth)
+    {
+        if (string.IsNullOrEmpty(text) || maxWidth <= 0)
+            return string.Empty;
+
+        if (MeasureLineWidth(renderer, text, font) <= maxWidth)
+            return text;
+
+        const string ellipsis = "…";
+        float ellipsisWidth = MeasureLineWidth(renderer, ellipsis, font);
+        if (ellipsisWidth > maxWidth)
+            return string.Empty;
+
+        float availableWidth = maxWidth - ellipsisWidth;
+        for (int length = text.Length - 1; length > 0; length--)
+        {
+            var prefix = text[..length];
+            if (MeasureLineWidth(renderer, prefix, font) <= availableWidth)
+                return prefix + ellipsis;
+        }
+
+        return ellipsis;
+    }
+
+    private float MeasureLineWidth(IRenderer renderer, string text, IFont? font) =>
+        font != null
+            ? renderer.MeasureTextWithFont(text, font, FontSize).X
+            : renderer.MeasureText(text, FontSize).X;
 
     private static bool HasAnyRadius(CornerRadius radius) =>
         radius.TopLeft > 0 || radius.TopRight > 0 ||

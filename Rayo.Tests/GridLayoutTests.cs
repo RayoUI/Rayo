@@ -38,6 +38,58 @@ public sealed class GridLayoutTests
         Assert.Equal(26, grid.DesiredHeight);
     }
 
+    [Fact]
+    public void Spacing_remains_between_stretched_grid_cells()
+    {
+        var first = new TestElement
+        {
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch
+        };
+        var second = new TestElement
+        {
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch
+        };
+        var grid = new Grid()
+            .Rows(GridLength.Pixels(40), GridLength.Pixels(40))
+            .Columns(GridLength.Star, GridLength.Star, GridLength.Star)
+            .ColumnSpacing(8)
+            .RowSpacing(7)
+            .AddChild(first, 0, 0)
+            .AddChild(second, 1, 1);
+
+        grid.MeasureUpdate(316, 87);
+        grid.ArrangeUpdate(0, 0, 316, 87);
+
+        Assert.Equal(100, first.ComputedWidth);
+        Assert.Equal(40, first.ComputedHeight);
+        Assert.Equal(108, second.ComputedX);
+        Assert.Equal(47, second.ComputedY);
+        Assert.Equal(100, second.ComputedWidth);
+        Assert.Equal(40, second.ComputedHeight);
+    }
+
+    [Fact]
+    public void Spanned_cell_includes_only_internal_spacing()
+    {
+        var child = new TestElement
+        {
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch
+        };
+        var grid = new Grid()
+            .Rows(GridLength.Pixels(40))
+            .Columns(GridLength.Star, GridLength.Star, GridLength.Star)
+            .ColumnSpacing(8)
+            .AddChild(child, 0, 0, columnSpan: 2);
+
+        grid.MeasureUpdate(316, 40);
+        grid.ArrangeUpdate(0, 0, 316, 40);
+
+        Assert.Equal(208, child.ComputedWidth);
+    }
+
     private sealed class WidthSensitiveElement : VisualElement
     {
         public float LastAvailableWidth { get; private set; }
@@ -65,6 +117,19 @@ public sealed class GridLayoutTests
             DesiredHeight = float.IsPositiveInfinity(availableHeight)
                 ? 26
                 : availableHeight;
+        }
+
+        public override void Render(IRenderer renderer)
+        {
+        }
+    }
+
+    private sealed class TestElement : VisualElement
+    {
+        protected override void Measure(float availableWidth, float availableHeight)
+        {
+            DesiredWidth = availableWidth;
+            DesiredHeight = availableHeight;
         }
 
         public override void Render(IRenderer renderer)

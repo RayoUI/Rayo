@@ -30,6 +30,15 @@ public enum FontStyle
 }
 
 /// <summary>
+/// Controls how text that exceeds its available horizontal space is rendered.
+/// </summary>
+public enum TextTrimming
+{
+    None,
+    CharacterEllipsis,
+}
+
+/// <summary>
 /// Text decoration flags. Multiple values can be combined.
 /// Decorations are rendered as geometric lines over / under the text using the Foreground colour.
 /// </summary>
