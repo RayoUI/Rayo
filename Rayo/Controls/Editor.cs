@@ -15,10 +15,16 @@ using Rayo.Styling;
 /// Implements IScrollable for mouse wheel scrolling support.
 /// Supports optional word wrapping.
 /// </summary>
-public class Editor : TextBox<Editor>, IScrollable
+public class Editor : TextBox<Editor>, IScrollable, IDragScrollable
 {
     // Line height factor (same as used in TextBox rendering)
     private const float LineHeightFactor = 1.2f;
+    private const float TouchScrollThreshold = 6f;
+    private bool _touchScrollPending;
+    private bool _isTouchScrolling;
+    private System.Numerics.Vector2 _touchScrollStartPosition;
+    private float _touchScrollStartVerticalOffset;
+    private float _touchScrollStartHorizontalOffset;
 
     public Editor()
     {
@@ -549,7 +555,7 @@ public class Editor : TextBox<Editor>, IScrollable
     /// <summary>
     /// Gets the visual line index where the cursor is located.
     /// </summary>
-    private int GetCursorLineIndex()
+    protected int GetCursorLineIndex()
     {
         if (WordWrap)
         {
@@ -1117,6 +1123,21 @@ public class Editor : TextBox<Editor>, IScrollable
     // Override CanHandleInput - Editor can always handle input (scrollbar, navigation)
     public override bool CanHandleInput => true;
 
+    /// <summary>Indicates that a touch press may become a content scroll.</summary>
+    public bool IsDragPending => _touchScrollPending;
+
+    public void StartDragPending()
+    {
+        if (Rayo.Core.Platform.PlatformDetector.IsMobile)
+            _touchScrollPending = true;
+    }
+
+    public void CancelDragPending()
+    {
+        _touchScrollPending = false;
+        _isTouchScrolling = false;
+    }
+
     // Override HandleInput to handle scrollbar drag and enforce IsReadOnly for text editing
     public override bool HandleInput(InputEventArgs args)
     {
@@ -1140,9 +1161,49 @@ public class Editor : TextBox<Editor>, IScrollable
                 }
                 if (IsPointOnScrollbarTrack(args.Position))
                     return true;
+
+                if (Rayo.Core.Platform.PlatformDetector.IsMobile)
+                {
+                    _touchScrollPending = true;
+                    _isTouchScrolling = false;
+                    _touchScrollStartPosition = args.Position;
+                    _touchScrollStartVerticalOffset = _scrollOffsetY;
+                    _touchScrollStartHorizontalOffset = _scrollOffsetX;
+
+                    // Selection handles are already an explicit text-selection gesture.
+                    // All other touches wait until release before changing the caret.
+                    if (TryStartTouchSelectionHandleDrag(args.Position))
+                    {
+                        _touchScrollPending = false;
+                    }
+                    return true;
+                }
                 break;
 
             case InputEventType.MouseDrag:
+                if (Rayo.Core.Platform.PlatformDetector.IsMobile && (_touchScrollPending || _isTouchScrolling))
+                {
+                    var delta = args.Position - _touchScrollStartPosition;
+                    if (!_isTouchScrolling && delta.Length() >= TouchScrollThreshold)
+                    {
+                        _isTouchScrolling = true;
+                        _touchScrollPending = false;
+                        CancelPointerSelection();
+                    }
+
+                    if (_isTouchScrolling)
+                    {
+                        SetVerticalScrollOffset(_touchScrollStartVerticalOffset - delta.Y);
+                        if (!WordWrap)
+                        {
+                            float horizontalDelta = _touchScrollStartHorizontalOffset - delta.X - _scrollOffsetX;
+                            ScrollHorizontal(horizontalDelta);
+                        }
+                    }
+
+                    return true;
+                }
+
                 if (_isDraggingThumb)
                 {
                     float horizBarHeight = NeedsHorizontalScrollbar ? ScrollbarWidth + 2 : 0;
@@ -1179,6 +1240,14 @@ public class Editor : TextBox<Editor>, IScrollable
                 break;
 
             case InputEventType.MouseUp:
+                if (Rayo.Core.Platform.PlatformDetector.IsMobile && (_touchScrollPending || _isTouchScrolling))
+                {
+                    bool wasScrolling = _isTouchScrolling;
+                    _touchScrollPending = false;
+                    _isTouchScrolling = false;
+                    return wasScrolling || CommitTouchTap();
+                }
+
                 if (_isDraggingThumb)  { _isDraggingThumb = false;       return true; }
                 if (_isDraggingHorizThumb) { _isDraggingHorizThumb = false; return true; }
                 break;
@@ -1243,5 +1312,24 @@ public class Editor : TextBox<Editor>, IScrollable
         }
 
         return result;
+    }
+
+    private bool CommitTouchTap()
+    {
+        var tapDown = new InputEventArgs
+        {
+            Position = _touchScrollStartPosition,
+            EventType = InputEventType.MouseDown,
+            Timestamp = DateTime.UtcNow
+        };
+        bool handled = base.HandleInput(tapDown);
+
+        var tapUp = new InputEventArgs
+        {
+            Position = _touchScrollStartPosition,
+            EventType = InputEventType.MouseUp,
+            Timestamp = DateTime.UtcNow
+        };
+        return base.HandleInput(tapUp) || handled;
     }
 }

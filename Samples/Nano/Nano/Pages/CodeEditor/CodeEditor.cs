@@ -21,6 +21,16 @@ public sealed class CodeEditor : Editor
     private string[] _lines = [string.Empty];
     private bool _codeCacheDirty = true;
 
+    /// <summary>
+    /// When enabled, Backspace removes a complete soft tab as one unit.
+    /// </summary>
+    public bool DeleteTabsAsUnit { get; set; } = true;
+
+    /// <summary>
+    /// Controls whether the line containing the caret is highlighted.
+    /// </summary>
+    public bool HighlightCurrentLine { get; set; } = true;
+
     public static IReadOnlyList<VirtualKeyboardAccessoryKey> ProgrammingAccessoryKeys { get; } =
     [
         new("Tab", "    "),
@@ -85,6 +95,48 @@ public sealed class CodeEditor : Editor
     }
 
     protected override Brush GetTextRenderBrush() => Color.Transparent;
+
+    protected override void RenderTextBackground(
+        IRenderer renderer,
+        float contentX,
+        float contentY,
+        float contentWidth,
+        float contentHeight)
+    {
+        if (!HighlightCurrentLine)
+            return;
+
+        float lineHeight = FontSize * 1.2f;
+        float lineY = contentY + GetCursorLineIndex() * lineHeight - VerticalScrollOffset;
+        if (lineY + lineHeight < contentY || lineY > contentY + contentHeight)
+            return;
+
+        renderer.DrawRect(contentX, lineY, contentWidth, lineHeight, new Color(48, 57, 74));
+    }
+
+    public override void DeleteChar()
+    {
+        if (!DeleteTabsAsUnit || IsReadOnly || HasSelection || _cursorPosition < 4)
+        {
+            base.DeleteChar();
+            return;
+        }
+
+        const int tabSize = 4;
+        int tabStart = _cursorPosition - tabSize;
+        if (!Text.AsSpan(tabStart, tabSize).SequenceEqual("    ".AsSpan()))
+        {
+            base.DeleteChar();
+            return;
+        }
+
+        AssignTextPreservingCursor(Text.Remove(tabStart, tabSize));
+        _cursorPosition = tabStart;
+        ClearSelection();
+        ResetCursorBlink();
+        EnsureCursorVisible();
+        MarkNeedsPaint();
+    }
 
     private void InvalidateCodeCache()
     {

@@ -85,7 +85,7 @@ public abstract class TextBox<T> : BorderView<T>, IInputHandler, IFocusable, Ray
         }
     } = string.Empty;
 
-    private void AssignTextPreservingCursor(string newValue)
+    protected void AssignTextPreservingCursor(string newValue)
     {
         bool previous = _suppressCursorAutoMove;
         _suppressCursorAutoMove = true;
@@ -550,6 +550,7 @@ public abstract class TextBox<T> : BorderView<T>, IInputHandler, IFocusable, Ray
     private float[] BuildPrefixWidths(string sourceText, int start, int length, bool passwordMode)
     {
         float[] prefixWidths = new float[length + 1];
+        string? previousCharacterText = null;
 
         for (int i = 1; i <= length; i++)
         {
@@ -558,7 +559,20 @@ public abstract class TextBox<T> : BorderView<T>, IInputHandler, IFocusable, Ray
                 : sourceText[start + i - 1] == '\t'
                     ? "    "
                     : sourceText[start + i - 1].ToString();
-            prefixWidths[i] = prefixWidths[i - 1] + MeasureTextWidth(characterText);
+
+            // Text is rendered as a run, not as isolated glyphs. Calculate the
+            // next advance from the adjacent pair so kerning is reflected in the
+            // caret position without repeatedly measuring every full prefix.
+            float advance = MeasureTextWidth(characterText);
+            if (previousCharacterText != null)
+            {
+                float pairedWidth = MeasureTextWidth(previousCharacterText + characterText);
+                float previousWidth = MeasureTextWidth(previousCharacterText);
+                advance = Math.Max(0, pairedWidth - previousWidth);
+            }
+
+            prefixWidths[i] = prefixWidths[i - 1] + advance;
+            previousCharacterText = characterText;
         }
 
         return prefixWidths;
@@ -678,7 +692,7 @@ public abstract class TextBox<T> : BorderView<T>, IInputHandler, IFocusable, Ray
         MarkNeedsPaint();  // Text editing only requires repaint
     }
 
-    public void DeleteChar()
+    public virtual void DeleteChar()
     {
         // Check read-only mode
         if (IsReadOnly) return;
@@ -1300,6 +1314,8 @@ public abstract class TextBox<T> : BorderView<T>, IInputHandler, IFocusable, Ray
         try
         {
             // Dibujar selecci�n de texto (si existe)
+            RenderTextBackground(renderer, contentX, contentY, contentWidth, contentHeight);
+
             if (HasSelection && IsFocused)
             {
                 int selStart = Math.Min(_selectionStart, _selectionEnd);
@@ -1461,6 +1477,18 @@ public abstract class TextBox<T> : BorderView<T>, IInputHandler, IFocusable, Ray
     }
 
     /// <summary>
+    /// Renders custom content behind selection, text and the caret.
+    /// </summary>
+    protected virtual void RenderTextBackground(
+        IRenderer renderer,
+        float contentX,
+        float contentY,
+        float contentWidth,
+        float contentHeight)
+    {
+    }
+
+    /// <summary>
     /// Implementaci�n de IInputHandler para selecci�n con mouse y eventos de teclado
     /// </summary>
     public void OnFocusGained()
@@ -1477,6 +1505,18 @@ public abstract class TextBox<T> : BorderView<T>, IInputHandler, IFocusable, Ray
 
     public void OnFocusLost()
     {
+        // Tapping a contextual-menu action transfers focus to its button before
+        // the tap is raised. Keep the selection alive so Copy, Cut and Paste
+        // can still operate on it; the action restores focus immediately after.
+        if (_selectionContextMenu != null)
+        {
+            IsFocused = false;
+            _cursorBlinkActive = false;
+            StopCursorBlinkTimer(dispose: false);
+            MarkNeedsPaint();
+            return;
+        }
+
         CloseSelectionContextMenu();
         IsFocused = false;
         _cursorBlinkActive = false;
@@ -1499,7 +1539,7 @@ public abstract class TextBox<T> : BorderView<T>, IInputHandler, IFocusable, Ray
                 var now = DateTime.UtcNow;
                 var timeSinceLastClick = (now - _lastClickTime).TotalMilliseconds;
 
-                if (ShouldShowTouchSelectionHandles() && TryStartSelectionHandleDrag(args.Position))
+                if (TryStartTouchSelectionHandleDrag(args.Position))
                 {
                     return true;
                 }
@@ -1933,6 +1973,15 @@ public abstract class TextBox<T> : BorderView<T>, IInputHandler, IFocusable, Ray
         if (index == Text.Length) index--;
         if (!IsWordCharacter(Text[index]))
         {
+            if (IsCursorSymbol(Text[index]))
+            {
+                _selectionStart = index;
+                _selectionEnd = index + 1;
+                _cursorPosition = index + 1;
+                ResetCursorBlink();
+                return;
+            }
+
             _cursorPosition = position;
             _selectionStart = position;
             _selectionEnd = position;
@@ -1965,6 +2014,9 @@ public abstract class TextBox<T> : BorderView<T>, IInputHandler, IFocusable, Ray
 
     private static bool IsWordCharacter(char character) => char.IsLetterOrDigit(character) || character == '_';
 
+    private static bool IsCursorSymbol(char character) =>
+        !char.IsWhiteSpace(character) && !char.IsLetterOrDigit(character) && character != '_';
+
     protected virtual bool IsPointerOverText(Vector2 position)
     {
         if (string.IsNullOrEmpty(Text))
@@ -1972,21 +2024,37 @@ public abstract class TextBox<T> : BorderView<T>, IInputHandler, IFocusable, Ray
 
         int textPosition = GetCursorPositionFromMouse(position.X, position.Y);
         var line = GetLineInfoForCursorPosition(textPosition);
-        if (line.Length == 0)
-            return false;
 
         float lineHeight = FontSize * 1.2f;
-        float contentX = ComputedX + Padding.Left + BorderThickness.Left - _scrollOffsetX;
         float contentY = ComputedY + Padding.Top + BorderThickness.Top;
         float lineTop = contentY + line.LineIndex * lineHeight - _scrollOffsetY;
-        float lineRight = contentX + line.Width;
 
-        return position.Y >= lineTop && position.Y <= lineTop + lineHeight &&
-            position.X >= contentX && position.X <= lineRight;
+        // A tap in the trailing empty area of a line still belongs to that line:
+        // it places the caret at its end. Empty lines and the area below the
+        // document remain available for scrolling.
+        return position.Y >= lineTop && position.Y <= lineTop + lineHeight;
+    }
+
+    /// <summary>
+    /// Ends an in-progress pointer selection when a touch gesture becomes a scroll.
+    /// </summary>
+    protected void CancelPointerSelection()
+    {
+        _isMouseSelecting = false;
+        _activeSelectionHandle = SelectionHandle.None;
+        ClearSelection();
+        CloseSelectionContextMenu();
+        MarkNeedsPaint();
     }
 
     private bool ShouldShowTouchSelectionHandles() =>
         Rayo.Core.Platform.PlatformDetector.IsMobile && IsFocused && HasSelection;
+
+    /// <summary>
+    /// Starts dragging a touch selection handle when the pointer lands on it.
+    /// </summary>
+    protected bool TryStartTouchSelectionHandleDrag(Vector2 position) =>
+        ShouldShowTouchSelectionHandles() && TryStartSelectionHandleDrag(position);
 
     private void RenderTouchSelectionHandles(IRenderer renderer)
     {

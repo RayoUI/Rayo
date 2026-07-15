@@ -13,14 +13,23 @@ public static class ClipboardService
     /// </summary>
     public static void SetText(string text)
     {
+        _clipboardBuffer = text ?? string.Empty;
+
+        // TextCopy has no Android backend in this host and throws when invoked.
+        // The in-process clipboard still provides reliable copy/cut/paste for
+        // Rayo controls without surfacing a platform exception.
+        if (Platform.PlatformDetector.IsMobile)
+        {
+            return;
+        }
+
         try
         {
-            TextCopy.ClipboardService.SetText(text);
+            TextCopy.ClipboardService.SetText(_clipboardBuffer);
         }
         catch
         {
-            // Si falla, usar buffer interno
-            _clipboardBuffer = text;
+            // Keep using the in-process clipboard fallback.
         }
     }
 
@@ -29,9 +38,15 @@ public static class ClipboardService
     /// </summary>
     public static string GetText()
     {
+        if (Platform.PlatformDetector.IsMobile)
+        {
+            return _clipboardBuffer;
+        }
+
         try
         {
-            return TextCopy.ClipboardService.GetText() ?? string.Empty;
+            string systemText = TextCopy.ClipboardService.GetText() ?? string.Empty;
+            return string.IsNullOrEmpty(systemText) ? _clipboardBuffer : systemText;
         }
         catch
         {
