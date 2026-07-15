@@ -82,6 +82,7 @@ public sealed class SpriteCanvas : View<SpriteCanvas>, IPointerHandler, IExclusi
     }
 
     public event Action? FrameChanged;
+    public event Action? EditCommitted;
     public event Action<Color>? ColorPicked;
 
     public SpriteTool Tool { get; set; } = SpriteTool.Pencil;
@@ -127,7 +128,11 @@ public sealed class SpriteCanvas : View<SpriteCanvas>, IPointerHandler, IExclusi
         renderer.PopScissor();
     }
 
-    public void Clear() => SetAllPixels(new Color(244, 247, 250));
+    public void Clear()
+    {
+        SetAllPixels(new Color(244, 247, 250));
+        EditCommitted?.Invoke();
+    }
 
     public void Fill() => SetAllPixels(_selectedColor);
 
@@ -199,6 +204,11 @@ public sealed class SpriteCanvas : View<SpriteCanvas>, IPointerHandler, IExclusi
         else if (_touches.Count == 1 && _paintPointerId == e.PointerId && !_paintedDuringDrag)
         {
             PaintAt(e.Position);
+        }
+
+        if ((_shapePointerId == e.PointerId || _paintPointerId == e.PointerId) && Tool != SpriteTool.Picker)
+        {
+            EditCommitted?.Invoke();
         }
 
         _touches.Remove(e.PointerId);

@@ -6,7 +6,7 @@ using Rayo.Rendering;
 
 namespace Nano.Pages.SpriteEditor;
 
-public sealed class SpriteToolPicker(SpriteCanvas canvas) : Component
+public sealed class SpriteToolPicker(SpriteCanvas canvas, Action undo, Action redo) : Component
 {
     private readonly Dictionary<SpriteTool, ButtonIcon> _toolButtons = [];
 
@@ -21,6 +21,8 @@ public sealed class SpriteToolPicker(SpriteCanvas canvas) : Component
                 .Spacing(4)
                 .HorizontalAlignment(HorizontalAlignment.Center)
                 .Children(
+                    new ButtonIcon(Icons.Undo).Size(44).Variant(ButtonVariant.Secondary).OnTapped(undo),
+                    new ButtonIcon(Icons.Redo).Size(44).Variant(ButtonVariant.Secondary).OnTapped(redo),
                     ToolButton(Icons.Brush, SpriteTool.Pencil),
                     ToolButton(Icons.Eraser, SpriteTool.Eraser),
                     ToolButton(Icons.FillBucket, SpriteTool.Fill),
