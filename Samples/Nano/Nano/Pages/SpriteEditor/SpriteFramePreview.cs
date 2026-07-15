@@ -62,10 +62,12 @@ public sealed class SpriteFramePreview : View<SpriteFramePreview>, IPointerHandl
 
     public override void Render(IRenderer renderer)
     {
-        var tileSize = MathF.Min(ComputedWidth, ComputedHeight) / 8f;
-        for (var row = 0; row < 8; row++)
+        var rowCount = _frame.Pixels.GetLength(0);
+        var columnCount = _frame.Pixels.GetLength(1);
+        var tileSize = MathF.Min(ComputedWidth / columnCount, ComputedHeight / rowCount);
+        for (var row = 0; row < rowCount; row++)
         {
-            for (var column = 0; column < 8; column++)
+            for (var column = 0; column < columnCount; column++)
             {
                 renderer.DrawRect(ComputedX + column * tileSize, ComputedY + row * tileSize, tileSize, tileSize, _frame.Pixels[row, column]);
             }
