@@ -13,6 +13,13 @@ using Rayo.Rendering.Graphics.VectorGraphics;
 using Rayo.Styling;
 using IRenderer = Rayo.Rendering.IRenderer;
 
+public enum TextSelectionUnit
+{
+    Word,
+    Line,
+    WordThenLine
+}
+
 /// <summary>
 /// Text input field with support for single-line and multi-line text editing.
 /// </summary>
@@ -238,6 +245,11 @@ public abstract class TextBox<T> : BorderView<T>, IInputHandler, IFocusable, Ray
     /// </summary>
     public bool IsReadOnly { get; set; } = false;
 
+    /// <summary>
+    /// Defines the selection unit used by a double tap or double click.
+    /// </summary>
+    public TextSelectionUnit DoubleTapSelectionUnit { get; set; } = TextSelectionUnit.Word;
+
     protected int _cursorPosition = 0;
     protected float _scrollOffsetX = 0;  // Offset horizontal para scroll
     protected float _scrollOffsetY = 0;  // Offset vertical para scroll (multiline)
@@ -254,6 +266,8 @@ public abstract class TextBox<T> : BorderView<T>, IInputHandler, IFocusable, Ray
     private bool _isMouseSelecting = false;
 
     private int _mouseSelectionStart = 0;
+    private int _progressiveWordSelectionStart = -1;
+    private int _progressiveWordSelectionEnd = -1;
     protected IRenderer? _cachedRenderer = null;  // Para mediciones precisas
 
     // Estado para doble click
@@ -547,32 +561,25 @@ public abstract class TextBox<T> : BorderView<T>, IInputHandler, IFocusable, Ray
         _lastSingleLineRenderer = _cachedRenderer;
     }
 
-    private float[] BuildPrefixWidths(string sourceText, int start, int length, bool passwordMode)
+    protected virtual float[] BuildPrefixWidths(string sourceText, int start, int length, bool passwordMode)
     {
         float[] prefixWidths = new float[length + 1];
-        string? previousCharacterText = null;
+        var displayPrefix = new System.Text.StringBuilder(length);
 
         for (int i = 1; i <= length; i++)
         {
-            string characterText = passwordMode
-                ? "*"
-                : sourceText[start + i - 1] == '\t'
-                    ? "    "
-                    : sourceText[start + i - 1].ToString();
+            if (passwordMode)
+                displayPrefix.Append('*');
+            else if (sourceText[start + i - 1] == '\t')
+                displayPrefix.Append("    ");
+            else
+                displayPrefix.Append(sourceText[start + i - 1]);
 
-            // Text is rendered as a run, not as isolated glyphs. Calculate the
-            // next advance from the adjacent pair so kerning is reflected in the
-            // caret position without repeatedly measuring every full prefix.
-            float advance = MeasureTextWidth(characterText);
-            if (previousCharacterText != null)
-            {
-                float pairedWidth = MeasureTextWidth(previousCharacterText + characterText);
-                float previousWidth = MeasureTextWidth(previousCharacterText);
-                advance = Math.Max(0, pairedWidth - previousWidth);
-            }
-
-            prefixWidths[i] = prefixWidths[i - 1] + advance;
-            previousCharacterText = characterText;
+            // Selection, caret and hit testing must use the same shaped run as
+            // text rendering. Pairwise advances accumulate kerning and glyph
+            // fallback errors on long lines, leaving the final characters
+            // outside the selection rectangle.
+            prefixWidths[i] = MeasureTextWidth(displayPrefix.ToString());
         }
 
         return prefixWidths;
@@ -1367,6 +1374,13 @@ public abstract class TextBox<T> : BorderView<T>, IInputHandler, IFocusable, Ray
                         float selStartX = GetPrefixWidth(lineInfo, selectionStartOffset);
                         float selWidth = GetPrefixWidth(lineInfo, selectionEndOffset) - selStartX;
 
+                        // A newline belongs to the selection range, but it has no
+                        // measurable glyph width. Give selected physical line breaks
+                        // a visual advance so the highlight covers the trailing edge
+                        // of every complete intermediate line.
+                        if (SelectionIncludesLineBreakAfter(lineEnd, selEnd))
+                            selWidth += GetLineBreakSelectionWidth();
+
                         float selX = contentX + selStartX - _scrollOffsetX;
                         float selY = contentY + (lineIdx * lineHeight) - _scrollOffsetY;
                         float selHeight = lineHeight;
@@ -1561,7 +1575,12 @@ public abstract class TextBox<T> : BorderView<T>, IInputHandler, IFocusable, Ray
 
                 if (_clickCount == 2)
                 {
-                    SelectWordAt(clickPosition);
+                    SelectDoubleTapUnitAt(clickPosition);
+                    if (DoubleTapSelectionUnit == TextSelectionUnit.WordThenLine)
+                    {
+                        _clickCount = 0;
+                        _lastClickTime = DateTime.MinValue;
+                    }
                     _isMouseSelecting = false;
                     ShowSelectionContextMenu();
                     MarkNeedsPaint();
@@ -1588,6 +1607,22 @@ public abstract class TextBox<T> : BorderView<T>, IInputHandler, IFocusable, Ray
                 }
 
                 // Click simple - iniciar selecci�n con mouse
+                // Preserve the selected word while the first tap of the next
+                // progressive double tap lands inside it. A drag can still
+                // turn this into a normal pointer selection.
+                if (HasProgressiveWordSelectionAt(clickPosition))
+                {
+                    _lastClickTime = now;
+                    _isMouseSelecting = true;
+                    _mouseSelectionStart = clickPosition;
+                    CloseSelectionContextMenu();
+                    ResetCursorBlink();
+                    MarkNeedsPaint();
+                    return true;
+                }
+
+                _progressiveWordSelectionStart = -1;
+                _progressiveWordSelectionEnd = -1;
                 _lastClickTime = now;
                 _isMouseSelecting = true;
                 _cursorPosition = clickPosition;
@@ -1999,12 +2034,52 @@ public abstract class TextBox<T> : BorderView<T>, IInputHandler, IFocusable, Ray
         ResetCursorBlink();
     }
 
+    protected void SelectDoubleTapUnitAt(int position)
+    {
+        if (DoubleTapSelectionUnit == TextSelectionUnit.WordThenLine)
+        {
+            if (HasProgressiveWordSelectionAt(position))
+            {
+                SelectLineAt(position);
+                _progressiveWordSelectionStart = -1;
+                _progressiveWordSelectionEnd = -1;
+            }
+            else
+            {
+                SelectWordAt(position);
+                if (HasSelection)
+                {
+                    _progressiveWordSelectionStart = Math.Min(_selectionStart, _selectionEnd);
+                    _progressiveWordSelectionEnd = Math.Max(_selectionStart, _selectionEnd);
+                }
+            }
+        }
+        else if (DoubleTapSelectionUnit == TextSelectionUnit.Line)
+            SelectLineAt(position);
+        else
+            SelectWordAt(position);
+    }
+
+    private bool HasProgressiveWordSelectionAt(int position)
+    {
+        if (DoubleTapSelectionUnit != TextSelectionUnit.WordThenLine || !HasSelection)
+            return false;
+
+        int selectionStart = Math.Min(_selectionStart, _selectionEnd);
+        int selectionEnd = Math.Max(_selectionStart, _selectionEnd);
+        return selectionStart == _progressiveWordSelectionStart &&
+            selectionEnd == _progressiveWordSelectionEnd &&
+            position >= selectionStart &&
+            position < selectionEnd;
+    }
+
     private void SelectLineAt(int position)
     {
         int safePosition = Math.Clamp(position, 0, Text.Length);
         int start = safePosition == 0 ? 0 : Text.LastIndexOf('\n', safePosition - 1) + 1;
         int end = Text.IndexOf('\n', safePosition);
         if (end < 0) end = Text.Length;
+        if (end > start && Text[end - 1] == '\r') end--;
 
         _selectionStart = start;
         _selectionEnd = end;
@@ -2275,6 +2350,22 @@ public abstract class TextBox<T> : BorderView<T>, IInputHandler, IFocusable, Ray
         _measureWidthCache[text] = measuredWidth;
         return measuredWidth;
     }
+
+    /// <summary>
+    /// Returns whether the physical line break immediately after a line is part
+    /// of the current selection. Visual wrapping does not count as a line break.
+    /// </summary>
+    protected bool SelectionIncludesLineBreakAfter(int lineEnd, int selectionEnd) =>
+        lineEnd >= 0 &&
+        lineEnd < Text.Length &&
+        Text[lineEnd] == '\n' &&
+        selectionEnd > lineEnd;
+
+    /// <summary>
+    /// Gets the visual advance used to represent a selected newline.
+    /// </summary>
+    protected float GetLineBreakSelectionWidth() =>
+        Math.Max(CaretWidth, MeasureTextWidth(" "));
 
     private float MeasureTextPreservingTrailingWhitespace(IRenderer renderer, string text)
     {

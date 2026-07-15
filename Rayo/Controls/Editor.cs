@@ -700,6 +700,9 @@ public class Editor : TextBox<Editor>, IScrollable, IDragScrollable
                     float selectionX = GetPrefixWidth(lineInfo, selectionStartOffset);
                     float selectionWidth = GetPrefixWidth(lineInfo, selectionEndOffset) - selectionX;
 
+                    if (SelectionIncludesLineBreakAfter(lineEnd, selEnd))
+                        selectionWidth += GetLineBreakSelectionWidth();
+
                     renderer.DrawRect(
                         contentX + selectionX,
                         lineY,

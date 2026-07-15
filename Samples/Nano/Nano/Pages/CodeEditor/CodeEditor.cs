@@ -58,6 +58,7 @@ public sealed class CodeEditor : Editor
         FocusBackground = new Color(30, 36, 48);
         TextColor = new Color(220, 223, 228);
         BorderThickness = 0;
+        DoubleTapSelectionUnit = TextSelectionUnit.WordThenLine;
         KeyboardAccessoryKeys = ProgrammingAccessoryKeys;
         TextChanged += _ => InvalidateCodeCache();
         InvalidateCodeCache();
@@ -94,6 +95,51 @@ public sealed class CodeEditor : Editor
     }
 
     protected override Brush GetTextRenderBrush() => Color.Transparent;
+
+    protected override float[] BuildPrefixWidths(
+        string sourceText,
+        int start,
+        int length,
+        bool passwordMode)
+    {
+        if (passwordMode || length == 0)
+            return base.BuildPrefixWidths(sourceText, start, length, passwordMode);
+
+        string sourceLine = sourceText.Substring(start, length);
+        string tokenizedLine = sourceLine.EndsWith('\r') ? sourceLine[..^1] : sourceLine;
+        var tokens = _language.Tokenize(tokenizedLine).ToArray();
+
+        // A language implementation must preserve the complete source text. If
+        // it does not, retain the normal text metrics instead of producing an
+        // incomplete position table.
+        if (!string.Equals(string.Concat(tokens.Select(token => token.Text)), tokenizedLine, StringComparison.Ordinal))
+            return base.BuildPrefixWidths(sourceText, start, length, passwordMode);
+
+        var prefixWidths = new float[length + 1];
+        int sourceOffset = 0;
+        float tokenRunOffset = 0;
+
+        foreach (var token in tokens)
+        {
+            for (int charOffset = 1; charOffset <= token.Text.Length; charOffset++)
+            {
+                string tokenPrefix = token.Text[..charOffset].Replace("\t", "    ");
+                prefixWidths[sourceOffset + charOffset] = tokenRunOffset + MeasureTextWidth(tokenPrefix);
+            }
+
+            string displayText = token.Text.Replace("\t", "    ");
+            tokenRunOffset += MeasureTextWidth(displayText);
+            sourceOffset += token.Text.Length;
+        }
+
+        // CR in a CRLF sequence has no visible advance in the syntax layer.
+        while (sourceOffset < length)
+        {
+            prefixWidths[++sourceOffset] = tokenRunOffset;
+        }
+
+        return prefixWidths;
+    }
 
     protected override void RenderTextBackground(
         IRenderer renderer,
