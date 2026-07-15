@@ -1,26 +1,58 @@
 using Rayo.Core;
 using Rayo.Core.Input;
+using Rayo.Core.Input.Gestures;
 using Rayo.Rendering;
 using IRenderer = Rayo.Rendering.IRenderer;
 
 namespace Nano.Pages.SpriteEditor;
 
-public sealed class SpriteFramePreview : View<SpriteFramePreview>, IPointerHandler
+public sealed class SpriteFramePreview : View<SpriteFramePreview>, IPointerHandler, IGestureRecognizerHost
 {
+    private readonly TapRecognizer _tapRecognizer;
     private readonly SpriteFrame _frame;
     private readonly int _index;
-    private readonly bool _isSelected;
+    private bool _isSelected;
 
     public Action? Selected { get; init; }
+    public Action? OptionsRequested { get; set; }
+
+    public List<IGestureRecognizer> GestureRecognizers { get; } = [];
 
     public SpriteFramePreview(SpriteFrame frame, int index, bool isSelected)
     {
         _frame = frame;
         _index = index;
         _isSelected = isSelected;
+        _tapRecognizer = new TapRecognizer(
+            maxMovementThreshold: 5f,
+            maxPressDurationMs: 500,
+            doubleTapWindowMs: 300);
+        _tapRecognizer.TapDetected += e =>
+        {
+            if (e.TapCount >= 2)
+            {
+                OptionsRequested?.Invoke();
+            }
+            else
+            {
+                Selected?.Invoke();
+            }
+        };
+        GestureRecognizers.Add(_tapRecognizer);
     }
 
     public void Refresh() => MarkNeedsPaint();
+
+    public void SetSelected(bool isSelected)
+    {
+        if (_isSelected == isSelected)
+        {
+            return;
+        }
+
+        _isSelected = isSelected;
+        MarkNeedsPaint();
+    }
 
     protected override void Measure(float availableWidth, float availableHeight)
     {
@@ -48,11 +80,7 @@ public sealed class SpriteFramePreview : View<SpriteFramePreview>, IPointerHandl
         renderer.DrawText($"{_index}", ComputedX + 6f, ComputedY + 57f, new Color(50, 60, 75), 12f);
     }
 
-    public void OnPointerPressed(PointerEventArgs e)
-    {
-        Selected?.Invoke();
-        e.Handled = true;
-    }
+    public void OnPointerPressed(PointerEventArgs e) { }
 
     public void OnPointerMoved(PointerEventArgs e) { }
     public void OnPointerReleased(PointerEventArgs e) { }

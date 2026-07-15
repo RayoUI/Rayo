@@ -11,6 +11,7 @@ public enum SpriteTool
     Pencil,
     Eraser,
     Fill,
+    Picker,
     Line,
     Rectangle,
     Ellipse
@@ -18,13 +19,13 @@ public enum SpriteTool
 
 public sealed class SpriteFrame
 {
-    public Color[,] Pixels { get; } = new Color[8, 8];
+    public Color[,] Pixels { get; } = new Color[16, 16];
 
     public SpriteFrame()
     {
-        for (var row = 0; row < 8; row++)
+        for (var row = 0; row < 16; row++)
         {
-            for (var column = 0; column < 8; column++)
+            for (var column = 0; column < 16; column++)
             {
                 Pixels[row, column] = new Color(244, 247, 250);
             }
@@ -41,8 +42,9 @@ public sealed class SpriteFrame
 
 public sealed class SpriteCanvas : View<SpriteCanvas>, IPointerHandler, IExclusiveTouchHandler
 {
-    private const int SpriteSize = 8;
+    private const int SpriteSize = 16;
     private const float BaseTileSize = 32f;
+    private const float CanvasMargin = 24f;
     private SpriteFrame _frame = new();
     private Color[,] _pixels;
     private readonly Dictionary<int, Vector2> _touches = [];
@@ -53,7 +55,10 @@ public sealed class SpriteCanvas : View<SpriteCanvas>, IPointerHandler, IExclusi
     private float _pinchStartDistance;
     private float _pinchStartZoom = 1f;
     private float _zoom = 1f;
+    private float _initialFitScale = 1f;
+    private bool _hasInitializedViewport;
     private (int Row, int Column)? _shapeStart;
+    private (int Row, int Column)? _shapePreviewEnd;
     private int? _shapePointerId;
     private int? _paintPointerId;
     private bool _paintedDuringDrag;
@@ -77,6 +82,7 @@ public sealed class SpriteCanvas : View<SpriteCanvas>, IPointerHandler, IExclusi
     }
 
     public event Action? FrameChanged;
+    public event Action<Color>? ColorPicked;
 
     public SpriteTool Tool { get; set; } = SpriteTool.Pencil;
 
@@ -98,7 +104,7 @@ public sealed class SpriteCanvas : View<SpriteCanvas>, IPointerHandler, IExclusi
         renderer.PushScissor(ComputedX, ComputedY, ComputedWidth, ComputedHeight);
         renderer.DrawRect(ComputedX, ComputedY, ComputedWidth, ComputedHeight, new Color(38, 48, 64));
 
-        var tileSize = BaseTileSize * _zoom;
+        var tileSize = GetTileSize();
         var spriteExtent = SpriteSize * tileSize;
         var origin = GetSpriteOrigin(spriteExtent);
 
@@ -109,8 +115,13 @@ public sealed class SpriteCanvas : View<SpriteCanvas>, IPointerHandler, IExclusi
                 var x = origin.X + column * tileSize;
                 var y = origin.Y + row * tileSize;
                 renderer.DrawRect(x, y, tileSize, tileSize, _pixels[row, column]);
-                renderer.DrawRectOutline(x, y, tileSize, tileSize, 1f, new Color(85, 99, 120));
+                renderer.DrawRectOutline(x, y, tileSize, tileSize, 0.01f, new Color(85, 99, 120));
             }
+        }
+
+        if (_shapeStart is { } start && _shapePreviewEnd is { } end)
+        {
+            RenderShapePreview(renderer, start, end, origin, tileSize);
         }
 
         renderer.PopScissor();
@@ -129,6 +140,7 @@ public sealed class SpriteCanvas : View<SpriteCanvas>, IPointerHandler, IExclusi
             {
                 _shapePointerId = e.PointerId;
                 _shapeStart = GetCellAt(e.Position);
+                _shapePreviewEnd = _shapeStart;
             }
             else
             {
@@ -141,6 +153,7 @@ public sealed class SpriteCanvas : View<SpriteCanvas>, IPointerHandler, IExclusi
         else if (_touches.Count == 2)
         {
             _shapeStart = null;
+            _shapePreviewEnd = null;
             _shapePointerId = null;
             _paintPointerId = null;
             BeginPinch();
@@ -167,6 +180,11 @@ public sealed class SpriteCanvas : View<SpriteCanvas>, IPointerHandler, IExclusi
             PaintAt(e.Position);
             _paintedDuringDrag = true;
         }
+        else if (_shapePointerId == e.PointerId && IsShapeTool())
+        {
+            _shapePreviewEnd = GetCellAt(e.Position);
+            MarkNeedsPaint();
+        }
 
         e.Handled = true;
     }
@@ -185,6 +203,7 @@ public sealed class SpriteCanvas : View<SpriteCanvas>, IPointerHandler, IExclusi
 
         _touches.Remove(e.PointerId);
         _shapeStart = null;
+        _shapePreviewEnd = null;
         _shapePointerId = null;
         _paintPointerId = null;
         _paintedDuringDrag = false;
@@ -226,6 +245,12 @@ public sealed class SpriteCanvas : View<SpriteCanvas>, IPointerHandler, IExclusi
             return;
         }
 
+        if (Tool == SpriteTool.Picker)
+        {
+            ColorPicked?.Invoke(_pixels[cell.Row, cell.Column]);
+            return;
+        }
+
         _pixels[cell.Row, cell.Column] = Tool == SpriteTool.Eraser
             ? new Color(244, 247, 250)
             : _selectedColor;
@@ -234,7 +259,7 @@ public sealed class SpriteCanvas : View<SpriteCanvas>, IPointerHandler, IExclusi
 
     private (int Row, int Column)? GetCellAt(Vector2 point)
     {
-        var tileSize = BaseTileSize * _zoom;
+        var tileSize = GetTileSize();
         var origin = GetSpriteOrigin(SpriteSize * tileSize);
         var column = (int)((point.X - origin.X) / tileSize);
         var row = (int)((point.Y - origin.Y) / tileSize);
@@ -264,6 +289,9 @@ public sealed class SpriteCanvas : View<SpriteCanvas>, IPointerHandler, IExclusi
     }
 
     private void DrawLine((int Row, int Column) start, (int Row, int Column) end)
+        => DrawLine(start, end, (row, column) => _pixels[row, column] = _selectedColor);
+
+    private static void DrawLine((int Row, int Column) start, (int Row, int Column) end, Action<int, int> setPixel)
     {
         var x0 = start.Column;
         var y0 = start.Row;
@@ -277,7 +305,7 @@ public sealed class SpriteCanvas : View<SpriteCanvas>, IPointerHandler, IExclusi
 
         while (true)
         {
-            _pixels[y0, x0] = _selectedColor;
+            setPixel(y0, x0);
             if (x0 == x1 && y0 == y1)
             {
                 return;
@@ -298,6 +326,9 @@ public sealed class SpriteCanvas : View<SpriteCanvas>, IPointerHandler, IExclusi
     }
 
     private void DrawRectangle((int Row, int Column) start, (int Row, int Column) end)
+        => DrawRectangle(start, end, (row, column) => _pixels[row, column] = _selectedColor);
+
+    private static void DrawRectangle((int Row, int Column) start, (int Row, int Column) end, Action<int, int> setPixel)
     {
         var minRow = Math.Min(start.Row, end.Row);
         var maxRow = Math.Max(start.Row, end.Row);
@@ -306,17 +337,20 @@ public sealed class SpriteCanvas : View<SpriteCanvas>, IPointerHandler, IExclusi
 
         for (var column = minColumn; column <= maxColumn; column++)
         {
-            _pixels[minRow, column] = _selectedColor;
-            _pixels[maxRow, column] = _selectedColor;
+            setPixel(minRow, column);
+            setPixel(maxRow, column);
         }
         for (var row = minRow; row <= maxRow; row++)
         {
-            _pixels[row, minColumn] = _selectedColor;
-            _pixels[row, maxColumn] = _selectedColor;
+            setPixel(row, minColumn);
+            setPixel(row, maxColumn);
         }
     }
 
     private void DrawEllipse((int Row, int Column) start, (int Row, int Column) end)
+        => DrawEllipse(start, end, (row, column) => _pixels[row, column] = _selectedColor);
+
+    private static void DrawEllipse((int Row, int Column) start, (int Row, int Column) end, Action<int, int> setPixel)
     {
         var minRow = Math.Min(start.Row, end.Row);
         var maxRow = Math.Max(start.Row, end.Row);
@@ -327,7 +361,7 @@ public sealed class SpriteCanvas : View<SpriteCanvas>, IPointerHandler, IExclusi
 
         if (radiusX == 0 || radiusY == 0)
         {
-            DrawLine(start, end);
+            DrawLine(start, end, setPixel);
             return;
         }
 
@@ -341,15 +375,59 @@ public sealed class SpriteCanvas : View<SpriteCanvas>, IPointerHandler, IExclusi
                                          MathF.Pow((row - centerY) / radiusY, 2);
                 if (MathF.Abs(normalizedDistance - 1f) <= 0.4f)
                 {
-                    _pixels[row, column] = _selectedColor;
+                    setPixel(row, column);
                 }
             }
+        }
+    }
+
+    private void RenderShapePreview(
+        IRenderer renderer,
+        (int Row, int Column) start,
+        (int Row, int Column) end,
+        Vector2 origin,
+        float tileSize)
+    {
+        void DrawPreviewCell(int row, int column)
+        {
+            renderer.DrawRectOutline(
+                origin.X + column * tileSize,
+                origin.Y + row * tileSize,
+                tileSize,
+                tileSize,
+                3f,
+                _selectedColor);
+        }
+
+        switch (Tool)
+        {
+            case SpriteTool.Line:
+                DrawLine(start, end, DrawPreviewCell);
+                break;
+            case SpriteTool.Rectangle:
+                DrawRectangle(start, end, DrawPreviewCell);
+                break;
+            case SpriteTool.Ellipse:
+                DrawEllipse(start, end, DrawPreviewCell);
+                break;
         }
     }
 
     private Vector2 GetSpriteOrigin(float spriteExtent) => new(
         ComputedX + (ComputedWidth - spriteExtent) / 2f + _pan.X,
         ComputedY + (ComputedHeight - spriteExtent) / 2f + _pan.Y);
+
+    private float GetTileSize()
+    {
+        if (!_hasInitializedViewport && ComputedWidth > 0 && ComputedHeight > 0)
+        {
+            var availableExtent = MathF.Max(1f, MathF.Min(ComputedWidth, ComputedHeight) - CanvasMargin * 2f);
+            _initialFitScale = MathF.Min(1f, availableExtent / (SpriteSize * BaseTileSize));
+            _hasInitializedViewport = true;
+        }
+
+        return BaseTileSize * _initialFitScale * _zoom;
+    }
 
     private void SetAllPixels(Color color)
     {
