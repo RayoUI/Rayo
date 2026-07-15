@@ -1,6 +1,7 @@
 using Rayo.Controls;
 using Rayo.Core;
 using Rayo.Rendering;
+using System.Numerics;
 
 namespace Rayo.Tests;
 
@@ -73,6 +74,37 @@ public sealed class TabControlHeaderSlotTests
         Assert.NotNull(start.Parent);
         Assert.NotNull(end.Parent);
         Assert.NotNull(content.Parent);
+    }
+
+    [Fact]
+    public void Hidden_horizontal_scrollbar_still_allows_content_drag()
+    {
+        var scroll = new ScrollView
+        {
+            Width = 100,
+            Height = 40,
+            Orientation = ScrollOrientation.Horizontal,
+            ShowHorizontalScrollbar = false,
+            ShowVerticalScrollbar = false
+        };
+        scroll.Content(new ProbeElement(300, 40));
+        Layout(scroll, 100, 40);
+        var offsetChanges = 0;
+        scroll.ScrollOffsetChanged += () => offsetChanges++;
+
+        scroll.HandleInput(new InputEventArgs
+        {
+            EventType = InputEventType.MouseDown,
+            Position = new Vector2(80, 20)
+        });
+        scroll.HandleInput(new InputEventArgs
+        {
+            EventType = InputEventType.MouseDrag,
+            Position = new Vector2(30, 20)
+        });
+
+        Assert.True(scroll.HorizontalScrollOffset > 0);
+        Assert.True(offsetChanges > 0);
     }
 
     private static void Layout(VisualElement root, float width, float height)

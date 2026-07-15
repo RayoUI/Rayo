@@ -1818,6 +1818,30 @@ public class EventManager
         }
     }
 
+    private void DispatchTouchPointerCanceled(VisualElement element, Rayo.Core.Input.PointerEventArgs pointerArgs)
+    {
+        var current = element;
+        while (current != null)
+        {
+            pointerArgs.LocalPosition = current.GetLocalPosition(pointerArgs.Position);
+
+            if (current.IsEffectivelyEnabled() && current is Rayo.Core.Input.IPointerHandler pointerHandler)
+            {
+                pointerHandler.OnPointerCanceled(pointerArgs);
+            }
+
+            if (current.IsEffectivelyEnabled() && current is Rayo.Core.Input.IGestureRecognizerHost gestureHost)
+            {
+                foreach (var recognizer in gestureHost.GestureRecognizers)
+                {
+                    recognizer.Reset();
+                }
+            }
+
+            current = current.Parent;
+        }
+    }
+
 
     /// <summary>
     /// Process touch down event (Android/iOS).
@@ -1991,20 +2015,14 @@ public class EventManager
                 {
                     var previousElement = state.CapturedElement;
 
-                    // Call OnPointerReleased for previous element
+                    // Cancel the original tap/press when the scrollable ancestor
+                    // captures the gesture. Treating this as a release can fire a
+                    // tab or button tap while the user is starting a swipe.
                     if (previousElement != null)
                     {
                         var cancelArgs = Rayo.Core.Input.PointerEventArgs.FromTouch(pointerArgs.PointerId, pointerArgs.Position, pointerArgs.Pressure);
                         cancelArgs.IsInContact = false;
-                        DispatchTouchPointerReleased(previousElement, cancelArgs);
-                    }
-
-                    if (previousElement is Rayo.Core.Input.IGestureRecognizerHost previousGestureHost)
-                    {
-                        foreach (var recognizer in previousGestureHost.GestureRecognizers)
-                        {
-                            recognizer.Reset();
-                        }
+                        DispatchTouchPointerCanceled(previousElement, cancelArgs);
                     }
 
                     state.CapturedElement = state.ScrollCaptureTarget;

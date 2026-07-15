@@ -68,6 +68,10 @@ public static class Icons
     public static IconData Paste => Svg("paste");
     public static IconData Cut => Svg("cut");
     public static IconData Share => Svg("share");
+    public static IconData List => Svg("list");
+    public static IconData ListView => Svg("list-view");
+    public static IconData GridView => Svg("grid-view");
+    public static IconData FolderCreateNew => Svg("folder-create-new");
 
     private static IconData Svg(string name, string? assetName = null) =>
         new IconData(name).UseImageSource(IconAssets.FromName(assetName ?? ToKebabCase(name)));

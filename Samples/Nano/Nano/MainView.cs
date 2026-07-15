@@ -1,8 +1,10 @@
+using Nano.Assets;
 using Nano.Components;
 using Nano.Pages;
 using Rayo;
 using Rayo.Controls;
 using Rayo.Core;
+using Rayo.Core.Input;
 using Rayo.Layout;
 using Rayo.Reactivity;
 using Rayo.Rendering;
@@ -11,201 +13,451 @@ namespace Nano;
 
 public class MainView : Component
 {
-    private readonly Signal<AppRoute> _currentRoute = new(AppRoute.Home);
-    private readonly Signal<int> _counter = new(0);
+    private enum AssetViewMode
+    {
+        List,
+        Grid
+    }
+
+    private readonly NanoProjectStore _project = new();
+    private readonly HomePage _homePage = new();
+    private readonly Signal<string> _title = new("Nano");
     private readonly Signal<bool> _canGoBack = new(false);
-    private readonly List<AppRoute> _backStack = new();
-    private readonly Computed<string> _counterText;
-    private readonly Computed<string> _title;
     private Drawer? _drawer;
-    private Frame? _contentHost;
-
-    public MainView()
-    {
-        _counterText = UseComputed(() => _counter.Value.ToString());
-        _title = UseComputed(() => _currentRoute.Value switch
-        {
-            AppRoute.Counter => "Counter",
-            AppRoute.Details => "Details",
-            AppRoute.Profile => "Profile",
-            AppRoute.Settings => "Settings",
-            _ => "Home"
-        });
-    }
-
-    protected override void OnInit()
-    {
-        UseSubscription(_currentRoute, _ => UIUpdateQueue.EnqueueUIUpdate(UpdateContent));
-    }
+    private VisualElement? _assetActionsOverlay;
+    private string _assetDirectory = string.Empty;
+    private AssetViewMode _assetViewMode = AssetViewMode.List;
 
     public override VisualElement Build()
     {
         _drawer = new Drawer()
             .Position(DrawerPosition.Left)
-            .DrawerWidth(300)
-            .Background(Color.White)
+            .DrawerWidth(320)
+            .Background(new Color(20, 27, 40))
             .Content(BuildDrawerContent());
-
-        _contentHost = new Frame()
-            .Background(new Color(246, 248, 252))
-            .Padding(new Thickness(0))
-            .Content(CreatePage(_currentRoute.Value));
 
         return new Grid()
             .Rows(GridLength.Pixels(60), GridLength.Star)
             .Columns(GridLength.Star)
-            .Background(new Color(246, 248, 252))
+            .Background(new Color(12, 16, 24))
             .AddChild(
                 new AppBar(
                     _title,
                     _canGoBack,
-                    GoBack,
+                    () => { },
                     () => _drawer?.Open(),
-                    CreateOverflowItems(_currentRoute.Value)),
+                    []),
                 0,
                 0)
-            .AddChild(_contentHost, 1, 0);
+            .AddChild(_homePage, 1, 0);
     }
 
     private VisualElement BuildDrawerContent()
     {
         return new VStack()
-            .Background(Color.White)
+            .Background(new Color(20, 27, 40))
             .HorizontalAlignment(HorizontalAlignment.Stretch)
             .VerticalAlignment(VerticalAlignment.Stretch)
             .Children(
                 new Frame()
-                    .Height(104)
+                    .Height(112)
                     .Background(new Color(25, 39, 62))
                     .Padding(new Thickness(20, 26, 20, 22))
                     .Content(
                         new VStack()
                             .Spacing(6)
                             .Children(
-                                new Label("Nano")
+                                new Label("Nano assets")
                                     .FontSize(20)
                                     .Foreground(Color.White),
-                                new Label("Drawer navigation starter")
+                                new Label($"{Path.GetFileName(_project.ArchivePath)} · ZIP project")
                                     .FontSize(13)
                                     .Foreground(new Color(196, 210, 232))
                             )),
-                new VStack()
-                    .Spacing(8)
-                    .Padding(new Thickness(12, 16))
-                    .HorizontalAlignment(HorizontalAlignment.Stretch)
-                    .VerticalAlignment(VerticalAlignment.Top)
-                    .Children(
-                        CreateDrawerItem("Home", Icons.Home, AppRoute.Home),
-                        CreateDrawerItem("Counter", Icons.Add, AppRoute.Counter),
-                        CreateDrawerItem("Details", Icons.Info, AppRoute.Details),
-                        CreateDrawerItem("Profile", Icons.Person, AppRoute.Profile),
-                        CreateDrawerItem("Settings", Icons.Settings, AppRoute.Settings)
-                    ));
+                BuildAssetToolbar(),
+                BuildAssetBrowser());
     }
 
-    private VisualElement CreateDrawerItem(string text, IconData icon, AppRoute route)
+    private VisualElement BuildAssetToolbar()
     {
-        var button = new Button()
+        ButtonIcon? moreButton = null;
+        moreButton = new ButtonIcon(Icons.MoreVert)
+            .Size(34)
+            .IconSize(18)
+            .IconColor(new Color(203, 213, 225))
+            .Variant(ButtonVariant.Ghost)
+            .OnTapped(() => ToggleAssetActionsMenu(moreButton!));
+
+        return new Grid()
+            .Columns(GridLength.Star, GridLength.Auto)
+            .Rows(GridLength.Pixels(34))
             .Height(48)
-            .Text(text)
-            .TextAlignment(HorizontalAlignment.Left)
-            .Padding(new Thickness(16, 0, 16, 0))
-            .TextColor(_currentRoute.Value == route ? Color.White : new Color(45, 55, 72))
-            .Background(_currentRoute.Value == route ? new Color(62, 126, 214) : Color.Transparent)
-            .HoverBackground(_currentRoute.Value == route ? new Color(62, 126, 214) : new Color(232, 238, 247))
-            .PressedBackground(new Color(207, 219, 236))
-            .BorderThickness(0)
+            .Padding(new Thickness(12, 14, 12, 0))
+            .AddChild(BuildBreadcrumb(), 0, 0)
+            .AddChild(moreButton, 0, 1);
+    }
+
+    private VisualElement BuildBreadcrumb()
+    {
+        var items = new List<VisualElement>
+        {
+            new ButtonIcon(Icons.Home)
+                .Size(34)
+                .IconSize(18)
+                .IconColor(Color.White)
+                .Variant(ButtonVariant.Ghost)
+                .OnTapped(() => NavigateTo(string.Empty))
+        };
+
+        var currentPath = string.Empty;
+        foreach (var segment in _assetDirectory.Split('/', StringSplitOptions.RemoveEmptyEntries))
+        {
+            currentPath = string.IsNullOrEmpty(currentPath) ? segment : $"{currentPath}/{segment}";
+            var targetPath = currentPath;
+            items.Add(new Label("/")
+                .FontSize(13)
+                .Foreground(new Color(100, 116, 139))
+                .VerticalAlignment(VerticalAlignment.Center));
+            items.Add(new Button()
+                .Text(segment)
+                .Height(28)
+                .TextColor(new Color(191, 219, 254))
+                .Background(Color.Transparent)
+                .HoverBackground(new Color(45, 55, 72))
+                .OnTapped(() => NavigateTo(targetPath)));
+        }
+
+        return new HStack()
+            .Spacing(2)
+            .Height(34)
+            .HorizontalAlignment(HorizontalAlignment.Stretch)
+            .VerticalAlignment(VerticalAlignment.Center)
+            .Children(items.ToArray());
+    }
+
+    private void ToggleAssetActionsMenu(VisualElement anchor)
+    {
+        if (_assetActionsOverlay is not null)
+        {
+            CloseAssetActionsMenu();
+            return;
+        }
+
+        const float menuWidth = 176;
+        var menu = new Frame()
+            .X(Math.Max(8, anchor.ComputedX + anchor.ComputedWidth - menuWidth))
+            .Y(anchor.ComputedY + anchor.ComputedHeight + 6)
+            .Width(menuWidth)
+            .Background(new Color(45, 55, 72))
+            .BorderBrush(new Color(76, 89, 112))
+            .BorderThickness(1)
             .BorderRadius(8)
-            .OnTapped(() =>
-            {
-                NavigateRoot(route);
-                Drawer.CloseCurrentDrawer();
-            });
+            .Padding(new Thickness(6))
+            .HorizontalAlignment(HorizontalAlignment.Left)
+            .VerticalAlignment(VerticalAlignment.Top)
+            .Content(
+                new VStack()
+                    .Spacing(2)
+                    .Children(
+                        CreateAssetAction("New folder", Icons.FolderCreateNew, () =>
+                        {
+                            CloseAssetActionsMenu();
+                            ShowCreateFolderDialog();
+                        }),
+                        CreateAssetAction("List view", Icons.ListView, () =>
+                        {
+                            CloseAssetActionsMenu();
+                            SetAssetViewMode(AssetViewMode.List);
+                        }),
+                        CreateAssetAction("Grid view", Icons.GridView, () =>
+                        {
+                            CloseAssetActionsMenu();
+                            SetAssetViewMode(AssetViewMode.Grid);
+                        })));
 
-        return button;
+        _assetActionsOverlay = new AssetActionsOverlay(menu, CloseAssetActionsMenu)
+            .Background(Color.Transparent)
+            .HorizontalAlignment(HorizontalAlignment.Stretch)
+            .VerticalAlignment(VerticalAlignment.Stretch);
+        OverlayManager.AddOverlay(_assetActionsOverlay, this);
     }
 
-    private void Navigate(AppRoute route)
+    private static VisualElement CreateAssetAction(string text, IconData icon, Action action)
     {
-        Navigate(route, trackHistory: true);
+        return new MenuItem(text, action)
+            .IconOptions(new MenuItemIconOptions(icon, new Color(196, 210, 232), Size: 16f))
+            .Height(40)
+            .HorizontalAlignment(HorizontalAlignment.Stretch);
     }
 
-    private void NavigateRoot(AppRoute route)
+    private void CloseAssetActionsMenu()
     {
-        _backStack.Clear();
-        _canGoBack.Value = false;
-        Navigate(route, trackHistory: false);
+        if (_assetActionsOverlay is null)
+            return;
+
+        OverlayManager.RemoveOverlay(_assetActionsOverlay);
+        _assetActionsOverlay = null;
     }
 
-    private void Navigate(AppRoute route, bool trackHistory)
+    private void SetAssetViewMode(AssetViewMode mode)
     {
-        if (_currentRoute.Value == route)
+        if (_assetViewMode == mode)
         {
             return;
         }
 
-        if (trackHistory)
-        {
-            _backStack.Add(_currentRoute.Value);
-            _canGoBack.Value = true;
-        }
-
-        _currentRoute.Value = route;
+        _assetViewMode = mode;
+        RefreshDrawer();
     }
 
-    private void GoBack()
+    private VisualElement BuildAssetBrowser()
     {
-        if (_backStack.Count == 0)
+        var assets = _project.GetChildren(_assetDirectory).ToList();
+        var content = _assetViewMode == AssetViewMode.List
+            ? BuildListView(assets)
+            : BuildGridView(assets);
+
+        return new ScrollView()
+            .Padding(new Thickness(12, 16))
+            .Content(content)
+            .HorizontalAlignment(HorizontalAlignment.Stretch)
+            .VerticalAlignment(VerticalAlignment.Stretch);
+    }
+
+    private VisualElement BuildListView(IReadOnlyList<VirtualAsset> assets)
+    {
+        var items = new List<VisualElement>();
+        if (!string.IsNullOrEmpty(_assetDirectory))
         {
+            items.Add(CreateListAssetItem("..", true, NavigateUp));
+        }
+
+        foreach (var asset in assets)
+        {
+            items.Add(CreateListAssetItem(asset.Name, asset.IsDirectory, () => OpenAsset(asset)));
+        }
+
+        if (items.Count == 0)
+        {
+            items.Add(new Label("This folder is empty")
+                .FontSize(13)
+                .Foreground(new Color(148, 163, 184)));
+        }
+
+        return new VStack()
+            .Spacing(6)
+            .HorizontalAlignment(HorizontalAlignment.Stretch)
+            .Children(items.ToArray());
+    }
+
+    private VisualElement BuildGridView(IReadOnlyList<VirtualAsset> assets)
+    {
+        var entries = new List<(string Name, bool IsDirectory, Action Action)>();
+        if (!string.IsNullOrEmpty(_assetDirectory))
+            entries.Add(("..", true, NavigateUp));
+        entries.AddRange(assets.Select(asset => (asset.Name, asset.IsDirectory, (Action)(() => OpenAsset(asset)))));
+
+        if (entries.Count == 0)
+            return new Label("This folder is empty").FontSize(13).Foreground(new Color(148, 163, 184));
+
+        var grid = new Grid()
+            .Columns(GridLength.Star, GridLength.Star)
+            .ColumnSpacing(8)
+            .RowSpacing(8)
+            .HorizontalAlignment(HorizontalAlignment.Stretch);
+        for (var row = 0; row < (int)Math.Ceiling(entries.Count / 2d); row++)
+            grid.RowDefinitions.Add(GridLength.Pixels(104));
+
+        for (var index = 0; index < entries.Count; index++)
+        {
+            var entry = entries[index];
+            grid.AddChild(CreateGridAssetItem(entry.Name, entry.IsDirectory, entry.Action), index / 2, index % 2);
+        }
+
+        return grid;
+    }
+
+    private VisualElement CreateListAssetItem(string text, bool isDirectory, Action action)
+    {
+        var icon = GetAssetIcon(text, isDirectory);
+        return new HStack()
+            .Spacing(6)
+            .Height(40)
+            .HorizontalAlignment(HorizontalAlignment.Stretch)
+            .Children(
+                new ButtonIcon(icon)
+                    .Size(40)
+                    .IconSize(19)
+                    .IconColor(GetAssetIconColor(isDirectory))
+                    .Variant(ButtonVariant.Ghost)
+                    .OnTapped(action),
+                new Button()
+                    .Height(40)
+                    .Text(text)
+                    .TextAlignment(HorizontalAlignment.Left)
+                    .Padding(new Thickness(8, 0, 8, 0))
+                    .TextColor(new Color(226, 232, 240))
+                    .Background(Color.Transparent)
+                    .HoverBackground(new Color(45, 55, 72))
+                    .PressedBackground(new Color(62, 126, 214))
+                    .BorderThickness(0)
+                    .BorderRadius(8)
+                    .HorizontalAlignment(HorizontalAlignment.Stretch)
+                    .OnTapped(action));
+    }
+
+    private VisualElement CreateGridAssetItem(string text, bool isDirectory, Action action)
+    {
+        var icon = GetAssetIcon(text, isDirectory);
+        return new Frame()
+            .Background(new Color(30, 41, 59))
+            .BorderBrush(new Color(51, 65, 85))
+            .BorderThickness(1)
+            .BorderRadius(8)
+            .Padding(new Thickness(6))
+            .Content(
+                new VStack()
+                    .Spacing(2)
+                    .HorizontalAlignment(HorizontalAlignment.Stretch)
+                    .Children(
+                        new ButtonIcon(icon)
+                            .Width(44)
+                            .Height(44)
+                            .IconSize(26)
+                            .IconColor(GetAssetIconColor(isDirectory))
+                            .Variant(ButtonVariant.Ghost)
+                            .HorizontalAlignment(HorizontalAlignment.Center)
+                            .OnTapped(action),
+                        new Button()
+                            .Height(34)
+                            .Text(text)
+                            .FontSize(12)
+                            .TextColor(new Color(226, 232, 240))
+                            .Background(Color.Transparent)
+                            .HoverBackground(new Color(51, 65, 85))
+                            .PressedBackground(new Color(62, 126, 214))
+                            .BorderThickness(0)
+                            .OnTapped(action)));
+    }
+
+    private static IconData GetAssetIcon(string name, bool isDirectory)
+    {
+        if (isDirectory)
+            return Icons.Folder;
+
+        return Path.GetExtension(name).ToLowerInvariant() switch
+        {
+            ".png" or ".jpg" or ".jpeg" or ".gif" or ".bmp" => Icons.Image,
+            _ => Icons.File
+        };
+    }
+
+    private static Color GetAssetIconColor(bool isDirectory) =>
+        isDirectory ? new Color(250, 204, 21) : new Color(148, 163, 184);
+
+    private void ShowCreateFolderDialog()
+    {
+        var folderName = new Entry()
+            .Placeholder("Folder name")
+            .Height(38);
+        var content = new VStack()
+            .Spacing(8)
+            .Children(
+                new Label("Create a folder in the current location.")
+                    .FontSize(13)
+                    .Foreground(new Color(148, 163, 184)),
+                folderName);
+
+        Dialog.Show(
+            "New folder",
+            content,
+            showCancelButton: true,
+            onAccepted: () => CreateDirectory(folderName.Text),
+            validate: () => IsValidFolderName(folderName.Text),
+            okText: "Create",
+            cancelText: "Cancel");
+    }
+
+    private static bool IsValidFolderName(string name)
+    {
+        var trimmed = name.Trim();
+        return !string.IsNullOrWhiteSpace(trimmed) &&
+               !trimmed.Contains('/') &&
+               !trimmed.Contains('\\') &&
+               trimmed is not "." and not "..";
+    }
+
+    private void CreateDirectory(string name)
+    {
+        try
+        {
+            _project.CreateDirectory(_assetDirectory, name);
+            RefreshDrawer();
+        }
+        catch (ArgumentException)
+        {
+            ToastService.ShowInfo("Enter a valid folder name.");
+        }
+    }
+
+    private void NavigateUp()
+    {
+        var separator = _assetDirectory.LastIndexOf('/');
+        NavigateTo(separator < 0 ? string.Empty : _assetDirectory[..separator]);
+    }
+
+    private void NavigateTo(string directory)
+    {
+        _assetDirectory = directory;
+        RefreshDrawer();
+    }
+
+    private void OpenAsset(VirtualAsset asset)
+    {
+        if (asset.IsDirectory)
+        {
+            _assetDirectory = asset.Path;
+            RefreshDrawer();
             return;
         }
 
-        var previousRoute = _backStack[^1];
-        _backStack.RemoveAt(_backStack.Count - 1);
-        _canGoBack.Value = _backStack.Count > 0;
-        Navigate(previousRoute, trackHistory: false);
-    }
-
-    private void UpdateContent()
-    {
-        if (_contentHost is null)
+        if (!_project.IsTextFile(asset.Path))
         {
+            ToastService.ShowInfo("Binary asset preview is not implemented yet.");
             return;
         }
 
-        _contentHost.Content(CreatePage(_currentRoute.Value));
-        Rebuild();
+        _homePage.OpenTextAsset(asset.Path, _project.ReadText(asset.Path), text => _project.WriteText(asset.Path, text));
+        Drawer.CloseCurrentDrawer();
     }
 
-    private VisualElement CreatePage(AppRoute route) => route switch
+    private void RefreshDrawer()
     {
-        AppRoute.Counter => new CounterPage(_counter, _counterText),
-        AppRoute.Details => new DetailsPage(Navigate),
-        AppRoute.Profile => new ProfilePage(),
-        AppRoute.Settings => new SettingsPage(),
-        _ => new HomePage()
-    };
+        CloseAssetActionsMenu();
+        _drawer?.Content(BuildDrawerContent());
+    }
 
-    private IReadOnlyList<AppBarOverflowItem> CreateOverflowItems(AppRoute route)
+    private sealed class AssetActionsOverlay : Absolute, IPointerHandler
     {
-        if (route == AppRoute.Counter)
+        private readonly VisualElement _menu;
+        private readonly Action _close;
+
+        public AssetActionsOverlay(VisualElement menu, Action close)
         {
-            return
-            [
-                new AppBarOverflowItem("Reset counter", Icons.Refresh, () => _counter.Value = 0),
-                new AppBarOverflowItem("Open settings", Icons.Settings, () => NavigateRoot(AppRoute.Settings))
-            ];
+            _menu = menu;
+            _close = close;
+            AddChild(menu);
         }
 
-        if (route != AppRoute.Home)
+        public void OnPointerReleased(PointerEventArgs args)
         {
-            return [];
+            var position = args.Position;
+            var isInsideMenu = position.X >= _menu.ComputedX &&
+                               position.X <= _menu.ComputedX + _menu.ComputedWidth &&
+                               position.Y >= _menu.ComputedY &&
+                               position.Y <= _menu.ComputedY + _menu.ComputedHeight;
+            if (!isInsideMenu)
+                _close();
         }
-
-        return
-        [
-            new AppBarOverflowItem("About Nano", Icons.Info, () => ToastService.ShowInfo("Nano starter template")),
-            new AppBarOverflowItem("Open settings", Icons.Settings, () => NavigateRoot(AppRoute.Settings))
-        ];
     }
 }

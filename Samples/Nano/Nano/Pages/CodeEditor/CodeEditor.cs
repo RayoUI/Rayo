@@ -59,7 +59,6 @@ public sealed class CodeEditor : Editor
         TextColor = new Color(220, 223, 228);
         BorderThickness = 0;
         KeyboardAccessoryKeys = ProgrammingAccessoryKeys;
-        VirtualKeyboardManager.SetAccessoryKeys(KeyboardAccessoryKeys);
         TextChanged += _ => InvalidateCodeCache();
         InvalidateCodeCache();
     }

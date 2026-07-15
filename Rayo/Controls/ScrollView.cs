@@ -169,6 +169,9 @@ public class ScrollView : CompositeView<ScrollView>, IInputHandler, IScrollable,
     // IInputHandler
     public bool CanHandleInput => true;
 
+    /// <summary>Raised whenever either scroll offset changes.</summary>
+    public event Action? ScrollOffsetChanged;
+
     // IDragScrollable
     public bool IsDragPending => _dragPending;
 
@@ -200,6 +203,7 @@ public class ScrollView : CompositeView<ScrollView>, IInputHandler, IScrollable,
                 MarkNeedsPaint(); // ✅ CRITICAL: Force re-render for scrollbar
 
                 ScrollInteractionNotifier.NotifyScrollActivity(this);
+                ScrollOffsetChanged?.Invoke();
             }
         }
     }
@@ -220,6 +224,7 @@ public class ScrollView : CompositeView<ScrollView>, IInputHandler, IScrollable,
                 MarkNeedsPaint(); // ✅ CRITICAL: Force re-render for scrollbar
 
                 ScrollInteractionNotifier.NotifyScrollActivity(this);
+                ScrollOffsetChanged?.Invoke();
             }
 
         }
@@ -837,6 +842,8 @@ public class ScrollView : CompositeView<ScrollView>, IInputHandler, IScrollable,
     {
         float viewportWidth = ComputedWidth - Padding.Horizontal;
         float viewportHeight = ComputedHeight - Padding.Vertical;
+        bool canScrollVertically = Orientation is ScrollOrientation.Vertical or ScrollOrientation.Both;
+        bool canScrollHorizontally = Orientation is ScrollOrientation.Horizontal or ScrollOrientation.Both;
         switch (args.EventType)
         {
             case InputEventType.MouseDown:
@@ -862,7 +869,8 @@ public class ScrollView : CompositeView<ScrollView>, IInputHandler, IScrollable,
                 }
 
                 // Prepare for possible content drag only if there is content to scroll
-                if ((_contentHeight > viewportHeight || _contentWidth > viewportWidth))
+                if ((canScrollVertically && _contentHeight > viewportHeight) ||
+                    (canScrollHorizontally && _contentWidth > viewportWidth))
                 {
                     _dragPending = true;
                     _dragStartPosition = args.Position;
@@ -930,12 +938,12 @@ public class ScrollView : CompositeView<ScrollView>, IInputHandler, IScrollable,
 
                     // Touch scroll: content follows finger (natural mobile behavior)
                     // Positive delta.Y (finger moves down) = scroll offset decreases (content moves down)
-                    if (ShowVerticalScrollbar && _contentHeight > viewportHeight)
+                    if (canScrollVertically && _contentHeight > viewportHeight)
                     {
                         VerticalScrollOffset -= posDelta.Y;
                     }
 
-                    if (ShowHorizontalScrollbar && _contentWidth > viewportWidth)
+                    if (canScrollHorizontally && _contentWidth > viewportWidth)
                     {
                         HorizontalScrollOffset -= posDelta.X;
                     }
@@ -952,12 +960,12 @@ public class ScrollView : CompositeView<ScrollView>, IInputHandler, IScrollable,
                     var delta = args.Position - _dragStartPosition;
 
                     // Invert delta for natural scrolling (desktop mouse drag)
-                    if (ShowVerticalScrollbar && _contentHeight > viewportHeight)
+                    if (canScrollVertically && _contentHeight > viewportHeight)
                     {
                         VerticalScrollOffset = _dragStartVerticalOffset - delta.Y;
                     }
 
-                    if (ShowHorizontalScrollbar && _contentWidth > viewportWidth)
+                    if (canScrollHorizontally && _contentWidth > viewportWidth)
                     {
                         HorizontalScrollOffset = _dragStartHorizontalOffset - delta.X;
                     }
@@ -985,12 +993,12 @@ public class ScrollView : CompositeView<ScrollView>, IInputHandler, IScrollable,
                         _lastInertiaUpdate = DateTime.UtcNow;
 
                         // Apply the initial scroll
-                        if (ShowVerticalScrollbar && _contentHeight > viewportHeight)
+                        if (canScrollVertically && _contentHeight > viewportHeight)
                         {
                             VerticalScrollOffset -= delta.Y;
                         }
 
-                        if (ShowHorizontalScrollbar && _contentWidth > viewportWidth)
+                        if (canScrollHorizontally && _contentWidth > viewportWidth)
                         {
                             HorizontalScrollOffset -= delta.X;
                         }

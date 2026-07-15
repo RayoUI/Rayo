@@ -226,6 +226,7 @@ public class Drawer : BorderCompositeView<Drawer>, IFrameAnimation
     public Drawer Content(VisualElement content)
     {
         _content = content;
+        _overlay?.RefreshContent();
         return this;
     }
 
@@ -520,6 +521,29 @@ internal class DrawerOverlay : Rayo.Core.CompositeView<DrawerOverlay>, Rayo.Core
         _drawerFrame.ClipToBounds = true;
 
         AddChild(_drawerFrame);
+    }
+
+    internal void RefreshContent()
+    {
+        if (_contentContainer == null)
+        {
+            return;
+        }
+
+        _contentContainer.ClearChildren();
+        var content = _drawer.GetContent();
+        if (content != null)
+        {
+            if (content.Parent is VStack oldContainer)
+            {
+                oldContainer.Remove(content);
+            }
+
+            _contentContainer.AddChild(content);
+        }
+
+        InvalidateMeasure();
+        MarkNeedsPaint();
     }
 
     protected override void OnThemeApplied(ThemeData theme)

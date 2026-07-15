@@ -19,18 +19,6 @@ public sealed class CodeEditorPage : Component
 
         page
             .AddChild(
-                new Label("Lua editor")
-                    .FontSize(18)
-                    .Foreground(new Color(241, 245, 249)),
-                0,
-                0)
-            .AddChild(
-                new Label("Syntax highlighting and line numbers. Languages are provided through ICodeLanguage.")
-                    .FontSize(13)
-                    .Foreground(new Color(148, 163, 184)),
-                1,
-                0)
-            .AddChild(
                 new CodeEditor(DefaultLua, new LuaCodeLanguage())
                     .HorizontalAlignment(HorizontalAlignment.Stretch)
                     .VerticalAlignment(VerticalAlignment.Stretch),

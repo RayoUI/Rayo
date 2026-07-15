@@ -511,19 +511,6 @@ public class TabControl : CompositeView<TabControl>, IFrameAnimation
             TabCloseRequested.Invoke(index);
     }
 
-    public void DebugHitTest(float x, float y)
-    {
-        Console.WriteLine("========================================");
-        Console.WriteLine($"[TabControl.DebugHitTest] Point ({x}, {y})");
-
-        foreach (var child in Children)
-        {
-            Console.WriteLine($"[TabControl.DebugHitTest] {child.GetType().Name} @ ({child.ComputedX}, {child.ComputedY}, {child.ComputedWidth}, {child.ComputedHeight})");
-        }
-
-        Console.WriteLine("========================================");
-    }
-
     protected override void OnMounted()
     {
         base.OnMounted();
@@ -629,6 +616,7 @@ public class TabControl : CompositeView<TabControl>, IFrameAnimation
             ShowHorizontalScrollbar = false,
             ShowVerticalScrollbar = false
         };
+        _headerScroll.ScrollOffsetChanged += UpdateScrollButtons;
         _headerScroll.Content(_headerStrip);
 
         _scrollBackwardButton = new TabScrollButton(
@@ -911,12 +899,14 @@ public class TabControl : CompositeView<TabControl>, IFrameAnimation
     {
         if (_tabs.Count == 0 || !IsValidIndex(_selectedIndex))
         {
+            UIApplication.Current?.EventManager.SetFocus(null);
             _contentFrame.ClearContent();
             _contentFrame.MarkNeedsPaint();
             return;
         }
 
         var content = _tabs[_selectedIndex].Content;
+        ClearFocusOutsideContent(content);
         if (!ReferenceEquals(_contentFrame.Content, content))
         {
             _contentFrame.ClearContent();
@@ -926,6 +916,28 @@ public class TabControl : CompositeView<TabControl>, IFrameAnimation
         _contentFrame.InvalidateMeasure();
         _contentFrame.MarkNeedsPaint();
         TrySetFocusOnContent(content);
+    }
+
+    private static void ClearFocusOutsideContent(VisualElement content)
+    {
+        var app = UIApplication.Current;
+        if (app?.EventManager.FocusedElement is not { } focusedElement ||
+            ContainsElement(content, focusedElement))
+        {
+            return;
+        }
+
+        app.EventManager.SetFocus(null);
+    }
+
+    private static bool ContainsElement(VisualElement parent, VisualElement candidate)
+    {
+        if (ReferenceEquals(parent, candidate))
+        {
+            return true;
+        }
+
+        return parent.GetChildren().Any(child => ContainsElement(child, candidate));
     }
 
     /// <summary>
@@ -1473,6 +1485,10 @@ public class TabControl : CompositeView<TabControl>, IFrameAnimation
 
         public DragDropEffect? AllowedEffects => _owner.EnableTabReorder ? DragDropEffect.Move : null;
 
+        // A normal swipe is captured by the header ScrollView before this delay.
+        // Holding first and then dragging keeps touch tab reordering available.
+        public TimeSpan TouchDragStartDelay => TimeSpan.FromMilliseconds(300);
+
         public bool OnDragEnter(DragData dragData)
         {
             if (!_owner.EnableTabReorder || dragData.Data is not TabDragInfo dragInfo || dragInfo.Owner != _owner || dragInfo.Index == _index)
@@ -1671,13 +1687,14 @@ public class TabControl : CompositeView<TabControl>, IFrameAnimation
 
 /// <summary>
 /// ScrollView especializado para las cabeceras del TabControl.
-/// Desactiva el drag-scroll legacy para no competir con el drag & drop de tabs.
+/// A normal touch swipe scrolls the strip; touch reordering requires a short
+/// press-and-hold before dragging.
 /// </summary>
 internal class TabHeadersScrollView : ScrollView, IInputHandler
 {
     bool IInputHandler.HandleInput(InputEventArgs args)
     {
-        return false;
+        return base.HandleInput(args);
     }
 }
 
@@ -1707,48 +1724,52 @@ internal class TabScrollButton : ButtonIcon
             nameof(IconColor),
             (Brush)theme.Colors.OnSurface,
             value => IconColor = value);
+
+        // ButtonIcon reapplies its variant background whenever a theme is
+        // attached. Restore the tab-strip gradient afterwards so the initial
+        // mounted state matches later theme refreshes.
+        if (_owner is not null)
+            RefreshStyle();
     }
 
     public void RefreshStyle()
     {
         var baseColor = _owner.TabBackground.PrimaryColor;
-        var outer = new Color(baseColor.R, baseColor.G, baseColor.B, 0.10f);
+        var transparent = new Color(baseColor.R, baseColor.G, baseColor.B, 0f);
         var mid = new Color(baseColor.R, baseColor.G, baseColor.B, 0.52f);
-        var inner = new Color(baseColor.R, baseColor.G, baseColor.B, 0.92f);
+        var opaque = new Color(baseColor.R, baseColor.G, baseColor.B, 0.92f);
 
-        Background = CreateGradientBrush(outer, mid, inner);
+        Background = CreateGradientBrush(transparent, mid, opaque);
         HoverBackground = CreateGradientBrush(
-            outer.WithAlpha(0.18f),
+            transparent,
             mid.WithAlpha(0.68f),
-            inner.WithAlpha(0.98f));
+            opaque.WithAlpha(0.98f));
         PressedBackground = CreateGradientBrush(
-            outer.WithAlpha(0.24f),
+            transparent,
             mid.WithAlpha(0.78f),
-            inner.WithAlpha(1f));
+            opaque.WithAlpha(1f));
     }
 
-    private Brush CreateGradientBrush(Color outer, Color mid, Color inner)
+    private Brush CreateGradientBrush(Color transparent, Color mid, Color opaque)
     {
         bool horizontal = _owner.Position is TabPosition.Top or TabPosition.Bottom;
-        // The most opaque (and therefore visually darkest) stop faces the
-        // outer edge of the control: left/top for backward, right/bottom for
-        // forward. The gradient fades toward the tab strip content.
-        bool darkEdgeFirst = _isBackward;
-
         var brush = new LinearGradientBrush(
-            Rayo.Rendering.Brushes.GradientStop.At(0f, darkEdgeFirst ? inner : outer),
+            Rayo.Rendering.Brushes.GradientStop.At(0f, transparent),
             Rayo.Rendering.Brushes.GradientStop.At(0.45f, mid),
-            Rayo.Rendering.Brushes.GradientStop.At(1f, darkEdgeFirst ? outer : inner));
+            Rayo.Rendering.Brushes.GradientStop.At(1f, opaque));
 
         if (horizontal)
         {
-            brush.StartPoint = new Vector2(0, 0.5f);
-            brush.EndPoint = new Vector2(1, 0.5f);
+            // Backward is the left button, forward is the right button.
+            // Opacity grows in the direction opposite to the scroll action.
+            brush.StartPoint = _isBackward ? new Vector2(0, 0.5f) : new Vector2(1, 0.5f);
+            brush.EndPoint = _isBackward ? new Vector2(1, 0.5f) : new Vector2(0, 0.5f);
         }
         else
         {
-            brush.StartPoint = new Vector2(0.5f, 0);
-            brush.EndPoint = new Vector2(0.5f, 1);
+            // Backward is the top button, forward is the bottom button.
+            brush.StartPoint = _isBackward ? new Vector2(0.5f, 0) : new Vector2(0.5f, 1);
+            brush.EndPoint = _isBackward ? new Vector2(0.5f, 1) : new Vector2(0.5f, 0);
         }
 
         return brush;
