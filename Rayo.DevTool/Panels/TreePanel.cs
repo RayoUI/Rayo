@@ -27,7 +27,7 @@ public class TreeFrame : Component
 
     public override VisualElement Build()
     {
-        var highlightButton = new ButtonIcon(Icons.Target)
+        var highlightButton = new ButtonIcon(DevToolIcons.Target)
             .Size(30)
             .IconSize(20)
             .IconColor(_state.IsHighlightEnabled.Map(enabled => 

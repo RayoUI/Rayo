@@ -26,24 +26,49 @@ using IRenderer = Rayo.Rendering.IRenderer;
 /// - ITappable for tap gesture support
 /// - IGestureRecognizerHost for gesture recognizers
 /// </summary>
-public class ButtonIcon : BorderView<ButtonIcon>,
+public class ButtonIcon : BorderCompositeView<ButtonIcon>,
     IPointerHandler,           // Modern unified pointer events
     ITappable,                 // Tap gesture support
     IGestureRecognizerHost     // Hosts gesture recognizers
 {
     private Brush _currentBackground = Color.Transparent;
     private readonly TapRecognizer _tapRecognizer;
+    private readonly Image _iconImage;
 
     // =========================================================================
     // PROPERTIES
     // =========================================================================
 
     #region IconData
+    /// <summary>
+    /// Legacy vector icon data. Prefer <see cref="Source"/> for new code.
+    /// This fallback remains available while the built-in SVG asset catalog is
+    /// being populated.
+    /// </summary>
     public IconData? IconData
     {
         get => field;
-        set => this.SetProperty(ref field, value);
+        set => this.SetProperty(ref field, value, UpdateIconImage);
     }
+    #endregion
+
+    #region Source
+    /// <summary>
+    /// Source rendered by the internal <see cref="Image"/> control.
+    /// Supports SVG, PNG, packaged assets, local files, and URI sources.
+    /// </summary>
+    [LayoutProperty]
+    public ImageSource? Source
+    {
+        get => field;
+        set => this.SetProperty(ref field, value, UpdateIconImage);
+    }
+
+    /// <summary>
+    /// The image composed by this button. It is managed by the button and is
+    /// exposed for inspecting its loading state.
+    /// </summary>
+    public Image IconImage => _iconImage;
     #endregion
 
     #region Variant
@@ -59,7 +84,7 @@ public class ButtonIcon : BorderView<ButtonIcon>,
     public Brush IconColor
     {
         get => field;
-        set => this.SetProperty(ref field, value);
+        set => this.SetProperty(ref field, value, UpdateIconImage);
     } = Color.Transparent;
     #endregion
 
@@ -67,7 +92,7 @@ public class ButtonIcon : BorderView<ButtonIcon>,
     public float IconSize
     {
         get => field;
-        set => this.SetProperty(ref field, value);
+        set => this.SetProperty(ref field, value, UpdateIconImage);
     }
     #endregion
 
@@ -147,6 +172,13 @@ public class ButtonIcon : BorderView<ButtonIcon>,
     {
         // Initialize reactive properties
         IconSize = 24;
+        _iconImage = new Image
+        {
+            Stretch = StretchMode.Uniform,
+            Width = IconSize,
+            Height = IconSize,
+        };
+        AddChild(_iconImage);
         InitializeTheme();
 
         UpdateVisualState();
@@ -164,6 +196,22 @@ public class ButtonIcon : BorderView<ButtonIcon>,
     public ButtonIcon(IconData iconData) : this()
     {
         IconData = iconData;
+    }
+
+    /// <summary>
+    /// Creates an icon button whose visual is loaded through <see cref="Image"/>.
+    /// </summary>
+    public ButtonIcon(ImageSource source) : this()
+    {
+        Source = source;
+    }
+
+    /// <summary>
+    /// Creates an icon button from a local, packaged, or remote image path.
+    /// </summary>
+    public ButtonIcon(string source) : this()
+    {
+        Source = source;
     }
 
     public ButtonIcon UseThemeDefaults()
@@ -268,6 +316,20 @@ public class ButtonIcon : BorderView<ButtonIcon>,
             .Resolve(state);
     }
 
+    private void UpdateIconImage()
+    {
+        // IconSize is initialized before the internal Image is constructed.
+        // Ignore that constructor-time property notification.
+        if (_iconImage is null)
+            return;
+
+        _iconImage.Source = Source ?? IconData?.ImageSource;
+        _iconImage.Tint = IconColor.PrimaryColor;
+        _iconImage.Width = IconSize;
+        _iconImage.Height = IconSize;
+        InvalidateMeasure();
+    }
+
     // =========================================================================
     // LAYOUT & RENDERING
     // =========================================================================
@@ -311,6 +373,18 @@ public class ButtonIcon : BorderView<ButtonIcon>,
         DesiredHeight = measuredHeight;
     }
 
+    protected override void Arrange(float x, float y, float width, float height)
+    {
+        base.Arrange(x, y, width, height);
+
+        float contentWidth = Math.Max(0, width - Padding.Left - Padding.Right);
+        float contentHeight = Math.Max(0, height - Padding.Top - Padding.Bottom);
+        float imageX = x + Padding.Left + (contentWidth - IconSize) / 2f;
+        float imageY = y + Padding.Top + (contentHeight - IconSize) / 2f;
+
+        _iconImage.ForceArrange(imageX, imageY, IconSize, IconSize);
+    }
+
     public override void Render(IRenderer renderer)
     {
         if (ComputedWidth <= 0 || ComputedHeight <= 0) return;
@@ -342,8 +416,9 @@ public class ButtonIcon : BorderView<ButtonIcon>,
                 BorderRadius.TopLeft, BorderThickness.Left, BorderBrush.PrimaryColor);
         }
 
-        // Draw icon
-        if (IconData != null)
+        // Keep rendering existing IconData definitions until their SVG assets are
+        // added. New ButtonIcon instances render through the internal Image.
+        if (_iconImage.Source == null && IconData != null)
         {
             RenderVectorIcon(renderer);
         }

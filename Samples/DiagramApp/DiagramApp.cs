@@ -54,8 +54,8 @@ public class DiagramApp : Component
                             .Alignment(Alignment.Center)
                             .VerticalAlignment(VerticalAlignment.Top)
                             .Children(
-                                CreateToolButton(Icons.ConnectorTool, "Connect", DiagramTool.Connect),
-                                CreateToolButton(Icons.MoveTool, "Move", DiagramTool.Select),
+                                CreateToolButton(Icons.Connector, "Connect", DiagramTool.Connect),
+                                CreateToolButton(Icons.Move, "Move", DiagramTool.Select),
                                 CreateClearButton()
                             ),
                         new Label("Drag shapes into the editor.\nIn Connect mode, drag from one shape to another.\nDouble-click a connection to delete it.")

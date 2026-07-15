@@ -87,7 +87,7 @@ public class ToolbarFrame : Component
     {
         var app = UIApplication.Current;
         var isDark = app?.ActiveTheme.Brightness == ThemeBrightness.Dark;
-        var button = new ButtonIcon(isDark ? Icons.Sun : Icons.Moon)
+        var button = new ButtonIcon(isDark ? DevToolIcons.Sun : DevToolIcons.Moon)
         {
             Width = 30,
             Height = 30,

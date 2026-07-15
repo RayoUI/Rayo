@@ -21,13 +21,13 @@ public sealed class SpriteToolPicker(SpriteCanvas canvas) : Component
                 .Spacing(4)
                 .HorizontalAlignment(HorizontalAlignment.Center)
                 .Children(
-                    ToolButton(Icons.BrushTool, SpriteTool.Pencil),
+                    ToolButton(Icons.Brush, SpriteTool.Pencil),
                     ToolButton(Icons.Eraser, SpriteTool.Eraser),
                     ToolButton(Icons.FillBucket, SpriteTool.Fill),
                     ToolButton(Icons.Picker, SpriteTool.Picker),
-                    ToolButton(Icons.LineTool, SpriteTool.Line),
-                    ToolButton(Icons.RectangleTool, SpriteTool.Rectangle),
-                    ToolButton(Icons.EllipseTool, SpriteTool.Ellipse),
+                    ToolButton(Icons.Line, SpriteTool.Line),
+                    ToolButton(Icons.Rectangle, SpriteTool.Rectangle),
+                    ToolButton(Icons.Ellipse, SpriteTool.Ellipse),
                     new ButtonIcon(Icons.Delete).Size(44).Variant(ButtonVariant.Danger).OnTapped(ConfirmClear)));
     }
 

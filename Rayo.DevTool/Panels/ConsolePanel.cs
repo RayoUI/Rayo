@@ -46,7 +46,7 @@ public class ConsoleFrame : Component
                             .OnTapped(() => _state.Logs.Value = new List<LogMessage>())
                             .WithTooltip("Clear console"),
 
-                        CreateConsoleIconButton(Icons.ArrowDown)
+                        CreateConsoleIconButton(DevToolIcons.ArrowDown)
                             .OnTapped(() => _state.IsConsoleMaximized.Value = !_state.IsConsoleMaximized.Value)
                             .WithTooltip("Minimize console")
                     )

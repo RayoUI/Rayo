@@ -4,59 +4,45 @@ using Rayo.Core;
 using Rayo.Reactivity;
 using Rayo.Rendering;
 using Rayo.Rendering.Brushes;
-using System.ComponentModel.DataAnnotations;
 using Rayo.Styling;
 using IRenderer = Rayo.Rendering.IRenderer;
 
 /// <summary>
-/// Component for displaying vector icons
-/// Migrated to new MAUI-like architecture: inherits from View<Icon>
+/// Displays an icon through the same image pipeline used by <see cref="ButtonIcon"/>.
+/// SVG-backed <see cref="IconData"/> instances are tinted with <see cref="Color"/>.
 /// </summary>
-public class Icon : View<Icon>
+public class Icon : CompositeView<Icon>
 {
+    private const float DefaultIconSize = 24f;
+    private readonly Image _image;
 
-    // =========================================================================
-    // PROPERTIES
-    // =========================================================================
-    #region IconData
     [PaintProperty]
     public IconData? IconData
     {
         get => field;
-        set => this.SetProperty(ref field, value);
+        set => this.SetProperty(ref field, value, UpdateImageSource);
     }
-    #endregion
 
-    #region Color
     [PaintProperty]
     public Brush Color
     {
         get => field;
-        set => this.SetProperty(ref field, value);
+        set => this.SetProperty(ref field, value, UpdateImageTint);
     } = Rayo.Rendering.Color.Transparent;
-    #endregion
 
-
-#pragma warning disable CS0067
-    // =========================================================================
-    // EVENT HANDLERS
-    // =========================================================================
-    // Define the missing events
-    public event Action<IconData?>? IconDataChanged;
-#pragma warning restore CS0067
-
-    // =========================================================================
-    // INITIALIZATION
-    // =========================================================================
-    private const float DefaultIconSize = 24f;
+    /// <summary>
+    /// Internal image that renders the SVG or raster source.
+    /// </summary>
+    public Image Image => _image;
 
     public Icon()
     {
+        _image = new Image { Stretch = StretchMode.Uniform };
+        AddChild(_image);
         InitializeTheme();
     }
 
-    public Icon(IconData iconData)
-        : this()
+    public Icon(IconData iconData) : this()
     {
         IconData = iconData;
     }
@@ -68,49 +54,39 @@ public class Icon : View<Icon>
 
     protected override void Measure(float availableWidth, float availableHeight)
     {
-        if (Width == 0) Width = DefaultIconSize;
-        if (Height == 0) Height = DefaultIconSize;
+        float size = MathF.Min(
+            Width > 0 ? Width : DefaultIconSize,
+            Height > 0 ? Height : DefaultIconSize);
+
+        DesiredWidth = Width > 0 ? Width : size;
+        DesiredHeight = Height > 0 ? Height : size;
     }
 
     protected override void Arrange(float x, float y, float width, float height)
     {
         base.Arrange(x, y, width, height);
+        _image.ForceArrange(x, y, width, height);
     }
 
     public override void Render(IRenderer renderer)
     {
-        if (IconData != null)
-        {
-            RenderVectorIcon(renderer);
-        }
+        // The UI tree renders the internal Image after this control.
     }
 
-    private void RenderVectorIcon(IRenderer renderer)
+    private void UpdateImageSource()
     {
-        if (IconData == null) return;
+        if (_image is null)
+            return;
 
-        float scaleX = ComputedWidth / IconData.ViewBoxWidth;
-        float scaleY = ComputedHeight / IconData.ViewBoxHeight;
-        float scale = Math.Min(scaleX, scaleY);
+        _image.Source = IconData?.ImageSource;
+        InvalidateMeasure();
+    }
 
-        float offsetX = 0;
-        float offsetY = 0;
+    private void UpdateImageTint()
+    {
+        if (_image is null)
+            return;
 
-        if (scaleX > scaleY)
-        {
-            offsetX = (ComputedWidth - (IconData.ViewBoxWidth * scale)) / 2;
-        }
-        else if (scaleY > scaleX)
-        {
-            offsetY = (ComputedHeight - (IconData.ViewBoxHeight * scale)) / 2;
-        }
-
-        float renderX = ComputedX + offsetX;
-        float renderY = ComputedY + offsetY;
-
-        foreach (var command in IconData.Commands)
-        {
-            command.Draw(renderer, renderX, renderY, scale, Color.PrimaryColor);
-        }
+        _image.Tint = Color.PrimaryColor;
     }
 }

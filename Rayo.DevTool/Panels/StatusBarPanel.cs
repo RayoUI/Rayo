@@ -37,7 +37,7 @@ public class StatusBarFrame : Component
 
                         new Frame().HorizontalAlignment(HorizontalAlignment.Stretch), // Flexible space
 
-                        CreateStatusIconButton(Icons.ArrowUp)
+                        CreateStatusIconButton(DevToolIcons.ArrowUp)
                             .IsVisible(_state.IsConsoleMaximized.Map(m => !m))
                             .OnTapped(() => _state.IsConsoleMaximized.Value = true)
                             .WithTooltip("Show console")

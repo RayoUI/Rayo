@@ -77,17 +77,17 @@ public class ToolbarView : Component
                         MakeActionButton(Icons.NewFile,   "New",  ShowNewCanvasDialog),
                         MakeActionButton(Icons.Image,     "Open", ShowOpenDialog),
                         MakeActionButton(Icons.Save,      "Save", ShowSaveDialog),
-                        MakeActionButton(Icons.ArrowLeft, "Undo", () => _canvas.Undo()),
+                        MakeActionButton(Icons.ArrowBack, "Undo", () => _canvas.Undo()),
 
                         Separator(),
 
                         // Drawing tools
                         MakeToolButton(PaintTool.Pencil,    Icons.Edit,          "Pencil"),
-                        MakeToolButton(PaintTool.Brush,     Icons.BrushTool,     "Brush"),
+                        MakeToolButton(PaintTool.Brush,     Icons.Brush,     "Brush"),
                         MakeToolButton(PaintTool.Eraser,    Icons.Eraser,        "Eraser"),
-                        MakeToolButton(PaintTool.Line,      Icons.LineTool,      "Line"),
-                        MakeToolButton(PaintTool.Rectangle, Icons.RectangleTool, "Rectangle"),
-                        MakeToolButton(PaintTool.Ellipse,   Icons.EllipseTool,   "Ellipse"),
+                        MakeToolButton(PaintTool.Line,      Icons.Line,      "Line"),
+                        MakeToolButton(PaintTool.Rectangle, Icons.Rectangle, "Rectangle"),
+                        MakeToolButton(PaintTool.Ellipse,   Icons.Ellipse,   "Ellipse"),
                         MakeToolButton(PaintTool.Fill,      Icons.FillBucket,    "Fill"),
 
                         Separator(),
@@ -161,7 +161,7 @@ public class ToolbarView : Component
         var btn = new Button()
             .Text(label)
             .FontSize(11)
-            .Width(34)
+            .Width(38)
             .Height(34)
             .BorderRadius(new CornerRadius(4))
             .OnTapped(() => _vm.BrushSize.Value = size);

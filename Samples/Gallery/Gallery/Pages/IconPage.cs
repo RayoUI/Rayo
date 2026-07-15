@@ -35,10 +35,10 @@ public class IconPage : Component
                     new HStack()
                         .Spacing(16)
                         .Children(
-                            CreateVectorIcon("Up", Icons.ArrowUp),
-                            CreateVectorIcon("Down", Icons.ArrowDown),
-                            CreateVectorIcon("Left", Icons.ArrowLeft),
-                            CreateVectorIcon("Right", Icons.ArrowRight),
+                            CreateVectorIcon("Up", Icons.ArrowUpward),
+                            CreateVectorIcon("Down", Icons.ArrowUpward),
+                            CreateVectorIcon("Left", Icons.ArrowBack),
+                            CreateVectorIcon("Right", Icons.ArrowForward),
                             CreateVectorIcon("Home", Icons.Home),
                             CreateVectorIcon("Search", Icons.Search),
                             CreateVectorIcon("Settings", Icons.Settings),

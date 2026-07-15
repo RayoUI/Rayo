@@ -4,8 +4,9 @@ using Rayo.Core;
 using Rayo.Rendering;
 
 /// <summary>
-/// Representa los datos de un icono, incluyendo su SVG path y viewBox.
-/// Los iconos se definen usando comandos de dibujo simples.
+/// Represents a legacy vector icon definition. New icon visuals can be supplied
+/// through <see cref="ImageSource"/>, allowing controls to use SVG or raster
+/// assets while existing draw-command definitions remain compatible.
 /// </summary>
 public class IconData
 {
@@ -25,6 +26,12 @@ public class IconData
     /// Comandos de dibujo del icono
     /// </summary>
     public List<IconDrawCommand> Commands { get; }
+
+    /// <summary>
+    /// Optional image asset used by controls that support image-based icons.
+    /// When null, controls can fall back to <see cref="Commands"/>.
+    /// </summary>
+    public ImageSource? ImageSource { get; private set; }
 
     public IconData(string name, float viewBoxWidth = 24, float viewBoxHeight = 24)
     {
@@ -61,6 +68,15 @@ public class IconData
     public IconData AddPolygon(List<(float x, float y)> points, bool filled = true)
     {
         Commands.Add(new IconPolygonCommand(points, filled));
+        return this;
+    }
+
+    /// <summary>
+    /// Associates this icon with an SVG or raster image source.
+    /// </summary>
+    public IconData UseImageSource(ImageSource imageSource)
+    {
+        ImageSource = imageSource ?? throw new ArgumentNullException(nameof(imageSource));
         return this;
     }
 }

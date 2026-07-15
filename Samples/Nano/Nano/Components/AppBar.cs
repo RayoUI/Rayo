@@ -81,7 +81,7 @@ public class AppBar : Component
         }
 
         ButtonIcon? button = null;
-        button = CreateAppBarButton(Icons.MoreVertical, () =>
+        button = CreateAppBarButton(Icons.MoreVert, () =>
         {
             if (button is not null)
             {

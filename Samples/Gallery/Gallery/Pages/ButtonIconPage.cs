@@ -332,7 +332,7 @@ public class ButtonIconPage : Component
 
     private VisualElement CreateIconToolbarSection()
     {
-        var backButton = new ButtonIcon(Icons.ArrowLeft);
+        var backButton = new ButtonIcon(Icons.ArrowBack);
         backButton.IconColor(GalleryPalette.OnSurface);
         backButton.Background(Color.Transparent);
         backButton.HoverBackground(GalleryPalette.SurfaceHover);
@@ -340,7 +340,7 @@ public class ButtonIconPage : Component
         backButton.Size(36);
         backButton.OnTapped(() => Console.WriteLine("Back"));
 
-        var forwardButton = new ButtonIcon(Icons.ArrowRight);
+        var forwardButton = new ButtonIcon(Icons.ArrowForward);
         forwardButton.IconColor(GalleryPalette.OnSurface);
         forwardButton.Background(Color.Transparent);
         forwardButton.HoverBackground(GalleryPalette.SurfaceHover);
@@ -370,7 +370,7 @@ public class ButtonIconPage : Component
         volumeButton.Size(36);
         volumeButton.OnTapped(() => Console.WriteLine("Volume Up"));
 
-        var muteButton = new ButtonIcon(Icons.VolumeMute);
+        var muteButton = new ButtonIcon(Icons.VolumeOff);
         muteButton.IconColor(GalleryPalette.OnSurface);
         muteButton.Background(Color.Transparent);
         muteButton.HoverBackground(GalleryPalette.SurfaceHover);

@@ -866,7 +866,7 @@ public class PathPicker : BorderCompositeView<PathPicker>, IPointerHandler, IGlo
 
     private VisualElement BuildNavigationBar()
     {
-        var parentButton = CreateToolbarButton(Icons.ChevronUp, NavigateToParent);
+        var parentButton = CreateToolbarButton(Icons.ArrowBack, NavigateToParent);
         var homeButton = CreateToolbarButton(Icons.Home, NavigateToHome);
         var refreshButton = CreateToolbarButton(Icons.Refresh, RefreshCurrentDirectory);
         var rootsButton = CreateToolbarButton(Icons.Folder, NavigateToFirstRoot);
