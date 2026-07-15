@@ -76,8 +76,15 @@ public sealed class SpriteFramePreview : View<SpriteFramePreview>, IPointerHandl
 
         const float indexSize = 18f;
         var indexY = ComputedY + ComputedHeight - indexSize;
+        var indexText = _index.ToString();
+        var textSize = renderer.MeasureText(indexText, 12f);
         renderer.DrawRect(ComputedX, indexY, indexSize, indexSize, new Color(50, 60, 75));
-        renderer.DrawText($"{_index}", ComputedX + 5f, indexY + 2f, new Color(255, 255, 255), 12f);
+        renderer.DrawText(
+            indexText,
+            ComputedX + (indexSize - textSize.X) / 2f,
+            indexY + (indexSize - textSize.Y) / 2f,
+            new Color(255, 255, 255),
+            12f);
     }
 
     public void OnPointerPressed(PointerEventArgs e) { }

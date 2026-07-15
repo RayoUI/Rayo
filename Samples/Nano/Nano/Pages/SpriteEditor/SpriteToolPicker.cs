@@ -8,8 +8,11 @@ namespace Nano.Pages.SpriteEditor;
 
 public sealed class SpriteToolPicker(SpriteCanvas canvas) : Component
 {
+    private readonly Dictionary<SpriteTool, ButtonIcon> _toolButtons = [];
+
     public override VisualElement Build()
     {
+        _toolButtons.Clear();
         return new Frame()
             .Id("Toolbar")
             .Background(new Color(230, 235, 242))
@@ -25,11 +28,45 @@ public sealed class SpriteToolPicker(SpriteCanvas canvas) : Component
                     ToolButton(Icons.LineTool, SpriteTool.Line),
                     ToolButton(Icons.RectangleTool, SpriteTool.Rectangle),
                     ToolButton(Icons.EllipseTool, SpriteTool.Ellipse),
-                    new ButtonIcon(Icons.Delete).Size(44).Variant(ButtonVariant.Danger).OnTapped(canvas.Clear)));
+                    new ButtonIcon(Icons.Delete).Size(44).Variant(ButtonVariant.Danger).OnTapped(ConfirmClear)));
     }
 
-    private ButtonIcon ToolButton(IconData icon, SpriteTool tool) => new ButtonIcon(icon)
-        .Size(44)
-        .Variant(ButtonVariant.Secondary)
-        .OnTapped(() => canvas.Tool = tool);
+    private ButtonIcon ToolButton(IconData icon, SpriteTool tool)
+    {
+        var button = new ButtonIcon(icon)
+            .Size(44)
+            .Variant(tool == canvas.Tool ? ButtonVariant.Primary : ButtonVariant.Secondary)
+            .OnTapped(() =>
+            {
+                canvas.Tool = tool;
+                RefreshSelection();
+            });
+
+        _toolButtons.Add(tool, button);
+        return button;
+    }
+
+    private void RefreshSelection()
+    {
+        foreach (var (tool, button) in _toolButtons)
+        {
+            button.Variant(tool == canvas.Tool ? ButtonVariant.Primary : ButtonVariant.Secondary);
+        }
+    }
+
+    private void ConfirmClear()
+    {
+        var message = new VStack()
+            .Spacing(8)
+            .Padding(new Thickness(8, 4))
+            .Children(
+                new Label("¿Quieres limpiar el canvas?")
+                    .FontSize(14)
+                    .HorizontalAlignment(HorizontalAlignment.Left),
+                new Label("Esta acción no se puede deshacer.")
+                    .FontSize(14)
+                    .HorizontalAlignment(HorizontalAlignment.Left));
+
+        Dialog.Show("Limpiar canvas", message, true, canvas.Clear, okText: "Limpiar", cancelText: "Cancelar");
+    }
 }

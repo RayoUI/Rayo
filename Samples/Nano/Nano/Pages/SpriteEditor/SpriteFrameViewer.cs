@@ -19,6 +19,7 @@ public sealed class SpriteFrameViewer : Component
     private readonly Action<int> _deleteFrame;
     private readonly HStack _items = new();
     private readonly List<SpriteFramePreview> _previews = [];
+    private ScrollView? _scrollView;
     private bool _isOpen;
     private VisualElement? _content;
     private ButtonIcon? _handle;
@@ -41,10 +42,14 @@ public sealed class SpriteFrameViewer : Component
             .Padding(new Thickness(4))
             .HorizontalAlignment(HorizontalAlignment.Stretch)
             .VerticalAlignment(VerticalAlignment.Top)
-            .Content(new ScrollView().Orientation(ScrollOrientation.Horizontal).Height(82).Content(_items));
+            .Content((_scrollView = new ScrollView())
+                .Orientation(ScrollOrientation.Horizontal)
+                .Height(82)
+                .Content(_items));
         _content.IsVisible = _isOpen;
-        _handle = new ButtonIcon(_isOpen ? Icons.ChevronDown : Icons.ChevronUp)
+        _handle = new ButtonIcon(_isOpen ? Icons.ChevronUp : Icons.ChevronDown)
             .Size(36)
+            .BorderRadius(0)
             .Variant(ButtonVariant.Secondary)
             .OnTapped(Toggle);
         RefreshFrames();
@@ -52,8 +57,8 @@ public sealed class SpriteFrameViewer : Component
             _content,
             new HStack()
                 //.Background(Color.Transparent)
-                .HorizontalAlignment(HorizontalAlignment.Right)
-                .Padding(new Thickness(0, 0, 8, 0))
+                .HorizontalAlignment(HorizontalAlignment.Left)
+                .Padding(new Thickness(0))
                 .Children(_handle));
     }
 
@@ -76,6 +81,17 @@ public sealed class SpriteFrameViewer : Component
         _items.AddChild(new ButtonIcon(Icons.Add).Size(76).Variant(ButtonVariant.Secondary).OnTapped(_addFrame));
     }
 
+    public void ScrollToEnd()
+    {
+        if (_scrollView is null || _scrollView.ComputedWidth <= 0 || _scrollView.ComputedHeight <= 0)
+        {
+            return;
+        }
+
+        _scrollView.MeasureUpdate(_scrollView.ComputedWidth, _scrollView.ComputedHeight);
+        _scrollView.EnsureRectVisible(_scrollView.ContentWidth, 0, 0, 0);
+    }
+
     public void RefreshSelection()
     {
         for (var index = 0; index < _previews.Count; index++)
@@ -92,7 +108,7 @@ public sealed class SpriteFrameViewer : Component
     {
         _isOpen = !_isOpen;
         if (_content is not null) _content.IsVisible = _isOpen;
-        if (_handle is not null) _handle.IconData = _isOpen ? Icons.ChevronDown : Icons.ChevronUp;
+        if (_handle is not null) _handle.IconData = _isOpen ? Icons.ChevronUp : Icons.ChevronDown;
     }
 
     private void ShowOptions(int index, SpriteFramePreview source)

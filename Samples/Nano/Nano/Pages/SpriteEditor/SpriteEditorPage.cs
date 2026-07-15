@@ -57,6 +57,7 @@ public sealed class SpriteEditorPage : Component
     {
         _frames.Add(new SpriteFrame());
         _frameViewer.RefreshFrames();
+        _frameViewer.ScrollToEnd();
         SelectFrame(_frames.Count - 1);
     }
 

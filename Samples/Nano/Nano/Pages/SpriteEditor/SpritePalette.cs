@@ -18,6 +18,7 @@ public sealed class SpritePalette : Component
     ];
     private readonly HStack _items = new();
     private Color _selectedColor = new(62, 126, 214);
+    private ScrollView? _scrollView;
 
     public event Action<Color>? ColorSelected;
 
@@ -25,17 +26,35 @@ public sealed class SpritePalette : Component
     {
         _items.Spacing(10).Padding(new Thickness(12, 8));
         RebuildItems();
-        return new ScrollView().Orientation(ScrollOrientation.Horizontal).Height(56).Content(_items);
+        return (_scrollView = new ScrollView())
+            .Orientation(ScrollOrientation.Horizontal)
+            .Height(56)
+            .Content(_items);
     }
 
     public void SelectColor(Color color)
     {
-        if (!_colors.Contains(color))
+        var colorAdded = !_colors.Contains(color);
+        if (colorAdded)
             _colors.Add(color);
 
         _selectedColor = color;
         RebuildItems();
+        if (colorAdded)
+            ScrollToEnd();
+
         ColorSelected?.Invoke(color);
+    }
+
+    private void ScrollToEnd()
+    {
+        if (_scrollView is null || _scrollView.ComputedWidth <= 0 || _scrollView.ComputedHeight <= 0)
+        {
+            return;
+        }
+
+        _scrollView.MeasureUpdate(_scrollView.ComputedWidth, _scrollView.ComputedHeight);
+        _scrollView.EnsureRectVisible(_scrollView.ContentWidth, 0, 0, 0);
     }
 
     private void RebuildItems()
