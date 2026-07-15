@@ -193,8 +193,6 @@ public class ButtonIcon : BorderView<ButtonIcon>,
         SetThemeValue(nameof(BorderThickness), new Thickness(0), value => BorderThickness = value);
         SetThemeValue(nameof(Padding), new Thickness(theme.Spacing.Md), value => Padding = value);
         SetThemeValue(nameof(BorderRadius), theme.Buttons.Radius, value => BorderRadius = value);
-        SetThemeValue(nameof(MinWidth), theme.ControlHeight, value => MinWidth = value);
-        SetThemeValue(nameof(MinHeight), theme.ControlHeight, value => MinHeight = value);
     }
 
     // =========================================================================
@@ -294,9 +292,10 @@ public class ButtonIcon : BorderView<ButtonIcon>,
         }
         else
         {
-            // Respect min size for touch targets only when size is not explicitly set
-            // This allows smaller icons when explicitly configured with .Size()
-            if (measuredWidth < 44) measuredWidth = 44;
+            // Apply the platform/theme touch target only to auto-sized buttons.
+            // Explicit widths must remain exact so the arranged visual cannot
+            // overlap spacing reserved by a parent layout.
+            measuredWidth = Math.Max(measuredWidth, EffectiveTheme.ControlHeight);
         }
 
         if (HasExplicitHeight)
@@ -305,8 +304,7 @@ public class ButtonIcon : BorderView<ButtonIcon>,
         }
         else
         {
-            // Respect min size for touch targets only when size is not explicitly set
-            if (measuredHeight < 44) measuredHeight = 44;
+            measuredHeight = Math.Max(measuredHeight, EffectiveTheme.ControlHeight);
         }
 
         DesiredWidth = measuredWidth;

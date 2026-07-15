@@ -70,7 +70,7 @@ public sealed class SpriteEditorPage : Component
                     .Height(82)
                     .Content(_frameList),
                 new HStack()
-                    .Spacing(6)
+                    .Spacing(10)
                     .Children(
                         new ButtonIcon(Icons.Add).Size(36).Variant(ButtonVariant.Secondary).OnTapped(AddFrame),
                         new ButtonIcon(Icons.Edit).Size(36).Variant(ButtonVariant.Secondary).OnTapped(CloneFrame),
