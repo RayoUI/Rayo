@@ -64,6 +64,10 @@ public static class Icons
     public static IconData Warning => Svg("warning");
     public static IconData Undo => Svg("undo");
     public static IconData Redo => Svg("redo");
+    public static IconData Copy => Svg("copy");
+    public static IconData Paste => Svg("paste");
+    public static IconData Cut => Svg("cut");
+    public static IconData Share => Svg("share");
 
     private static IconData Svg(string name, string? assetName = null) =>
         new IconData(name).UseImageSource(IconAssets.FromName(assetName ?? ToKebabCase(name)));

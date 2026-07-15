@@ -429,6 +429,9 @@ public class Editor : TextBox<Editor>, IScrollable
     /// </summary>
     public float VerticalScrollOffset => _scrollOffsetY;
 
+    /// <summary>Gets the current horizontal scroll offset.</summary>
+    public float HorizontalScrollOffset => _scrollOffsetX;
+
     /// <summary>
     /// Sets the vertical scroll offset directly.
     /// </summary>

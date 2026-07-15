@@ -1,9 +1,11 @@
 namespace Rayo.Controls;
 
 using System;
+using System.Numerics;
 using System.Threading;
 using Rayo.Core;
 using Rayo.Core.Interfaces;
+using Rayo.Layout;
 using Rayo.Reactivity;
 using Rayo.Rendering;
 using Rayo.Rendering.Brushes;
@@ -37,11 +39,17 @@ public abstract class TextBox<T> : BorderView<T>, IInputHandler, IFocusable, Ray
     public Rayo.Core.Platform.VirtualKeyboardType KeyboardType { get; set; } =
         Rayo.Core.Platform.VirtualKeyboardType.Default;
 
+    /// <summary>Optional keys displayed above the virtual keyboard on supported platforms.</summary>
+    [NotFluent]
+    public IReadOnlyList<Rayo.Core.Platform.VirtualKeyboardAccessoryKey> KeyboardAccessoryKeys { get; set; } = [];
+
     // =========================================================================
     // MANUAL PROPERTIES (Complex state with validation and side effects)
     // =========================================================================
 
     private bool _suppressCursorAutoMove;
+    private bool _ignoreNextSpaceTextInput;
+    private AnchoredPopup? _selectionContextMenu;
 
     /// <summary>
     /// Gets or sets the text content.
@@ -250,7 +258,20 @@ public abstract class TextBox<T> : BorderView<T>, IInputHandler, IFocusable, Ray
 
     // Estado para doble click
     private DateTime _lastClickTime = DateTime.MinValue;
+    private Vector2 _lastClickPosition;
+    private int _clickCount;
     private const double DoubleClickThresholdMs = 500;  // 500ms para detectar doble click
+
+    private SelectionHandle _activeSelectionHandle;
+    private const float SelectionHandleRadius = 7f;
+    private const float SelectionHandleStemHeight = 12f;
+
+    private enum SelectionHandle
+    {
+        None,
+        Start,
+        End
+    }
 
     // Cursor blink state
     private DateTime _lastCursorActivityTime = DateTime.UtcNow;
@@ -284,6 +305,10 @@ public abstract class TextBox<T> : BorderView<T>, IInputHandler, IFocusable, Ray
 
     public event Action<string>? TextChanged;
     public event Action? Enter;
+
+    /// <summary>Gets the brush used to render user-entered text.</summary>
+    /// <remarks>Derived controls can override this without affecting the caret color.</remarks>
+    protected virtual Brush GetTextRenderBrush() => TextColor;
 
     // =========================================================================
     // INITIALIZATION
@@ -439,6 +464,7 @@ public abstract class TextBox<T> : BorderView<T>, IInputHandler, IFocusable, Ray
 
     protected override void OnUnmounted()
     {
+        CloseSelectionContextMenu();
         _cursorBlinkActive = false;
         StopCursorBlinkTimer(dispose: true);
         base.OnUnmounted();
@@ -527,10 +553,12 @@ public abstract class TextBox<T> : BorderView<T>, IInputHandler, IFocusable, Ray
 
         for (int i = 1; i <= length; i++)
         {
-            string prefixText = passwordMode
-                ? new string('*', i)
-                : sourceText.Substring(start, i).Replace("\t", "    ");
-            prefixWidths[i] = MeasureTextWidth(prefixText);
+            string characterText = passwordMode
+                ? "*"
+                : sourceText[start + i - 1] == '\t'
+                    ? "    "
+                    : sourceText[start + i - 1].ToString();
+            prefixWidths[i] = prefixWidths[i - 1] + MeasureTextWidth(characterText);
         }
 
         return prefixWidths;
@@ -573,11 +601,24 @@ public abstract class TextBox<T> : BorderView<T>, IInputHandler, IFocusable, Ray
         EnsureMultilineCache();
 
         int safeCursorPos = Math.Clamp(cursorPosition, 0, Text.Length);
-        for (int i = 0; i < _multilineLines.Count; i++)
+        int low = 0;
+        int high = _multilineLines.Count - 1;
+        while (low <= high)
         {
-            var line = _multilineLines[i];
-            if (safeCursorPos >= line.Start && safeCursorPos <= line.Start + line.Length)
+            int middle = low + ((high - low) / 2);
+            var line = _multilineLines[middle];
+            if (safeCursorPos < line.Start)
+            {
+                high = middle - 1;
+            }
+            else if (safeCursorPos > line.Start + line.Length)
+            {
+                low = middle + 1;
+            }
+            else
+            {
                 return line;
+            }
         }
 
         return _multilineLines[_multilineLines.Count - 1];
@@ -1339,7 +1380,7 @@ public abstract class TextBox<T> : BorderView<T>, IInputHandler, IFocusable, Ray
                 : IsPassword
                     ? new string('*', Text.Length)
                     : Text;
-            Brush textColor = showPlaceholder ? PlaceholderColor : TextColor;
+            Brush textColor = showPlaceholder ? PlaceholderColor : GetTextRenderBrush();
 
             if (!string.IsNullOrEmpty(displayText))
             {
@@ -1415,6 +1456,8 @@ public abstract class TextBox<T> : BorderView<T>, IInputHandler, IFocusable, Ray
             // Deshabilitar scissor test
             renderer.PopScissor();
         }
+
+        RenderTouchSelectionHandles(renderer);
     }
 
     /// <summary>
@@ -1428,12 +1471,13 @@ public abstract class TextBox<T> : BorderView<T>, IInputHandler, IFocusable, Ray
 
         if (Rayo.Core.Platform.PlatformDetector.IsMobile)
         {
-            Rayo.Core.Platform.VirtualKeyboardManager.Show();
+            Rayo.Core.Platform.VirtualKeyboardManager.Show(KeyboardAccessoryKeys);
         }
     }
 
     public void OnFocusLost()
     {
+        CloseSelectionContextMenu();
         IsFocused = false;
         _cursorBlinkActive = false;
         StopCursorBlinkTimer(dispose: false);
@@ -1455,7 +1499,45 @@ public abstract class TextBox<T> : BorderView<T>, IInputHandler, IFocusable, Ray
                 var now = DateTime.UtcNow;
                 var timeSinceLastClick = (now - _lastClickTime).TotalMilliseconds;
 
-                if (timeSinceLastClick <= DoubleClickThresholdMs)
+                if (ShouldShowTouchSelectionHandles() && TryStartSelectionHandleDrag(args.Position))
+                {
+                    return true;
+                }
+
+                // On touch devices a gesture that starts outside rendered text belongs to
+                // the scroll container. Do not turn an empty-area drag into a selection.
+                if (Rayo.Core.Platform.PlatformDetector.IsMobile && !IsPointerOverText(args.Position))
+                {
+                    _isMouseSelecting = false;
+                    CloseSelectionContextMenu();
+                    return false;
+                }
+
+                bool isRepeatedClick = timeSinceLastClick <= DoubleClickThresholdMs &&
+                    Vector2.Distance(args.Position, _lastClickPosition) <= 24f;
+                _clickCount = isRepeatedClick ? _clickCount + 1 : 1;
+                _lastClickPosition = args.Position;
+                int clickPosition = GetCursorPositionFromMouse(args.Position.X, args.Position.Y);
+
+                if (_clickCount == 2)
+                {
+                    SelectWordAt(clickPosition);
+                    _isMouseSelecting = false;
+                    ShowSelectionContextMenu();
+                    MarkNeedsPaint();
+                    return true;
+                }
+
+                if (_clickCount >= 3)
+                {
+                    SelectLineAt(clickPosition);
+                    _clickCount = 0;
+                    ShowSelectionContextMenu();
+                    MarkNeedsPaint();
+                    return true;
+                }
+
+                if (timeSinceLastClick < 0)
                 {
                     // Doble click detectado - seleccionar todo
                     SelectAll();
@@ -1468,16 +1550,22 @@ public abstract class TextBox<T> : BorderView<T>, IInputHandler, IFocusable, Ray
                 // Click simple - iniciar selecci�n con mouse
                 _lastClickTime = now;
                 _isMouseSelecting = true;
-                int clickPosition = GetCursorPositionFromMouse(args.Position.X, args.Position.Y);
                 _cursorPosition = clickPosition;
                 _mouseSelectionStart = clickPosition;
                 _selectionStart = clickPosition;
                 _selectionEnd = clickPosition;
+                CloseSelectionContextMenu();
                 ResetCursorBlink();
                 MarkNeedsPaint();
                 return true;
 
             case InputEventType.MouseDrag:
+                if (_activeSelectionHandle != SelectionHandle.None)
+                {
+                    UpdateSelectionHandle(args.Position);
+                    return true;
+                }
+
                 if (_isMouseSelecting)
                 {
                     // Actualizar selecci�n mientras se arrastra
@@ -1492,9 +1580,17 @@ public abstract class TextBox<T> : BorderView<T>, IInputHandler, IFocusable, Ray
                 return false;
 
             case InputEventType.MouseUp:
+                if (_activeSelectionHandle != SelectionHandle.None)
+                {
+                    _activeSelectionHandle = SelectionHandle.None;
+                    ShowSelectionContextMenu();
+                    return true;
+                }
+
                 if (_isMouseSelecting)
                 {
                     _isMouseSelecting = false;
+                    ShowSelectionContextMenu();
                     return true;
                 }
                 return false;
@@ -1510,6 +1606,15 @@ public abstract class TextBox<T> : BorderView<T>, IInputHandler, IFocusable, Ray
                 if (args.Character.HasValue)
                 {
                     char c = args.Character.Value;
+                    if (_ignoreNextSpaceTextInput)
+                    {
+                        _ignoreNextSpaceTextInput = false;
+                        if (c == ' ')
+                        {
+                            return true;
+                        }
+                    }
+
                     // Permitir todos los caracteres imprimibles excepto algunos especiales
                     if (!char.IsControl(c) || c == ' ')  // Permitir espacio aunque sea whitespace
                     {
@@ -1628,6 +1733,10 @@ public abstract class TextBox<T> : BorderView<T>, IInputHandler, IFocusable, Ray
 
             // ✅ Fix: Mark alphanumeric keys as handled to prevent system beep
             case InputKey.Space:
+                InsertChar(' ');
+                _ignoreNextSpaceTextInput = true;
+                return true;
+
             case InputKey.A: case InputKey.B: case InputKey.C: case InputKey.D: case InputKey.E:
             case InputKey.F: case InputKey.G: case InputKey.H: case InputKey.I: case InputKey.J:
             case InputKey.K: case InputKey.L: case InputKey.M: case InputKey.N: case InputKey.O:
@@ -1719,6 +1828,11 @@ public abstract class TextBox<T> : BorderView<T>, IInputHandler, IFocusable, Ray
                     return true;
                 }
                 return false;
+
+            case InputKey.Space:
+                InsertChar(' ');
+                _ignoreNextSpaceTextInput = true;
+                return true;
         }
 
         return false;
@@ -1727,6 +1841,220 @@ public abstract class TextBox<T> : BorderView<T>, IInputHandler, IFocusable, Ray
     /// <summary>
     /// Calcula la posici�n del cursor en el texto basado en la coordenada X del mouse
     /// </summary>
+    private void ShowSelectionContextMenu()
+    {
+        if (!Rayo.Core.Platform.PlatformDetector.IsMobile || !IsFocused || !HasSelection)
+        {
+            CloseSelectionContextMenu();
+            return;
+        }
+
+        CloseSelectionContextMenu();
+
+        var copy = CreateSelectionMenuButton(Icons.Copy, Copy);
+        var cut = CreateSelectionMenuButton(Icons.Cut, Cut);
+        var paste = CreateSelectionMenuButton(Icons.Paste, Paste);
+        cut.IsEnabled = !IsReadOnly;
+        paste.IsEnabled = !IsReadOnly;
+
+        var actions = new HStack
+        {
+            Spacing = 4,
+            VerticalAlignment = VerticalAlignment.Center
+        }.Children(copy, cut, paste);
+
+        var content = new Frame
+        {
+            Background = new Color(48, 55, 68),
+            BorderBrush = new Color(103, 112, 129),
+            BorderThickness = 1,
+            Padding = new Thickness(4),
+            Content = actions
+        };
+
+        var startHandle = GetSelectionHandlePosition(_selectionStart);
+        var endHandle = GetSelectionHandlePosition(_selectionEnd);
+        float selectionCenter = (startHandle.X + endHandle.X) / 2f;
+        float lineHeight = Math.Max(16f, FontSize * 1.2f);
+        const float selectionMenuHeight = 41f;
+        const float selectionMenuGap = 12f;
+        float desiredTop = Math.Min(startHandle.Y, endHandle.Y) - lineHeight -
+            selectionMenuGap - selectionMenuHeight;
+
+        var popup = new AnchoredPopup(this, content)
+        {
+            Placement = AnchoredPopupPlacement.Below,
+            AnchorAlignment = AnchoredPopupAlignment.Center,
+            Gap = 0,
+            EdgeInset = 8,
+            OffsetX = selectionCenter - (ComputedX + ComputedWidth / 2f),
+            OffsetY = desiredTop - (ComputedY + ComputedHeight)
+        };
+
+        popup.Closed += () =>
+        {
+            if (ReferenceEquals(_selectionContextMenu, popup))
+                _selectionContextMenu = null;
+        };
+
+        _selectionContextMenu = popup;
+        popup.Open();
+    }
+
+    private ButtonIcon CreateSelectionMenuButton(IconData icon, Action action)
+    {
+        var button = new ButtonIcon(icon)
+        {
+            Width = 34,
+            Height = 31,
+            IconSize = 15,
+            Variant = ButtonVariant.Secondary
+        };
+        button.Tapped += _ =>
+        {
+            action();
+            CloseSelectionContextMenu();
+            OverlayManager.EventManager?.SetFocus(this);
+        };
+        return button;
+    }
+
+    private void CloseSelectionContextMenu()
+    {
+        _selectionContextMenu?.Close();
+        _selectionContextMenu = null;
+    }
+
+    private void SelectWordAt(int position)
+    {
+        if (string.IsNullOrEmpty(Text)) return;
+
+        int index = Math.Clamp(position, 0, Text.Length);
+        if (index == Text.Length) index--;
+        if (!IsWordCharacter(Text[index]))
+        {
+            _cursorPosition = position;
+            _selectionStart = position;
+            _selectionEnd = position;
+            return;
+        }
+
+        int start = index;
+        while (start > 0 && IsWordCharacter(Text[start - 1])) start--;
+        int end = index + 1;
+        while (end < Text.Length && IsWordCharacter(Text[end])) end++;
+
+        _selectionStart = start;
+        _selectionEnd = end;
+        _cursorPosition = end;
+        ResetCursorBlink();
+    }
+
+    private void SelectLineAt(int position)
+    {
+        int safePosition = Math.Clamp(position, 0, Text.Length);
+        int start = safePosition == 0 ? 0 : Text.LastIndexOf('\n', safePosition - 1) + 1;
+        int end = Text.IndexOf('\n', safePosition);
+        if (end < 0) end = Text.Length;
+
+        _selectionStart = start;
+        _selectionEnd = end;
+        _cursorPosition = end;
+        ResetCursorBlink();
+    }
+
+    private static bool IsWordCharacter(char character) => char.IsLetterOrDigit(character) || character == '_';
+
+    protected virtual bool IsPointerOverText(Vector2 position)
+    {
+        if (string.IsNullOrEmpty(Text))
+            return false;
+
+        int textPosition = GetCursorPositionFromMouse(position.X, position.Y);
+        var line = GetLineInfoForCursorPosition(textPosition);
+        if (line.Length == 0)
+            return false;
+
+        float lineHeight = FontSize * 1.2f;
+        float contentX = ComputedX + Padding.Left + BorderThickness.Left - _scrollOffsetX;
+        float contentY = ComputedY + Padding.Top + BorderThickness.Top;
+        float lineTop = contentY + line.LineIndex * lineHeight - _scrollOffsetY;
+        float lineRight = contentX + line.Width;
+
+        return position.Y >= lineTop && position.Y <= lineTop + lineHeight &&
+            position.X >= contentX && position.X <= lineRight;
+    }
+
+    private bool ShouldShowTouchSelectionHandles() =>
+        Rayo.Core.Platform.PlatformDetector.IsMobile && IsFocused && HasSelection;
+
+    private void RenderTouchSelectionHandles(IRenderer renderer)
+    {
+        if (!ShouldShowTouchSelectionHandles()) return;
+
+        RenderSelectionHandle(renderer, GetSelectionHandlePosition(_selectionStart));
+        RenderSelectionHandle(renderer, GetSelectionHandlePosition(_selectionEnd));
+    }
+
+    private void RenderSelectionHandle(IRenderer renderer, Vector2 position)
+    {
+        var color = new Color(62, 126, 214);
+        renderer.DrawRect(position.X - 1, position.Y, 2, SelectionHandleStemHeight, color);
+        renderer.DrawCircle(position.X, position.Y + SelectionHandleStemHeight, SelectionHandleRadius, color);
+    }
+
+    private bool TryStartSelectionHandleDrag(Vector2 position)
+    {
+        var startHandle = GetSelectionHandlePosition(_selectionStart) + new Vector2(0, SelectionHandleStemHeight);
+        var endHandle = GetSelectionHandlePosition(_selectionEnd) + new Vector2(0, SelectionHandleStemHeight);
+        if (Vector2.Distance(position, startHandle) <= SelectionHandleRadius * 2)
+        {
+            _activeSelectionHandle = SelectionHandle.Start;
+            return true;
+        }
+
+        if (Vector2.Distance(position, endHandle) <= SelectionHandleRadius * 2)
+        {
+            _activeSelectionHandle = SelectionHandle.End;
+            return true;
+        }
+
+        return false;
+    }
+
+    private void UpdateSelectionHandle(Vector2 position)
+    {
+        int textPosition = GetCursorPositionFromMouse(position.X, position.Y);
+        if (_activeSelectionHandle == SelectionHandle.Start)
+            _selectionStart = textPosition;
+        else
+            _selectionEnd = textPosition;
+
+        _cursorPosition = textPosition;
+        UpdateScrollToCursor();
+        MarkNeedsPaint();
+    }
+
+    private Vector2 GetSelectionHandlePosition(int textPosition)
+    {
+        float contentX = ComputedX + Padding.Left + BorderThickness.Left;
+        float contentY = ComputedY + Padding.Top + BorderThickness.Top;
+
+        if (!IsMultiline)
+        {
+            float contentWidth = ComputedWidth - Padding.Horizontal - BorderThickness.Horizontal;
+            float x = contentX + GetSingleLineAlignmentOffset(contentWidth) +
+                GetCursorOffsetWithinLine(textPosition) - _scrollOffsetX;
+            return new Vector2(x, contentY + ComputedHeight - Padding.Vertical - BorderThickness.Vertical);
+        }
+
+        var line = GetLineInfoForCursorPosition(textPosition);
+        float lineHeight = FontSize * 1.2f;
+        float lineX = contentX + GetCursorOffsetWithinLine(textPosition) - _scrollOffsetX;
+        float lineBottom = contentY + (line.LineIndex + 1) * lineHeight - _scrollOffsetY;
+        return new Vector2(lineX, lineBottom);
+    }
+
     protected virtual int GetCursorPositionFromMouse(float mouseX, float mouseY)
     {
         // Si el texto est� vac�o, retornar 0
@@ -1864,8 +2192,7 @@ public abstract class TextBox<T> : BorderView<T>, IInputHandler, IFocusable, Ray
                 displayText = new string('*', text.Length);
             }
 
-            var size = _cachedRenderer.MeasureText(displayText, FontSize);
-            measuredWidth = size.X;
+            measuredWidth = MeasureTextPreservingTrailingWhitespace(_cachedRenderer, displayText);
         }
         else
         {
@@ -1879,6 +2206,49 @@ public abstract class TextBox<T> : BorderView<T>, IInputHandler, IFocusable, Ray
 
         _measureWidthCache[text] = measuredWidth;
         return measuredWidth;
+    }
+
+    private float MeasureTextPreservingTrailingWhitespace(IRenderer renderer, string text)
+    {
+        int visibleLength = text.Length;
+        int trailingSpaces = 0;
+        while (visibleLength > 0)
+        {
+            char character = text[visibleLength - 1];
+            if (character == ' ')
+            {
+                trailingSpaces++;
+                visibleLength--;
+                continue;
+            }
+
+            if (character == '\t')
+            {
+                trailingSpaces += 4;
+                visibleLength--;
+                continue;
+            }
+
+            break;
+        }
+
+        float visibleWidth = visibleLength > 0
+            ? renderer.MeasureText(text[..visibleLength], FontSize).X
+            : 0;
+        if (trailingSpaces == 0)
+        {
+            return visibleWidth;
+        }
+
+        float referenceWithSpace = renderer.MeasureText("M M", FontSize).X;
+        float referenceWithoutSpace = renderer.MeasureText("MM", FontSize).X;
+        float spaceWidth = referenceWithSpace - referenceWithoutSpace;
+        if (spaceWidth <= 0.01f)
+        {
+            spaceWidth = FontSize * 0.33f;
+        }
+
+        return visibleWidth + trailingSpaces * spaceWidth;
     }
 
     /// <summary>

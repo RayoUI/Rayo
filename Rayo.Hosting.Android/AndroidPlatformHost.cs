@@ -225,6 +225,10 @@ public abstract class AndroidPlatformHost : Activity, IPlatformHost
         var nativeConfig = _windowConfig.NativeConfiguration;
         var options = nativeConfig.Android;
 
+        // Keep the Rayo viewport above the IME. This also gives keyboard
+        // accessory bars a stable bottom edge across Android keyboards.
+        Window?.SetSoftInputMode(SoftInput.AdjustResize | SoftInput.StateAlwaysHidden);
+
         // Apply orientation
         RequestedOrientation = options.Orientation switch
         {
