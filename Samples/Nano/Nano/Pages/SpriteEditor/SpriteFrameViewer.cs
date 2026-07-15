@@ -36,7 +36,12 @@ public sealed class SpriteFrameViewer : Component
 
     public override VisualElement Build()
     {
-        _content = new ScrollView().Orientation(ScrollOrientation.Horizontal).Height(82).Content(_items);
+        _content = new Frame()
+            .Background(new Color(230, 235, 242))
+            .Padding(new Thickness(4))
+            .HorizontalAlignment(HorizontalAlignment.Stretch)
+            .VerticalAlignment(VerticalAlignment.Top)
+            .Content(new ScrollView().Orientation(ScrollOrientation.Horizontal).Height(82).Content(_items));
         _content.IsVisible = _isOpen;
         _handle = new ButtonIcon(_isOpen ? Icons.ChevronDown : Icons.ChevronUp)
             .Size(36)
@@ -45,7 +50,11 @@ public sealed class SpriteFrameViewer : Component
         RefreshFrames();
         return new VStack().Spacing(0).Children(
             _content,
-            new HStack().HorizontalAlignment(HorizontalAlignment.Right).Padding(new Thickness(0, 0, 8, 0)).Children(_handle));
+            new HStack()
+                //.Background(Color.Transparent)
+                .HorizontalAlignment(HorizontalAlignment.Right)
+                .Padding(new Thickness(0, 0, 8, 0))
+                .Children(_handle));
     }
 
     public void RefreshFrames()
@@ -116,7 +125,21 @@ public sealed class SpriteFrameViewer : Component
         OverlayManager.EventManager?.RegisterGlobalPointerHandler(menu);
     }
 
-    private void ConfirmDelete(int index) => Dialog.Show("Eliminar frame", $"¿Quieres eliminar el frame {index + 1}? Esta acción no se puede deshacer.", true, () => _deleteFrame(index), okText: "Eliminar", cancelText: "Cancelar");
+    private void ConfirmDelete(int index)
+    {
+        var message = new VStack()
+            .Spacing(8)
+            .Padding(new Thickness(8, 4))
+            .Children(
+                new Label($"¿Quieres eliminar el frame {index + 1}?")
+                    .FontSize(14)
+                    .HorizontalAlignment(HorizontalAlignment.Left),
+                new Label("Esta acción no se puede deshacer.")
+                    .FontSize(14)
+                    .HorizontalAlignment(HorizontalAlignment.Left));
+
+        Dialog.Show("Eliminar frame", message, true, () => _deleteFrame(index), okText: "Eliminar", cancelText: "Cancelar");
+    }
 
     private void CloseOptions()
     {

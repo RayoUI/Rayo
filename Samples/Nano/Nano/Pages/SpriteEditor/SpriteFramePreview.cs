@@ -57,27 +57,27 @@ public sealed class SpriteFramePreview : View<SpriteFramePreview>, IPointerHandl
     protected override void Measure(float availableWidth, float availableHeight)
     {
         DesiredWidth = 76;
-        DesiredHeight = 74;
+        DesiredHeight = 76;
     }
 
     public override void Render(IRenderer renderer)
     {
-        var border = _isSelected ? new Color(62, 126, 214) : new Color(150, 160, 175);
-        renderer.DrawRect(ComputedX, ComputedY, ComputedWidth, ComputedHeight, new Color(242, 245, 249));
-        renderer.DrawRectOutline(ComputedX, ComputedY, ComputedWidth, ComputedHeight, _isSelected ? 3f : 1f, border);
-
-        const float tileSize = 6f;
-        var originX = ComputedX + (ComputedWidth - 8 * tileSize) / 2f;
-        var originY = ComputedY + 6f;
+        var tileSize = MathF.Min(ComputedWidth, ComputedHeight) / 8f;
         for (var row = 0; row < 8; row++)
         {
             for (var column = 0; column < 8; column++)
             {
-                renderer.DrawRect(originX + column * tileSize, originY + row * tileSize, tileSize, tileSize, _frame.Pixels[row, column]);
+                renderer.DrawRect(ComputedX + column * tileSize, ComputedY + row * tileSize, tileSize, tileSize, _frame.Pixels[row, column]);
             }
         }
 
-        renderer.DrawText($"{_index}", ComputedX + 6f, ComputedY + 57f, new Color(50, 60, 75), 12f);
+        var border = _isSelected ? new Color(62, 126, 214) : new Color(150, 160, 175);
+        renderer.DrawRectOutline(ComputedX, ComputedY, ComputedWidth, ComputedHeight, _isSelected ? 3f : 1f, border);
+
+        const float indexSize = 18f;
+        var indexY = ComputedY + ComputedHeight - indexSize;
+        renderer.DrawRect(ComputedX, indexY, indexSize, indexSize, new Color(50, 60, 75));
+        renderer.DrawText($"{_index}", ComputedX + 5f, indexY + 2f, new Color(255, 255, 255), 12f);
     }
 
     public void OnPointerPressed(PointerEventArgs e) { }

@@ -32,18 +32,25 @@ public sealed class SpriteEditorPage : Component
 
     public override VisualElement Build()
     {
+        var canvasLayer = new Grid().Rows(GridLength.Star).Columns(GridLength.Star);
+        canvasLayer.AddChild(
+            new Frame()
+                .Background(new Color(38, 48, 64))
+                .Content(_canvas),
+            0,
+            0);
+
+        var frameViewer = _frameViewer.Build();
+        frameViewer.HorizontalAlignment = HorizontalAlignment.Stretch;
+        frameViewer.VerticalAlignment = VerticalAlignment.Top;
+        canvasLayer.AddChild(frameViewer, 0, 0);
+
         return new Grid()
-            .Rows(GridLength.Auto, GridLength.Star, GridLength.Auto, GridLength.Auto)
+            .Rows(GridLength.Star, GridLength.Auto, GridLength.Auto)
             .Columns(GridLength.Star)
-            .AddChild(_frameViewer.Build(), 0, 0)
-            .AddChild(
-                new Frame()
-                    .Background(new Color(38, 48, 64))
-                    .Content(_canvas),
-                1,
-                0)
-            .AddChild(_palette.Build(), 2, 0)
-            .AddChild(new SpriteToolPicker(_canvas).Build(), 3, 0);
+            .AddChild(canvasLayer, 0, 0)
+            .AddChild(_palette.Build(), 1, 0)
+            .AddChild(new SpriteToolPicker(_canvas).Build(), 2, 0);
     }
 
     private void AddFrame()
