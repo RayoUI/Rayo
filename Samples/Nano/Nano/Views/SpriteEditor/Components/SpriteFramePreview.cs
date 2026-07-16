@@ -65,11 +65,15 @@ public sealed class SpriteFramePreview : View<SpriteFramePreview>, IPointerHandl
         var rowCount = _frame.Pixels.GetLength(0);
         var columnCount = _frame.Pixels.GetLength(1);
         var tileSize = MathF.Min(ComputedWidth / columnCount, ComputedHeight / rowCount);
+        var previewWidth = columnCount * tileSize;
+        var previewHeight = rowCount * tileSize;
+        var previewX = ComputedX + (ComputedWidth - previewWidth) / 2f;
+        var previewY = ComputedY + (ComputedHeight - previewHeight) / 2f;
         for (var row = 0; row < rowCount; row++)
         {
             for (var column = 0; column < columnCount; column++)
             {
-                renderer.DrawRect(ComputedX + column * tileSize, ComputedY + row * tileSize, tileSize, tileSize, _frame.Pixels[row, column]);
+                renderer.DrawRect(previewX + column * tileSize, previewY + row * tileSize, tileSize, tileSize, _frame.Pixels[row, column]);
             }
         }
 

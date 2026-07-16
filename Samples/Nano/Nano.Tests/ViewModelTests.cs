@@ -1,6 +1,7 @@
 using Nano.ViewModels;
 using Nano.Views.ProjectAssetStore;
 using Nano.Views.ProjectAssetStore.Components;
+using Nano.Views.SpriteEditor;
 using Rayo.Rendering;
 using Xunit;
 
@@ -8,6 +9,23 @@ namespace Nano.Tests;
 
 public sealed class ViewModelTests
 {
+    [Fact]
+    public void Sprite_asset_document_round_trips_canvas_frames_and_animations()
+    {
+        var document = SpriteAssetDocument.CreateBlank(24, 12);
+        document.Frames.Add(SpriteFrameDocument.FromFrame(document.Frames[0].ToFrame(24, 12)));
+        document.Animations[0].FrameIndices = [0, 1];
+
+        var restored = SpriteAssetDocument.Deserialize(document.Serialize());
+        restored.Validate();
+
+        Assert.Equal(24, restored.Width);
+        Assert.Equal(12, restored.Height);
+        Assert.Equal(2, restored.Frames.Count);
+        Assert.Equal([0, 1], restored.Animations[0].FrameIndices);
+        Assert.Equal(24 * 12, restored.Frames[0].Pixels.Count);
+    }
+
     [Fact]
     public void Project_explorer_view_model_owns_navigation_and_view_mode()
     {
@@ -92,6 +110,18 @@ public sealed class ViewModelTests
         {
         }
 
+        public VirtualAsset CreateSprite(string parentDirectory, string name)
+        {
+            var fileName = name.EndsWith(".sprite", StringComparison.OrdinalIgnoreCase)
+                ? name
+                : $"{name}.sprite";
+            var path = string.IsNullOrEmpty(parentDirectory)
+                ? fileName
+                : $"{parentDirectory}/{fileName}";
+            _files[path] = string.Empty;
+            return new VirtualAsset(path, fileName, false);
+        }
+
         public string ReadText(string path) => _files[path];
 
         public void WriteText(string path, string text) => _files[path] = text;
@@ -100,5 +130,8 @@ public sealed class ViewModelTests
             Path.GetExtension(path).Equals(
                 ".lua",
                 StringComparison.OrdinalIgnoreCase);
+
+        public bool IsSpriteFile(string path) =>
+            path.EndsWith(".sprite", StringComparison.OrdinalIgnoreCase);
     }
 }

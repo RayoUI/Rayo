@@ -1,5 +1,6 @@
 using System.IO.Compression;
 using System.Text;
+using Nano.Views.SpriteEditor;
 
 namespace Nano.Views.ProjectAssetStore;
 
@@ -64,6 +65,24 @@ public sealed class NanoProjectStore : IProjectAssetStore
             archive.CreateEntry(ToDirectoryPath(path));
     }
 
+    public VirtualAsset CreateSprite(string parentDirectory, string name)
+    {
+        var safeName = ValidateName(name);
+        var fileName = safeName.EndsWith(SpriteAssetDocument.Extension, StringComparison.OrdinalIgnoreCase)
+            ? safeName
+            : $"{safeName}{SpriteAssetDocument.Extension}";
+        var path = string.IsNullOrEmpty(parentDirectory)
+            ? fileName
+            : $"{parentDirectory.TrimEnd('/')}/{fileName}";
+
+        using var archive = ZipFile.Open(ArchivePath, ZipArchiveMode.Update);
+        if (archive.GetEntry(NormalizeFilePath(path)) is not null)
+            throw new ArgumentException("An asset with that name already exists.", nameof(name));
+
+        archive.CreateEntry(NormalizeFilePath(path), CompressionLevel.Optimal);
+        return new VirtualAsset(NormalizeFilePath(path), fileName, false);
+    }
+
     public string ReadText(string path)
     {
         using var archive = ZipFile.OpenRead(ArchivePath);
@@ -84,6 +103,9 @@ public sealed class NanoProjectStore : IProjectAssetStore
     }
 
     public bool IsTextFile(string path) => s_textExtensions.Contains(Path.GetExtension(path));
+
+    public bool IsSpriteFile(string path) =>
+        Path.GetExtension(path).Equals(SpriteAssetDocument.Extension, StringComparison.OrdinalIgnoreCase);
 
     private void EnsureProject()
     {

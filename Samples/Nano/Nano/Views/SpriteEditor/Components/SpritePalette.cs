@@ -11,16 +11,22 @@ namespace Nano.Views.SpriteEditor.Components;
 
 public sealed class SpritePalette : Component
 {
-    private readonly List<Color> _colors =
-    [
-        new(62, 126, 214), new(34, 150, 94), new(225, 142, 38),
-        new(215, 72, 72), new(137, 87, 229), new(35, 39, 47)
-    ];
+    private readonly List<Color> _colors;
     private readonly HStack _items = new();
     private Color _selectedColor = new(62, 126, 214);
     private ScrollView? _scrollView;
 
     public event Action<Color>? ColorSelected;
+
+    public SpritePalette(IEnumerable<Color>? colors = null)
+    {
+        _colors = colors?.ToList() ??
+        [
+            new(62, 126, 214), new(34, 150, 94), new(225, 142, 38),
+            new(215, 72, 72), new(137, 87, 229), new(35, 39, 47)
+        ];
+        _selectedColor = _colors[0];
+    }
 
     public override VisualElement Build()
     {

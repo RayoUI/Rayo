@@ -1,4 +1,5 @@
 using Nano.Views.SpriteEditor.Components;
+using Nano.Views.SpriteEditor;
 using Rayo.Core;
 using Rayo.Reactivity;
 using Rayo.Rendering;
@@ -10,8 +11,27 @@ public sealed class SpriteEditorViewModel : ViewModelBase
     private readonly Dictionary<SpriteFrame, FrameHistory> _history = [];
 
     public SpriteEditorViewModel()
+        : this(SpriteAssetDocument.CreateBlank(16, 16))
     {
-        Frames = [new SpriteFrame(), new SpriteFrame(), new SpriteFrame()];
+    }
+
+    public SpriteEditorViewModel(SpriteAssetDocument document)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+        document.Validate();
+        Width = document.Width;
+        Height = document.Height;
+        Palette = document.Palette.Select(color => color.ToColor()).ToList();
+        Animations = document.Animations
+            .Select(animation => new SpriteAnimationDocument
+            {
+                Name = animation.Name,
+                Loop = animation.Loop,
+                Speed = animation.Speed,
+                FrameIndices = [.. animation.FrameIndices]
+            })
+            .ToList();
+        Frames = document.Frames.Select(frame => frame.ToFrame(Width, Height)).ToList();
         SelectedFrameIndex = UseSignal(0);
         foreach (var frame in Frames)
         {
@@ -21,13 +41,18 @@ public sealed class SpriteEditorViewModel : ViewModelBase
 
     public List<SpriteFrame> Frames { get; }
 
+    public int Width { get; }
+    public int Height { get; }
+    public List<Color> Palette { get; }
+    public List<SpriteAnimationDocument> Animations { get; }
+
     public Signal<int> SelectedFrameIndex { get; }
 
     public SpriteFrame CurrentFrame => Frames[SelectedFrameIndex.Value];
 
     public int AddFrame()
     {
-        var frame = new SpriteFrame();
+        var frame = new SpriteFrame(Width, Height);
         Frames.Add(frame);
         _history.Add(frame, new FrameHistory(frame));
         SelectedFrameIndex.Value = Frames.Count - 1;
@@ -47,7 +72,7 @@ public sealed class SpriteEditorViewModel : ViewModelBase
     {
         if (Frames.Count == 1)
         {
-            var blank = new SpriteFrame();
+            var blank = new SpriteFrame(Width, Height);
             Array.Copy(blank.Pixels, Frames[0].Pixels, blank.Pixels.Length);
             _history[Frames[0]] = new FrameHistory(Frames[0]);
             SelectedFrameIndex.Value = 0;
@@ -75,6 +100,23 @@ public sealed class SpriteEditorViewModel : ViewModelBase
     public bool Undo() => _history[CurrentFrame].Undo(CurrentFrame);
 
     public bool Redo() => _history[CurrentFrame].Redo(CurrentFrame);
+
+    public SpriteAssetDocument ToDocument() => new()
+    {
+        Width = Width,
+        Height = Height,
+        Palette = Palette.Select(SpriteColor.FromColor).ToList(),
+        Frames = Frames.Select(SpriteFrameDocument.FromFrame).ToList(),
+        Animations = Animations
+            .Select(animation => new SpriteAnimationDocument
+            {
+                Name = animation.Name,
+                Loop = animation.Loop,
+                Speed = animation.Speed,
+                FrameIndices = [.. animation.FrameIndices]
+            })
+            .ToList()
+    };
 
     private sealed class FrameHistory
     {

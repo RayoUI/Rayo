@@ -11,7 +11,7 @@ using Nano.Views.CodeEditor.Components;
 
 namespace Nano.Views;
 
-public class HomePage : ViewBase<HomeViewModel>, ITextAssetHost
+public class HomePage : ViewBase<HomeViewModel>, ITextAssetHost, ISpriteAssetHost
 {
     private readonly SpriteEditorView _spriteEditorPage = new();
     private readonly CodeEditorView _codeEditorPage = new();
@@ -61,6 +61,30 @@ public class HomePage : ViewBase<HomeViewModel>, ITextAssetHost
         _tabs.SelectedIndex = _tabs.TabCount - 1;
     }
 
+    public void OpenSpriteAsset(string path, string text, Action<string> save)
+    {
+        if (_tabs is null)
+            return;
+
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            SpriteDimensionsDialog.Show((width, height) =>
+                OpenSpriteEditor(path, SpriteAssetDocument.CreateBlank(width, height), save));
+            return;
+        }
+
+        try
+        {
+            var document = SpriteAssetDocument.Deserialize(text);
+            document.Validate();
+            OpenSpriteEditor(path, document, save);
+        }
+        catch (Exception)
+        {
+            ToastService.ShowInfo("This sprite asset is invalid.");
+        }
+    }
+
     private void CloseTab(int index)
     {
         if (_tabs is null ||
@@ -81,6 +105,19 @@ public class HomePage : ViewBase<HomeViewModel>, ITextAssetHost
                               ReferenceEquals(content, _codeEditorContent);
         VirtualKeyboardManager.SetAccessoryKeys(
             isCodeEditorTab ? CodeEditor.Components.CodeEdit.ProgrammingAccessoryKeys : []);
+    }
+
+    private void OpenSpriteEditor(string path, SpriteAssetDocument document, Action<string> save)
+    {
+        if (_tabs is null)
+            return;
+
+        var editor = new SpriteEditorView(document, save)
+            .HorizontalAlignment(HorizontalAlignment.Stretch)
+            .VerticalAlignment(VerticalAlignment.Stretch);
+        _tabs.AddTab(Path.GetFileName(path), editor.Build());
+        _tabs.SelectedIndex = _tabs.TabCount - 1;
+        save(document.Serialize());
     }
 
     private static VisualElement CreateDocumentEditor(TextAssetDocument document)

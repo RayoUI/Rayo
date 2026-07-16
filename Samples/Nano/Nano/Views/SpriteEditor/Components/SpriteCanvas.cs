@@ -1,4 +1,5 @@
 using System.Numerics;
+using Nano.Views.SpriteEditor;
 using Rayo.Core;
 using Rayo.Core.Input;
 using Rayo.Rendering;
@@ -19,13 +20,19 @@ public enum SpriteTool
 
 public sealed class SpriteFrame
 {
-    public Color[,] Pixels { get; } = new Color[16, 16];
+    public int Width { get; }
+    public int Height { get; }
+    public Color[,] Pixels { get; }
 
-    public SpriteFrame()
+    public SpriteFrame(int width = 16, int height = 16)
     {
-        for (var row = 0; row < 16; row++)
+        SpriteAssetDocument.ValidateDimensions(width, height);
+        Width = width;
+        Height = height;
+        Pixels = new Color[height, width];
+        for (var row = 0; row < height; row++)
         {
-            for (var column = 0; column < 16; column++)
+            for (var column = 0; column < width; column++)
             {
                 Pixels[row, column] = new Color(244, 247, 250);
             }
@@ -34,7 +41,7 @@ public sealed class SpriteFrame
 
     public SpriteFrame Clone()
     {
-        var clone = new SpriteFrame();
+        var clone = new SpriteFrame(Width, Height);
         Array.Copy(Pixels, clone.Pixels, Pixels.Length);
         return clone;
     }
@@ -42,7 +49,6 @@ public sealed class SpriteFrame
 
 public sealed class SpriteCanvas : View<SpriteCanvas>, IPointerHandler, IExclusiveTouchHandler
 {
-    private const int SpriteSize = 16;
     private const float BaseTileSize = 32f;
     private const float CanvasMargin = 24f;
     private SpriteFrame _frame = new();
@@ -106,12 +112,11 @@ public sealed class SpriteCanvas : View<SpriteCanvas>, IPointerHandler, IExclusi
         renderer.DrawRect(ComputedX, ComputedY, ComputedWidth, ComputedHeight, new Color(38, 48, 64));
 
         var tileSize = GetTileSize();
-        var spriteExtent = SpriteSize * tileSize;
-        var origin = GetSpriteOrigin(spriteExtent);
+        var origin = GetSpriteOrigin(_frame.Width * tileSize, _frame.Height * tileSize);
 
-        for (var row = 0; row < SpriteSize; row++)
+        for (var row = 0; row < _frame.Height; row++)
         {
-            for (var column = 0; column < SpriteSize; column++)
+            for (var column = 0; column < _frame.Width; column++)
             {
                 var x = origin.X + column * tileSize;
                 var y = origin.Y + row * tileSize;
@@ -251,7 +256,7 @@ public sealed class SpriteCanvas : View<SpriteCanvas>, IPointerHandler, IExclusi
 
         if (Tool == SpriteTool.Fill)
         {
-            Fill();
+            FloodFill(cell.Row, cell.Column);
             return;
         }
 
@@ -270,10 +275,10 @@ public sealed class SpriteCanvas : View<SpriteCanvas>, IPointerHandler, IExclusi
     private (int Row, int Column)? GetCellAt(Vector2 point)
     {
         var tileSize = GetTileSize();
-        var origin = GetSpriteOrigin(SpriteSize * tileSize);
+        var origin = GetSpriteOrigin(_frame.Width * tileSize, _frame.Height * tileSize);
         var column = (int)((point.X - origin.X) / tileSize);
         var row = (int)((point.Y - origin.Y) / tileSize);
-        return row is >= 0 and < SpriteSize && column is >= 0 and < SpriteSize
+        return row >= 0 && row < _frame.Height && column >= 0 && column < _frame.Width
             ? (row, column)
             : null;
     }
@@ -423,16 +428,17 @@ public sealed class SpriteCanvas : View<SpriteCanvas>, IPointerHandler, IExclusi
         }
     }
 
-    private Vector2 GetSpriteOrigin(float spriteExtent) => new(
-        ComputedX + (ComputedWidth - spriteExtent) / 2f + _pan.X,
-        ComputedY + (ComputedHeight - spriteExtent) / 2f + _pan.Y);
+    private Vector2 GetSpriteOrigin(float spriteWidth, float spriteHeight) => new(
+        ComputedX + (ComputedWidth - spriteWidth) / 2f + _pan.X,
+        ComputedY + (ComputedHeight - spriteHeight) / 2f + _pan.Y);
 
     private float GetTileSize()
     {
         if (!_hasInitializedViewport && ComputedWidth > 0 && ComputedHeight > 0)
         {
             var availableExtent = MathF.Max(1f, MathF.Min(ComputedWidth, ComputedHeight) - CanvasMargin * 2f);
-            _initialFitScale = MathF.Min(1f, availableExtent / (SpriteSize * BaseTileSize));
+            var longestSide = Math.Max(_frame.Width, _frame.Height);
+            _initialFitScale = MathF.Min(1f, availableExtent / (longestSide * BaseTileSize));
             _hasInitializedViewport = true;
         }
 
@@ -441,12 +447,42 @@ public sealed class SpriteCanvas : View<SpriteCanvas>, IPointerHandler, IExclusi
 
     private void SetAllPixels(Color color)
     {
-        for (var row = 0; row < SpriteSize; row++)
+        for (var row = 0; row < _frame.Height; row++)
         {
-            for (var column = 0; column < SpriteSize; column++)
+            for (var column = 0; column < _frame.Width; column++)
             {
                 _pixels[row, column] = color;
             }
+        }
+
+        NotifyFrameChanged();
+    }
+
+    private void FloodFill(int startRow, int startColumn)
+    {
+        var sourceColor = _pixels[startRow, startColumn];
+        if (sourceColor == _selectedColor)
+        {
+            return;
+        }
+
+        var pending = new Queue<(int Row, int Column)>();
+        pending.Enqueue((startRow, startColumn));
+
+        while (pending.Count > 0)
+        {
+            var (row, column) = pending.Dequeue();
+            if (row < 0 || row >= _frame.Height || column < 0 || column >= _frame.Width ||
+                _pixels[row, column] != sourceColor)
+            {
+                continue;
+            }
+
+            _pixels[row, column] = _selectedColor;
+            pending.Enqueue((row - 1, column));
+            pending.Enqueue((row + 1, column));
+            pending.Enqueue((row, column - 1));
+            pending.Enqueue((row, column + 1));
         }
 
         NotifyFrameChanged();

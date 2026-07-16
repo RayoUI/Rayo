@@ -11,12 +11,25 @@ namespace Nano.Views.SpriteEditor;
 public sealed class SpriteEditorView : ViewBase<SpriteEditorViewModel>
 {
     private readonly SpriteCanvas _canvas = new();
-    private readonly SpritePalette _palette = new();
+    private readonly SpritePalette _palette;
     private SpriteFrameViewer? _frameViewer;
+    private readonly Action<string>? _save;
 
     public SpriteEditorView()
+        : this(new SpriteEditorViewModel(), null)
     {
-        SetViewModel(new SpriteEditorViewModel());
+    }
+
+    public SpriteEditorView(SpriteAssetDocument document, Action<string> save)
+        : this(new SpriteEditorViewModel(document), save)
+    {
+    }
+
+    private SpriteEditorView(SpriteEditorViewModel viewModel, Action<string>? save)
+    {
+        _save = save;
+        SetViewModel(viewModel);
+        _palette = new SpritePalette(ViewModel.Palette);
         _frameViewer = new SpriteFrameViewer(
             ViewModel.Frames,
             () => ViewModel.SelectedFrameIndex.Value,
@@ -27,7 +40,11 @@ public sealed class SpriteEditorView : ViewBase<SpriteEditorViewModel>
 
         _canvas.Frame = ViewModel.CurrentFrame;
         _canvas.FrameChanged += _frameViewer.RefreshPreviews;
-        _canvas.EditCommitted += ViewModel.RecordCurrentFrameState;
+        _canvas.EditCommitted += () =>
+        {
+            ViewModel.RecordCurrentFrameState();
+            Save();
+        };
         _canvas.ColorPicked += _palette.SelectColor;
         _palette.ColorSelected += color => _canvas.SelectedColor = color;
     }
@@ -66,6 +83,7 @@ public sealed class SpriteEditorView : ViewBase<SpriteEditorViewModel>
         _frameViewer!.RefreshFrames();
         _frameViewer.ScrollToEnd();
         ApplySelectedFrame();
+        Save();
     }
 
     private void CloneFrame(int index)
@@ -73,6 +91,7 @@ public sealed class SpriteEditorView : ViewBase<SpriteEditorViewModel>
         ViewModel.CloneFrame(index);
         _frameViewer!.RefreshFrames();
         ApplySelectedFrame();
+        Save();
     }
 
     private void DeleteFrame(int index)
@@ -80,6 +99,7 @@ public sealed class SpriteEditorView : ViewBase<SpriteEditorViewModel>
         ViewModel.DeleteFrame(index);
         _frameViewer!.RefreshFrames();
         ApplySelectedFrame();
+        Save();
     }
 
     private void SelectFrame(int index)
@@ -110,4 +130,6 @@ public sealed class SpriteEditorView : ViewBase<SpriteEditorViewModel>
         _frameViewer!.RefreshSelection();
         _frameViewer.RefreshPreviews();
     }
+
+    private void Save() => _save?.Invoke(ViewModel.ToDocument().Serialize());
 }

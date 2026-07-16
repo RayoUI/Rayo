@@ -60,6 +60,14 @@ public sealed class ProjectAssetExplorerViewModel : ViewModelBase
             return AssetOpenResult.Directory;
         }
 
+        if (_store.IsSpriteFile(asset.Path))
+        {
+            return AssetOpenResult.CreateSprite(
+                asset.Path,
+                _store.ReadText(asset.Path),
+                text => _store.WriteText(asset.Path, text));
+        }
+
         if (!_store.IsTextFile(asset.Path))
             return AssetOpenResult.Binary;
 
@@ -89,6 +97,20 @@ public sealed class ProjectAssetExplorerViewModel : ViewModelBase
         }
     }
 
+    public VirtualAsset? TryCreateSprite(string name)
+    {
+        try
+        {
+            var asset = _store.CreateSprite(_navigator.CurrentDirectory, name);
+            NotifyChanged();
+            return asset;
+        }
+        catch (ArgumentException)
+        {
+            return null;
+        }
+    }
+
     private void NotifyChanged() => Revision.Value++;
 }
 
@@ -96,6 +118,7 @@ public enum AssetOpenKind
 {
     Directory,
     Text,
+    Sprite,
     Binary
 }
 
@@ -110,4 +133,7 @@ public sealed record AssetOpenResult(
 
     public static AssetOpenResult CreateText(string path, string text, Action<string> save) =>
         new(AssetOpenKind.Text, path, text, save);
+
+    public static AssetOpenResult CreateSprite(string path, string text, Action<string> save) =>
+        new(AssetOpenKind.Sprite, path, text, save);
 }

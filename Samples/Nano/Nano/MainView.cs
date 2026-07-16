@@ -53,6 +53,7 @@ public sealed class MainView : ViewBase<MainViewModel>
     {
         var assetExplorer = new ProjectAssetExplorerView(
             _homePage,
+            _homePage,
             () => Drawer.CloseCurrentDrawer());
         assetExplorer.SetViewModel(
             new ProjectAssetExplorerViewModel(ViewModel.ProjectStore));

@@ -12,14 +12,17 @@ namespace Nano.Views.ProjectAssetStore;
 public sealed class ProjectAssetExplorerView : ViewBase<ProjectAssetExplorerViewModel>
 {
     private readonly ITextAssetHost _documentHost;
+    private readonly ISpriteAssetHost _spriteHost;
     private readonly Action _closeDrawer;
     private readonly AssetActionsPopup _actionsPopup = new();
 
     public ProjectAssetExplorerView(
         ITextAssetHost documentHost,
+        ISpriteAssetHost spriteHost,
         Action closeDrawer)
     {
         _documentHost = documentHost;
+        _spriteHost = spriteHost;
         _closeDrawer = closeDrawer;
     }
 
@@ -79,6 +82,7 @@ public sealed class ProjectAssetExplorerView : ViewBase<ProjectAssetExplorerView
             .OnTapped(() => _actionsPopup.Toggle(
                 moreButton!,
                 ShowCreateFolderDialog,
+                ShowCreateSpriteDialog,
                 ViewModel.SetViewMode,
                 this));
 
@@ -114,6 +118,9 @@ public sealed class ProjectAssetExplorerView : ViewBase<ProjectAssetExplorerView
             ViewModel.TryCreateDirectory,
             ViewModel.IsValidDirectoryName);
 
+    private void ShowCreateSpriteDialog() =>
+        NewSpriteDialog.Show(ViewModel.TryCreateSprite, OpenAsset);
+
     private void OpenAsset(VirtualAsset asset)
     {
         var result = ViewModel.OpenAsset(asset);
@@ -123,6 +130,16 @@ public sealed class ProjectAssetExplorerView : ViewBase<ProjectAssetExplorerView
         if (result.Kind == AssetOpenKind.Binary)
         {
             ToastService.ShowInfo("Binary asset preview is not implemented yet.");
+            return;
+        }
+
+        if (result.Kind == AssetOpenKind.Sprite)
+        {
+            _spriteHost.OpenSpriteAsset(
+                result.Path!,
+                result.Text!,
+                result.Save!);
+            _closeDrawer();
             return;
         }
 

@@ -172,6 +172,12 @@ public class RayoGLSurfaceView : GLSurfaceView
             return true;
         }
 
+        if (TryGetPrintableText(e, out var text))
+        {
+            DispatchTextInput(text);
+            return true;
+        }
+
         return base.OnKeyDown(keyCode, e);
     }
 
@@ -315,6 +321,19 @@ public class RayoGLSurfaceView : GLSurfaceView
         return inputType;
     }
 
+    private static bool TryGetPrintableText(global::Android.Views.KeyEvent? keyEvent, out string text)
+    {
+        var unicode = keyEvent?.UnicodeChar ?? 0;
+        if (unicode < ' ')
+        {
+            text = string.Empty;
+            return false;
+        }
+
+        text = char.ConvertFromUtf32(unicode);
+        return true;
+    }
+
     private sealed class RayoInputConnection : global::Android.Views.InputMethods.BaseInputConnection
     {
         private readonly RayoGLSurfaceView _view;
@@ -332,7 +351,7 @@ public class RayoGLSurfaceView : GLSurfaceView
                 _view.DispatchTextInput(text.ToString() ?? string.Empty);
             }
 
-            return base.CommitText(text, newCursorPosition);
+            return true;
         }
 
         public override bool DeleteSurroundingText(int beforeLength, int afterLength)
@@ -371,6 +390,19 @@ public class RayoGLSurfaceView : GLSurfaceView
                     _view.DispatchKeyDown(Rayo.Core.InputKey.Return);
                 }
 
+                return true;
+            }
+
+            if (e?.Action == global::Android.Views.KeyEventActions.Down &&
+                TryGetPrintableText(e, out var text))
+            {
+                _view.DispatchTextInput(text);
+                return true;
+            }
+
+            if (e?.Action == global::Android.Views.KeyEventActions.Up &&
+                TryGetPrintableText(e, out _))
+            {
                 return true;
             }
 

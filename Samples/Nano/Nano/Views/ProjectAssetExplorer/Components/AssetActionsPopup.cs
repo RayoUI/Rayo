@@ -16,6 +16,7 @@ internal sealed class AssetActionsPopup
     public void Toggle(
         VisualElement anchor,
         Action createFolder,
+        Action createSprite,
         Action<AssetViewMode> setViewMode,
         VisualElement owner)
     {
@@ -45,6 +46,11 @@ internal sealed class AssetActionsPopup
                         {
                             Close();
                             createFolder();
+                        }),
+                        CreateAction("New sprite", Icons.Image, () =>
+                        {
+                            Close();
+                            createSprite();
                         }),
                         CreateAction("List view", Icons.ListView, () =>
                         {

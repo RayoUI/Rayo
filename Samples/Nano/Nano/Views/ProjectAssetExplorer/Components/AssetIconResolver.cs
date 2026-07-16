@@ -16,6 +16,7 @@ internal static class AssetIconResolver
         return Path.GetExtension(name).ToLowerInvariant() switch
         {
             ".png" or ".jpg" or ".jpeg" or ".gif" or ".bmp" => Icons.Image,
+            ".sprite" => Icons.Image,
             _ => Icons.File
         };
     }
