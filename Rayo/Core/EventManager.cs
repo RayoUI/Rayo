@@ -1767,6 +1767,8 @@ public class EventManager
         public VisualElement? CapturedElement { get; set; }
         public VisualElement? ScrollCaptureTarget { get; set; }
         public bool IsScrollCaptured { get; set; }
+        public VisualElement? FocusedElementAtDown { get; set; }
+        public bool ClearFocusOnRelease { get; set; }
     }
 
     private const float TouchScrollThreshold = 10f;
@@ -1948,6 +1950,10 @@ public class EventManager
 
         if (hitResult?.Element != null)
         {
+            var touchFocusTarget = FindFocusableAncestor(hitResult.Element);
+            state.FocusedElementAtDown = _focusedElement;
+            state.ClearFocusOnRelease = touchFocusTarget == null && _focusedElement != null;
+
             _dragDropManager.TryStartDrag(
                 FindDraggableAncestor(hitResult.Element),
                 pointerArgs.Position.X,
@@ -2163,6 +2169,16 @@ public class EventManager
         if (state.CapturedElement != null)
         {
             ProcessTouchUpForElement(state.CapturedElement, pointerArgs);
+
+            // Keep the current text input focused until the tap has completed. Clearing it
+            // on TouchDown hides the Android keyboard and resizes the native surface between
+            // the press and release, which can cancel the button tap. Do not clear a focus
+            // that the tap action intentionally moved to another element.
+            if (state.ClearFocusOnRelease &&
+                ReferenceEquals(_focusedElement, state.FocusedElementAtDown))
+            {
+                SetFocus(null);
+            }
         }
         else
         {
@@ -2218,8 +2234,29 @@ public class EventManager
             inputHandler.HandleInput(args);
         }
 
-        // Set focus on touch
-        SetFocus(element);
+        // Only focus controls that explicitly participate in keyboard focus.
+        // Non-focusable controls defer clearing the previous focus until TouchUp.
+        var focusTarget = FindFocusableAncestor(element);
+        if (focusTarget != null)
+        {
+            SetFocus(focusTarget);
+        }
+    }
+
+    private static VisualElement? FindFocusableAncestor(VisualElement element)
+    {
+        var current = element;
+        while (current != null)
+        {
+            if (current is IFocusable)
+            {
+                return current;
+            }
+
+            current = current.Parent;
+        }
+
+        return null;
     }
 
     /// <summary>

@@ -264,7 +264,8 @@ public class Dialog : Component
         string okText = "OK",
         string cancelText = "Cancel",
         bool showCloseButton = true,
-        VisualElement? owner = null)
+        VisualElement? owner = null,
+        VisualElement? initialFocus = null)
     {
         VisualElement? overlay = null;
 
@@ -293,6 +294,10 @@ public class Dialog : Component
             showCloseButton).Build(); // We need the built element (Frame)
 
         Rayo.Core.OverlayManager.AddOverlay(overlay, owner);
+        if (initialFocus != null)
+        {
+            Rayo.Core.OverlayManager.EventManager?.SetFocus(initialFocus);
+        }
     }
 
     public static void Show(
@@ -305,7 +310,8 @@ public class Dialog : Component
         string okText = "OK",
         string cancelText = "Cancel",
         bool showCloseButton = true,
-        VisualElement? owner = null)
+        VisualElement? owner = null,
+        VisualElement? initialFocus = null)
     {
         VisualElement? overlay = null;
 
@@ -334,5 +340,9 @@ public class Dialog : Component
             showCloseButton).Build();
 
         Rayo.Core.OverlayManager.AddOverlay(overlay, owner);
+        if (initialFocus != null)
+        {
+            Rayo.Core.OverlayManager.EventManager?.SetFocus(initialFocus);
+        }
     }
 }

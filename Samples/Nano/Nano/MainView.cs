@@ -393,7 +393,8 @@ public class MainView : Component
             onAccepted: () => CreateDirectory(folderName.Text),
             validate: () => IsValidFolderName(folderName.Text),
             okText: "Create",
-            cancelText: "Cancel");
+            cancelText: "Cancel",
+            initialFocus: folderName);
     }
 
     private static bool IsValidFolderName(string name)
