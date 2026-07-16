@@ -377,7 +377,9 @@ public class EventManager
 
             // MODIFIED: Only search for IDragScrollable ancestor if current element is NOT an interactive control
             // Interactive controls (Slider, TextBox, ScrollView, etc.) have PRIORITY over ancestor scroll
-            bool isInteractiveControl = _draggedElement is Slider || _draggedElement is ScrollView ||
+            bool isInteractiveControl = _draggedElement is Slider ||
+                _draggedElement is ScrollView ||
+                _draggedElement is IFocusable ||
                 (_draggedElement is IInputHandler handler && handler.CanHandleInput && _draggedElement is not IDragScrollable);
 
             if (!isInteractiveControl)

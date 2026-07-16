@@ -268,6 +268,7 @@ public abstract class TextBox<T> : BorderView<T>, IInputHandler, IFocusable, Ray
     private int _mouseSelectionStart = 0;
     private int _progressiveWordSelectionStart = -1;
     private int _progressiveWordSelectionEnd = -1;
+    private bool _progressiveLineExpansionPending;
     protected IRenderer? _cachedRenderer = null;  // Para mediciones precisas
 
     // Estado para doble click
@@ -1567,8 +1568,9 @@ public abstract class TextBox<T> : BorderView<T>, IInputHandler, IFocusable, Ray
                     return false;
                 }
 
+                float repeatedClickDistance = Rayo.Core.Platform.PlatformDetector.IsMobile ? 24f : 6f;
                 bool isRepeatedClick = timeSinceLastClick <= DoubleClickThresholdMs &&
-                    Vector2.Distance(args.Position, _lastClickPosition) <= 24f;
+                    Vector2.Distance(args.Position, _lastClickPosition) <= repeatedClickDistance;
                 _clickCount = isRepeatedClick ? _clickCount + 1 : 1;
                 _lastClickPosition = args.Position;
                 int clickPosition = GetCursorPositionFromMouse(args.Position.X, args.Position.Y);
@@ -1607,22 +1609,15 @@ public abstract class TextBox<T> : BorderView<T>, IInputHandler, IFocusable, Ray
                 }
 
                 // Click simple - iniciar selecci�n con mouse
-                // Preserve the selected word while the first tap of the next
-                // progressive double tap lands inside it. A drag can still
-                // turn this into a normal pointer selection.
-                if (HasProgressiveWordSelectionAt(clickPosition))
+                // A single click always moves the caret. Remember only whether
+                // it began inside the progressively selected word, so a second
+                // click can complete the next double-click and expand the line.
+                _progressiveLineExpansionPending = HasProgressiveWordSelectionAt(clickPosition);
+                if (!_progressiveLineExpansionPending)
                 {
-                    _lastClickTime = now;
-                    _isMouseSelecting = true;
-                    _mouseSelectionStart = clickPosition;
-                    CloseSelectionContextMenu();
-                    ResetCursorBlink();
-                    MarkNeedsPaint();
-                    return true;
+                    _progressiveWordSelectionStart = -1;
+                    _progressiveWordSelectionEnd = -1;
                 }
-
-                _progressiveWordSelectionStart = -1;
-                _progressiveWordSelectionEnd = -1;
                 _lastClickTime = now;
                 _isMouseSelecting = true;
                 _cursorPosition = clickPosition;
@@ -2055,15 +2050,18 @@ public abstract class TextBox<T> : BorderView<T>, IInputHandler, IFocusable, Ray
     {
         if (DoubleTapSelectionUnit == TextSelectionUnit.WordThenLine)
         {
-            if (HasProgressiveWordSelectionAt(position))
+            if ((_progressiveLineExpansionPending || HasProgressiveWordSelectionAt(position)) &&
+                IsPositionInProgressiveWord(position))
             {
                 SelectLineAt(position);
                 _progressiveWordSelectionStart = -1;
                 _progressiveWordSelectionEnd = -1;
+                _progressiveLineExpansionPending = false;
             }
             else
             {
                 SelectWordAt(position);
+                _progressiveLineExpansionPending = false;
                 if (HasSelection)
                 {
                     _progressiveWordSelectionStart = Math.Min(_selectionStart, _selectionEnd);
@@ -2086,9 +2084,13 @@ public abstract class TextBox<T> : BorderView<T>, IInputHandler, IFocusable, Ray
         int selectionEnd = Math.Max(_selectionStart, _selectionEnd);
         return selectionStart == _progressiveWordSelectionStart &&
             selectionEnd == _progressiveWordSelectionEnd &&
-            position >= selectionStart &&
-            position < selectionEnd;
+            IsPositionInProgressiveWord(position);
     }
+
+    private bool IsPositionInProgressiveWord(int position) =>
+        _progressiveWordSelectionStart >= 0 &&
+        position >= _progressiveWordSelectionStart &&
+        position < _progressiveWordSelectionEnd;
 
     private void SelectLineAt(int position)
     {

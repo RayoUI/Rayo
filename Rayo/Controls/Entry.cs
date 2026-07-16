@@ -15,6 +15,7 @@ public class Entry : TextBox<Entry>
     {
         // Lock to single-line mode
         base.IsMultiline = false;
+        DoubleTapSelectionUnit = TextSelectionUnit.WordThenLine;
     }
 
     public Entry(string text) : this()

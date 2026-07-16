@@ -5,6 +5,14 @@ namespace Rayo.Tests;
 public sealed class TextBoxSelectionTests
 {
     [Fact]
+    public void Entry_uses_progressive_double_click_selection()
+    {
+        var entry = new Entry();
+
+        Assert.Equal(TextSelectionUnit.WordThenLine, entry.DoubleTapSelectionUnit);
+    }
+
+    [Fact]
     public void Double_tap_line_mode_selects_the_complete_line()
     {
         var editor = new TestEditor
