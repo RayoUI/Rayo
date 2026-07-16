@@ -23,7 +23,10 @@ public sealed class ViewModelTests
         Assert.Equal(12, restored.Height);
         Assert.Equal(2, restored.Frames.Count);
         Assert.Equal([0, 1], restored.Animations[0].FrameIndices);
-        Assert.Equal(24 * 12, restored.Frames[0].Pixels.Count);
+        Assert.Equal(24 * 12 * 4, restored.Frames[0].Pixels.Length);
+        Assert.All(
+            restored.Frames[0].ToFrame(24, 12).Pixels.Cast<Color>(),
+            color => Assert.Equal(0f, color.A));
     }
 
     [Fact]

@@ -20,6 +20,8 @@ public enum SpriteTool
 
 public sealed class SpriteFrame
 {
+    public static Color Transparent { get; } = new(0f, 0f, 0f, 0f);
+
     public int Width { get; }
     public int Height { get; }
     public Color[,] Pixels { get; }
@@ -30,13 +32,7 @@ public sealed class SpriteFrame
         Width = width;
         Height = height;
         Pixels = new Color[height, width];
-        for (var row = 0; row < height; row++)
-        {
-            for (var column = 0; column < width; column++)
-            {
-                Pixels[row, column] = new Color(244, 247, 250);
-            }
-        }
+        Fill(Transparent);
     }
 
     public SpriteFrame Clone()
@@ -44,6 +40,13 @@ public sealed class SpriteFrame
         var clone = new SpriteFrame(Width, Height);
         Array.Copy(Pixels, clone.Pixels, Pixels.Length);
         return clone;
+    }
+
+    public void Fill(Color color)
+    {
+        for (var row = 0; row < Height; row++)
+            for (var column = 0; column < Width; column++)
+                Pixels[row, column] = color;
     }
 }
 
@@ -68,6 +71,8 @@ public sealed class SpriteCanvas : View<SpriteCanvas>, IPointerHandler, IExclusi
     private int? _shapePointerId;
     private int? _paintPointerId;
     private bool _paintedDuringDrag;
+    private ITexture? _frameTexture;
+    private bool _frameTextureDirty = true;
 
     public Color SelectedColor
     {
@@ -82,6 +87,8 @@ public sealed class SpriteCanvas : View<SpriteCanvas>, IPointerHandler, IExclusi
         {
             _frame = value;
             _pixels = value.Pixels;
+            InvalidateFrameTexture();
+            _hasInitializedViewport = false;
             MarkNeedsPaint();
             FrameChanged?.Invoke();
         }
@@ -112,18 +119,20 @@ public sealed class SpriteCanvas : View<SpriteCanvas>, IPointerHandler, IExclusi
         renderer.DrawRect(ComputedX, ComputedY, ComputedWidth, ComputedHeight, new Color(38, 48, 64));
 
         var tileSize = GetTileSize();
-        var origin = GetSpriteOrigin(_frame.Width * tileSize, _frame.Height * tileSize);
+        var spriteWidth = _frame.Width * tileSize;
+        var spriteHeight = _frame.Height * tileSize;
+        var origin = GetSpriteOrigin(spriteWidth, spriteHeight);
 
-        for (var row = 0; row < _frame.Height; row++)
-        {
-            for (var column = 0; column < _frame.Width; column++)
-            {
-                var x = origin.X + column * tileSize;
-                var y = origin.Y + row * tileSize;
-                renderer.DrawRect(x, y, tileSize, tileSize, _pixels[row, column]);
-                renderer.DrawRectOutline(x, y, tileSize, tileSize, 0.01f, new Color(85, 99, 120));
-            }
-        }
+        RenderTransparencyBackground(renderer, origin, spriteWidth, spriteHeight, tileSize);
+        RenderGrid(renderer, origin, tileSize);
+        RenderFrameTexture(renderer, origin, spriteWidth, spriteHeight);
+        renderer.DrawRectOutline(
+            origin.X,
+            origin.Y,
+            spriteWidth,
+            spriteHeight,
+            1f,
+            new Color(85, 99, 120));
 
         if (_shapeStart is { } start && _shapePreviewEnd is { } end)
         {
@@ -135,7 +144,7 @@ public sealed class SpriteCanvas : View<SpriteCanvas>, IPointerHandler, IExclusi
 
     public void Clear()
     {
-        SetAllPixels(new Color(244, 247, 250));
+        SetAllPixels(SpriteFrame.Transparent);
         EditCommitted?.Invoke();
     }
 
@@ -267,7 +276,7 @@ public sealed class SpriteCanvas : View<SpriteCanvas>, IPointerHandler, IExclusi
         }
 
         _pixels[cell.Row, cell.Column] = Tool == SpriteTool.Eraser
-            ? new Color(244, 247, 250)
+            ? SpriteFrame.Transparent
             : _selectedColor;
         NotifyFrameChanged();
     }
@@ -490,7 +499,112 @@ public sealed class SpriteCanvas : View<SpriteCanvas>, IPointerHandler, IExclusi
 
     private void NotifyFrameChanged()
     {
+        InvalidateFrameTexture();
         MarkNeedsPaint();
         FrameChanged?.Invoke();
     }
+
+    protected override void OnUnmounted()
+    {
+        _frameTexture?.Dispose();
+        _frameTexture = null;
+        base.OnUnmounted();
+    }
+
+    private void RenderTransparencyBackground(
+        IRenderer renderer,
+        Vector2 origin,
+        float spriteWidth,
+        float spriteHeight,
+        float tileSize)
+    {
+        var light = new Color(220, 225, 232);
+        var dark = new Color(174, 183, 196);
+        renderer.DrawRect(origin.X, origin.Y, spriteWidth, spriteHeight, light);
+
+        for (var row = 0; row < _frame.Height; row++)
+        {
+            for (var column = row & 1; column < _frame.Width; column += 2)
+            {
+                var x = origin.X + column * tileSize;
+                var y = origin.Y + row * tileSize;
+                renderer.DrawRect(
+                    x,
+                    y,
+                    tileSize,
+                    tileSize,
+                    dark);
+            }
+        }
+    }
+
+    private void RenderGrid(IRenderer renderer, Vector2 origin, float tileSize)
+    {
+        if (tileSize < 4f)
+            return;
+
+        var gridColor = new Color(85, 99, 120, 125);
+        var spriteWidth = _frame.Width * tileSize;
+        var spriteHeight = _frame.Height * tileSize;
+        for (var column = 1; column < _frame.Width; column++)
+        {
+            var x = origin.X + column * tileSize;
+            renderer.DrawLine(x, origin.Y, x, origin.Y + spriteHeight, 1f, gridColor);
+        }
+
+        for (var row = 1; row < _frame.Height; row++)
+        {
+            var y = origin.Y + row * tileSize;
+            renderer.DrawLine(origin.X, y, origin.X + spriteWidth, y, 1f, gridColor);
+        }
+    }
+
+    private void RenderFrameTexture(
+        IRenderer renderer,
+        Vector2 origin,
+        float spriteWidth,
+        float spriteHeight)
+    {
+        if (_frameTextureDirty || _frameTexture is null)
+        {
+            _frameTexture?.Dispose();
+            _frameTexture = renderer.CreateTextureFromPixels(
+                CreateRgbaPixels(_frame),
+                _frame.Width,
+                _frame.Height,
+                TextureSamplingMode.Nearest);
+            _frameTextureDirty = false;
+        }
+
+        renderer.DrawTexture(
+            _frameTexture,
+            origin.X,
+            origin.Y,
+            spriteWidth,
+            spriteHeight);
+    }
+
+    internal static byte[] CreateRgbaPixels(SpriteFrame frame)
+    {
+        var rgba = new byte[frame.Width * frame.Height * 4];
+        var offset = 0;
+        for (var row = 0; row < frame.Height; row++)
+        {
+            for (var column = 0; column < frame.Width; column++)
+            {
+                var color = frame.Pixels[row, column];
+                rgba[offset++] = ToByte(color.R);
+                rgba[offset++] = ToByte(color.G);
+                rgba[offset++] = ToByte(color.B);
+                rgba[offset++] = ToByte(color.A);
+            }
+        }
+
+        return rgba;
+    }
+
+    private void InvalidateFrameTexture() => _frameTextureDirty = true;
+
+    private static byte ToByte(float value) =>
+        (byte)Math.Clamp((int)MathF.Round(value * 255f), 0, 255);
 }

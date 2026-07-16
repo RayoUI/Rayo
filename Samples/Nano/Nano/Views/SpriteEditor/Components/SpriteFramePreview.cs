@@ -12,6 +12,8 @@ public sealed class SpriteFramePreview : View<SpriteFramePreview>, IPointerHandl
     private readonly SpriteFrame _frame;
     private readonly int _index;
     private bool _isSelected;
+    private ITexture? _texture;
+    private bool _textureDirty = true;
 
     public Action? Selected { get; init; }
     public Action? OptionsRequested { get; set; }
@@ -41,7 +43,11 @@ public sealed class SpriteFramePreview : View<SpriteFramePreview>, IPointerHandl
         GestureRecognizers.Add(_tapRecognizer);
     }
 
-    public void Refresh() => MarkNeedsPaint();
+    public void Refresh()
+    {
+        _textureDirty = true;
+        MarkNeedsPaint();
+    }
 
     public void SetSelected(bool isSelected)
     {
@@ -69,13 +75,39 @@ public sealed class SpriteFramePreview : View<SpriteFramePreview>, IPointerHandl
         var previewHeight = rowCount * tileSize;
         var previewX = ComputedX + (ComputedWidth - previewWidth) / 2f;
         var previewY = ComputedY + (ComputedHeight - previewHeight) / 2f;
-        for (var row = 0; row < rowCount; row++)
+
+        const float checkerSize = 6f;
+        var light = new Color(220, 225, 232);
+        var dark = new Color(174, 183, 196);
+        renderer.DrawRect(previewX, previewY, previewWidth, previewHeight, light);
+        var checkerRows = (int)MathF.Ceiling(previewHeight / checkerSize);
+        var checkerColumns = (int)MathF.Ceiling(previewWidth / checkerSize);
+        for (var row = 0; row < checkerRows; row++)
         {
-            for (var column = 0; column < columnCount; column++)
+            for (var column = row & 1; column < checkerColumns; column += 2)
             {
-                renderer.DrawRect(previewX + column * tileSize, previewY + row * tileSize, tileSize, tileSize, _frame.Pixels[row, column]);
+                var x = previewX + column * checkerSize;
+                var y = previewY + row * checkerSize;
+                renderer.DrawRect(
+                    x,
+                    y,
+                    MathF.Min(checkerSize, previewX + previewWidth - x),
+                    MathF.Min(checkerSize, previewY + previewHeight - y),
+                    dark);
             }
         }
+
+        if (_textureDirty || _texture is null)
+        {
+            _texture?.Dispose();
+            _texture = renderer.CreateTextureFromPixels(
+                SpriteCanvas.CreateRgbaPixels(_frame),
+                columnCount,
+                rowCount,
+                TextureSamplingMode.Nearest);
+            _textureDirty = false;
+        }
+        renderer.DrawTexture(_texture, previewX, previewY, previewWidth, previewHeight);
 
         var border = _isSelected ? new Color(62, 126, 214) : new Color(150, 160, 175);
         renderer.DrawRectOutline(ComputedX, ComputedY, ComputedWidth, ComputedHeight, _isSelected ? 3f : 1f, border);
@@ -99,4 +131,11 @@ public sealed class SpriteFramePreview : View<SpriteFramePreview>, IPointerHandl
     public void OnPointerReleased(PointerEventArgs e) { }
     public void OnPointerEntered(PointerEventArgs e) { }
     public void OnPointerExited(PointerEventArgs e) { }
+
+    protected override void OnUnmounted()
+    {
+        _texture?.Dispose();
+        _texture = null;
+        base.OnUnmounted();
+    }
 }

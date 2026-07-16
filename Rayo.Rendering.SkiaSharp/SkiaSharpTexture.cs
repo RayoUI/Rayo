@@ -18,6 +18,7 @@ public class SkiaSharpTexture : ITexture
     public int Width { get; }
     public int Height { get; }
     public bool IsRenderTarget { get; }
+    public TextureSamplingMode SamplingMode { get; }
 
     internal SKImage? Image => _image;
     internal SKPicture? SvgPicture => _svg?.Picture;
@@ -26,12 +27,15 @@ public class SkiaSharpTexture : ITexture
     /// <summary>
     /// Creates a texture from an existing SKImage
     /// </summary>
-    public SkiaSharpTexture(SKImage image)
+    public SkiaSharpTexture(
+        SKImage image,
+        TextureSamplingMode samplingMode = TextureSamplingMode.Smooth)
     {
         _image = image ?? throw new ArgumentNullException(nameof(image));
         Width = image.Width;
         Height = image.Height;
         IsRenderTarget = false;
+        SamplingMode = samplingMode;
     }
 
     /// <summary>
@@ -51,6 +55,7 @@ public class SkiaSharpTexture : ITexture
         Width = loaded.Width;
         Height = loaded.Height;
         IsRenderTarget = false;
+        SamplingMode = TextureSamplingMode.Smooth;
     }
 
     /// <summary>
@@ -66,6 +71,7 @@ public class SkiaSharpTexture : ITexture
         Width = loaded.Width;
         Height = loaded.Height;
         IsRenderTarget = false;
+        SamplingMode = TextureSamplingMode.Smooth;
     }
 
     /// <summary>
@@ -81,6 +87,7 @@ public class SkiaSharpTexture : ITexture
         Width = width;
         Height = height;
         IsRenderTarget = true;
+        SamplingMode = TextureSamplingMode.Smooth;
 
         var imageInfo = new SKImageInfo(width, height, SKColorType.Rgba8888, SKAlphaType.Premul);
         _surface = grContext != null

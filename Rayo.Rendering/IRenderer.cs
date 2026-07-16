@@ -160,6 +160,17 @@ public interface IRenderer : IDisposable
     /// </summary>
     ITexture CreateTextureFromPixels(byte[] rgbaPixels, int width, int height);
 
+    /// <summary>
+    /// Creates a texture from raw RGBA pixels with an explicit sampling mode.
+    /// Renderers that do not specialize sampling fall back to their default mode.
+    /// </summary>
+    ITexture CreateTextureFromPixels(
+        byte[] rgbaPixels,
+        int width,
+        int height,
+        TextureSamplingMode samplingMode) =>
+        CreateTextureFromPixels(rgbaPixels, width, height);
+
     // === Render-to-Texture (Framebuffer Objects) ===
 
     /// <summary>

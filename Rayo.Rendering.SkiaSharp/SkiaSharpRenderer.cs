@@ -1055,7 +1055,9 @@ public class SkiaSharpRenderer : IRenderer, INativeGradientRenderer
             }
             else
             {
-                var sampling = new SKSamplingOptions(SKCubicResampler.Mitchell);
+                var sampling = skTexture.SamplingMode == TextureSamplingMode.Nearest
+                    ? new SKSamplingOptions(SKFilterMode.Nearest, SKMipmapMode.None)
+                    : new SKSamplingOptions(SKCubicResampler.Mitchell);
                 _canvas.DrawImage(image, destRect, sampling, paint);
             }
         }
@@ -1124,11 +1126,22 @@ public class SkiaSharpRenderer : IRenderer, INativeGradientRenderer
         }
     }
 
-    public ITexture CreateTextureFromPixels(byte[] rgbaPixels, int width, int height)
+    public ITexture CreateTextureFromPixels(byte[] rgbaPixels, int width, int height) =>
+        CreateTextureFromPixels(
+            rgbaPixels,
+            width,
+            height,
+            TextureSamplingMode.Smooth);
+
+    public ITexture CreateTextureFromPixels(
+        byte[] rgbaPixels,
+        int width,
+        int height,
+        TextureSamplingMode samplingMode)
     {
         var info = new SKImageInfo(width, height, SKColorType.Rgba8888, SKAlphaType.Unpremul);
         var image = SKImage.FromPixelCopy(info, rgbaPixels, width * 4);
-        return new SkiaSharpTexture(image);
+        return new SkiaSharpTexture(image, samplingMode);
     }
 
     public void PushTransform(Matrix3x2 transform)
