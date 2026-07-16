@@ -2008,6 +2008,23 @@ public abstract class TextBox<T> : BorderView<T>, IInputHandler, IFocusable, Ray
         if (index == Text.Length) index--;
         if (!IsWordCharacter(Text[index]))
         {
+            if (IsInlineWhitespace(Text[index]))
+            {
+                int whitespaceStart = index;
+                while (whitespaceStart > 0 && IsInlineWhitespace(Text[whitespaceStart - 1]))
+                    whitespaceStart--;
+
+                int whitespaceEnd = index + 1;
+                while (whitespaceEnd < Text.Length && IsInlineWhitespace(Text[whitespaceEnd]))
+                    whitespaceEnd++;
+
+                _selectionStart = whitespaceStart;
+                _selectionEnd = whitespaceEnd;
+                _cursorPosition = whitespaceEnd;
+                ResetCursorBlink();
+                return;
+            }
+
             if (IsCursorSymbol(Text[index]))
             {
                 _selectionStart = index;
@@ -2088,6 +2105,9 @@ public abstract class TextBox<T> : BorderView<T>, IInputHandler, IFocusable, Ray
     }
 
     private static bool IsWordCharacter(char character) => char.IsLetterOrDigit(character) || character == '_';
+
+    private static bool IsInlineWhitespace(char character) =>
+        char.IsWhiteSpace(character) && character != '\r' && character != '\n';
 
     private static bool IsCursorSymbol(char character) =>
         !char.IsWhiteSpace(character) && !char.IsLetterOrDigit(character) && character != '_';

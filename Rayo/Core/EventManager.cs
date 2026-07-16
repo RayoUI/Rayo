@@ -864,8 +864,14 @@ public class EventManager
     {
         element.IsPressed = true;
 
-        // Notify IDragScrollable if inside
-        if (element is IDragScrollable dragScrollable && element is IInputHandler scrollHandler && scrollHandler.CanHandleInput)
+        // Non-focusable scrollables use this early notification to initialize
+        // their drag state. Focusable controls (Editor/TextBox) are dispatched
+        // once by the focusable branch below; sending this event to them here as
+        // well turns a single press into a double click and disables selection.
+        if (element is not IFocusable &&
+            element is IDragScrollable &&
+            element is IInputHandler scrollHandler &&
+            scrollHandler.CanHandleInput)
         {
             var args = new InputEventArgs
             {

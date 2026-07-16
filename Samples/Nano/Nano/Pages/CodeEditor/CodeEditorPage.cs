@@ -10,22 +10,9 @@ public sealed class CodeEditorPage : Component
 {
     public override VisualElement Build()
     {
-        var page = new Grid()
-            .Rows(GridLength.Auto, GridLength.Auto, GridLength.Star)
-            .RowSpacing(10)
-            .Padding(new Thickness(12))
-            .Columns(GridLength.Star)
-            .Background(new Color(20, 27, 40));
-
-        page
-            .AddChild(
-                new CodeEditor(DefaultLua, new LuaCodeLanguage())
+        return new CodeEditor(DefaultLua, new LuaCodeLanguage())
                     .HorizontalAlignment(HorizontalAlignment.Stretch)
-                    .VerticalAlignment(VerticalAlignment.Stretch),
-                2,
-                0);
-
-        return page;
+                    .VerticalAlignment(VerticalAlignment.Stretch);
     }
 
     private const string DefaultLua = "-- Sprite update loop\nlocal speed = 120\nlocal sprite = { x = 24, y = 16 }\n\nfunction update(deltaTime)\n    sprite.x = sprite.x + speed * deltaTime\n    print(\"Sprite position\", sprite.x)\nend";

@@ -59,6 +59,32 @@ public sealed class TextBoxSelectionTests
     }
 
     [Fact]
+    public void Double_tap_selects_the_adjacent_horizontal_whitespace()
+    {
+        var editor = new TestEditor { Text = "alpha \t  beta\nomega" };
+
+        editor.SelectDoubleTapUnit(7);
+
+        Assert.Equal(" \t  ", editor.GetSelectedText());
+    }
+
+    [Fact]
+    public void Progressive_double_tap_selects_whitespace_then_complete_line()
+    {
+        var editor = new TestEditor
+        {
+            Text = "alpha \t  beta\nomega",
+            DoubleTapSelectionUnit = TextSelectionUnit.WordThenLine
+        };
+
+        editor.SelectDoubleTapUnit(7);
+        Assert.Equal(" \t  ", editor.GetSelectedText());
+
+        editor.SelectDoubleTapUnit(7);
+        Assert.Equal("alpha \t  beta", editor.GetSelectedText());
+    }
+
+    [Fact]
     public void Multiline_selection_includes_the_line_break_after_intermediate_lines()
     {
         var editor = new TestEditor { Text = "alpha\nbeta\ngamma" };
