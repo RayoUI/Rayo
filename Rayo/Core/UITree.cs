@@ -3,6 +3,7 @@ using RenderColor = Rayo.Rendering.Color;
 
 using System.Numerics;
 using System.Runtime.CompilerServices;
+using Rayo.Core.Interfaces;
 
 namespace Rayo.Core;
 
@@ -42,6 +43,11 @@ public class UITree
     /// </summary>
     public event Action? OverlaysChanged;
 
+    /// <summary>
+    /// Fired when the active overlay stack starts or stops blocking platform-native overlays.
+    /// </summary>
+    public event Action<bool>? NativeOverlayBlockingChanged;
+
     // Reference to DragDropManager to render the ghost
     private DragDropManager? _dragDropManager;
 
@@ -53,6 +59,7 @@ public class UITree
 
     // Overlay support for Android/iOS (components like Drawer, Dialog, etc.)
     private readonly List<VisualElement> _overlays = new();
+    private int _nativeOverlayBlockerCount;
     private LayerCache? _layerCache;
     private IRenderer? _layerCacheRenderer;
     private DateTime _lastLayerCacheCleanupUtc = DateTime.UtcNow;
@@ -62,6 +69,7 @@ public class UITree
     /// Overlays are rendered on top of the main UI tree.
     /// </summary>
     public IReadOnlyList<VisualElement> Overlays => _overlays;
+    public bool AreNativeOverlaysBlocked => _nativeOverlayBlockerCount > 0;
     public DirtyRegionTracker DirtyRegions => _dirtyRegions;
     public PartialRenderPolicy PartialRenderMode { get; set; } = PartialRenderPolicy.Disabled;
 
@@ -118,6 +126,7 @@ public class UITree
             overlay.CaptureDetachedTheme(owner);
             _overlays.Add(overlay);
             overlay.NotifyMounted();
+            AddNativeOverlayPolicy(overlay);
             MarkOverlayLayerDirty(overlay);
             MarkElementNeedsMeasure(overlay);
             OverlaysChanged?.Invoke();
@@ -131,11 +140,40 @@ public class UITree
     {
         if (_overlays.Remove(overlay))
         {
+            RemoveNativeOverlayPolicy(overlay);
             overlay.NotifyUnmounted();
             _layerCache?.RemoveLayer(GetOverlayLayerId(overlay));
             _dirtyRegions.MarkElementDirty(overlay, DirtyReason.LayoutChanged);
             MarkNeedsRender();
             OverlaysChanged?.Invoke();
+        }
+    }
+
+    private void AddNativeOverlayPolicy(VisualElement overlay)
+    {
+        if (overlay is not INativeOverlayPolicy { BlocksNativeOverlays: true })
+        {
+            return;
+        }
+
+        _nativeOverlayBlockerCount++;
+        if (_nativeOverlayBlockerCount == 1)
+        {
+            NativeOverlayBlockingChanged?.Invoke(true);
+        }
+    }
+
+    private void RemoveNativeOverlayPolicy(VisualElement overlay)
+    {
+        if (overlay is not INativeOverlayPolicy { BlocksNativeOverlays: true })
+        {
+            return;
+        }
+
+        _nativeOverlayBlockerCount = Math.Max(0, _nativeOverlayBlockerCount - 1);
+        if (_nativeOverlayBlockerCount == 0)
+        {
+            NativeOverlayBlockingChanged?.Invoke(false);
         }
     }
 

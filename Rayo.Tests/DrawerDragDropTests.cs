@@ -12,6 +12,30 @@ namespace Rayo.Tests;
 public sealed class DrawerDragDropTests
 {
     [Fact]
+    public void Native_overlay_blocking_tracks_the_complete_overlay_stack()
+    {
+        var tree = new UITree();
+        var firstBlocker = new TestNativeOverlayBlocker();
+        var secondBlocker = new TestNativeOverlayBlocker();
+        var passiveOverlay = new TestOverlay();
+        var changes = new List<bool>();
+        tree.NativeOverlayBlockingChanged += changes.Add;
+
+        tree.AddOverlay(passiveOverlay);
+        tree.AddOverlay(firstBlocker);
+        tree.AddOverlay(secondBlocker);
+        tree.RemoveOverlay(firstBlocker);
+
+        Assert.True(tree.AreNativeOverlaysBlocked);
+        Assert.Equal([true], changes);
+
+        tree.RemoveOverlay(secondBlocker);
+
+        Assert.False(tree.AreNativeOverlaysBlocked);
+        Assert.Equal([true, false], changes);
+    }
+
+    [Fact]
     public void Touch_drag_can_drop_from_open_drawer_overlay_into_main_tree()
     {
         var tree = new UITree();
@@ -119,6 +143,22 @@ public sealed class DrawerDragDropTests
             DesiredWidth = Width;
             DesiredHeight = Height;
         }
+
+        public override void Render(IRenderer renderer)
+        {
+        }
+    }
+
+    private sealed class TestOverlay : View<TestOverlay>
+    {
+        public override void Render(IRenderer renderer)
+        {
+        }
+    }
+
+    private sealed class TestNativeOverlayBlocker : View<TestNativeOverlayBlocker>, INativeOverlayPolicy
+    {
+        public bool BlocksNativeOverlays => true;
 
         public override void Render(IRenderer renderer)
         {

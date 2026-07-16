@@ -480,7 +480,9 @@ public class Drawer : BorderCompositeView<Drawer>, IFrameAnimation
 /// Internal overlay that renders the drawer with animation.
 /// Uses IPointerHandler for pointer events.
 /// </summary>
-internal class DrawerOverlay : Rayo.Core.CompositeView<DrawerOverlay>, Rayo.Core.Input.IPointerHandler
+internal class DrawerOverlay : Rayo.Core.CompositeView<DrawerOverlay>,
+    Rayo.Core.Input.IPointerHandler,
+    Rayo.Core.Interfaces.INativeOverlayPolicy
 {
     private readonly Drawer _drawer;
     private Frame? _drawerFrame;
@@ -488,6 +490,8 @@ internal class DrawerOverlay : Rayo.Core.CompositeView<DrawerOverlay>, Rayo.Core
 
     // Store last touch/click position for Android/iOS support
     private System.Numerics.Vector2 _lastPointerPosition;
+
+    public bool BlocksNativeOverlays => true;
 
     public DrawerOverlay(Drawer drawer)
     {

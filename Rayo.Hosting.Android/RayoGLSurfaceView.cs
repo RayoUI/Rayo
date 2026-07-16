@@ -28,6 +28,7 @@ namespace Rayo.Hosting.Android;
 public class RayoGLSurfaceView : GLSurfaceView
 {
     private readonly RayoRenderer _renderer;
+    private readonly AndroidVirtualKeyboardService _virtualKeyboardService;
 
     public RayoGLSurfaceView(
         Context context,
@@ -42,12 +43,27 @@ public class RayoGLSurfaceView : GLSurfaceView
         // Configure for 60 fps continuous rendering on Android
         RenderMode = Rendermode.Continuously;
 
-        Rayo.Core.Platform.VirtualKeyboardManager.SetService(
-            new Rayo.Hosting.Android.AndroidVirtualKeyboardService(this, context));
+        _virtualKeyboardService = new AndroidVirtualKeyboardService(this, context);
+        VirtualKeyboardManager.SetService(_virtualKeyboardService);
 
         FocusableInTouchMode = true;
         Focusable = true;
         RequestFocus();
+    }
+
+    private void AttachOverlayTree(UITree tree)
+    {
+        _virtualKeyboardService.AttachOverlayTree(tree);
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing)
+        {
+            VirtualKeyboardManager.ClearService(_virtualKeyboardService);
+        }
+
+        base.Dispose(disposing);
     }
 
     private sealed class MultisampleEglConfigChooser : Java.Lang.Object, GLSurfaceView.IEGLConfigChooser
@@ -593,6 +609,7 @@ public class RayoGLSurfaceView : GLSurfaceView
                 // Set UITree reference for components that need overlays (Drawer, Dialog, etc.)
                 Rayo.Controls.Drawer.UITree(_tree);
                 Rayo.Core.OverlayManager.SetTree(_tree);
+                _view.AttachOverlayTree(_tree);
 
                 // Set the service provider for DependencyInjector
                 var serviceProvider = _appContext.Services;

@@ -1,13 +1,16 @@
 ﻿namespace Rayo.Hosting.Android;
 
-public sealed class AndroidVirtualKeyboardService : Rayo.Core.Platform.IVirtualKeyboardService
+public sealed class AndroidVirtualKeyboardService : Rayo.Core.Platform.IVirtualKeyboardService, IDisposable
 {
     private readonly global::Android.Views.View _view;
     private readonly global::Android.Content.Context _context;
     private global::Android.Views.ViewGroup? _accessoryRoot;
     private global::Android.Widget.HorizontalScrollView? _accessoryView;
     private global::Android.Views.ViewTreeObserver? _viewTreeObserver;
+    private Rayo.Core.UITree? _overlayTree;
     private IReadOnlyList<Rayo.Core.Platform.VirtualKeyboardAccessoryKey> _accessoryKeys = [];
+    private bool _nativeOverlaysBlocked;
+    private bool _disposed;
 
     public AndroidVirtualKeyboardService(global::Android.Views.View view, global::Android.Content.Context context)
     {
@@ -15,8 +18,29 @@ public sealed class AndroidVirtualKeyboardService : Rayo.Core.Platform.IVirtualK
         _context = context;
     }
 
+    public void AttachOverlayTree(Rayo.Core.UITree tree)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+
+        if (ReferenceEquals(_overlayTree, tree))
+        {
+            return;
+        }
+
+        DetachOverlayTree();
+        _overlayTree = tree;
+        _nativeOverlaysBlocked = tree.AreNativeOverlaysBlocked;
+        tree.NativeOverlayBlockingChanged += OnNativeOverlayBlockingChanged;
+        _view.Post(UpdateAccessoryVisibility);
+    }
+
     public void Show(IReadOnlyList<Rayo.Core.Platform.VirtualKeyboardAccessoryKey> accessoryKeys)
     {
+        if (_disposed)
+        {
+            return;
+        }
+
         var imm = _context.GetSystemService(global::Android.Content.Context.InputMethodService)
             as global::Android.Views.InputMethods.InputMethodManager;
         if (imm == null)
@@ -26,6 +50,11 @@ public sealed class AndroidVirtualKeyboardService : Rayo.Core.Platform.IVirtualK
 
         _view.Post(() =>
         {
+            if (_disposed)
+            {
+                return;
+            }
+
             _view.RequestFocus();
             imm.ShowSoftInput(_view, global::Android.Views.InputMethods.ShowFlags.Implicit);
             if (accessoryKeys.Count > 0)
@@ -38,6 +67,11 @@ public sealed class AndroidVirtualKeyboardService : Rayo.Core.Platform.IVirtualK
 
     public void Hide()
     {
+        if (_disposed)
+        {
+            return;
+        }
+
         var imm = _context.GetSystemService(global::Android.Content.Context.InputMethodService)
             as global::Android.Views.InputMethods.InputMethodManager;
         if (imm == null)
@@ -47,6 +81,11 @@ public sealed class AndroidVirtualKeyboardService : Rayo.Core.Platform.IVirtualK
 
         _view.Post(() =>
         {
+            if (_disposed)
+            {
+                return;
+            }
+
             imm.HideSoftInputFromWindow(_view.WindowToken, global::Android.Views.InputMethods.HideSoftInputFlags.None);
             UpdateAccessoryPosition();
             _view.PostDelayed(UpdateAccessoryPosition, 100);
@@ -56,8 +95,19 @@ public sealed class AndroidVirtualKeyboardService : Rayo.Core.Platform.IVirtualK
 
     public void SetAccessoryKeys(IReadOnlyList<Rayo.Core.Platform.VirtualKeyboardAccessoryKey> accessoryKeys)
     {
+        if (_disposed)
+        {
+            return;
+        }
+
         _accessoryKeys = accessoryKeys;
-        _view.Post(() => ShowAccessoryBar(_accessoryKeys));
+        _view.Post(() =>
+        {
+            if (!_disposed)
+            {
+                ShowAccessoryBar(_accessoryKeys);
+            }
+        });
     }
 
     private void ShowAccessoryBar(IReadOnlyList<Rayo.Core.Platform.VirtualKeyboardAccessoryKey> keys)
@@ -119,6 +169,7 @@ public sealed class AndroidVirtualKeyboardService : Rayo.Core.Platform.IVirtualK
 
         _accessoryRoot = root;
         _accessoryView = scroll;
+        UpdateAccessoryVisibility();
         var observer = _view.ViewTreeObserver;
         if (observer != null)
         {
@@ -151,9 +202,54 @@ public sealed class AndroidVirtualKeyboardService : Rayo.Core.Platform.IVirtualK
 
     private void OnGlobalLayout(object? sender, EventArgs args) => UpdateAccessoryPosition();
 
+    private void OnNativeOverlayBlockingChanged(bool isBlocked)
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        _nativeOverlaysBlocked = isBlocked;
+        _view.Post(UpdateAccessoryVisibility);
+    }
+
+    private void UpdateAccessoryVisibility()
+    {
+        if (_disposed || _accessoryView == null)
+        {
+            return;
+        }
+
+        _accessoryView.Visibility = _nativeOverlaysBlocked
+            ? global::Android.Views.ViewStates.Invisible
+            : global::Android.Views.ViewStates.Visible;
+    }
+
+    private void DetachOverlayTree()
+    {
+        if (_overlayTree != null)
+        {
+            _overlayTree.NativeOverlayBlockingChanged -= OnNativeOverlayBlockingChanged;
+            _overlayTree = null;
+        }
+    }
+
+    public void Dispose()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        _disposed = true;
+        DetachOverlayTree();
+        _view.Post(RemoveAccessoryBar);
+        GC.SuppressFinalize(this);
+    }
+
     private void UpdateAccessoryPosition()
     {
-        if (_accessoryView == null || _accessoryRoot == null ||
+        if (_disposed || _accessoryView == null || _accessoryRoot == null ||
             _accessoryView.LayoutParameters is not global::Android.Widget.FrameLayout.LayoutParams parameters)
         {
             return;

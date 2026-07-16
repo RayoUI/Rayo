@@ -14,8 +14,26 @@ public static class VirtualKeyboardManager
 
     public static void SetService(IVirtualKeyboardService service)
     {
+        if (ReferenceEquals(_service, service))
+        {
+            return;
+        }
+
+        var previousService = _service;
         _service = service;
+        (previousService as IDisposable)?.Dispose();
         _service.SetAccessoryKeys(_accessoryKeys);
+    }
+
+    public static void ClearService(IVirtualKeyboardService service)
+    {
+        if (!ReferenceEquals(_service, service))
+        {
+            return;
+        }
+
+        _service = null;
+        (service as IDisposable)?.Dispose();
     }
 
     /// <summary>Sets a persistent accessory bar for platforms that support it.</summary>
