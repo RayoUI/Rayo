@@ -322,7 +322,12 @@ public class EventManager
         if (_tree.Root == null) return;
 
         var now = DateTime.UtcNow;
-        NotifyGlobalPointerMoveHandlers(position);
+        if (NotifyGlobalPointerMoveHandlers(position))
+        {
+            _lastMousePos = position;
+            _tree.MarkNeedsRender();
+            return;
+        }
 
         // Process universal drag & drop if active
         if (_dragDropManager.IsDragging || _dragDropManager.CurrentDraggable != null)
@@ -481,20 +486,33 @@ public class EventManager
 
     private bool _needsRenderThisFrame = false;
 
-    private void NotifyGlobalPointerMoveHandlers(Vector2 position)
+    private bool NotifyGlobalPointerMoveHandlers(Vector2 position)
     {
         if (_globalPointerHandlers.Count == 0)
         {
-            return;
+            return false;
         }
 
         foreach (var handler in _globalPointerHandlers.ToList())
         {
             if (handler.HandleGlobalPointerMove(position, null))
             {
-                break;
+                return handler.BlocksPointerInput;
             }
         }
+
+        return false;
+    }
+
+    private bool NotifyGlobalPointerReleasedHandlers(Vector2 position)
+    {
+        foreach (var handler in _globalPointerHandlers.ToList())
+        {
+            if (handler.HandleGlobalPointerReleased(position, null))
+                return handler.BlocksPointerInput;
+        }
+
+        return false;
     }
 
     /// <summary>
@@ -739,6 +757,12 @@ public class EventManager
 
         var position = mouse.Position;
         _needsRenderThisFrame = false;
+        if (NotifyGlobalPointerReleasedHandlers(position))
+        {
+            _draggedElement = null;
+            _tree.MarkNeedsRender();
+            return;
+        }
 
         // Clear all IDragScrollable
         CleanupAllDragScrollables(_tree.Root);
@@ -1985,6 +2009,13 @@ public class EventManager
         if (!_activeTouchPointers.TryGetValue(pointerArgs.PointerId, out var state))
             return;
 
+        if (NotifyGlobalPointerMoveHandlers(pointerArgs.Position))
+        {
+            state.LastPosition = pointerArgs.Position;
+            _tree.MarkNeedsRender();
+            return;
+        }
+
         // Calculate delta
         pointerArgs.Delta = pointerArgs.Position - state.LastPosition;
         state.LastPosition = pointerArgs.Position;
@@ -2109,6 +2140,13 @@ public class EventManager
     {
         if (!_activeTouchPointers.TryGetValue(pointerArgs.PointerId, out var state))
             return;
+
+        if (NotifyGlobalPointerReleasedHandlers(pointerArgs.Position))
+        {
+            _activeTouchPointers.Remove(pointerArgs.PointerId);
+            _tree.MarkNeedsRender();
+            return;
+        }
 
         bool wasDragging = _dragDropManager.IsDragging;
         if (_dragDropManager.CurrentDraggable != null || wasDragging)

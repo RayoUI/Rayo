@@ -99,6 +99,11 @@ public sealed class AnchoredPopup : Frame, IGlobalPointerHandler
     /// </summary>
     public bool DismissOnOutsideClick { get; set; } = true;
 
+    /// <summary>
+    /// Restores focus to the anchor after interacting with popup content.
+    /// </summary>
+    public bool RestoreAnchorFocusOnInteraction { get; set; }
+
     public bool IsOpen => _isOpen;
 
     public event Action? Opened;
@@ -176,6 +181,15 @@ public sealed class AnchoredPopup : Frame, IGlobalPointerHandler
         }
 
         return false;
+    }
+
+    public bool HandleGlobalPointerReleased(Vector2 position, VisualElement? hitElement)
+    {
+        if (!_isOpen || !RestoreAnchorFocusOnInteraction || !ContainsWindowPoint(position))
+            return false;
+
+        OverlayManager.EventManager?.SetFocus(Anchor);
+        return true;
     }
 
     protected override void Arrange(float x, float y, float width, float height)

@@ -30,4 +30,9 @@ public interface IGlobalPointerHandler
     /// <param name="hitElement">The element that was hit by the pointer (if any)</param>
     /// <returns>True if the handler consumed the event and no further handlers should be called</returns>
     bool HandleGlobalPointerMove(Vector2 position, VisualElement? hitElement) => false;
+
+    /// <summary>
+    /// Called when the active pointer is released.
+    /// </summary>
+    bool HandleGlobalPointerReleased(Vector2 position, VisualElement? hitElement) => false;
 }

@@ -38,8 +38,10 @@ public class Entry : TextBox<Entry>
         return this;
     }
 
-    // Override CanHandleInput to respect IsReadOnly
-    public override bool CanHandleInput => !IsReadOnly;
+    // Read-only entries still need input routing for focus, selection,
+    // navigation, copy and the mobile selection context menu. HandleInput
+    // filters only the operations that would modify text.
+    public override bool CanHandleInput => true;
 
     // Override HandleInput to enforce IsReadOnly
     public override bool HandleInput(InputEventArgs args)

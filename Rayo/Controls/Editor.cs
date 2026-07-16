@@ -769,6 +769,7 @@ public class Editor : TextBox<Editor>, IScrollable, IDragScrollable
 
         // Render scrollbar
         RenderScrollbar(renderer);
+        RenderTouchSelectionHandles(renderer);
     }
 
     /// <summary>

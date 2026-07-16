@@ -21,6 +21,33 @@ public enum TextSelectionUnit
 }
 
 /// <summary>
+/// Actions and state exposed to a custom text-selection context menu.
+/// </summary>
+public sealed class TextSelectionContextMenuContext
+{
+    internal TextSelectionContextMenuContext(
+        Action copy,
+        Action cut,
+        Action paste,
+        bool canCut,
+        bool canPaste)
+    {
+        Copy = copy;
+        Cut = cut;
+        Paste = paste;
+        CanCut = canCut;
+        CanPaste = canPaste;
+    }
+
+    public Action Copy { get; }
+    public Action Cut { get; }
+    public Action Paste { get; }
+    public bool CanCopy => true;
+    public bool CanCut { get; }
+    public bool CanPaste { get; }
+}
+
+/// <summary>
 /// Text input field with support for single-line and multi-line text editing.
 /// </summary>
 public abstract class TextBox<T> : BorderView<T>, IInputHandler, IFocusable, Rayo.Core.Platform.IVirtualKeyboardOptions where T : BorderView<T>
@@ -243,12 +270,54 @@ public abstract class TextBox<T> : BorderView<T>, IInputHandler, IFocusable, Ray
     /// Optional: Read-only mode. When true, text cannot be edited.
     /// Used by Entry/Editor controls for MAUI compatibility.
     /// </summary>
-    public bool IsReadOnly { get; set; } = false;
+    public bool IsReadOnly
+    {
+        get => field;
+        set
+        {
+            if (field == value)
+                return;
+
+            field = value;
+            if (value &&
+                IsFocused &&
+                Rayo.Core.Platform.PlatformDetector.IsMobile)
+            {
+                Rayo.Core.Platform.VirtualKeyboardManager.Hide();
+            }
+
+            MarkNeedsPaint();
+        }
+    } = false;
 
     /// <summary>
     /// Defines the selection unit used by a double tap or double click.
     /// </summary>
     public TextSelectionUnit DoubleTapSelectionUnit { get; set; } = TextSelectionUnit.Word;
+
+    /// <summary>
+    /// Gets or sets whether the floating copy, cut and paste menu is available
+    /// for text selections on mobile touch platforms. Enabled by default.
+    /// </summary>
+    public bool SelectionContextMenuEnabled
+    {
+        get => field;
+        set
+        {
+            if (field == value)
+                return;
+
+            field = value;
+            if (!value)
+                CloseSelectionContextMenu();
+        }
+    } = true;
+
+    /// <summary>
+    /// Gets or sets an optional factory used to replace the default copy, cut
+    /// and paste menu content.
+    /// </summary>
+    public Func<TextSelectionContextMenuContext, VisualElement?>? SelectionContextMenuTemplate { get; set; }
 
     protected int _cursorPosition = 0;
     protected float _scrollOffsetX = 0;  // Offset horizontal para scroll
@@ -278,8 +347,10 @@ public abstract class TextBox<T> : BorderView<T>, IInputHandler, IFocusable, Ray
     private const double DoubleClickThresholdMs = 500;  // 500ms para detectar doble click
 
     private SelectionHandle _activeSelectionHandle;
-    private const float SelectionHandleRadius = 7f;
-    private const float SelectionHandleStemHeight = 12f;
+    private SelectionHandlesAdorner? _selectionHandlesAdorner;
+    private const float SelectionHandleRadius = 9f;
+    private const float SelectionHandleStemHeight = 14f;
+    private const float SelectionHandleTouchRadius = 22f;
 
     private enum SelectionHandle
     {
@@ -480,6 +551,7 @@ public abstract class TextBox<T> : BorderView<T>, IInputHandler, IFocusable, Ray
     protected override void OnUnmounted()
     {
         CloseSelectionContextMenu();
+        RemoveTouchSelectionHandlesAdorner();
         _cursorBlinkActive = false;
         StopCursorBlinkTimer(dispose: true);
         base.OnUnmounted();
@@ -962,6 +1034,7 @@ public abstract class TextBox<T> : BorderView<T>, IInputHandler, IFocusable, Ray
     {
         _selectionStart = 0;
         _selectionEnd = 0;
+        RemoveTouchSelectionHandlesAdorner();
     }
 
     /// <summary>
@@ -1514,9 +1587,14 @@ public abstract class TextBox<T> : BorderView<T>, IInputHandler, IFocusable, Ray
 
         if (Rayo.Core.Platform.PlatformDetector.IsMobile)
         {
-            Rayo.Core.Platform.VirtualKeyboardManager.Show(KeyboardAccessoryKeys);
+            if (CanShowVirtualKeyboard)
+                Rayo.Core.Platform.VirtualKeyboardManager.Show(KeyboardAccessoryKeys);
+            else
+                Rayo.Core.Platform.VirtualKeyboardManager.Hide();
         }
     }
+
+    protected bool CanShowVirtualKeyboard => !IsReadOnly;
 
     public void OnFocusLost()
     {
@@ -1525,7 +1603,9 @@ public abstract class TextBox<T> : BorderView<T>, IInputHandler, IFocusable, Ray
         // can still operate on it; the action restores focus immediately after.
         if (_selectionContextMenu != null)
         {
-            IsFocused = false;
+            // Keep the focused visual state while popup content is pressed.
+            // The popup restores the actual input focus on release.
+            IsFocused = true;
             _cursorBlinkActive = false;
             StopCursorBlinkTimer(dispose: false);
             MarkNeedsPaint();
@@ -1913,7 +1993,12 @@ public abstract class TextBox<T> : BorderView<T>, IInputHandler, IFocusable, Ray
     /// </summary>
     private void ShowSelectionContextMenu()
     {
-        if (!Rayo.Core.Platform.PlatformDetector.IsMobile || !IsFocused || !HasSelection)
+        EnsureTouchSelectionHandlesAdorner();
+
+        if (!Rayo.Core.Platform.PlatformDetector.IsMobile ||
+            !SelectionContextMenuEnabled ||
+            !IsFocused ||
+            !HasSelection)
         {
             CloseSelectionContextMenu();
             return;
@@ -1921,26 +2006,11 @@ public abstract class TextBox<T> : BorderView<T>, IInputHandler, IFocusable, Ray
 
         CloseSelectionContextMenu();
 
-        var copy = CreateSelectionMenuButton(Icons.Copy, Copy);
-        var cut = CreateSelectionMenuButton(Icons.Cut, Cut);
-        var paste = CreateSelectionMenuButton(Icons.Paste, Paste);
-        cut.IsEnabled = !IsReadOnly;
-        paste.IsEnabled = !IsReadOnly;
-
-        var actions = new HStack
-        {
-            Spacing = 4,
-            VerticalAlignment = VerticalAlignment.Center
-        }.Children(copy, cut, paste);
-
-        var content = new Frame
-        {
-            Background = new Color(48, 55, 68),
-            BorderBrush = new Color(103, 112, 129),
-            BorderThickness = 1,
-            Padding = new Thickness(4),
-            Content = actions
-        };
+        var context = CreateSelectionContextMenuContext();
+        var content = SelectionContextMenuTemplate?.Invoke(context) ??
+            CreateDefaultSelectionContextMenu(context);
+        if (content == null)
+            return;
 
         var startHandle = GetSelectionHandlePosition(_selectionStart);
         var endHandle = GetSelectionHandlePosition(_selectionEnd);
@@ -1955,6 +2025,7 @@ public abstract class TextBox<T> : BorderView<T>, IInputHandler, IFocusable, Ray
         {
             Placement = AnchoredPopupPlacement.Below,
             AnchorAlignment = AnchoredPopupAlignment.Center,
+            RestoreAnchorFocusOnInteraction = true,
             Gap = 0,
             EdgeInset = 8,
             OffsetX = selectionCenter - (ComputedX + ComputedWidth / 2f),
@@ -1971,6 +2042,54 @@ public abstract class TextBox<T> : BorderView<T>, IInputHandler, IFocusable, Ray
         popup.Open();
     }
 
+    protected TextSelectionContextMenuContext CreateSelectionContextMenuContext() =>
+        new(
+            () => ExecuteSelectionContextMenuAction(Copy),
+            () =>
+            {
+                if (!IsReadOnly)
+                    ExecuteSelectionContextMenuAction(Cut);
+            },
+            () =>
+            {
+                if (!IsReadOnly)
+                    ExecuteSelectionContextMenuAction(Paste);
+            },
+            canCut: !IsReadOnly,
+            canPaste: !IsReadOnly);
+
+    private VisualElement CreateDefaultSelectionContextMenu(TextSelectionContextMenuContext context)
+    {
+        var copy = CreateSelectionMenuButton(Icons.Copy, context.Copy);
+        var cut = CreateSelectionMenuButton(Icons.Cut, context.Cut);
+        var paste = CreateSelectionMenuButton(Icons.Paste, context.Paste);
+        copy.IsEnabled = context.CanCopy;
+        cut.IsEnabled = context.CanCut;
+        paste.IsEnabled = context.CanPaste;
+
+        var actions = new HStack
+        {
+            Spacing = 4,
+            VerticalAlignment = VerticalAlignment.Center
+        }.Children(copy, cut, paste);
+
+        return new Frame
+        {
+            Background = new Color(48, 55, 68),
+            BorderBrush = new Color(103, 112, 129),
+            BorderThickness = 1,
+            Padding = new Thickness(4),
+            Content = actions
+        };
+    }
+
+    private void ExecuteSelectionContextMenuAction(Action action)
+    {
+        action();
+        CloseSelectionContextMenu();
+        OverlayManager.EventManager?.SetFocus(this);
+    }
+
     private ButtonIcon CreateSelectionMenuButton(IconData icon, Action action)
     {
         var button = new ButtonIcon(icon)
@@ -1980,12 +2099,7 @@ public abstract class TextBox<T> : BorderView<T>, IInputHandler, IFocusable, Ray
             IconSize = 15,
             Variant = ButtonVariant.Secondary
         };
-        button.Tapped += _ =>
-        {
-            action();
-            CloseSelectionContextMenu();
-            OverlayManager.EventManager?.SetFocus(this);
-        };
+        button.Tapped += _ => action();
         return button;
     }
 
@@ -2145,7 +2259,9 @@ public abstract class TextBox<T> : BorderView<T>, IInputHandler, IFocusable, Ray
     }
 
     private bool ShouldShowTouchSelectionHandles() =>
-        Rayo.Core.Platform.PlatformDetector.IsMobile && IsFocused && HasSelection;
+        Rayo.Core.Platform.PlatformDetector.IsMobile &&
+        (IsFocused || _selectionContextMenu != null) &&
+        HasSelection;
 
     /// <summary>
     /// Starts dragging a touch selection handle when the pointer lands on it.
@@ -2153,12 +2269,45 @@ public abstract class TextBox<T> : BorderView<T>, IInputHandler, IFocusable, Ray
     protected bool TryStartTouchSelectionHandleDrag(Vector2 position) =>
         ShouldShowTouchSelectionHandles() && TryStartSelectionHandleDrag(position);
 
-    private void RenderTouchSelectionHandles(IRenderer renderer)
+    protected void RenderTouchSelectionHandles(IRenderer renderer)
     {
-        if (!ShouldShowTouchSelectionHandles()) return;
+        if (!ShouldShowTouchSelectionHandles())
+        {
+            RemoveTouchSelectionHandlesAdorner();
+            return;
+        }
+
+        EnsureTouchSelectionHandlesAdorner();
+        _selectionHandlesAdorner?.MarkNeedsPaint();
+    }
+
+    private void RenderTouchSelectionHandlesCore(IRenderer renderer)
+    {
+        if (!ShouldShowTouchSelectionHandles())
+            return;
 
         RenderSelectionHandle(renderer, GetSelectionHandlePosition(_selectionStart));
         RenderSelectionHandle(renderer, GetSelectionHandlePosition(_selectionEnd));
+    }
+
+    private void EnsureTouchSelectionHandlesAdorner()
+    {
+        if (!ShouldShowTouchSelectionHandles() || _selectionHandlesAdorner != null)
+            return;
+
+        _selectionHandlesAdorner = new SelectionHandlesAdorner(this);
+        OverlayManager.AddOverlay(_selectionHandlesAdorner, this);
+        OverlayManager.EventManager?.RegisterGlobalPointerHandler(_selectionHandlesAdorner);
+    }
+
+    private void RemoveTouchSelectionHandlesAdorner()
+    {
+        if (_selectionHandlesAdorner == null)
+            return;
+
+        OverlayManager.EventManager?.UnregisterGlobalPointerHandler(_selectionHandlesAdorner);
+        OverlayManager.RemoveOverlay(_selectionHandlesAdorner);
+        _selectionHandlesAdorner = null;
     }
 
     private void RenderSelectionHandle(IRenderer renderer, Vector2 position)
@@ -2172,13 +2321,13 @@ public abstract class TextBox<T> : BorderView<T>, IInputHandler, IFocusable, Ray
     {
         var startHandle = GetSelectionHandlePosition(_selectionStart) + new Vector2(0, SelectionHandleStemHeight);
         var endHandle = GetSelectionHandlePosition(_selectionEnd) + new Vector2(0, SelectionHandleStemHeight);
-        if (Vector2.Distance(position, startHandle) <= SelectionHandleRadius * 2)
+        if (Vector2.Distance(position, startHandle) <= SelectionHandleTouchRadius)
         {
             _activeSelectionHandle = SelectionHandle.Start;
             return true;
         }
 
-        if (Vector2.Distance(position, endHandle) <= SelectionHandleRadius * 2)
+        if (Vector2.Distance(position, endHandle) <= SelectionHandleTouchRadius)
         {
             _activeSelectionHandle = SelectionHandle.End;
             return true;
@@ -2200,7 +2349,7 @@ public abstract class TextBox<T> : BorderView<T>, IInputHandler, IFocusable, Ray
         MarkNeedsPaint();
     }
 
-    private Vector2 GetSelectionHandlePosition(int textPosition)
+    protected Vector2 GetSelectionHandlePosition(int textPosition)
     {
         float contentX = ComputedX + Padding.Left + BorderThickness.Left;
         float contentY = ComputedY + Padding.Top + BorderThickness.Top;
@@ -2210,7 +2359,9 @@ public abstract class TextBox<T> : BorderView<T>, IInputHandler, IFocusable, Ray
             float contentWidth = ComputedWidth - Padding.Horizontal - BorderThickness.Horizontal;
             float x = contentX + GetSingleLineAlignmentOffset(contentWidth) +
                 GetCursorOffsetWithinLine(textPosition) - _scrollOffsetX;
-            return new Vector2(x, contentY + ComputedHeight - Padding.Vertical - BorderThickness.Vertical);
+            return new Vector2(
+                x,
+                contentY + ComputedHeight - Padding.Vertical - BorderThickness.Vertical);
         }
 
         var line = GetLineInfoForCursorPosition(textPosition);
@@ -2218,6 +2369,61 @@ public abstract class TextBox<T> : BorderView<T>, IInputHandler, IFocusable, Ray
         float lineX = contentX + GetCursorOffsetWithinLine(textPosition) - _scrollOffsetX;
         float lineBottom = contentY + (line.LineIndex + 1) * lineHeight - _scrollOffsetY;
         return new Vector2(lineX, lineBottom);
+    }
+
+    private sealed class SelectionHandlesAdorner : VisualElement, IGlobalPointerHandler
+    {
+        private readonly TextBox<T> _owner;
+
+        public SelectionHandlesAdorner(TextBox<T> owner)
+        {
+            _owner = owner;
+            HorizontalAlignment = HorizontalAlignment.Stretch;
+            VerticalAlignment = VerticalAlignment.Stretch;
+            IsInputTransparent = true;
+        }
+
+        protected override void Measure(float availableWidth, float availableHeight)
+        {
+            DesiredWidth = availableWidth;
+            DesiredHeight = availableHeight;
+        }
+
+        public override void Render(IRenderer renderer)
+        {
+            _owner.RenderTouchSelectionHandlesCore(renderer);
+        }
+
+        public bool BlocksPointerInput => _owner._activeSelectionHandle != SelectionHandle.None;
+
+        public bool HandleGlobalPointer(Vector2 position, VisualElement? hitElement)
+        {
+            if (!_owner.TryStartTouchSelectionHandleDrag(position))
+                return false;
+
+            OverlayManager.EventManager?.SetFocus(_owner);
+            return true;
+        }
+
+        public bool HandleGlobalPointerMove(Vector2 position, VisualElement? hitElement)
+        {
+            if (_owner._activeSelectionHandle == SelectionHandle.None)
+                return false;
+
+            _owner.UpdateSelectionHandle(position);
+            return true;
+        }
+
+        public bool HandleGlobalPointerReleased(Vector2 position, VisualElement? hitElement)
+        {
+            if (_owner._activeSelectionHandle == SelectionHandle.None)
+                return false;
+
+            _owner.UpdateSelectionHandle(position);
+            _owner._activeSelectionHandle = SelectionHandle.None;
+            _owner.ShowSelectionContextMenu();
+            return true;
+        }
     }
 
     protected virtual int GetCursorPositionFromMouse(float mouseX, float mouseY)

@@ -92,6 +92,7 @@ public sealed class CodeEditor : Editor
         renderer.PopScissor();
 
         RenderLineNumbers(renderer, lineHeight, firstLine, lastLine, contentY);
+        RenderTouchSelectionHandles(renderer);
     }
 
     protected override Brush GetTextRenderBrush() => Color.Transparent;
