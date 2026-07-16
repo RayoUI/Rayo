@@ -12,6 +12,40 @@ namespace Rayo.Tests;
 public sealed class DrawerDragDropTests
 {
     [Fact]
+    public void Content_factory_creates_a_fresh_tree_when_drawer_reopens()
+    {
+        var tree = new UITree();
+        var drawer = new Drawer
+        {
+            AnimationDuration = 0
+        };
+        var createdContent = new List<VisualElement>();
+        drawer.ContentFactory(() =>
+        {
+            var content = new TestOverlay();
+            createdContent.Add(content);
+            return content;
+        });
+
+        tree.SetRoot(new VStack().Children(drawer));
+        tree.InitializeEventManager(null);
+        Drawer.UITree(tree);
+        tree.Update(320, 480);
+
+        drawer.Open();
+        FrameAnimationTicker.Tick(1);
+        drawer.Close();
+        FrameAnimationTicker.Tick(1);
+        drawer.Open();
+
+        Assert.Equal(2, createdContent.Count);
+        Assert.NotSame(createdContent[0], createdContent[1]);
+
+        drawer.Close();
+        FrameAnimationTicker.Tick(1);
+    }
+
+    [Fact]
     public void Native_overlay_blocking_tracks_the_complete_overlay_stack()
     {
         var tree = new UITree();

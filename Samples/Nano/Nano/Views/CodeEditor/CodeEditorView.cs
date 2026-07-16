@@ -1,16 +1,17 @@
+using Nano.Views.CodeEditor.Components;
 using Rayo;
 using Rayo.Controls;
 using Rayo.Core;
 using Rayo.Layout;
 using Rayo.Rendering;
 
-namespace Nano.Pages.CodeEditor;
+namespace Nano.Views.CodeEditor;
 
-public sealed class CodeEditorPage : Component
+public sealed class CodeEditorView : Component
 {
     public override VisualElement Build()
     {
-        return new CodeEditor(DefaultLua, new LuaCodeLanguage())
+        return new CodeEdit(DefaultLua, new LuaCodeLanguage())
                     .HorizontalAlignment(HorizontalAlignment.Stretch)
                     .VerticalAlignment(VerticalAlignment.Stretch);
     }

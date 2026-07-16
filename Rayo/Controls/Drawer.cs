@@ -30,6 +30,7 @@ public class Drawer : BorderCompositeView<Drawer>, IFrameAnimation
     private bool _isAnimating = false;
     private DrawerOverlay? _overlay;
     private VisualElement? _content;
+    private Func<VisualElement>? _contentFactory;
 
     private float _animationProgress = 0f;
     private float _animationStartValue = 0f;
@@ -225,7 +226,22 @@ public class Drawer : BorderCompositeView<Drawer>, IFrameAnimation
 
     public Drawer Content(VisualElement content)
     {
+        ArgumentNullException.ThrowIfNull(content);
+        _contentFactory = null;
         _content = content;
+        _overlay?.RefreshContent();
+        return this;
+    }
+
+    /// <summary>
+    /// Sets a factory that creates a fresh content tree for every drawer opening.
+    /// Use this for components whose lifecycle ends when the overlay is removed.
+    /// </summary>
+    public Drawer ContentFactory(Func<VisualElement> contentFactory)
+    {
+        ArgumentNullException.ThrowIfNull(contentFactory);
+        _content = null;
+        _contentFactory = contentFactory;
         _overlay?.RefreshContent();
         return this;
     }
@@ -430,7 +446,7 @@ public class Drawer : BorderCompositeView<Drawer>, IFrameAnimation
 
     internal float GetAnimationProgress() => _animationProgress;
     internal bool IsAnimating => _isAnimating;
-    internal VisualElement? GetContent() => _content;
+    internal VisualElement? CreateContent() => _contentFactory?.Invoke() ?? _content;
     internal CornerRadius GetDrawerCornerRadius()
     {
         if (CornerRadius.TopLeft > 0 || CornerRadius.TopRight > 0 ||
@@ -505,7 +521,7 @@ internal class DrawerOverlay : Rayo.Core.CompositeView<DrawerOverlay>,
             .HorizontalAlignment(HorizontalAlignment.Stretch)
             .VerticalAlignment(VerticalAlignment.Stretch);
 
-        var content = _drawer.GetContent();
+        var content = _drawer.CreateContent();
         if (content != null)
         {
             // On re-open, content may still have its previous container as parent.
@@ -535,7 +551,7 @@ internal class DrawerOverlay : Rayo.Core.CompositeView<DrawerOverlay>,
         }
 
         _contentContainer.ClearChildren();
-        var content = _drawer.GetContent();
+        var content = _drawer.CreateContent();
         if (content != null)
         {
             if (content.Parent is VStack oldContainer)

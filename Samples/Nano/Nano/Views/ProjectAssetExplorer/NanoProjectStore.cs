@@ -1,12 +1,12 @@
 using System.IO.Compression;
 using System.Text;
 
-namespace Nano.Assets;
+namespace Nano.Views.ProjectAssetStore;
 
 /// <summary>
 /// A small virtual file system persisted as a ZIP archive with Nano's .nn extension.
 /// </summary>
-public sealed class NanoProjectStore
+public sealed class NanoProjectStore : IProjectAssetStore
 {
     private static readonly HashSet<string> s_textExtensions = new(StringComparer.OrdinalIgnoreCase)
     {

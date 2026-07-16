@@ -4,7 +4,7 @@ using Rayo.Core.Input.Gestures;
 using Rayo.Rendering;
 using IRenderer = Rayo.Rendering.IRenderer;
 
-namespace Nano.Pages.SpriteEditor;
+namespace Nano.Views.SpriteEditor.Components;
 
 public sealed class SpriteFramePreview : View<SpriteFramePreview>, IPointerHandler, IGestureRecognizerHost
 {

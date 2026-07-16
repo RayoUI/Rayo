@@ -5,7 +5,7 @@ using Rayo.Core.Interfaces;
 using Rayo.Layout;
 using Rayo.Rendering;
 
-namespace Nano.Pages.SpriteEditor;
+namespace Nano.Views.SpriteEditor.Components;
 
 public sealed class SpriteFrameViewer : Component
 {

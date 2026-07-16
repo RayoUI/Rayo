@@ -4,14 +4,14 @@ using Rayo.Core.Platform;
 using Rayo.Rendering;
 using Rayo.Rendering.Brushes;
 
-namespace Nano.Pages.CodeEditor;
+namespace Nano.Views.CodeEditor.Components;
 
 /// <summary>
 /// Text editor specialized for source code. It reuses <see cref="Editor"/>'s
 /// input, selection and scrolling behavior while drawing a syntax layer and
 /// line-number gutter within the same viewport.
 /// </summary>
-public sealed class CodeEditor : Editor
+public sealed class CodeEdit : Editor
 {
     private const float GutterWidth = 42f;
     private const float ContentPadding = 10f;
@@ -47,7 +47,7 @@ public sealed class CodeEditor : Editor
         new("!", "!"), new("?", "?")
     ];
 
-    public CodeEditor(string text, ICodeLanguage language)
+    public CodeEdit(string text, ICodeLanguage language)
     {
         _language = language;
         Text = text;

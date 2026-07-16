@@ -1,0 +1,21 @@
+namespace Nano.Views.ProjectAssetStore;
+
+public interface IProjectAssetStore
+{
+    string ArchivePath { get; }
+
+    IReadOnlyList<VirtualAsset> GetChildren(string directory);
+
+    void CreateDirectory(string parentDirectory, string name);
+
+    string ReadText(string path);
+
+    void WriteText(string path, string text);
+
+    bool IsTextFile(string path);
+}
+
+public interface ITextAssetHost
+{
+    void OpenTextAsset(string path, string text, Action<string> save);
+}

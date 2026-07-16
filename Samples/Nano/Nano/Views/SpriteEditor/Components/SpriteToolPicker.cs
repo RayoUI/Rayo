@@ -4,7 +4,7 @@ using Rayo.Core;
 using Rayo.Layout;
 using Rayo.Rendering;
 
-namespace Nano.Pages.SpriteEditor;
+namespace Nano.Views.SpriteEditor.Components;
 
 public sealed class SpriteToolPicker(SpriteCanvas canvas, Action undo, Action redo) : Component
 {

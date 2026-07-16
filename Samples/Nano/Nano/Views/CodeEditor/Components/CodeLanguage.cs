@@ -1,8 +1,8 @@
 using Rayo.Rendering;
 
-namespace Nano.Pages.CodeEditor;
+namespace Nano.Views.CodeEditor.Components;
 
-/// <summary>Defines the tokenization rules used by a <see cref="CodeEditor"/>.</summary>
+/// <summary>Defines the tokenization rules used by a <see cref="CodeEdit"/>.</summary>
 public interface ICodeLanguage
 {
     IEnumerable<CodeToken> Tokenize(string line);

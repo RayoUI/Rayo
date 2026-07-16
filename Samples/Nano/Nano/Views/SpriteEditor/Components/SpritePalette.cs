@@ -7,7 +7,7 @@ using Rayo.Layout;
 using Rayo.Rendering;
 using IRenderer = Rayo.Rendering.IRenderer;
 
-namespace Nano.Pages.SpriteEditor;
+namespace Nano.Views.SpriteEditor.Components;
 
 public sealed class SpritePalette : Component
 {
