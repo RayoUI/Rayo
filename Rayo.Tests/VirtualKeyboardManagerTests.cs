@@ -41,21 +41,39 @@ public sealed class VirtualKeyboardManagerTests
         }
     }
 
+    [Fact]
+    public void Show_forwards_only_the_current_editors_accessory_keys()
+    {
+        var service = new TestVirtualKeyboardService();
+        var firstKeys = new[] { new VirtualKeyboardAccessoryKey("Tab", "\t") };
+        VirtualKeyboardManager.SetService(service);
+        try
+        {
+            VirtualKeyboardManager.Show(firstKeys);
+            Assert.Same(firstKeys, service.ShownKeys);
+
+            VirtualKeyboardManager.Show();
+            Assert.Empty(service.ShownKeys);
+        }
+        finally
+        {
+            VirtualKeyboardManager.ClearService(service);
+        }
+    }
+
     private sealed class TestVirtualKeyboardService : IVirtualKeyboardService, IDisposable
     {
         public bool IsDisposed { get; private set; }
         public int PauseCount { get; private set; }
         public IVirtualKeyboardOptions? RestoredOptions { get; private set; }
+        public IReadOnlyList<VirtualKeyboardAccessoryKey> ShownKeys { get; private set; } = [];
 
         public void Show(IReadOnlyList<VirtualKeyboardAccessoryKey> accessoryKeys)
         {
+            ShownKeys = accessoryKeys;
         }
 
         public void Hide()
-        {
-        }
-
-        public void SetAccessoryKeys(IReadOnlyList<VirtualKeyboardAccessoryKey> accessoryKeys)
         {
         }
 

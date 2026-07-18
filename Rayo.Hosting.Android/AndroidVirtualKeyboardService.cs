@@ -9,6 +9,7 @@ public sealed class AndroidVirtualKeyboardService : Rayo.Core.Platform.IVirtualK
     private global::Android.Views.ViewTreeObserver? _viewTreeObserver;
     private Rayo.Core.UITree? _overlayTree;
     private IReadOnlyList<Rayo.Core.Platform.VirtualKeyboardAccessoryKey> _accessoryKeys = [];
+    private long _inputSession;
     private bool _nativeOverlaysBlocked;
     private bool _restoreAfterResume;
     private bool _disposed;
@@ -42,27 +43,27 @@ public sealed class AndroidVirtualKeyboardService : Rayo.Core.Platform.IVirtualK
             return;
         }
 
+        var session = ++_inputSession;
+        _accessoryKeys = accessoryKeys;
+        _restoreAfterResume = false;
         var imm = _context.GetSystemService(global::Android.Content.Context.InputMethodService)
             as global::Android.Views.InputMethods.InputMethodManager;
         if (imm == null)
         {
+            PostRemoveAccessoryBar(session);
             return;
         }
 
         _view.Post(() =>
         {
-            if (_disposed)
+            if (_disposed || session != _inputSession)
             {
                 return;
             }
 
             _view.RequestFocus();
             imm.ShowSoftInput(_view, global::Android.Views.InputMethods.ShowFlags.Implicit);
-            if (accessoryKeys.Count > 0)
-            {
-                _accessoryKeys = accessoryKeys;
-            }
-            ShowAccessoryBar(_accessoryKeys);
+            ShowAccessoryBar(accessoryKeys, session);
         });
     }
 
@@ -73,41 +74,26 @@ public sealed class AndroidVirtualKeyboardService : Rayo.Core.Platform.IVirtualK
             return;
         }
 
+        var session = ++_inputSession;
+        _accessoryKeys = [];
+        _restoreAfterResume = false;
         var imm = _context.GetSystemService(global::Android.Content.Context.InputMethodService)
             as global::Android.Views.InputMethods.InputMethodManager;
         if (imm == null)
         {
+            PostRemoveAccessoryBar(session);
             return;
         }
 
         _view.Post(() =>
         {
-            if (_disposed)
+            if (_disposed || session != _inputSession)
             {
                 return;
             }
 
+            RemoveAccessoryBar();
             imm.HideSoftInputFromWindow(_view.WindowToken, global::Android.Views.InputMethods.HideSoftInputFlags.None);
-            UpdateAccessoryPosition();
-            _view.PostDelayed(UpdateAccessoryPosition, 100);
-            _view.PostDelayed(UpdateAccessoryPosition, 250);
-        });
-    }
-
-    public void SetAccessoryKeys(IReadOnlyList<Rayo.Core.Platform.VirtualKeyboardAccessoryKey> accessoryKeys)
-    {
-        if (_disposed)
-        {
-            return;
-        }
-
-        _accessoryKeys = accessoryKeys;
-        _view.Post(() =>
-        {
-            if (!_disposed)
-            {
-                ShowAccessoryBar(_accessoryKeys);
-            }
         });
     }
 
@@ -128,14 +114,21 @@ public sealed class AndroidVirtualKeyboardService : Rayo.Core.Platform.IVirtualK
             return;
         }
 
-        var keys = options.KeyboardAccessoryKeys.Count > 0
-            ? options.KeyboardAccessoryKeys
-            : _accessoryKeys;
-        _view.Post(() => TryRestoreKeyboard(keys));
+        var keys = options.KeyboardAccessoryKeys;
+        var session = ++_inputSession;
+        _accessoryKeys = keys;
+        _view.Post(() => TryRestoreKeyboard(keys, session));
     }
 
-    private void ShowAccessoryBar(IReadOnlyList<Rayo.Core.Platform.VirtualKeyboardAccessoryKey> keys)
+    private void ShowAccessoryBar(
+        IReadOnlyList<Rayo.Core.Platform.VirtualKeyboardAccessoryKey> keys,
+        long session)
     {
+        if (_disposed || session != _inputSession)
+        {
+            return;
+        }
+
         RemoveAccessoryBar();
         if (keys.Count == 0 || _view.RootView is not global::Android.Views.ViewGroup root)
         {
@@ -201,9 +194,9 @@ public sealed class AndroidVirtualKeyboardService : Rayo.Core.Platform.IVirtualK
             observer.GlobalLayout += OnGlobalLayout;
         }
         UpdateAccessoryPosition();
-        _view.PostDelayed(UpdateAccessoryPosition, 100);
-        _view.PostDelayed(UpdateAccessoryPosition, 250);
-        _view.PostDelayed(UpdateAccessoryPosition, 500);
+        ScheduleAccessoryPositionUpdate(session, 100);
+        ScheduleAccessoryPositionUpdate(session, 250);
+        ScheduleAccessoryPositionUpdate(session, 500);
     }
 
     private void RemoveAccessoryBar()
@@ -222,6 +215,17 @@ public sealed class AndroidVirtualKeyboardService : Rayo.Core.Platform.IVirtualK
 
         _accessoryView = null;
         _accessoryRoot = null;
+    }
+
+    private void PostRemoveAccessoryBar(long session)
+    {
+        _view.Post(() =>
+        {
+            if (!_disposed && session == _inputSession)
+            {
+                RemoveAccessoryBar();
+            }
+        });
     }
 
     private void OnGlobalLayout(object? sender, EventArgs args) => UpdateAccessoryPosition();
@@ -290,6 +294,17 @@ public sealed class AndroidVirtualKeyboardService : Rayo.Core.Platform.IVirtualK
         }
     }
 
+    private void ScheduleAccessoryPositionUpdate(long session, long delayMilliseconds)
+    {
+        _view.PostDelayed(() =>
+        {
+            if (!_disposed && session == _inputSession)
+            {
+                UpdateAccessoryPosition();
+            }
+        }, delayMilliseconds);
+    }
+
     private bool IsKeyboardVisible()
     {
         if (_view.RootView is not { Height: > 0 } root)
@@ -299,9 +314,11 @@ public sealed class AndroidVirtualKeyboardService : Rayo.Core.Platform.IVirtualK
         return root.Height - visibleFrame.Bottom > Dp(100);
     }
 
-    private void TryRestoreKeyboard(IReadOnlyList<Rayo.Core.Platform.VirtualKeyboardAccessoryKey> keys)
+    private void TryRestoreKeyboard(
+        IReadOnlyList<Rayo.Core.Platform.VirtualKeyboardAccessoryKey> keys,
+        long session)
     {
-        if (_disposed || !_restoreAfterResume || !_view.HasWindowFocus)
+        if (_disposed || session != _inputSession || !_restoreAfterResume || !_view.HasWindowFocus)
             return;
 
         var imm = _context.GetSystemService(global::Android.Content.Context.InputMethodService)
@@ -314,16 +331,18 @@ public sealed class AndroidVirtualKeyboardService : Rayo.Core.Platform.IVirtualK
         _view.RequestFocus();
         imm.RestartInput(_view);
         imm.ShowSoftInput(_view, global::Android.Views.InputMethods.ShowFlags.Implicit);
-        ShowAccessoryBar(_accessoryKeys);
+        ShowAccessoryBar(keys, session);
 
         // The Activity can report focus slightly before the IME accepts requests.
-        _view.PostDelayed(() => RetryShowKeyboard(imm), 100);
-        _view.PostDelayed(() => RetryShowKeyboard(imm), 300);
+        _view.PostDelayed(() => RetryShowKeyboard(imm, session), 100);
+        _view.PostDelayed(() => RetryShowKeyboard(imm, session), 300);
     }
 
-    private void RetryShowKeyboard(global::Android.Views.InputMethods.InputMethodManager imm)
+    private void RetryShowKeyboard(
+        global::Android.Views.InputMethods.InputMethodManager imm,
+        long session)
     {
-        if (!_disposed && _view.HasWindowFocus && !IsKeyboardVisible())
+        if (!_disposed && session == _inputSession && _view.HasWindowFocus && !IsKeyboardVisible())
         {
             _view.RequestFocus();
             imm.RestartInput(_view);

@@ -6,6 +6,7 @@ using Nano.Views.ProjectAssetStore;
 using Nano.ViewModels;
 using Rayo.Controls;
 using Rayo.Core;
+using Rayo.Core.Platform;
 using Rayo.Layout;
 using Rayo.Rendering;
 
@@ -71,6 +72,8 @@ public sealed class MainView : ViewBase<MainViewModel>
         if (_navigationHost is null)
             return;
 
+        OverlayManager.EventManager?.SetFocus(null);
+        VirtualKeyboardManager.Hide();
         _homePage.SaveAllTextAssets();
         var page = new GamePage(ViewModel.ProjectStore, PopPage);
         _navigation.Push(page);

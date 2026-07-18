@@ -4,7 +4,6 @@ using Nano.ViewModels;
 using Rayo;
 using Rayo.Controls;
 using Rayo.Core;
-using Rayo.Core.Platform;
 using Rayo.Rendering;
 using Nano.Views.CodeEditor.Components;
 
@@ -41,8 +40,6 @@ public class HomePage : ViewBase<HomeViewModel>, ITextAssetHost, ISpriteAssetHos
         }
 
         _tabs.TabCloseRequested += CloseTab;
-        _tabs.TabChanged += UpdateCodeEditorToolbar;
-        UpdateCodeEditorToolbar(_tabs.SelectedIndex);
         return _tabs;
     }
 
@@ -100,14 +97,6 @@ public class HomePage : ViewBase<HomeViewModel>, ITextAssetHost, ISpriteAssetHos
         }
 
         _tabs.RemoveTab(index);
-    }
-
-    private void UpdateCodeEditorToolbar(int index)
-    {
-        var content = _tabs?.SelectedTab?.Content;
-        var isCodeEditorTab = content is CodeEdit;
-        VirtualKeyboardManager.SetAccessoryKeys(
-            isCodeEditorTab ? CodeEdit.ProgrammingAccessoryKeys : []);
     }
 
     private void OpenSpriteEditor(string path, SpriteAssetDocument document, Action<string> save)
