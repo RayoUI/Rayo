@@ -8,6 +8,19 @@ public interface ICodeLanguage
     IEnumerable<CodeToken> Tokenize(string line);
 }
 
+/// <summary>Optional language capability that supplies Tab-expandable code templates.</summary>
+public interface ICodeSnippetProvider
+{
+    IReadOnlyList<CodeSnippet> Snippets { get; }
+}
+
+/// <summary>
+/// A snippet template using VS Code-style placeholders such as
+/// <c>${1:condition}</c>, <c>${2:body}</c>, and the final caret marker <c>${0}</c>.
+/// Tabs in the template are converted to the editor's current indentation style.
+/// </summary>
+public readonly record struct CodeSnippet(string Trigger, string Template);
+
 public readonly record struct CodeToken(string Text, CodeTokenKind Kind);
 
 public enum CodeTokenKind
@@ -21,7 +34,7 @@ public enum CodeTokenKind
 }
 
 /// <summary>Initial Lua syntax definition. Add another <see cref="ICodeLanguage"/> for a new language.</summary>
-public sealed class LuaCodeLanguage : ICodeLanguage
+public sealed class LuaCodeLanguage : ICodeLanguage, ICodeSnippetProvider
 {
     private static readonly HashSet<string> s_keywords =
     [
@@ -31,6 +44,19 @@ public sealed class LuaCodeLanguage : ICodeLanguage
 
     private static readonly HashSet<string> s_builtins =
     ["assert", "ipairs", "pairs", "print", "require", "table", "tonumber", "tostring", "type"];
+
+    public IReadOnlyList<CodeSnippet> Snippets { get; } =
+    [
+        new("if", "if ${1:A} then\n\t${2:B}\nend${0}"),
+        new("ifelse", "if ${1:A} then\n\t${2:B}\nelse\n\t${3:C}\nend${0}"),
+        new("elseif", "elseif ${1:A} then\n\t${2:B}${0}"),
+        new("while", "while ${1:A} do\n\t${2:B}\nend${0}"),
+        new("for", "for ${1:A} do\n\t${2:B}\nend${0}"),
+        new("function", "function ${1:name}(${2:arguments})\n\t${3:B}\nend${0}"),
+        new("local function", "local function ${1:name}(${2:arguments})\n\t${3:B}\nend${0}"),
+        new("repeat", "repeat\n\t${1:B}\nuntil ${2:A}${0}"),
+        new("do", "do\n\t${1:B}\nend${0}")
+    ];
 
     public IEnumerable<CodeToken> Tokenize(string line)
     {

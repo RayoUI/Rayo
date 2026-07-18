@@ -22,6 +22,8 @@ public sealed class CodeEdit : Editor
     private readonly ICodeLanguage _language;
     private readonly Dictionary<int, CodeToken[]> _tokenCache = [];
     private string[] _lines = [string.Empty];
+    private string _trackedText = string.Empty;
+    private SnippetSession? _snippetSession;
     private bool _codeCacheDirty = true;
 
     /// <summary>
@@ -63,7 +65,8 @@ public sealed class CodeEdit : Editor
         BorderThickness = 0;
         DoubleTapSelectionUnit = TextSelectionUnit.WordThenLine;
         KeyboardAccessoryKeys = ProgrammingAccessoryKeys;
-        TextChanged += _ => InvalidateCodeCache();
+        _trackedText = Text;
+        TextChanged += OnEditorTextChanged;
         InvalidateCodeCache();
     }
 
@@ -185,6 +188,8 @@ public sealed class CodeEdit : Editor
                     InsertSmartNewLine();
                     return true;
                 case InputKey.Tab:
+                    if (HandleSnippetTab(args.IsShiftPressed))
+                        return true;
                     ChangeIndentation(args.IsShiftPressed);
                     return true;
             }
@@ -481,6 +486,219 @@ public sealed class CodeEdit : Editor
         _codeCacheDirty = true;
         _tokenCache.Clear();
     }
+
+    private void OnEditorTextChanged(string text)
+    {
+        UpdateSnippetSession(_trackedText, text);
+        _trackedText = text;
+        InvalidateCodeCache();
+    }
+
+    private bool HandleSnippetTab(bool backwards)
+    {
+        if (_snippetSession is not null)
+        {
+            var current = _snippetSession.Current;
+            if (_cursorPosition >= current.Start && _cursorPosition <= current.End)
+            {
+                if (backwards)
+                {
+                    if (_snippetSession.MovePrevious())
+                        SelectSnippetPlaceholder(_snippetSession.Current);
+                    return true;
+                }
+
+                if (_snippetSession.MoveNext())
+                {
+                    SelectSnippetPlaceholder(_snippetSession.Current);
+                }
+                else
+                {
+                    var completionCaret = _snippetSession.FinalCaret;
+                    _snippetSession = null;
+                    MoveCaret(completionCaret);
+                }
+                return true;
+            }
+
+            _snippetSession = null;
+        }
+
+        if (backwards || HasSelection || _language is not ICodeSnippetProvider provider)
+            return false;
+
+        var lineStart = Text.LastIndexOf('\n', Math.Max(0, _cursorPosition - 1)) + 1;
+        var linePrefix = Text[lineStart.._cursorPosition];
+        var indentationLength = 0;
+        while (indentationLength < linePrefix.Length && linePrefix[indentationLength] is ' ' or '\t')
+            indentationLength++;
+        var triggerText = linePrefix[indentationLength..];
+        CodeSnippet? snippet = null;
+        foreach (var candidate in provider.Snippets)
+        {
+            if (string.Equals(candidate.Trigger, triggerText, StringComparison.Ordinal) &&
+                (snippet is null || candidate.Trigger.Length > snippet.Value.Trigger.Length))
+                snippet = candidate;
+        }
+        if (snippet is null)
+            return false;
+
+        var indentation = linePrefix[..indentationLength];
+        var indentUnit = indentation.Contains('\t') ? "\t" : SoftTab;
+        var expansion = ExpandSnippet(snippet.Value.Template, indentation, indentUnit);
+        var triggerStart = lineStart + indentationLength;
+        var updated = Text.Remove(triggerStart, _cursorPosition - triggerStart).Insert(triggerStart, expansion.Text);
+        var placeholders = expansion.Placeholders
+            .Select(placeholder => new SnippetPlaceholder(
+                placeholder.Number,
+                triggerStart + placeholder.Start,
+                triggerStart + placeholder.End))
+            .OrderBy(placeholder => placeholder.Number)
+            .ToList();
+        var finalCaret = triggerStart + expansion.FinalCaret;
+
+        if (placeholders.Count == 0)
+        {
+            CommitEdit(updated, finalCaret);
+            return true;
+        }
+
+        var first = placeholders[0];
+        CommitEdit(updated, first.End, first.Start, first.End);
+        _snippetSession = new SnippetSession(placeholders, finalCaret);
+        return true;
+    }
+
+    private void SelectSnippetPlaceholder(SnippetPlaceholder placeholder)
+    {
+        _selectionStart = placeholder.Start;
+        _selectionEnd = placeholder.End;
+        _cursorPosition = placeholder.End;
+        ResetCursorBlink();
+        EnsureCursorVisible();
+        MarkNeedsPaint();
+    }
+
+    private void UpdateSnippetSession(string previousText, string currentText)
+    {
+        if (_snippetSession is null || string.Equals(previousText, currentText, StringComparison.Ordinal))
+            return;
+
+        var prefix = 0;
+        var sharedLength = Math.Min(previousText.Length, currentText.Length);
+        while (prefix < sharedLength && previousText[prefix] == currentText[prefix])
+            prefix++;
+
+        var suffix = 0;
+        while (suffix < previousText.Length - prefix && suffix < currentText.Length - prefix &&
+               previousText[previousText.Length - suffix - 1] == currentText[currentText.Length - suffix - 1])
+            suffix++;
+
+        var oldEnd = previousText.Length - suffix;
+        var newEnd = currentText.Length - suffix;
+        var delta = newEnd - oldEnd;
+        var active = _snippetSession.Current;
+        if (prefix < active.Start || oldEnd > active.End)
+        {
+            _snippetSession = null;
+            return;
+        }
+
+        active.End += delta;
+        for (var index = _snippetSession.CurrentIndex + 1; index < _snippetSession.Placeholders.Count; index++)
+        {
+            _snippetSession.Placeholders[index].Start += delta;
+            _snippetSession.Placeholders[index].End += delta;
+        }
+        _snippetSession.FinalCaret += delta;
+    }
+
+    private static SnippetExpansion ExpandSnippet(string template, string indentation, string indentUnit)
+    {
+        var text = new System.Text.StringBuilder(template.Length + indentation.Length * 4);
+        var placeholders = new List<SnippetPlaceholder>();
+        var finalCaret = -1;
+
+        for (var index = 0; index < template.Length;)
+        {
+            if (template[index] == '\n')
+            {
+                text.Append('\n').Append(indentation);
+                index++;
+                continue;
+            }
+            if (template[index] == '\t')
+            {
+                text.Append(indentUnit);
+                index++;
+                continue;
+            }
+            if (template[index] == '$' && index + 2 < template.Length && template[index + 1] == '{')
+            {
+                var close = template.IndexOf('}', index + 2);
+                if (close > index)
+                {
+                    var descriptor = template[(index + 2)..close];
+                    var separator = descriptor.IndexOf(':');
+                    var numberText = separator < 0 ? descriptor : descriptor[..separator];
+                    if (int.TryParse(numberText, out var number))
+                    {
+                        var defaultText = separator < 0 ? string.Empty : descriptor[(separator + 1)..];
+                        var start = text.Length;
+                        text.Append(defaultText);
+                        if (number == 0)
+                            finalCaret = start;
+                        else
+                            placeholders.Add(new SnippetPlaceholder(number, start, text.Length));
+                        index = close + 1;
+                        continue;
+                    }
+                }
+            }
+
+            text.Append(template[index++]);
+        }
+
+        if (finalCaret < 0)
+            finalCaret = text.Length;
+        return new SnippetExpansion(text.ToString(), placeholders, finalCaret);
+    }
+
+    private sealed class SnippetSession(List<SnippetPlaceholder> placeholders, int finalCaret)
+    {
+        public List<SnippetPlaceholder> Placeholders { get; } = placeholders;
+        public int CurrentIndex { get; private set; }
+        public int FinalCaret { get; set; } = finalCaret;
+        public SnippetPlaceholder Current => Placeholders[CurrentIndex];
+
+        public bool MoveNext()
+        {
+            if (CurrentIndex + 1 >= Placeholders.Count)
+                return false;
+            CurrentIndex++;
+            return true;
+        }
+
+        public bool MovePrevious()
+        {
+            if (CurrentIndex == 0)
+                return false;
+            CurrentIndex--;
+            return true;
+        }
+    }
+
+    private sealed class SnippetPlaceholder(int number, int start, int end)
+    {
+        public int Number { get; } = number;
+        public int Start { get; set; } = start;
+        public int End { get; set; } = end;
+    }
+
+    private readonly record struct SnippetExpansion(
+        string Text,
+        List<SnippetPlaceholder> Placeholders,
+        int FinalCaret);
 
     private void EnsureLineCache()
     {

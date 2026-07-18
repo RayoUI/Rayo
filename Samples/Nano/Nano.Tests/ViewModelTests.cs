@@ -86,6 +86,33 @@ public sealed class ViewModelTests
     }
 
     [Fact]
+    public void Code_editor_tab_expands_lua_snippet_and_visits_each_placeholder()
+    {
+        var editor = new CodeEdit("if", new LuaCodeLanguage());
+
+        editor.HandleInput(KeyDown(InputKey.Tab));
+        Assert.Equal("if A then\n    B\nend", editor.Text);
+
+        editor.HandleInput(TextInput('x'));
+        editor.HandleInput(KeyDown(InputKey.Tab));
+        editor.HandleInput(TextInput('y'));
+        editor.HandleInput(KeyDown(InputKey.Tab));
+        editor.HandleInput(TextInput('!'));
+
+        Assert.Equal("if x then\n    y\nend!", editor.Text);
+    }
+
+    [Fact]
+    public void Code_editor_snippets_are_language_extensible_and_keep_line_indentation()
+    {
+        var editor = new CodeEdit("    when", new TestSnippetLanguage());
+
+        editor.HandleInput(KeyDown(InputKey.Tab));
+
+        Assert.Equal("    when A\n        B", editor.Text);
+    }
+
+    [Fact]
     public void Navigation_stack_pushes_game_page_and_restores_root()
     {
         var navigation = new NanoNavigationStack();
@@ -703,4 +730,15 @@ public sealed class ViewModelTests
         KeyCode = key,
         IsShiftPressed = shift
     };
+
+    private sealed class TestSnippetLanguage : ICodeLanguage, ICodeSnippetProvider
+    {
+        public IReadOnlyList<CodeSnippet> Snippets { get; } =
+        [new("when", "when ${1:A}\n\t${2:B}${0}")];
+
+        public IEnumerable<CodeToken> Tokenize(string line)
+        {
+            yield return new CodeToken(line, CodeTokenKind.Plain);
+        }
+    }
 }
