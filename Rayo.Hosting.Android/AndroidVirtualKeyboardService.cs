@@ -10,6 +10,7 @@ public sealed class AndroidVirtualKeyboardService : Rayo.Core.Platform.IVirtualK
     private Rayo.Core.UITree? _overlayTree;
     private IReadOnlyList<Rayo.Core.Platform.VirtualKeyboardAccessoryKey> _accessoryKeys = [];
     private bool _nativeOverlaysBlocked;
+    private bool _restoreAfterResume;
     private bool _disposed;
 
     public AndroidVirtualKeyboardService(global::Android.Views.View view, global::Android.Content.Context context)
@@ -108,6 +109,29 @@ public sealed class AndroidVirtualKeyboardService : Rayo.Core.Platform.IVirtualK
                 ShowAccessoryBar(_accessoryKeys);
             }
         });
+    }
+
+    public void NotifyAppPaused()
+    {
+        if (_disposed)
+            return;
+        _restoreAfterResume |= IsKeyboardVisible();
+    }
+
+    public void RestoreAfterResume(Rayo.Core.Platform.IVirtualKeyboardOptions? options)
+    {
+        if (_disposed || !_restoreAfterResume)
+            return;
+        if (options is not { ShouldShowVirtualKeyboard: true })
+        {
+            _restoreAfterResume = false;
+            return;
+        }
+
+        var keys = options.KeyboardAccessoryKeys.Count > 0
+            ? options.KeyboardAccessoryKeys
+            : _accessoryKeys;
+        _view.Post(() => TryRestoreKeyboard(keys));
     }
 
     private void ShowAccessoryBar(IReadOnlyList<Rayo.Core.Platform.VirtualKeyboardAccessoryKey> keys)
@@ -263,6 +287,47 @@ public sealed class AndroidVirtualKeyboardService : Rayo.Core.Platform.IVirtualK
         {
             parameters.BottomMargin = keyboardInset;
             _accessoryView.LayoutParameters = parameters;
+        }
+    }
+
+    private bool IsKeyboardVisible()
+    {
+        if (_view.RootView is not { Height: > 0 } root)
+            return false;
+        var visibleFrame = new global::Android.Graphics.Rect();
+        _view.GetWindowVisibleDisplayFrame(visibleFrame);
+        return root.Height - visibleFrame.Bottom > Dp(100);
+    }
+
+    private void TryRestoreKeyboard(IReadOnlyList<Rayo.Core.Platform.VirtualKeyboardAccessoryKey> keys)
+    {
+        if (_disposed || !_restoreAfterResume || !_view.HasWindowFocus)
+            return;
+
+        var imm = _context.GetSystemService(global::Android.Content.Context.InputMethodService)
+            as global::Android.Views.InputMethods.InputMethodManager;
+        if (imm == null)
+            return;
+
+        _restoreAfterResume = false;
+        _accessoryKeys = keys;
+        _view.RequestFocus();
+        imm.RestartInput(_view);
+        imm.ShowSoftInput(_view, global::Android.Views.InputMethods.ShowFlags.Implicit);
+        ShowAccessoryBar(_accessoryKeys);
+
+        // The Activity can report focus slightly before the IME accepts requests.
+        _view.PostDelayed(() => RetryShowKeyboard(imm), 100);
+        _view.PostDelayed(() => RetryShowKeyboard(imm), 300);
+    }
+
+    private void RetryShowKeyboard(global::Android.Views.InputMethods.InputMethodManager imm)
+    {
+        if (!_disposed && _view.HasWindowFocus && !IsKeyboardVisible())
+        {
+            _view.RequestFocus();
+            imm.RestartInput(_view);
+            imm.ShowSoftInput(_view, global::Android.Views.InputMethods.ShowFlags.Implicit);
         }
     }
 

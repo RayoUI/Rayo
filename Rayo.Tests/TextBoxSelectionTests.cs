@@ -203,6 +203,5 @@ public sealed class TextBoxSelectionTests
         public TextSelectionContextMenuContext SelectionMenuContext() =>
             CreateSelectionContextMenuContext();
 
-        public bool ShouldShowVirtualKeyboard => CanShowVirtualKeyboard;
     }
 }

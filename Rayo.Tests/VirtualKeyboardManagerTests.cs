@@ -21,9 +21,31 @@ public sealed class VirtualKeyboardManagerTests
         Assert.True(second.IsDisposed);
     }
 
+    [Fact]
+    public void Pause_and_resume_are_forwarded_with_focused_keyboard_options()
+    {
+        var service = new TestVirtualKeyboardService();
+        var options = new TestKeyboardOptions();
+        VirtualKeyboardManager.SetService(service);
+        try
+        {
+            VirtualKeyboardManager.NotifyAppPaused();
+            VirtualKeyboardManager.RestoreAfterResume(options);
+
+            Assert.Equal(1, service.PauseCount);
+            Assert.Same(options, service.RestoredOptions);
+        }
+        finally
+        {
+            VirtualKeyboardManager.ClearService(service);
+        }
+    }
+
     private sealed class TestVirtualKeyboardService : IVirtualKeyboardService, IDisposable
     {
         public bool IsDisposed { get; private set; }
+        public int PauseCount { get; private set; }
+        public IVirtualKeyboardOptions? RestoredOptions { get; private set; }
 
         public void Show(IReadOnlyList<VirtualKeyboardAccessoryKey> accessoryKeys)
         {
@@ -37,9 +59,20 @@ public sealed class VirtualKeyboardManagerTests
         {
         }
 
+        public void NotifyAppPaused() => PauseCount++;
+
+        public void RestoreAfterResume(IVirtualKeyboardOptions? options) => RestoredOptions = options;
+
         public void Dispose()
         {
             IsDisposed = true;
         }
+    }
+
+    private sealed class TestKeyboardOptions : IVirtualKeyboardOptions
+    {
+        public VirtualKeyboardType KeyboardType => VirtualKeyboardType.Default;
+        public bool IsMultiline => true;
+        public IReadOnlyList<VirtualKeyboardAccessoryKey> KeyboardAccessoryKeys => [];
     }
 }

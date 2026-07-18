@@ -261,6 +261,24 @@ public class RayoGLSurfaceView : GLSurfaceView
         _renderer.NotifyPaused();
     }
 
+    internal void NotifyActivityPaused()
+    {
+        VirtualKeyboardManager.NotifyAppPaused();
+        NotifyPaused();
+    }
+
+    internal void NotifyWindowFocusLost()
+    {
+        VirtualKeyboardManager.NotifyAppPaused();
+        NotifyPaused();
+    }
+
+    internal void RestoreVirtualKeyboard()
+    {
+        var options = OverlayManager.EventManager?.FocusedElement as IVirtualKeyboardOptions;
+        VirtualKeyboardManager.RestoreAfterResume(options);
+    }
+
     protected override void OnAttachedToWindow()
     {
         base.OnAttachedToWindow();

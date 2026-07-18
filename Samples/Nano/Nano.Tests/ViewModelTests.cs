@@ -113,6 +113,16 @@ public sealed class ViewModelTests
     }
 
     [Fact]
+    public void Code_editor_only_requests_keyboard_restoration_while_editable()
+    {
+        var editor = new CodeEdit(string.Empty, new LuaCodeLanguage());
+
+        Assert.True(editor.ShouldShowVirtualKeyboard);
+        editor.IsReadOnly = true;
+        Assert.False(editor.ShouldShowVirtualKeyboard);
+    }
+
+    [Fact]
     public void Navigation_stack_pushes_game_page_and_restores_root()
     {
         var navigation = new NanoNavigationStack();

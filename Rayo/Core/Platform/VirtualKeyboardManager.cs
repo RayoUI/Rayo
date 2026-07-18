@@ -5,6 +5,8 @@ public interface IVirtualKeyboardService
     void Show(IReadOnlyList<VirtualKeyboardAccessoryKey> accessoryKeys);
     void Hide();
     void SetAccessoryKeys(IReadOnlyList<VirtualKeyboardAccessoryKey> accessoryKeys);
+    void NotifyAppPaused() { }
+    void RestoreAfterResume(IVirtualKeyboardOptions? options) { }
 }
 
 public static class VirtualKeyboardManager
@@ -53,4 +55,9 @@ public static class VirtualKeyboardManager
     {
         _service?.Hide();
     }
+
+    public static void NotifyAppPaused() => _service?.NotifyAppPaused();
+
+    public static void RestoreAfterResume(IVirtualKeyboardOptions? options) =>
+        _service?.RestoreAfterResume(options);
 }

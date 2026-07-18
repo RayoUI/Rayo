@@ -115,6 +115,7 @@ public abstract class AndroidPlatformHost : Activity, IPlatformHost
         ApplyHostThemePreferences();
         _glSurfaceView?.OnResume();
         _glSurfaceView?.ScheduleResumeRender();
+        _glSurfaceView?.RestoreVirtualKeyboard();
     }
 
     public override void OnConfigurationChanged(Configuration newConfig)
@@ -129,6 +130,7 @@ public abstract class AndroidPlatformHost : Activity, IPlatformHost
     {
         base.OnPostResume();
         _glSurfaceView?.ScheduleResumeRender();
+        _glSurfaceView?.RestoreVirtualKeyboard();
     }
 
     public override void OnWindowFocusChanged(bool hasFocus)
@@ -138,16 +140,17 @@ public abstract class AndroidPlatformHost : Activity, IPlatformHost
         if (hasFocus)
         {
             _glSurfaceView?.ScheduleResumeRender();
+            _glSurfaceView?.RestoreVirtualKeyboard();
         }
         else
         {
-            _glSurfaceView?.NotifyPaused();
+            _glSurfaceView?.NotifyWindowFocusLost();
         }
     }
 
     protected override void OnPause()
     {
-        _glSurfaceView?.NotifyPaused();
+        _glSurfaceView?.NotifyActivityPaused();
         base.OnPause();
         _glSurfaceView?.OnPause();
     }

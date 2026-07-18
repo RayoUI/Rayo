@@ -77,6 +77,8 @@ public abstract class TextBox<T> : BorderView<T>, IInputHandler, IFocusable, Ray
     [NotFluent]
     public IReadOnlyList<Rayo.Core.Platform.VirtualKeyboardAccessoryKey> KeyboardAccessoryKeys { get; set; } = [];
 
+    public bool ShouldShowVirtualKeyboard => CanShowVirtualKeyboard;
+
     // =========================================================================
     // MANUAL PROPERTIES (Complex state with validation and side effects)
     // =========================================================================
