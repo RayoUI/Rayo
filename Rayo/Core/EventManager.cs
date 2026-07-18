@@ -1783,15 +1783,19 @@ public class EventManager
         public VisualElement? ScrollCaptureTarget { get; set; }
         public bool IsScrollCaptured { get; set; }
         public VisualElement? FocusedElementAtDown { get; set; }
+        public VisualElement? FocusTargetAtDown { get; set; }
         public bool ClearFocusOnRelease { get; set; }
+        public bool SuppressFocusOnRelease { get; set; }
     }
 
     private const float TouchScrollThreshold = 10f;
+    private const float TouchFocusSuppressionThreshold = 6f;
 
     private static bool ShouldDispatchTouchInputHandler(VisualElement element)
     {
         return element is Rayo.Controls.Slider ||
                element is Rayo.Controls.Splitter ||
+               element is IFocusable ||
                element is not Rayo.Core.Input.IPointerHandler;
     }
 
@@ -1967,6 +1971,7 @@ public class EventManager
         {
             var touchFocusTarget = FindFocusableAncestor(hitResult.Element);
             state.FocusedElementAtDown = _focusedElement;
+            state.FocusTargetAtDown = touchFocusTarget;
             state.ClearFocusOnRelease = touchFocusTarget == null && _focusedElement != null;
 
             _dragDropManager.TryStartDrag(
@@ -2040,6 +2045,13 @@ public class EventManager
         // Calculate delta
         pointerArgs.Delta = pointerArgs.Position - state.LastPosition;
         state.LastPosition = pointerArgs.Position;
+
+        if (state.FocusTargetAtDown != null && state.ScrollCaptureTarget != null)
+        {
+            var focusDelta = pointerArgs.Position - state.StartPosition;
+            if (focusDelta.Length() >= TouchFocusSuppressionThreshold)
+                state.SuppressFocusOnRelease = true;
+        }
 
         if (_dragDropManager.IsDragging || _dragDropManager.CurrentDraggable != null)
         {
@@ -2185,11 +2197,19 @@ public class EventManager
         {
             ProcessTouchUpForElement(state.CapturedElement, pointerArgs);
 
+            if (state.FocusTargetAtDown is { } focusTarget &&
+                !state.SuppressFocusOnRelease &&
+                IsPointInsideElement(focusTarget, pointerArgs.Position))
+            {
+                SetFocus(focusTarget);
+            }
+
             // Keep the current text input focused until the tap has completed. Clearing it
             // on TouchDown hides the Android keyboard and resizes the native surface between
             // the press and release, which can cancel the button tap. Do not clear a focus
             // that the tap action intentionally moved to another element.
-            if (state.ClearFocusOnRelease &&
+            if (state.FocusTargetAtDown == null &&
+                state.ClearFocusOnRelease &&
                 ReferenceEquals(_focusedElement, state.FocusedElementAtDown))
             {
                 SetFocus(null);
@@ -2249,13 +2269,9 @@ public class EventManager
             inputHandler.HandleInput(args);
         }
 
-        // Only focus controls that explicitly participate in keyboard focus.
-        // Non-focusable controls defer clearing the previous focus until TouchUp.
-        var focusTarget = FindFocusableAncestor(element);
-        if (focusTarget != null)
-        {
-            SetFocus(focusTarget);
-        }
+        // Touch focus is committed on release, after distinguishing a tap from
+        // a scroll gesture. Focusing here would show the mobile keyboard before
+        // the drag threshold has had a chance to capture the gesture.
     }
 
     private static VisualElement? FindFocusableAncestor(VisualElement element)
