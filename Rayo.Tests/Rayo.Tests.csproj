@@ -18,5 +18,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Rayo\Rayo.csproj" />
+    <ProjectReference Include="..\Rayo.Rendering.OpenGL\Rayo.Rendering.OpenGL.csproj" />
   </ItemGroup>
 </Project>

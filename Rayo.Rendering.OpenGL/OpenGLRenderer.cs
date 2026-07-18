@@ -9,7 +9,7 @@ namespace Rayo.Rendering.OpenGL;
 /// Complete OpenGL implementation of the renderer.
 /// Migrated from UIRenderer.cs to be backend-agnostic.
 /// </summary>
-public unsafe class OpenGLRenderer : IRenderer
+public unsafe class OpenGLRenderer : IRenderer, ITexturePreparationRenderer
 {
     private readonly GL _gl;
     private uint _vao;
@@ -1474,14 +1474,41 @@ void main()
         return _textureManager?.LoadTextureFromStream(stream, cacheKey);
     }
 
+    public ITexture? TryGetLoadedTexture(string cacheKey) =>
+        _textureManager?.TryGetLoadedTexture(cacheKey);
+
+    public Task<IPreparedTexture?> PrepareTextureAsync(
+        ReadOnlyMemory<byte> encodedImage,
+        string cacheKey,
+        CancellationToken cancellationToken = default)
+    {
+        var encodedBytes = encodedImage.ToArray();
+        return Task.Run<IPreparedTexture?>(() =>
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            using var stream = new MemoryStream(encodedBytes, writable: false);
+            return OpenGLTextureManager.PrepareTexture(stream, cacheKey);
+        }, cancellationToken);
+    }
+
+    public ITexture? UploadPreparedTexture(IPreparedTexture preparedTexture)
+    {
+        return preparedTexture is OpenGLPreparedTexture openGlTexture
+            ? _textureManager?.UploadPreparedTexture(openGlTexture)
+            : null;
+    }
     public void DrawTexture(ITexture texture, float x, float y, float width, float height, Color? tint = null)
     {
-        if (texture is not OpenGLTexture glTexture)
+        var binding = OpenGLTextureBinding.Resolve(texture);
+        if (binding == null)
             return;
+
+        float topV = binding.Value.FlipVertically ? 1f : 0f;
+        float bottomV = binding.Value.FlipVertically ? 0f : 1f;
 
         Flush();
 
-        var color = tint ?? new Color(1, 1, 1, 1);
+        var color = OpenGLTextureBinding.ResolveTint(tint);
         var colorVec = ToColorVector(color);
 
         var imageVertices = new List<TextVertex>();
@@ -1490,25 +1517,25 @@ void main()
         imageVertices.Add(new TextVertex
         {
             Position = new Vector2(x, y),
-            TexCoord = new Vector2(0, 0),
+            TexCoord = new Vector2(0, topV),
             Color = colorVec
         });
         imageVertices.Add(new TextVertex
         {
             Position = new Vector2(x + width, y),
-            TexCoord = new Vector2(1, 0),
+            TexCoord = new Vector2(1, topV),
             Color = colorVec
         });
         imageVertices.Add(new TextVertex
         {
             Position = new Vector2(x + width, y + height),
-            TexCoord = new Vector2(1, 1),
+            TexCoord = new Vector2(1, bottomV),
             Color = colorVec
         });
         imageVertices.Add(new TextVertex
         {
             Position = new Vector2(x, y + height),
-            TexCoord = new Vector2(0, 1),
+            TexCoord = new Vector2(0, bottomV),
             Color = colorVec
         });
 
@@ -1531,7 +1558,7 @@ void main()
         _gl.Uniform1(textureLocation, 0);
 
         _gl.ActiveTexture(TextureUnit.Texture0);
-        _gl.BindTexture(TextureTarget.Texture2D, glTexture.Id);
+        _gl.BindTexture(TextureTarget.Texture2D, binding.Value.TextureId);
 
         _gl.BindVertexArray(_imageVao);
 

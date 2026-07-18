@@ -32,6 +32,18 @@ public enum StretchMode
     UniformToFill
 }
 
+/// <summary>Observable stages of the image-to-texture pipeline.</summary>
+public enum ImageTextureState
+{
+    Empty,
+    LoadingSource,
+    SourceReady,
+    Preparing,
+    Prepared,
+    Uploaded,
+    Failed
+}
+
 /// <summary>
 /// Componente para mostrar imágenes desde archivos locales, URLs de red o streams
 /// Migrated to new MAUI-like architecture: inherits from View<Image>
@@ -47,10 +59,7 @@ public class Image : BorderView<Image>
         {
             if (this.SetProperty(ref field, value))
             {
-                // Reset texture loading state when source changes
-                _textureLoaded = false;
-                _loadTask = null;
-                _texture = null;
+                ResetSourcePipeline();
             }
         }
     }
@@ -77,23 +86,32 @@ public class Image : BorderView<Image>
     /// <summary>
     /// Indica si la imagen está cargando (útil para mostrar indicador de carga)
     /// </summary>
-    public bool IsLoading => Source?.IsLoading ?? false;
+    public bool IsLoading => TextureState is ImageTextureState.LoadingSource or ImageTextureState.Preparing;
 
     /// <summary>
     /// Indica si la imagen se cargó correctamente
     /// </summary>
-    public bool IsLoaded => Source?.IsLoaded ?? false;
+    public bool IsLoaded => TextureState == ImageTextureState.Uploaded;
 
     /// <summary>
     /// Error de carga si existe
     /// </summary>
-    public string? LoadError => Source?.Error;
+    public string? LoadError => _textureError ?? Source?.Error;
+
+    /// <summary>Current stage of source acquisition, decoding, upload, and drawing readiness.</summary>
+    public ImageTextureState TextureState { get; private set; } = ImageTextureState.Empty;
 
     #region Fields
 
     private ITexture? _texture;
-    private bool _textureLoaded;
-    private Task? _loadTask;
+    private byte[]? _encodedImage;
+    private string? _cacheKey;
+    private IPreparedTexture? _preparedTexture;
+    private Task? _sourceLoadTask;
+    private Task? _preparationTask;
+    private CancellationTokenSource? _preparationCancellation;
+    private string? _textureError;
+    private int _sourceGeneration;
 
     #endregion
 
@@ -124,6 +142,26 @@ public class Image : BorderView<Image>
 
     #region Layout Overrides
 
+    protected override void OnMounted()
+    {
+        base.OnMounted();
+        if (TextureState is ImageTextureState.SourceReady or ImageTextureState.Prepared)
+            MarkNeedsPaint();
+    }
+
+    protected override void OnUnmounted()
+    {
+        _preparationCancellation?.Cancel();
+        _preparationCancellation?.Dispose();
+        _preparationCancellation = null;
+        _preparationTask = null;
+        if (TextureState == ImageTextureState.Preparing)
+            TextureState = _encodedImage != null
+                ? ImageTextureState.SourceReady
+                : ImageTextureState.Empty;
+        base.OnUnmounted();
+    }
+
     protected override void Measure(float availableWidth, float availableHeight)
     {
         if (Width == 0 && Height == 0)
@@ -148,11 +186,7 @@ public class Image : BorderView<Image>
 
     public override void Render(IRenderer renderer)
     {
-        // Iniciar carga asíncrona si es necesario
-        if (!_textureLoaded && Source != null && _loadTask == null)
-        {
-            _loadTask = LoadTextureAsync(renderer);
-        }
+        AdvanceTexturePipeline(renderer);
 
         // Si no hay textura, no renderizar nada
         if (_texture == null)
@@ -229,30 +263,210 @@ public class Image : BorderView<Image>
 
     #region Private Methods
 
-    private async Task LoadTextureAsync(IRenderer renderer)
+    private void ResetSourcePipeline()
     {
-        if (Source == null)
+        var generation = ++_sourceGeneration;
+        _preparationCancellation?.Cancel();
+        _preparationCancellation?.Dispose();
+        _preparationCancellation = null;
+        _sourceLoadTask = null;
+        _preparationTask = null;
+        _preparedTexture = null;
+        _encodedImage = null;
+        _cacheKey = null;
+        _texture = null;
+        _textureError = null;
+
+        var source = Source;
+        if (source == null)
+        {
+            TextureState = ImageTextureState.Empty;
+            MarkNeedsPaint();
             return;
+        }
+
+        TextureState = ImageTextureState.LoadingSource;
+        _sourceLoadTask = LoadSourceAsync(source, generation);
+    }
+
+    private async Task LoadSourceAsync(ImageSource source, int generation)
+    {
+        try
+        {
+            await using var stream = await source.GetStreamAsync().ConfigureAwait(false);
+            if (stream == null)
+            {
+                CompleteSourceLoad(generation, null, null, source.Error ?? "Image source returned no data.");
+                return;
+            }
+
+            using var memory = new MemoryStream();
+            await stream.CopyToAsync(memory).ConfigureAwait(false);
+            CompleteSourceLoad(generation, memory.ToArray(), source.GetCacheKey(), null);
+        }
+        catch (Exception exception)
+        {
+            CompleteSourceLoad(generation, null, null, exception.Message);
+        }
+    }
+
+    private void CompleteSourceLoad(
+        int generation,
+        byte[]? encodedImage,
+        string? cacheKey,
+        string? error)
+    {
+        RunOnUiThread(() =>
+        {
+            if (generation != _sourceGeneration)
+                return;
+
+            _sourceLoadTask = null;
+            _encodedImage = encodedImage;
+            _cacheKey = cacheKey;
+            _textureError = error;
+            TextureState = error == null && encodedImage is { Length: > 0 } && !string.IsNullOrEmpty(cacheKey)
+                ? ImageTextureState.SourceReady
+                : ImageTextureState.Failed;
+            MarkNeedsPaint();
+        });
+    }
+
+    private void AdvanceTexturePipeline(IRenderer renderer)
+    {
+        if (TextureState == ImageTextureState.Prepared &&
+            _preparedTexture != null &&
+            renderer is ITexturePreparationRenderer preparationRenderer)
+        {
+            try
+            {
+                _texture = preparationRenderer.UploadPreparedTexture(_preparedTexture);
+                TextureState = _texture != null
+                    ? ImageTextureState.Uploaded
+                    : ImageTextureState.Failed;
+                if (_texture == null)
+                    _textureError = "The renderer could not upload the prepared image.";
+            }
+            catch (Exception exception)
+            {
+                _textureError = exception.Message;
+                TextureState = ImageTextureState.Failed;
+            }
+            finally
+            {
+                _preparedTexture = null;
+                _encodedImage = null;
+            }
+            return;
+        }
+
+        if (TextureState != ImageTextureState.SourceReady ||
+            _encodedImage == null ||
+            string.IsNullOrEmpty(_cacheKey))
+        {
+            return;
+        }
+
+        if (renderer is ITexturePreparationRenderer asyncRenderer)
+        {
+            var cachedTexture = asyncRenderer.TryGetLoadedTexture(_cacheKey);
+            if (cachedTexture != null)
+            {
+                _texture = cachedTexture;
+                _encodedImage = null;
+                TextureState = ImageTextureState.Uploaded;
+                return;
+            }
+
+            TextureState = ImageTextureState.Preparing;
+            _preparationCancellation = new CancellationTokenSource();
+            _preparationTask = PrepareTextureAsync(
+                asyncRenderer,
+                _encodedImage,
+                _cacheKey,
+                _sourceGeneration,
+                _preparationCancellation.Token);
+            return;
+        }
 
         try
         {
-            var stream = await Source.GetStreamAsync();
-
-            if (stream != null)
-            {
-                var cacheKey = Source.GetCacheKey();
-                _texture = renderer.LoadTextureFromStream(stream, cacheKey);
-            }
+            using var stream = new MemoryStream(_encodedImage, writable: false);
+            _texture = renderer.LoadTextureFromStream(stream, _cacheKey);
+            TextureState = _texture != null
+                ? ImageTextureState.Uploaded
+                : ImageTextureState.Failed;
+            if (_texture == null)
+                _textureError = "The renderer could not load the image.";
         }
-        catch (Exception)
+        catch (Exception exception)
         {
-            // Ignorar errores de carga
+            _textureError = exception.Message;
+            TextureState = ImageTextureState.Failed;
         }
         finally
         {
-            _textureLoaded = true;
-            MarkNeedsPaint();
+            _encodedImage = null;
         }
+    }
+
+    private async Task PrepareTextureAsync(
+        ITexturePreparationRenderer renderer,
+        byte[] encodedImage,
+        string cacheKey,
+        int generation,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var prepared = await renderer.PrepareTextureAsync(
+                encodedImage,
+                cacheKey,
+                cancellationToken).ConfigureAwait(false);
+            RunOnUiThread(() =>
+            {
+                if (generation != _sourceGeneration || cancellationToken.IsCancellationRequested)
+                    return;
+
+                _preparationTask = null;
+                _preparationCancellation?.Dispose();
+                _preparationCancellation = null;
+                _preparedTexture = prepared;
+                TextureState = prepared != null
+                    ? ImageTextureState.Prepared
+                    : ImageTextureState.Failed;
+                if (prepared == null)
+                    _textureError = "The renderer could not decode the image.";
+                MarkNeedsPaint();
+            });
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Exception exception)
+        {
+            RunOnUiThread(() =>
+            {
+                if (generation != _sourceGeneration)
+                    return;
+
+                _preparationTask = null;
+                _preparationCancellation?.Dispose();
+                _preparationCancellation = null;
+                _textureError = exception.Message;
+                TextureState = ImageTextureState.Failed;
+                MarkNeedsPaint();
+            });
+        }
+    }
+
+    private static void RunOnUiThread(Action action)
+    {
+        var application = UIApplication.Current;
+        if (application != null)
+            application.RunOnMainThread(action);
+        else
+            action();
     }
 
     #endregion
