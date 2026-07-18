@@ -1359,6 +1359,21 @@ public class EventManager
         if (key == Key.Tab)
         {
             bool isShiftPressed = keyboard.IsKeyPressed(Key.ShiftLeft) || keyboard.IsKeyPressed(Key.ShiftRight);
+            if (_focusedElement is IInputHandler tabHandler && tabHandler.CanHandleInput &&
+                tabHandler.HandleInput(new InputEventArgs
+                {
+                    Position = _lastMousePos,
+                    EventType = InputEventType.KeyDown,
+                    KeyCode = InputKey.Tab,
+                    Timestamp = DateTime.UtcNow,
+                    IsShiftPressed = isShiftPressed,
+                    IsControlPressed = keyboard.IsKeyPressed(Key.ControlLeft) || keyboard.IsKeyPressed(Key.ControlRight),
+                    IsAltPressed = keyboard.IsKeyPressed(Key.AltLeft) || keyboard.IsKeyPressed(Key.AltRight)
+                }))
+            {
+                _tree.MarkNeedsRender();
+                return;
+            }
             NavigateFocus(isShiftPressed ? FocusDirection.Previous : FocusDirection.Next);
             _tree.MarkNeedsRender();
             return; // Consume Tab key

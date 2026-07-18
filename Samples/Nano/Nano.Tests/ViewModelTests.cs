@@ -4,6 +4,7 @@ using Nano.Navigation;
 using Nano.Views.ProjectAssetStore;
 using Nano.Views.ProjectAssetStore.Components;
 using Nano.Views.Game;
+using Nano.Views.CodeEditor.Components;
 using Nano.GameEngine;
 using Nano.Views.SpriteEditor;
 using Rayo.Rendering;
@@ -16,6 +17,74 @@ namespace Nano.Tests;
 
 public sealed class ViewModelTests
 {
+    [Theory]
+    [InlineData('(', ')')]
+    [InlineData('[', ']')]
+    [InlineData('{', '}')]
+    public void Code_editor_inserts_pairs_and_skips_an_existing_closer(char opening, char closing)
+    {
+        var editor = new CodeEdit(string.Empty, new LuaCodeLanguage());
+
+        editor.HandleInput(TextInput(opening));
+        editor.HandleInput(TextInput('x'));
+        editor.HandleInput(TextInput(closing));
+        editor.HandleInput(TextInput('y'));
+
+        Assert.Equal($"{opening}x{closing}y", editor.Text);
+    }
+
+    [Fact]
+    public void Code_editor_new_line_inherits_indentation_and_indents_lua_blocks()
+    {
+        var inherited = new CodeEdit("    local value = 1", new LuaCodeLanguage());
+        inherited.HandleInput(KeyDown(InputKey.Return));
+        inherited.HandleInput(TextInput('x'));
+
+        var block = new CodeEdit("if ready then", new LuaCodeLanguage());
+        block.HandleInput(KeyDown(InputKey.Return));
+        block.HandleInput(TextInput('x'));
+
+        Assert.Equal("    local value = 1\n    x", inherited.Text);
+        Assert.Equal("if ready then\n    x", block.Text);
+    }
+
+    [Fact]
+    public void Code_editor_new_line_between_a_pair_creates_an_indented_block()
+    {
+        var editor = new CodeEdit(string.Empty, new LuaCodeLanguage());
+
+        editor.HandleInput(TextInput('{'));
+        editor.HandleInput(KeyDown(InputKey.Return));
+        editor.HandleInput(TextInput('x'));
+
+        Assert.Equal("{\n    x\n}", editor.Text);
+    }
+
+    [Fact]
+    public void Code_editor_backspace_removes_an_empty_pair()
+    {
+        var editor = new CodeEdit(string.Empty, new LuaCodeLanguage());
+        editor.HandleInput(TextInput('['));
+
+        editor.HandleInput(KeyDown(InputKey.Backspace));
+
+        Assert.Equal(string.Empty, editor.Text);
+    }
+
+    [Fact]
+    public void Code_editor_tab_and_shift_tab_indent_selected_lines()
+    {
+        var editor = new CodeEdit("first\nsecond", new LuaCodeLanguage());
+        editor.SelectAll();
+
+        editor.HandleInput(KeyDown(InputKey.Tab));
+        Assert.Equal("    first\n    second", editor.Text);
+
+        editor.SelectAll();
+        editor.HandleInput(KeyDown(InputKey.Tab, shift: true));
+        Assert.Equal("first\nsecond", editor.Text);
+    }
+
     [Fact]
     public void Navigation_stack_pushes_game_page_and_restores_root()
     {
@@ -621,4 +690,17 @@ public sealed class ViewModelTests
             Elapsed += deltaTime;
         }
     }
+
+    private static InputEventArgs TextInput(char character) => new()
+    {
+        EventType = InputEventType.TextInput,
+        Character = character
+    };
+
+    private static InputEventArgs KeyDown(InputKey key, bool shift = false) => new()
+    {
+        EventType = InputEventType.KeyDown,
+        KeyCode = key,
+        IsShiftPressed = shift
+    };
 }

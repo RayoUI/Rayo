@@ -1,5 +1,6 @@
 using Rayo;
 using Rayo.Controls;
+using Rayo.Core;
 using Rayo.Core.Platform;
 using Rayo.Rendering;
 using Rayo.Rendering.Brushes;
@@ -13,6 +14,8 @@ namespace Nano.Views.CodeEditor.Components;
 /// </summary>
 public sealed class CodeEdit : Editor
 {
+    private const int TabSize = 4;
+    private const string SoftTab = "    ";
     private const float GutterWidth = 42f;
     private const float ContentPadding = 10f;
     private const int TokenCacheLimit = 2048;
@@ -160,29 +163,318 @@ public sealed class CodeEdit : Editor
         renderer.DrawRect(contentX, lineY, contentWidth, lineHeight, new Color(48, 57, 74));
     }
 
+    public override bool HandleInput(InputEventArgs args)
+    {
+        if (!IsReadOnly && args.EventType == InputEventType.TextInput && args.Character is { } character)
+        {
+            if (character is '\r' or '\n')
+            {
+                InsertSmartNewLine();
+                return true;
+            }
+
+            if (TryInsertSmartCharacter(character))
+                return true;
+        }
+
+        if (!IsReadOnly && args.EventType is InputEventType.KeyDown or InputEventType.KeyRepeat)
+        {
+            switch (args.KeyCode)
+            {
+                case InputKey.Return:
+                    InsertSmartNewLine();
+                    return true;
+                case InputKey.Tab:
+                    ChangeIndentation(args.IsShiftPressed);
+                    return true;
+            }
+        }
+
+        return base.HandleInput(args);
+    }
+
     public override void DeleteChar()
     {
-        if (!DeleteTabsAsUnit || IsReadOnly || HasSelection || _cursorPosition < 4)
+        if (!IsReadOnly && !HasSelection && _cursorPosition > 0 && _cursorPosition < Text.Length &&
+            IsPair(Text[_cursorPosition - 1], Text[_cursorPosition]))
+        {
+            var start = _cursorPosition - 1;
+            CommitEdit(Text.Remove(start, 2), start);
+            return;
+        }
+
+        if (!DeleteTabsAsUnit || IsReadOnly || HasSelection || _cursorPosition < TabSize)
         {
             base.DeleteChar();
             return;
         }
 
-        const int tabSize = 4;
-        int tabStart = _cursorPosition - tabSize;
-        if (!Text.AsSpan(tabStart, tabSize).SequenceEqual("    ".AsSpan()))
+        int tabStart = _cursorPosition - TabSize;
+        int lineStart = Text.LastIndexOf('\n', _cursorPosition - 1) + 1;
+        if (!Text.AsSpan(tabStart, TabSize).SequenceEqual(SoftTab.AsSpan()) ||
+            !Text.AsSpan(lineStart, _cursorPosition - lineStart).Trim().IsEmpty)
         {
             base.DeleteChar();
             return;
         }
 
-        AssignTextPreservingCursor(Text.Remove(tabStart, tabSize));
-        _cursorPosition = tabStart;
+        CommitEdit(Text.Remove(tabStart, TabSize), tabStart);
+    }
+
+    private bool TryInsertSmartCharacter(char character)
+    {
+        if (character is not ('(' or '[' or '{' or ')' or ']' or '}' or '\'' or '"'))
+            return false;
+
+        if (character is ')' or ']' or '}' or '\'' or '"')
+        {
+            if (character is ')' or ']' or '}' && !HasSelection)
+                OutdentClosingCharacter();
+
+            if (!HasSelection && _cursorPosition < Text.Length && Text[_cursorPosition] == character &&
+                !IsEscaped(_cursorPosition))
+            {
+                MoveCaret(_cursorPosition + 1);
+                return true;
+            }
+
+        }
+
+        if (!TryGetClosingCharacter(character, out var closing) ||
+            (character is '\'' or '"' && !ShouldAutoCloseQuote()))
+        {
+            InsertPlainText(character.ToString());
+            return true;
+        }
+
+        if (HasSelection)
+        {
+            var start = Math.Min(_selectionStart, _selectionEnd);
+            var end = Math.Max(_selectionStart, _selectionEnd);
+            var selected = Text[start..end];
+            var replacement = $"{character}{selected}{closing}";
+            if (MaxLength > 0 && Text.Length - selected.Length + replacement.Length > MaxLength)
+                return true;
+            var updated = Text.Remove(start, end - start).Insert(start, replacement);
+            CommitEdit(updated, start + replacement.Length, start + 1, end + 1);
+            return true;
+        }
+
+        if (MaxLength > 0 && Text.Length + 2 > MaxLength)
+        {
+            InsertPlainText(character.ToString());
+            return true;
+        }
+        var paired = Text.Insert(_cursorPosition, $"{character}{closing}");
+        CommitEdit(paired, _cursorPosition + 1);
+        return true;
+    }
+
+    private void InsertSmartNewLine()
+    {
+        if (IsReadOnly)
+            return;
+
+        var start = HasSelection ? Math.Min(_selectionStart, _selectionEnd) : _cursorPosition;
+        var end = HasSelection ? Math.Max(_selectionStart, _selectionEnd) : _cursorPosition;
+        var source = HasSelection ? Text.Remove(start, end - start) : Text;
+        var lineStart = source.LastIndexOf('\n', Math.Max(0, start - 1)) + 1;
+        var linePrefix = source[lineStart..start];
+        var indentationLength = 0;
+        while (indentationLength < linePrefix.Length && linePrefix[indentationLength] is ' ' or '\t')
+            indentationLength++;
+        var indentation = linePrefix[..indentationLength];
+        var trimmedPrefix = linePrefix.TrimEnd();
+        var indentUnit = indentation.Contains('\t') ? "\t" : SoftTab;
+        var extraIndent = OpensBlock(trimmedPrefix) ? indentUnit : string.Empty;
+
+        var betweenPair = start > 0 && start < source.Length && IsPair(source[start - 1], source[start]);
+        var insertion = betweenPair
+            ? $"\n{indentation}{indentUnit}\n{indentation}"
+            : $"\n{indentation}{extraIndent}";
+        var caret = start + 1 + indentation.Length + (betweenPair ? indentUnit.Length : extraIndent.Length);
+        CommitEdit(source.Insert(start, insertion), caret);
+    }
+
+    private void ChangeIndentation(bool outdent)
+    {
+        if (HasSelection)
+        {
+            ChangeSelectedLinesIndentation(outdent);
+            return;
+        }
+
+        var lineStart = Text.LastIndexOf('\n', Math.Max(0, _cursorPosition - 1)) + 1;
+        if (outdent)
+        {
+            var remove = IndentationToRemove(Text, lineStart);
+            if (remove > 0)
+                CommitEdit(Text.Remove(lineStart, remove), Math.Max(lineStart, _cursorPosition - remove));
+            return;
+        }
+
+        var column = _cursorPosition - lineStart;
+        var spaces = TabSize - column % TabSize;
+        InsertPlainText(new string(' ', spaces));
+    }
+
+    private void ChangeSelectedLinesIndentation(bool outdent)
+    {
+        var selectionStart = Math.Min(_selectionStart, _selectionEnd);
+        var selectionEnd = Math.Max(_selectionStart, _selectionEnd);
+        var blockStart = Text.LastIndexOf('\n', Math.Max(0, selectionStart - 1)) + 1;
+        if (selectionEnd > blockStart && selectionEnd <= Text.Length && Text[selectionEnd - 1] == '\n')
+            selectionEnd--;
+        var blockEnd = Text.IndexOf('\n', selectionEnd);
+        if (blockEnd < 0)
+            blockEnd = Text.Length;
+
+        var lineStarts = new List<int> { blockStart };
+        for (var index = blockStart; index < blockEnd; index++)
+        {
+            if (Text[index] == '\n' && index + 1 <= blockEnd)
+                lineStarts.Add(index + 1);
+        }
+
+        var updated = Text;
+        var delta = 0;
+        for (var index = lineStarts.Count - 1; index >= 0; index--)
+        {
+            var position = lineStarts[index];
+            if (outdent)
+            {
+                var remove = IndentationToRemove(updated, position);
+                if (remove == 0)
+                    continue;
+                updated = updated.Remove(position, remove);
+                delta -= remove;
+            }
+            else
+            {
+                updated = updated.Insert(position, SoftTab);
+                delta += SoftTab.Length;
+            }
+        }
+
+        CommitEdit(updated, blockEnd + delta, blockStart, blockEnd + delta);
+    }
+
+    private void OutdentClosingCharacter()
+    {
+        var lineStart = Text.LastIndexOf('\n', Math.Max(0, _cursorPosition - 1)) + 1;
+        if (!Text.AsSpan(lineStart, _cursorPosition - lineStart).Trim().IsEmpty)
+            return;
+        var remove = IndentationToRemove(Text, lineStart);
+        if (remove > 0)
+            CommitEdit(Text.Remove(lineStart, remove), _cursorPosition - remove);
+    }
+
+    private void InsertPlainText(string value)
+    {
+        var start = HasSelection ? Math.Min(_selectionStart, _selectionEnd) : _cursorPosition;
+        var end = HasSelection ? Math.Max(_selectionStart, _selectionEnd) : _cursorPosition;
+        var available = MaxLength > 0 ? Math.Max(0, MaxLength - (Text.Length - (end - start))) : int.MaxValue;
+        if (value.Length > available)
+            value = value[..available];
+        if (value.Length == 0)
+            return;
+        CommitEdit(Text.Remove(start, end - start).Insert(start, value), start + value.Length);
+    }
+
+    private void CommitEdit(string text, int caret, int? selectionStart = null, int? selectionEnd = null)
+    {
+        AssignTextPreservingCursor(text);
+        _cursorPosition = Math.Clamp(caret, 0, Text.Length);
+        if (selectionStart.HasValue && selectionEnd.HasValue)
+        {
+            _selectionStart = Math.Clamp(selectionStart.Value, 0, Text.Length);
+            _selectionEnd = Math.Clamp(selectionEnd.Value, 0, Text.Length);
+        }
+        else
+        {
+            ClearSelection();
+        }
+        ResetCursorBlink();
+        EnsureCursorVisible();
+        MarkNeedsPaint();
+    }
+
+    private void MoveCaret(int position)
+    {
+        _cursorPosition = Math.Clamp(position, 0, Text.Length);
         ClearSelection();
         ResetCursorBlink();
         EnsureCursorVisible();
         MarkNeedsPaint();
     }
+
+    private bool ShouldAutoCloseQuote()
+    {
+        if (IsEscaped(_cursorPosition))
+            return false;
+        if (_cursorPosition >= Text.Length)
+            return true;
+        return char.IsWhiteSpace(Text[_cursorPosition]) || Text[_cursorPosition] is ')' or ']' or '}' or ',' or ';';
+    }
+
+    private bool IsEscaped(int position)
+    {
+        var slashes = 0;
+        for (var index = position - 1; index >= 0 && Text[index] == '\\'; index--)
+            slashes++;
+        return slashes % 2 != 0;
+    }
+
+    private static bool OpensBlock(string prefix)
+    {
+        if (prefix.EndsWith('{') || prefix.EndsWith('[') || prefix.EndsWith('('))
+            return true;
+        var lastWordStart = prefix.Length;
+        while (lastWordStart > 0 && (char.IsLetterOrDigit(prefix[lastWordStart - 1]) || prefix[lastWordStart - 1] == '_'))
+            lastWordStart--;
+        var lastWord = prefix[lastWordStart..];
+        return lastWord is "then" or "do" or "repeat" or "function" ||
+            prefix.StartsWith("function ", StringComparison.Ordinal) ||
+            prefix.StartsWith("local function ", StringComparison.Ordinal) ||
+            prefix.Contains("= function", StringComparison.Ordinal);
+    }
+
+    private static int IndentationToRemove(string text, int lineStart)
+    {
+        if (lineStart >= text.Length)
+            return 0;
+        if (text[lineStart] == '\t')
+            return 1;
+        var spaces = 0;
+        while (spaces < TabSize && lineStart + spaces < text.Length && text[lineStart + spaces] == ' ')
+            spaces++;
+        return spaces;
+    }
+
+    private static bool TryGetClosingCharacter(char character, out char closing)
+    {
+        closing = character switch
+        {
+            '(' => ')',
+            '[' => ']',
+            '{' => '}',
+            '\'' => '\'',
+            '"' => '"',
+            _ => '\0'
+        };
+        return closing != '\0';
+    }
+
+    private static bool IsPair(char opening, char closing) =>
+        opening switch
+        {
+            '(' => closing == ')',
+            '[' => closing == ']',
+            '{' => closing == '}',
+            '\'' => closing == '\'',
+            '"' => closing == '"',
+            _ => false
+        };
 
     private void InvalidateCodeCache()
     {
