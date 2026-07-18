@@ -24,7 +24,15 @@ public class HomePage : ViewBase<HomeViewModel>, ITextAssetHost, ISpriteAssetHos
         _tabs = new TabControl()
             .HorizontalAlignment(HorizontalAlignment.Stretch)
             .VerticalAlignment(VerticalAlignment.Stretch)
-            .ShowTabCloseButtons(true);
+            .ShowTabCloseButtons(true)
+            .WithEmptyContent(() =>
+                new Label("No documents are open.")
+                    .FontSize(15)
+                    .Foreground(new Color(148, 163, 184))
+                    .TextHorizontalAlignment(HorizontalAlignment.Center)
+                    .TextVerticalAlignment(VerticalAlignment.Center)
+                    .HorizontalAlignment(HorizontalAlignment.Center)
+                    .VerticalAlignment(VerticalAlignment.Center));
 
         ViewModel.SetFixedTabCount(_tabs.TabCount);
         foreach (var document in ViewModel.Documents)

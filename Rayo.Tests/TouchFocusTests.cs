@@ -1,4 +1,5 @@
 using System.Numerics;
+using Rayo.Animation;
 using Rayo.Controls;
 using Rayo.Core;
 using Rayo.Core.Input;
@@ -37,6 +38,35 @@ public sealed class TouchFocusTests
         tree.EventManager.ProcessTouchUp(Released(1, end));
 
         Assert.Null(tree.EventManager.FocusedElement);
+    }
+
+    [Fact]
+    public void Touch_editor_keeps_a_short_inertial_scroll_after_release()
+    {
+        var text = string.Join('\n', Enumerable.Range(1, 100).Select(index => $"line {index}"));
+        var editor = new TouchEditor(text).Height(120);
+        CreateTree(editor);
+        var start = Center(editor);
+        var timestamp = DateTime.UtcNow;
+
+        editor.HandleInput(PointerInput(InputEventType.MouseDown, start, timestamp));
+        editor.HandleInput(PointerInput(
+            InputEventType.MouseDrag,
+            start - new Vector2(0, 60),
+            timestamp.AddMilliseconds(16)));
+        editor.HandleInput(PointerInput(
+            InputEventType.MouseUp,
+            start - new Vector2(0, 60),
+            timestamp.AddMilliseconds(32)));
+        var releasedOffset = editor.VerticalScrollOffset;
+
+        FrameAnimationTicker.Tick(1f / 60f);
+
+        Assert.True(releasedOffset > 0);
+        Assert.True(editor.VerticalScrollOffset > releasedOffset);
+
+        editor.HandleInput(PointerInput(InputEventType.MouseDown, start, timestamp.AddMilliseconds(48)));
+        editor.CancelDragPending();
     }
 
     [Fact]
@@ -93,6 +123,21 @@ public sealed class TouchFocusTests
         var args = PointerEventArgs.FromTouch(pointerId, position, 0);
         args.IsInContact = false;
         return args;
+    }
+
+    private static InputEventArgs PointerInput(
+        InputEventType eventType,
+        Vector2 position,
+        DateTime timestamp) => new()
+    {
+        EventType = eventType,
+        Position = position,
+        Timestamp = timestamp
+    };
+
+    private sealed class TouchEditor(string text) : Editor(text)
+    {
+        protected override bool UsesTouchScrolling => true;
     }
 
 }

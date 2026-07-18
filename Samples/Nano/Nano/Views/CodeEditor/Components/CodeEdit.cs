@@ -21,6 +21,7 @@ public sealed class CodeEdit : Editor
     private const int TokenCacheLimit = 2048;
     private readonly ICodeLanguage _language;
     private readonly Dictionary<int, CodeToken[]> _tokenCache = [];
+    private readonly Queue<int> _tokenCacheOrder = [];
     private string[] _lines = [string.Empty];
     private string _trackedText = string.Empty;
     private SnippetSession? _snippetSession;
@@ -102,6 +103,8 @@ public sealed class CodeEdit : Editor
     }
 
     protected override Brush GetTextRenderBrush() => Color.Transparent;
+
+    protected override bool ShouldRenderTextContent => false;
 
     protected override float[] BuildPrefixWidths(
         string sourceText,
@@ -484,7 +487,7 @@ public sealed class CodeEdit : Editor
     private void InvalidateCodeCache()
     {
         _codeCacheDirty = true;
-        _tokenCache.Clear();
+        ClearTokenCache();
     }
 
     private void OnEditorTextChanged(string text)
@@ -715,7 +718,7 @@ public sealed class CodeEdit : Editor
                 _lines[index] = _lines[index][..^1];
             }
         }
-        _tokenCache.Clear();
+        ClearTokenCache();
         _codeCacheDirty = false;
     }
 
@@ -728,12 +731,23 @@ public sealed class CodeEdit : Editor
 
         if (_tokenCache.Count >= TokenCacheLimit)
         {
-            _tokenCache.Clear();
+            while (_tokenCacheOrder.Count > 0)
+            {
+                if (_tokenCache.Remove(_tokenCacheOrder.Dequeue()))
+                    break;
+            }
         }
 
         tokens = _language.Tokenize(_lines[lineIndex]).ToArray();
         _tokenCache[lineIndex] = tokens;
+        _tokenCacheOrder.Enqueue(lineIndex);
         return tokens;
+    }
+
+    private void ClearTokenCache()
+    {
+        _tokenCache.Clear();
+        _tokenCacheOrder.Clear();
     }
 
     private void RenderLineNumbers(IRenderer renderer, float lineHeight, int firstLine, int lastLine, float contentY)

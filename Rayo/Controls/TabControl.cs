@@ -325,6 +325,25 @@ public class TabControl : CompositeView<TabControl>, IFrameAnimation
     }
     #endregion
 
+    #region Empty content
+    /// <summary>
+    /// Optional factory for content displayed when the control has no tabs.
+    /// </summary>
+    [NotFluent]
+    public Func<VisualElement>? EmptyContentTemplate
+    {
+        get => field;
+        set => this.SetProperty(ref field, value, UpdateContent);
+    }
+
+    /// <summary>Sets the content shown while no tabs are open.</summary>
+    public TabControl WithEmptyContent(Func<VisualElement> factory)
+    {
+        EmptyContentTemplate = factory ?? throw new ArgumentNullException(nameof(factory));
+        return this;
+    }
+    #endregion
+
     #region Header slots
     /// <summary>
     /// Optional factory for fixed content before the scrollable tab strip.
@@ -901,6 +920,10 @@ public class TabControl : CompositeView<TabControl>, IFrameAnimation
         {
             UIApplication.Current?.EventManager.SetFocus(null);
             _contentFrame.ClearContent();
+            var emptyContent = EmptyContentTemplate?.Invoke();
+            if (emptyContent != null)
+                _contentFrame.Content = emptyContent;
+            _contentFrame.InvalidateMeasure();
             _contentFrame.MarkNeedsPaint();
             return;
         }

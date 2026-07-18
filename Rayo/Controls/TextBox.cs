@@ -398,6 +398,12 @@ public abstract class TextBox<T> : BorderView<T>, IInputHandler, IFocusable, Ray
     /// <remarks>Derived controls can override this without affecting the caret color.</remarks>
     protected virtual Brush GetTextRenderBrush() => TextColor;
 
+    /// <summary>
+    /// Controls whether the base text layer is emitted. Specialized editors can
+    /// render their own text while retaining the background, selection and caret.
+    /// </summary>
+    protected virtual bool ShouldRenderTextContent => true;
+
     // =========================================================================
     // INITIALIZATION
     // =========================================================================
@@ -1488,7 +1494,7 @@ public abstract class TextBox<T> : BorderView<T>, IInputHandler, IFocusable, Ray
                     : Text;
             Brush textColor = showPlaceholder ? PlaceholderColor : GetTextRenderBrush();
 
-            if (!string.IsNullOrEmpty(displayText))
+            if (ShouldRenderTextContent && !string.IsNullOrEmpty(displayText))
             {
                 if (IsMultiline)
                 {

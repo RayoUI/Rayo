@@ -2,6 +2,7 @@ namespace Rayo.Controls;
 
 using System;
 using System.Collections.Generic;
+using Rayo.Animation;
 using Rayo.Core;
 using Rayo.Core.Interfaces;
 using Rayo.Reactivity;
@@ -15,7 +16,7 @@ using Rayo.Styling;
 /// Implements IScrollable for mouse wheel scrolling support.
 /// Supports optional word wrapping.
 /// </summary>
-public class Editor : TextBox<Editor>, IScrollable, IDragScrollable
+public class Editor : TextBox<Editor>, IScrollable, IDragScrollable, IFrameAnimation
 {
     // Line height factor (same as used in TextBox rendering)
     private const float LineHeightFactor = 1.2f;
@@ -25,6 +26,19 @@ public class Editor : TextBox<Editor>, IScrollable, IDragScrollable
     private System.Numerics.Vector2 _touchScrollStartPosition;
     private float _touchScrollStartVerticalOffset;
     private float _touchScrollStartHorizontalOffset;
+    private System.Numerics.Vector2 _lastTouchScrollPosition;
+    private DateTime _lastTouchScrollTime;
+    private float _inertiaVelocityY;
+    private float _inertiaVelocityX;
+    private bool _hasScrollInertia;
+    private const float TouchVelocitySmoothing = 0.45f;
+    private const float MaxInertiaVelocity = 5000f;
+    private const float MinReleaseInertiaVelocity = 90f;
+    private const float MinInertiaVelocity = 18f;
+    private const float InertiaDecayPerFrame = 0.92f;
+
+    /// <summary>Allows platform hosts and tests to select touch scrolling behavior.</summary>
+    protected virtual bool UsesTouchScrolling => Rayo.Core.Platform.PlatformDetector.IsMobile;
 
     public Editor()
     {
@@ -1132,7 +1146,7 @@ public class Editor : TextBox<Editor>, IScrollable, IDragScrollable
 
     public void StartDragPending()
     {
-        if (Rayo.Core.Platform.PlatformDetector.IsMobile)
+        if (UsesTouchScrolling)
             _touchScrollPending = true;
     }
 
@@ -1149,6 +1163,7 @@ public class Editor : TextBox<Editor>, IScrollable, IDragScrollable
         switch (args.EventType)
         {
             case InputEventType.MouseDown:
+                StopScrollInertia();
                 if (IsPointOnScrollbarThumb(args.Position))
                 {
                     _isDraggingThumb = true;
@@ -1166,13 +1181,17 @@ public class Editor : TextBox<Editor>, IScrollable, IDragScrollable
                 if (IsPointOnScrollbarTrack(args.Position))
                     return true;
 
-                if (Rayo.Core.Platform.PlatformDetector.IsMobile)
+                if (UsesTouchScrolling)
                 {
                     _touchScrollPending = true;
                     _isTouchScrolling = false;
                     _touchScrollStartPosition = args.Position;
                     _touchScrollStartVerticalOffset = _scrollOffsetY;
                     _touchScrollStartHorizontalOffset = _scrollOffsetX;
+                    _lastTouchScrollPosition = args.Position;
+                    _lastTouchScrollTime = args.Timestamp;
+                    _inertiaVelocityY = 0;
+                    _inertiaVelocityX = 0;
 
                     // Selection handles are already an explicit text-selection gesture.
                     // All other touches wait until release before changing the caret.
@@ -1185,7 +1204,7 @@ public class Editor : TextBox<Editor>, IScrollable, IDragScrollable
                 break;
 
             case InputEventType.MouseDrag:
-                if (Rayo.Core.Platform.PlatformDetector.IsMobile && (_touchScrollPending || _isTouchScrolling))
+                if (UsesTouchScrolling && (_touchScrollPending || _isTouchScrolling))
                 {
                     var delta = args.Position - _touchScrollStartPosition;
                     if (!_isTouchScrolling && delta.Length() >= TouchScrollThreshold)
@@ -1197,6 +1216,7 @@ public class Editor : TextBox<Editor>, IScrollable, IDragScrollable
 
                     if (_isTouchScrolling)
                     {
+                        UpdateTouchScrollVelocity(args.Position, args.Timestamp);
                         SetVerticalScrollOffset(_touchScrollStartVerticalOffset - delta.Y);
                         if (!WordWrap)
                         {
@@ -1244,11 +1264,13 @@ public class Editor : TextBox<Editor>, IScrollable, IDragScrollable
                 break;
 
             case InputEventType.MouseUp:
-                if (Rayo.Core.Platform.PlatformDetector.IsMobile && (_touchScrollPending || _isTouchScrolling))
+                if (UsesTouchScrolling && (_touchScrollPending || _isTouchScrolling))
                 {
                     bool wasScrolling = _isTouchScrolling;
                     _touchScrollPending = false;
                     _isTouchScrolling = false;
+                    if (wasScrolling)
+                        StartScrollInertia();
                     return wasScrolling || CommitTouchTap();
                 }
 
@@ -1316,6 +1338,79 @@ public class Editor : TextBox<Editor>, IScrollable, IDragScrollable
         }
 
         return result;
+    }
+
+    private void UpdateTouchScrollVelocity(System.Numerics.Vector2 position, DateTime timestamp)
+    {
+        var elapsed = (float)(timestamp - _lastTouchScrollTime).TotalSeconds;
+        if (elapsed is > 0.001f and < 0.25f)
+        {
+            var delta = position - _lastTouchScrollPosition;
+            _inertiaVelocityY = SmoothVelocity(_inertiaVelocityY, -delta.Y / elapsed);
+            _inertiaVelocityX = SmoothVelocity(_inertiaVelocityX, -delta.X / elapsed);
+        }
+
+        _lastTouchScrollPosition = position;
+        _lastTouchScrollTime = timestamp;
+    }
+
+    private static float SmoothVelocity(float current, float sample)
+    {
+        sample = Math.Clamp(sample, -MaxInertiaVelocity, MaxInertiaVelocity);
+        return current * (1f - TouchVelocitySmoothing) + sample * TouchVelocitySmoothing;
+    }
+
+    private void StartScrollInertia()
+    {
+        if (MathF.Max(MathF.Abs(_inertiaVelocityY), MathF.Abs(_inertiaVelocityX)) < MinReleaseInertiaVelocity)
+        {
+            StopScrollInertia();
+            return;
+        }
+
+        _hasScrollInertia = true;
+        FrameAnimationTicker.Register(this);
+    }
+
+    private void StopScrollInertia()
+    {
+        if (_hasScrollInertia)
+            FrameAnimationTicker.Unregister(this);
+
+        _hasScrollInertia = false;
+        _inertiaVelocityY = 0;
+        _inertiaVelocityX = 0;
+    }
+
+    void IFrameAnimation.Tick(float deltaTime)
+    {
+        if (!_hasScrollInertia)
+            return;
+
+        deltaTime = Math.Clamp(deltaTime, 1f / 240f, 1f / 15f);
+        var previousY = _scrollOffsetY;
+        var previousX = _scrollOffsetX;
+        Scroll(_inertiaVelocityY * deltaTime);
+        if (!WordWrap)
+            ScrollHorizontal(_inertiaVelocityX * deltaTime);
+
+        if (MathF.Abs(_scrollOffsetY - previousY) < 0.01f)
+            _inertiaVelocityY = 0;
+        if (WordWrap || MathF.Abs(_scrollOffsetX - previousX) < 0.01f)
+            _inertiaVelocityX = 0;
+
+        var decay = MathF.Pow(InertiaDecayPerFrame, deltaTime * 60f);
+        _inertiaVelocityY *= decay;
+        _inertiaVelocityX *= decay;
+
+        if (MathF.Max(MathF.Abs(_inertiaVelocityY), MathF.Abs(_inertiaVelocityX)) < MinInertiaVelocity)
+            StopScrollInertia();
+    }
+
+    protected override void OnUnmounted()
+    {
+        StopScrollInertia();
+        base.OnUnmounted();
     }
 
     private bool CommitTouchTap()

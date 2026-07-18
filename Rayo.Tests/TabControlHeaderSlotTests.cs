@@ -8,6 +8,26 @@ namespace Rayo.Tests;
 public sealed class TabControlHeaderSlotTests
 {
     [Fact]
+    public void Empty_content_is_replaced_by_tabs_and_restored_after_the_last_tab_closes()
+    {
+        var empty = new ProbeElement(120, 24);
+        var tabControl = new TabControl
+        {
+            Width = 500,
+            Height = 300
+        }.WithEmptyContent(() => empty);
+
+        Layout(tabControl, 500, 300);
+        Assert.NotNull(empty.Parent);
+
+        tabControl.AddTab("Document", new ProbeElement(100, 100));
+        Assert.Null(empty.Parent);
+
+        tabControl.RemoveTab(0);
+        Assert.NotNull(empty.Parent);
+    }
+
+    [Fact]
     public void Horizontal_header_keeps_start_and_end_slots_fixed()
     {
         var start = new ProbeElement(36, 24);
