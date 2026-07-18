@@ -4,8 +4,16 @@ namespace Nano.ViewModels;
 
 public sealed class HomeViewModel : ViewModelBase
 {
-    private const int FixedTabCount = 3;
+    private int _fixedTabCount;
+
+    public HomeViewModel(int fixedTabCount = 0)
+    {
+        _fixedTabCount = Math.Max(0, fixedTabCount);
+    }
+
     public List<TextAssetDocument> Documents { get; } = [];
+
+    public void SetFixedTabCount(int count) => _fixedTabCount = Math.Max(0, count);
 
     public DocumentOpenResult OpenTextAsset(
         string path,
@@ -17,7 +25,7 @@ public sealed class HomeViewModel : ViewModelBase
         if (existingIndex >= 0)
         {
             return new DocumentOpenResult(
-                FixedTabCount + existingIndex,
+                _fixedTabCount + existingIndex,
                 false,
                 null);
         }
@@ -29,30 +37,69 @@ public sealed class HomeViewModel : ViewModelBase
             save);
         Documents.Add(document);
         return new DocumentOpenResult(
-            FixedTabCount + Documents.Count - 1,
+            _fixedTabCount + Documents.Count - 1,
             true,
             document);
     }
 
     public bool CloseTextAsset(int tabIndex)
     {
-        if (tabIndex < FixedTabCount)
+        if (tabIndex < _fixedTabCount)
             return false;
 
-        var documentIndex = tabIndex - FixedTabCount;
+        var documentIndex = tabIndex - _fixedTabCount;
         if (documentIndex < 0 || documentIndex >= Documents.Count)
             return false;
 
+        Documents[documentIndex].SaveIfModified();
         Documents.RemoveAt(documentIndex);
         return true;
     }
+
+    public void SaveAllTextAssets()
+    {
+        foreach (var document in Documents)
+            document.SaveIfModified();
+    }
 }
 
-public sealed record TextAssetDocument(
-    string Path,
-    string Title,
-    string Text,
-    Action<string> Save);
+public sealed class TextAssetDocument
+{
+    private readonly Action<string> _save;
+    private string _savedText;
+
+    public TextAssetDocument(string path, string title, string text, Action<string> save)
+    {
+        Path = path;
+        Title = title;
+        Text = text;
+        _savedText = text;
+        _save = save;
+    }
+
+    public string Path { get; }
+    public string Title { get; }
+    public string Text { get; private set; }
+    public bool IsModified => !string.Equals(Text, _savedText, StringComparison.Ordinal);
+
+    public void UpdateText(string text)
+    {
+        if (string.Equals(Text, text, StringComparison.Ordinal))
+            return;
+
+        Text = text;
+        SaveIfModified();
+    }
+
+    public void SaveIfModified()
+    {
+        if (!IsModified)
+            return;
+
+        _save(Text);
+        _savedText = Text;
+    }
+}
 
 public sealed record DocumentOpenResult(
     int TabIndex,

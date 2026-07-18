@@ -1080,7 +1080,9 @@ public class RayoGLSurfaceView : GLSurfaceView
                 _touchEventQueue.Enqueue(new TouchEvent(eventType, pointerId, x, y, pressure));
             }
 
-            // No need to request render explicitly - continuous rendering mode runs at 60 fps
+            // A terminal touch event must reach the render thread even if Android
+            // temporarily throttles the GLSurfaceView while the IME is changing.
+            _view.RequestRender();
         }
 
         private void ProcessTouchEvents()
@@ -1089,7 +1091,12 @@ public class RayoGLSurfaceView : GLSurfaceView
 
             int processedCount = 0;
 
-            while (_touchEventQueue.TryDequeue(out var touchEvent) && processedCount < MaxEventsPerFrame)
+            // Check the budget before dequeuing. The previous order removed one
+            // unprocessed event whenever the queue exceeded the frame budget;
+            // if that event was Up/Cancel, the pressed control remained captured
+            // forever and its tap action was never invoked.
+            while (processedCount < MaxEventsPerFrame &&
+                   _touchEventQueue.TryDequeue(out var touchEvent))
             {
                 processedCount++;
 
@@ -1150,7 +1157,7 @@ public class RayoGLSurfaceView : GLSurfaceView
                     case TouchEventType.Cancel:
                         var cancelArgs = PointerEventArgs.FromTouch(current.PointerId, position, 0f);
                         cancelArgs.IsInContact = false;
-                        _tree.EventManager.ProcessTouchUp(cancelArgs);
+                        _tree.EventManager.ProcessTouchCancel(cancelArgs);
                         RayoLog.Debug($"Touch CANCEL: ID={current.PointerId}");
                         break;
                 }

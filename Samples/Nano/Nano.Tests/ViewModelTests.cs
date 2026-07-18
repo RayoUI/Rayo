@@ -9,6 +9,7 @@ using Nano.GameEngine;
 using Nano.Views.SpriteEditor;
 using Rayo.Rendering;
 using Rayo.Animation;
+using Rayo.Controls;
 using Rayo.Core;
 using Rayo.Core.Input;
 using Xunit;
@@ -603,9 +604,43 @@ public sealed class ViewModelTests
     }
 
     [Fact]
+    public void Asset_tile_inside_scroll_view_opens_on_touch_and_recovers_after_cancel()
+    {
+        var openCount = 0;
+        var tile = new AssetTile(() => openCount++)
+            .Height(40);
+        var root = new ScrollView()
+            .Content(
+                new Rayo.Layout.VStack()
+                    .Children(tile, new Frame().Height(800)));
+        var tree = new UITree();
+        tree.SetRoot(root);
+        tree.InitializeEventManager(null);
+        tree.Update(320, 480);
+
+        var position = new Vector2(
+            tile.ComputedX + tile.ComputedWidth / 2,
+            tile.ComputedY + tile.ComputedHeight / 2);
+        var canceled = PointerEventArgs.FromTouch(1, position, 0);
+        canceled.IsInContact = false;
+
+        tree.EventManager!.ProcessTouchDown(PointerEventArgs.FromTouch(1, position, 1));
+        tree.EventManager.ProcessTouchCancel(canceled);
+
+        Assert.Equal(0, openCount);
+
+        tree.EventManager.ProcessTouchDown(PointerEventArgs.FromTouch(2, position, 1));
+        var released = PointerEventArgs.FromTouch(2, position, 0);
+        released.IsInContact = false;
+        tree.EventManager.ProcessTouchUp(released);
+
+        Assert.Equal(1, openCount);
+    }
+
+    [Fact]
     public void Home_view_model_reuses_and_reindexes_document_tabs()
     {
-        var viewModel = new HomeViewModel();
+        var viewModel = new HomeViewModel(fixedTabCount: 3);
 
         var first = viewModel.OpenTextAsset("a.lua", "a", _ => { });
         var second = viewModel.OpenTextAsset("b.lua", "b", _ => { });
@@ -620,6 +655,44 @@ public sealed class ViewModelTests
         Assert.Equal(
             3,
             viewModel.OpenTextAsset("b.lua", "ignored", _ => { }).TabIndex);
+    }
+
+    [Fact]
+    public void Open_text_document_saves_only_changes_and_keeps_latest_text_for_rebuilds()
+    {
+        var saved = new List<string>();
+        var viewModel = new HomeViewModel();
+        var document = viewModel.OpenTextAsset("main.lua", "old", saved.Add).Document!;
+
+        document.UpdateText("old");
+        document.UpdateText("updated");
+        document.UpdateText("updated");
+        viewModel.SaveAllTextAssets();
+
+        Assert.Equal("updated", document.Text);
+        Assert.False(document.IsModified);
+        Assert.Equal(["updated"], saved);
+    }
+
+    [Fact]
+    public void Editing_an_open_asset_persists_the_new_text()
+    {
+        var saved = new List<string>();
+        var home = new Nano.Views.HomePage();
+        var tabs = Assert.IsType<TabControl>(home.Build());
+        home.OpenTextAsset("main.lua", string.Empty, saved.Add);
+        var editor = Assert.IsType<CodeEdit>(tabs.SelectedTab!.Content);
+
+        editor.HandleInput(TextInput('x'));
+
+        Assert.Equal("x", editor.Text);
+        Assert.Equal(["x"], saved);
+        Assert.Equal("x", Assert.Single(home.ViewModel.Documents).Text);
+
+        home.OpenTextAsset("main.lua", "stale", saved.Add);
+
+        Assert.Equal(0, tabs.SelectedIndex);
+        Assert.Single(home.ViewModel.Documents);
     }
 
     [Fact]

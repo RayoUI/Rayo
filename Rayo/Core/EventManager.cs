@@ -2218,7 +2218,7 @@ public class EventManager
         // Reset state for captured element
         if (state.CapturedElement != null)
         {
-            DispatchTouchPointerReleased(state.CapturedElement, pointerArgs);
+            DispatchTouchPointerCanceled(state.CapturedElement, pointerArgs);
         }
 
         _dragDropManager.CancelDrag();

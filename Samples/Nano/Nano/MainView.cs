@@ -71,6 +71,7 @@ public sealed class MainView : ViewBase<MainViewModel>
         if (_navigationHost is null)
             return;
 
+        _homePage.SaveAllTextAssets();
         var page = new GamePage(ViewModel.ProjectStore, PopPage);
         _navigation.Push(page);
         _navigationHost.Content = page;
