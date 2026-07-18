@@ -173,6 +173,17 @@ public sealed class NanoProjectStore : IProjectAssetStore
         return reader.ReadToEnd();
     }
 
+    public byte[] ReadBytes(string path)
+    {
+        using var archive = ZipFile.OpenRead(ArchivePath);
+        var entry = archive.GetEntry(NormalizeFilePath(path))
+            ?? throw new FileNotFoundException("The virtual asset does not exist.", path);
+        using var source = entry.Open();
+        using var destination = new MemoryStream();
+        source.CopyTo(destination);
+        return destination.ToArray();
+    }
+
     public void WriteText(string path, string text)
     {
         var normalizedPath = NormalizeFilePath(path);

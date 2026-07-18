@@ -1007,7 +1007,7 @@ public class SkiaSharpRenderer : IRenderer, INativeGradientRenderer
         if (texture is not SkiaSharpTexture skTexture)
             throw new ArgumentException("Texture must be a SkiaSharpTexture", nameof(texture));
 
-        if (skTexture.Image == null && skTexture.SvgPicture == null)
+        if (skTexture.Image == null && skTexture.SvgPicture == null && skTexture.Bitmap == null)
             return;
 
         var destRect = new SKRect(x, y, x + width, y + height);
@@ -1040,6 +1040,14 @@ public class SkiaSharpRenderer : IRenderer, INativeGradientRenderer
                 x - bounds.Left * scaleX,
                 y - bounds.Top * scaleY);
             _canvas.DrawPicture(picture, in matrix, paint);
+        }
+        else if (skTexture.Bitmap is { } bitmap)
+        {
+            bool isOneToOne = MathF.Abs(width - bitmap.Width) < 1f && MathF.Abs(height - bitmap.Height) < 1f;
+            if (isOneToOne)
+                _canvas.DrawBitmap(bitmap, x, y, paint);
+            else
+                _canvas.DrawBitmap(bitmap, destRect, paint);
         }
         else if (skTexture.Image is { } image)
         {
@@ -1142,6 +1150,23 @@ public class SkiaSharpRenderer : IRenderer, INativeGradientRenderer
         var info = new SKImageInfo(width, height, SKColorType.Rgba8888, SKAlphaType.Unpremul);
         var image = SKImage.FromPixelCopy(info, rgbaPixels, width * 4);
         return new SkiaSharpTexture(image, samplingMode);
+    }
+
+    public ITexture CreateDynamicTextureFromPixels(byte[] rgbaPixels, int width, int height)
+    {
+        var info = new SKImageInfo(width, height, SKColorType.Rgba8888, SKAlphaType.Unpremul);
+        var bitmap = new SKBitmap(info);
+        System.Runtime.InteropServices.Marshal.Copy(rgbaPixels, 0, bitmap.GetPixels(), width * height * 4);
+        return new SkiaSharpTexture(bitmap);
+    }
+
+    public ITexture UpdateDynamicTexturePixels(ITexture texture, byte[] rgbaPixels, int width, int height)
+    {
+        if (texture is SkiaSharpTexture skiaTexture && skiaTexture.UpdatePixels(rgbaPixels, width, height))
+            return skiaTexture;
+
+        texture.Dispose();
+        return CreateDynamicTextureFromPixels(rgbaPixels, width, height);
     }
 
     public void PushTransform(Matrix3x2 transform)

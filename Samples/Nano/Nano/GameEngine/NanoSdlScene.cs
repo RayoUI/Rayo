@@ -1,7 +1,7 @@
 using Silk.NET.Maths;
 using Silk.NET.SDL;
 
-namespace Nano.Views.Game;
+namespace Nano.GameEngine;
 
 /// <summary>SDL2 off-screen renderer used by the Nano game page.</summary>
 internal sealed unsafe class NanoSdlScene : IDisposable
@@ -17,6 +17,7 @@ internal sealed unsafe class NanoSdlScene : IDisposable
     private readonly bool _usesMemorySurface;
     private int _targetWidth;
     private int _targetHeight;
+    private byte[] _pixels = [];
 
     public NanoSdlScene(bool forceMemorySurface = false)
     {
@@ -89,25 +90,55 @@ internal sealed unsafe class NanoSdlScene : IDisposable
                 case CircleCommand circle:
                     DrawCircle(circle);
                     break;
+                case OutlineRectCommand rect:
+                    DrawOutlineRect(rect);
+                    break;
+                case OutlineCircleCommand circle:
+                    DrawOutlineCircle(circle);
+                    break;
+                case TextCommand text:
+                    DrawText(text);
+                    break;
             }
         }
 
-        var pixels = new byte[width * height * 4];
-        fixed (byte* pointer = pixels)
+        var requiredLength = width * height * 4;
+        if (_pixels.Length != requiredLength)
+            _pixels = new byte[requiredLength];
+
+        fixed (byte* pointer = _pixels)
         {
-            var result = _sdl.RenderReadPixels(
-                _renderer,
-                (Rectangle<int>*)null,
-                PixelFormat,
-                pointer,
-                width * 4);
-            if (result != 0)
-                throw new InvalidOperationException("SDL_RenderReadPixels failed.");
+            if (_usesMemorySurface)
+            {
+                _sdl.RenderPresent(_renderer);
+                var source = (byte*)_surface->Pixels;
+                var sourcePitch = _surface->Pitch;
+                var destinationPitch = width * 4;
+                for (var row = 0; row < height; row++)
+                {
+                    Buffer.MemoryCopy(
+                        source + row * sourcePitch,
+                        pointer + row * destinationPitch,
+                        destinationPitch,
+                        destinationPitch);
+                }
+            }
+            else
+            {
+                var result = _sdl.RenderReadPixels(
+                    _renderer,
+                    (Rectangle<int>*)null,
+                    PixelFormat,
+                    pointer,
+                    width * 4);
+                if (result != 0)
+                    throw new InvalidOperationException("SDL_RenderReadPixels failed.");
+            }
         }
 
         if (!_usesMemorySurface)
             _sdl.SetRenderTarget(_renderer, (Texture*)null);
-        return pixels;
+        return _pixels;
     }
 
     public void Dispose()
@@ -222,6 +253,87 @@ internal sealed unsafe class NanoSdlScene : IDisposable
                 centerY + y,
                 centerX + halfWidth,
                 centerY + y);
+        }
+    }
+
+    private void DrawOutlineRect(OutlineRectCommand command)
+    {
+        SetColor(command.Color);
+        var thickness = Math.Max(1, (int)command.Thickness);
+        for (var offset = 0; offset < thickness; offset++)
+        {
+            var rectangle = new Rectangle<int>(
+                (int)command.X + offset,
+                (int)command.Y + offset,
+                Math.Max(0, (int)command.Width - offset * 2),
+                Math.Max(0, (int)command.Height - offset * 2));
+            _sdl.RenderDrawRect(_renderer, &rectangle);
+        }
+    }
+
+    private void DrawOutlineCircle(OutlineCircleCommand command)
+    {
+        SetColor(command.Color);
+        var thickness = Math.Max(1, (int)command.Thickness);
+        for (var ring = 0; ring < thickness; ring++)
+        {
+            var radius = Math.Max(0, (int)command.Radius - ring);
+            var x = radius;
+            var y = 0;
+            var error = 1 - radius;
+            while (x >= y)
+            {
+                DrawCircleOctants((int)command.CenterX, (int)command.CenterY, x, y);
+                y++;
+                if (error < 0)
+                    error += 2 * y + 1;
+                else
+                {
+                    x--;
+                    error += 2 * (y - x) + 1;
+                }
+            }
+        }
+    }
+
+    private void DrawCircleOctants(int centerX, int centerY, int x, int y)
+    {
+        _sdl.RenderDrawPoint(_renderer, centerX + x, centerY + y);
+        _sdl.RenderDrawPoint(_renderer, centerX + y, centerY + x);
+        _sdl.RenderDrawPoint(_renderer, centerX - y, centerY + x);
+        _sdl.RenderDrawPoint(_renderer, centerX - x, centerY + y);
+        _sdl.RenderDrawPoint(_renderer, centerX - x, centerY - y);
+        _sdl.RenderDrawPoint(_renderer, centerX - y, centerY - x);
+        _sdl.RenderDrawPoint(_renderer, centerX + y, centerY - x);
+        _sdl.RenderDrawPoint(_renderer, centerX + x, centerY - y);
+    }
+
+    private void DrawText(TextCommand command)
+    {
+        SetColor(command.Color);
+        var scale = Math.Max(1, command.Scale);
+        var cursorX = (int)command.X;
+        foreach (var character in command.Text)
+        {
+            var rows = NanoBitmapFont.Rows(character);
+            if (rows is not null)
+            {
+                for (var row = 0; row < NanoBitmapFont.GlyphHeight; row++)
+                {
+                    for (var column = 0; column < NanoBitmapFont.GlyphWidth; column++)
+                    {
+                        if (rows[row][column] != '1')
+                            continue;
+                        var pixel = new Rectangle<int>(
+                            cursorX + column * scale,
+                            (int)command.Y + row * scale,
+                            scale,
+                            scale);
+                        _sdl.RenderFillRect(_renderer, &pixel);
+                    }
+                }
+            }
+            cursorX += NanoBitmapFont.Advance * scale;
         }
     }
 

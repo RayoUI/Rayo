@@ -1,4 +1,4 @@
-namespace Nano.Views.Game;
+namespace Nano.GameEngine;
 
 internal readonly record struct GameColor(byte R, byte G, byte B, byte A = 255);
 
@@ -25,3 +25,12 @@ internal sealed record CircleCommand(
     float CenterY,
     float Radius,
     GameColor Color) : NanoGameCommand;
+
+internal sealed record OutlineRectCommand(
+    float X, float Y, float Width, float Height, float Thickness, GameColor Color) : NanoGameCommand;
+
+internal sealed record OutlineCircleCommand(
+    float CenterX, float CenterY, float Radius, float Thickness, GameColor Color) : NanoGameCommand;
+
+internal sealed record TextCommand(
+    string Text, float X, float Y, int Scale, GameColor Color) : NanoGameCommand;

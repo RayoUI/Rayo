@@ -1,5 +1,6 @@
 using System.Numerics;
 using Rayo.Core;
+using Nano.GameEngine;
 using Rayo.Core.Input;
 using Rayo.Rendering;
 
@@ -16,6 +17,7 @@ internal sealed class VirtualGameControls(NanoGameInputState input)
 
     private readonly Dictionary<int, ControlTarget> _activePointers = [];
     private int? _joystickPointerId;
+    private int? _uiPointerId;
 
     protected override void Measure(float availableWidth, float availableHeight)
     {
@@ -33,7 +35,17 @@ internal sealed class VirtualGameControls(NanoGameInputState input)
         if (target == ControlTarget.None)
             return;
 
-        if (target == ControlTarget.Joystick)
+        if (target == ControlTarget.Ui)
+        {
+            if (_uiPointerId is not null)
+                return;
+            _uiPointerId = args.PointerId;
+            UpdateUiPointer(args.Position);
+            input.PointerDown = true;
+            input.PointerPressed = true;
+        }
+
+        else if (target == ControlTarget.Joystick)
         {
             if (_joystickPointerId is not null)
                 return;
@@ -51,10 +63,15 @@ internal sealed class VirtualGameControls(NanoGameInputState input)
     public void OnPointerMoved(PointerEventArgs args)
     {
         if (!_activePointers.TryGetValue(args.PointerId, out var target))
+        {
+            UpdateUiPointer(args.Position);
             return;
+        }
 
         if (target == ControlTarget.Joystick)
             UpdateJoystick(args.Position);
+        else if (target == ControlTarget.Ui)
+            UpdateUiPointer(args.Position);
 
         MarkNeedsPaint();
         args.Handled = true;
@@ -68,6 +85,7 @@ internal sealed class VirtualGameControls(NanoGameInputState input)
     {
         _activePointers.Clear();
         _joystickPointerId = null;
+        _uiPointerId = null;
         input.Reset();
         base.OnUnmounted();
     }
@@ -118,6 +136,13 @@ internal sealed class VirtualGameControls(NanoGameInputState input)
             input.X = 0;
             input.Y = 0;
         }
+        else if (target == ControlTarget.Ui && _uiPointerId == args.PointerId)
+        {
+            UpdateUiPointer(args.Position);
+            _uiPointerId = null;
+            input.PointerDown = false;
+            input.PointerReleased = true;
+        }
 
         UpdateButtons();
         MarkNeedsPaint();
@@ -147,6 +172,9 @@ internal sealed class VirtualGameControls(NanoGameInputState input)
 
     private ControlTarget HitControl(Vector2 position)
     {
+        if (input.IsOverUi(position.X - ComputedX, position.Y - ComputedY))
+            return ControlTarget.Ui;
+
         if (Vector2.Distance(position, GetJoystickCenter()) <= JoystickRadius * 1.35f)
             return ControlTarget.Joystick;
 
@@ -156,6 +184,12 @@ internal sealed class VirtualGameControls(NanoGameInputState input)
         if (Vector2.Distance(position, buttonB) <= ButtonBRadius * 1.25f)
             return ControlTarget.B;
         return ControlTarget.None;
+    }
+
+    private void UpdateUiPointer(Vector2 position)
+    {
+        input.PointerX = position.X - ComputedX;
+        input.PointerY = position.Y - ComputedY;
     }
 
     private Vector2 GetJoystickCenter() => new(
@@ -199,6 +233,7 @@ internal sealed class VirtualGameControls(NanoGameInputState input)
     private enum ControlTarget
     {
         None,
+        Ui,
         Joystick,
         A,
         B

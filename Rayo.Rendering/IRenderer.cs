@@ -171,6 +171,17 @@ public interface IRenderer : IDisposable
         TextureSamplingMode samplingMode) =>
         CreateTextureFromPixels(rgbaPixels, width, height);
 
+    /// <summary>Creates a texture intended to receive new pixels repeatedly.</summary>
+    ITexture CreateDynamicTextureFromPixels(byte[] rgbaPixels, int width, int height) =>
+        CreateTextureFromPixels(rgbaPixels, width, height);
+
+    /// <summary>Updates a dynamic texture and returns either it or a replacement.</summary>
+    ITexture UpdateDynamicTexturePixels(ITexture texture, byte[] rgbaPixels, int width, int height)
+    {
+        texture.Dispose();
+        return CreateDynamicTextureFromPixels(rgbaPixels, width, height);
+    }
+
     // === Render-to-Texture (Framebuffer Objects) ===
 
     /// <summary>

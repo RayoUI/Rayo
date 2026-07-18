@@ -13,6 +13,7 @@ public class SkiaSharpTexture : ITexture
     private SKImage? _image;
     private SKSvg? _svg;
     private SKSurface? _surface; // For render targets
+    private SKBitmap? _bitmap; // Mutable pixel source for dynamic textures
     private bool _disposed;
 
     public int Width { get; }
@@ -23,6 +24,7 @@ public class SkiaSharpTexture : ITexture
     internal SKImage? Image => _image;
     internal SKPicture? SvgPicture => _svg?.Picture;
     internal SKSurface? Surface => _surface;
+    internal SKBitmap? Bitmap => _bitmap;
 
     /// <summary>
     /// Creates a texture from an existing SKImage
@@ -34,6 +36,17 @@ public class SkiaSharpTexture : ITexture
         _image = image ?? throw new ArgumentNullException(nameof(image));
         Width = image.Width;
         Height = image.Height;
+        IsRenderTarget = false;
+        SamplingMode = samplingMode;
+    }
+
+    internal SkiaSharpTexture(
+        SKBitmap bitmap,
+        TextureSamplingMode samplingMode = TextureSamplingMode.Smooth)
+    {
+        _bitmap = bitmap ?? throw new ArgumentNullException(nameof(bitmap));
+        Width = bitmap.Width;
+        Height = bitmap.Height;
         IsRenderTarget = false;
         SamplingMode = samplingMode;
     }
@@ -116,6 +129,20 @@ public class SkiaSharpTexture : ITexture
         _image = _surface.Snapshot();
     }
 
+    internal bool UpdatePixels(byte[] rgbaPixels, int width, int height)
+    {
+        if (_disposed || _bitmap is null || width != Width || height != Height ||
+            rgbaPixels.Length < width * height * 4)
+            return false;
+
+        System.Runtime.InteropServices.Marshal.Copy(
+            rgbaPixels,
+            0,
+            _bitmap.GetPixels(),
+            width * height * 4);
+        return true;
+    }
+
     public void Dispose()
     {
         if (_disposed) return;
@@ -123,6 +150,7 @@ public class SkiaSharpTexture : ITexture
         _image?.Dispose();
         _svg?.Dispose();
         _surface?.Dispose();
+        _bitmap?.Dispose();
         _disposed = true;
 
         GC.SuppressFinalize(this);

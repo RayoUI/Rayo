@@ -4,8 +4,10 @@ using Nano.Navigation;
 using Nano.Views.ProjectAssetStore;
 using Nano.Views.ProjectAssetStore.Components;
 using Nano.Views.Game;
+using Nano.GameEngine;
 using Nano.Views.SpriteEditor;
 using Rayo.Rendering;
+using Rayo.Animation;
 using Rayo.Core;
 using Rayo.Core.Input;
 using Xunit;
@@ -221,19 +223,145 @@ public sealed class ViewModelTests
     }
 
     [Fact]
+    public void Physics_service_integrates_gravity_and_resolves_a_circle_against_a_floor()
+    {
+        var physics = new NanoPhysicsService();
+        var world = physics.CreateWorld(0, 100);
+        var ball = physics.CreateCircle(world, 0, 0, 1, 1, BodyKind.Dynamic);
+        physics.CreateBox(world, 0, 10, 30, 2, 1, BodyKind.Static);
+        physics.SetRestitution(ball, 0);
+
+        for (var frame = 0; frame < 240; frame++)
+            physics.Step(world, 1f / 60f, 6);
+
+        var state = physics.GetBody(ball);
+        Assert.InRange(state.Y, 7.8f, 8.1f);
+        Assert.InRange(Math.Abs(state.VelocityY), 0, 0.2f);
+    }
+
+    [Fact]
+    public void Lua_physics_api_can_move_and_query_a_body()
+    {
+        var store = new FakeProjectAssetStore();
+        store.WriteText(
+            "main.lua",
+            """
+            local world = nano.physics.new_world(0, 0)
+            local body = nano.physics.new_circle(world, 10, 20, 4)
+            nano.physics.apply_impulse(body, 30, 0)
+
+            function update(dt)
+                nano.physics.step(world, dt)
+            end
+
+            function draw()
+                local state = nano.physics.body(body)
+                nano.draw.circle(state.x, state.y, 4, 255, 255, 255)
+            end
+            """);
+
+        using var engine = new NanoGameEngine(store);
+        engine.RunFrame(0.5f, 320, 180);
+
+        Assert.Null(engine.Error);
+        var circle = Assert.IsType<CircleCommand>(Assert.Single(engine.Commands));
+        Assert.True(circle.CenterX > 10);
+        Assert.Equal(20, circle.CenterY);
+    }
+
+    [Fact]
+    public void Engine_ui_renders_bitmap_text_and_handles_a_button_click()
+    {
+        var store = new FakeProjectAssetStore();
+        store.WriteText(
+            "main.lua",
+            """
+            function draw()
+                nano.ui.panel(8, 8, 140, 80, "MENU")
+                if nano.ui.button("play", "PLAY", 18, 42, 100, 30) then
+                    nano.file.write("clicked.txt", "yes")
+                end
+            end
+            """);
+        var input = new NanoGameInputState();
+        using var engine = new NanoGameEngine(store, input);
+
+        engine.RunFrame(1f / 60f, 320, 180);
+        Assert.Contains(engine.Commands, command => command is TextCommand { Text: "MENU" });
+
+        input.PointerX = 40;
+        input.PointerY = 55;
+        input.PointerDown = true;
+        input.PointerPressed = true;
+        engine.RunFrame(1f / 60f, 320, 180);
+
+        input.PointerDown = false;
+        input.PointerReleased = true;
+        engine.RunFrame(1f / 60f, 320, 180);
+
+        Assert.Equal("yes", store.ReadText("clicked.txt"));
+    }
+
+    [Fact]
     public void Sdl_memory_surface_renders_without_a_video_window()
     {
         using var scene = new NanoSdlScene(forceMemorySurface: true);
         NanoGameCommand[] commands =
         [
             new ClearCommand(new GameColor(1, 2, 3)),
-            new CircleCommand(16, 16, 8, new GameColor(40, 120, 220))
+            new CircleCommand(16, 16, 8, new GameColor(40, 120, 220)),
+            new TextCommand("UI", 2, 2, 1, new GameColor(255, 255, 255))
         ];
 
         var pixels = scene.RenderFrame(32, 32, commands);
 
         Assert.Equal(32 * 32 * 4, pixels.Length);
         Assert.Contains(pixels, value => value != 0);
+
+        var nextPixels = scene.RenderFrame(32, 32, commands);
+        Assert.Same(pixels, nextPixels);
+    }
+
+    [Fact]
+    public void Frame_ticker_does_not_throttle_ordinary_frame_animations()
+    {
+        var animation = new CountingFrameAnimation();
+        FrameAnimationTicker.Register(animation);
+        try
+        {
+            FrameAnimationTicker.Tick(0.005f);
+            Assert.Equal(1, animation.TickCount);
+            Assert.Equal(0.005f, animation.Elapsed, 4);
+        }
+        finally
+        {
+            FrameAnimationTicker.Unregister(animation);
+        }
+    }
+
+    [Fact]
+    public void Lua_fps_is_averaged_instead_of_following_each_frame_delta()
+    {
+        var store = new FakeProjectAssetStore();
+        store.WriteText(
+            "main.lua",
+            """
+            function draw()
+                nano.draw.rect(0, 0, nano.time.fps, nano.time.frame_time, 255, 255, 255)
+            end
+            """);
+        using var engine = new NanoGameEngine(store);
+        var samples = new List<float>();
+
+        for (var frame = 0; frame < 30; frame++)
+        {
+            engine.RunFrame(frame % 2 == 0 ? 1f / 50f : 1f / 30f, 320, 180);
+            if (frame >= 22)
+                samples.Add(Assert.IsType<RectCommand>(Assert.Single(engine.Commands)).Width);
+        }
+
+        Assert.Single(samples.Distinct());
+        Assert.InRange(samples[0], 36, 39);
     }
 
     [Fact]
@@ -375,6 +503,8 @@ public sealed class ViewModelTests
 
         public string ReadText(string path) => _files[path];
 
+        public byte[] ReadBytes(string path) => System.Text.Encoding.UTF8.GetBytes(_files[path]);
+
         public void WriteText(string path, string text) => _files[path] = text;
 
         public bool IsTextFile(string path) =>
@@ -384,5 +514,17 @@ public sealed class ViewModelTests
 
         public bool IsSpriteFile(string path) =>
             path.EndsWith(".sprite", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private sealed class CountingFrameAnimation : IFrameAnimation
+    {
+        public int TickCount { get; private set; }
+        public float Elapsed { get; private set; }
+
+        public void Tick(float deltaTime)
+        {
+            TickCount++;
+            Elapsed += deltaTime;
+        }
     }
 }

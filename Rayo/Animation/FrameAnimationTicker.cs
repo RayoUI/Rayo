@@ -113,12 +113,13 @@ public static class FrameAnimationTicker
         for (int i = 0; i < snapshot.Length; i++)
         {
             var animation = snapshot[i];
-            float targetFps = GetTargetFps(animation);
-            float targetFrameTime = targetFps > 0f ? 1f / targetFps : 0f;
             float elapsedForAnimation = deltaTime;
 
-            if (targetFrameTime > 0f)
+            // Ordinary frame animations follow every host frame. Only animations that
+            // explicitly opt into IFrameAnimationThrottle are cadence-limited.
+            if (animation is IFrameAnimationThrottle throttled && throttled.TargetFps > 0f)
             {
+                float targetFrameTime = 1f / throttled.TargetFps;
                 lock (_syncLock)
                 {
                     if (!_accumulators.TryGetValue(animation, out float accumulated))
@@ -127,14 +128,16 @@ public static class FrameAnimationTicker
                     }
 
                     accumulated += deltaTime;
-                    if (accumulated < targetFrameTime)
+                    if (accumulated + 0.000001f < targetFrameTime)
                     {
                         _accumulators[animation] = accumulated;
                         continue;
                     }
 
-                    elapsedForAnimation = accumulated;
-                    _accumulators[animation] = 0f;
+                    int elapsedSteps = Math.Max(1, (int)MathF.Floor(
+                        (accumulated + 0.000001f) / targetFrameTime));
+                    elapsedForAnimation = elapsedSteps * targetFrameTime;
+                    _accumulators[animation] = Math.Max(0, accumulated - elapsedForAnimation);
                 }
             }
 

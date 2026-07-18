@@ -12,6 +12,8 @@ public interface IProjectAssetStore
 
     string ReadText(string path);
 
+    byte[] ReadBytes(string path);
+
     void WriteText(string path, string text);
 
     bool IsTextFile(string path);

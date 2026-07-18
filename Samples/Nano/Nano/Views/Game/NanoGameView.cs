@@ -1,4 +1,5 @@
 using Nano.Views.ProjectAssetStore;
+using Nano.GameEngine;
 using Rayo.Animation;
 using Rayo.Core;
 using Rayo.Rendering;
@@ -19,6 +20,9 @@ internal sealed class NanoGameView(
     private bool _animationRegistered;
     private string? _hostError;
     private bool _usesRayoFallback;
+    private ITexture? _frameTexture;
+    private long _frameVersion;
+    private long _uploadedFrameVersion = -1;
 
     protected override void Measure(float availableWidth, float availableHeight)
     {
@@ -70,6 +74,8 @@ internal sealed class NanoGameView(
 
         _scene?.Dispose();
         _scene = null;
+        _frameTexture?.Dispose();
+        _frameTexture = null;
         _engine?.Dispose();
         _engine = null;
         base.OnUnmounted();
@@ -91,6 +97,7 @@ internal sealed class NanoGameView(
                 _frame = _scene.RenderFrame(width, height, _engine.Commands);
                 _frameWidth = width;
                 _frameHeight = height;
+                _frameVersion++;
             }
         }
         catch
@@ -115,8 +122,21 @@ internal sealed class NanoGameView(
 
         if (_frame is not null && _frameWidth > 0 && _frameHeight > 0)
         {
-            using var texture = renderer.CreateTextureFromPixels(_frame, _frameWidth, _frameHeight);
-            renderer.DrawTexture(texture, ComputedX, ComputedY, ComputedWidth, ComputedHeight);
+            if (_frameTexture is null)
+            {
+                _frameTexture = renderer.CreateDynamicTextureFromPixels(_frame, _frameWidth, _frameHeight);
+                _uploadedFrameVersion = _frameVersion;
+            }
+            else if (_uploadedFrameVersion != _frameVersion)
+            {
+                _frameTexture = renderer.UpdateDynamicTexturePixels(
+                    _frameTexture,
+                    _frame,
+                    _frameWidth,
+                    _frameHeight);
+                _uploadedFrameVersion = _frameVersion;
+            }
+            renderer.DrawTexture(_frameTexture, ComputedX, ComputedY, ComputedWidth, ComputedHeight);
         }
         else if (_usesRayoFallback && _engine is not null)
         {
@@ -181,7 +201,58 @@ internal sealed class NanoGameView(
                         circle.Radius,
                         ToColor(circle.Color));
                     break;
+                case OutlineRectCommand rect:
+                    renderer.DrawLine(ComputedX + rect.X, ComputedY + rect.Y, ComputedX + rect.X + rect.Width, ComputedY + rect.Y, rect.Thickness, ToColor(rect.Color));
+                    renderer.DrawLine(ComputedX + rect.X + rect.Width, ComputedY + rect.Y, ComputedX + rect.X + rect.Width, ComputedY + rect.Y + rect.Height, rect.Thickness, ToColor(rect.Color));
+                    renderer.DrawLine(ComputedX + rect.X + rect.Width, ComputedY + rect.Y + rect.Height, ComputedX + rect.X, ComputedY + rect.Y + rect.Height, rect.Thickness, ToColor(rect.Color));
+                    renderer.DrawLine(ComputedX + rect.X, ComputedY + rect.Y + rect.Height, ComputedX + rect.X, ComputedY + rect.Y, rect.Thickness, ToColor(rect.Color));
+                    break;
+                case OutlineCircleCommand circle:
+                    const int segments = 48;
+                    for (var index = 0; index < segments; index++)
+                    {
+                        var a = index * Math.Tau / segments;
+                        var b = (index + 1) * Math.Tau / segments;
+                        renderer.DrawLine(
+                            ComputedX + circle.CenterX + (float)Math.Cos(a) * circle.Radius,
+                            ComputedY + circle.CenterY + (float)Math.Sin(a) * circle.Radius,
+                            ComputedX + circle.CenterX + (float)Math.Cos(b) * circle.Radius,
+                            ComputedY + circle.CenterY + (float)Math.Sin(b) * circle.Radius,
+                            circle.Thickness,
+                            ToColor(circle.Color));
+                    }
+                    break;
+                case TextCommand text:
+                    DrawBitmapText(renderer, text);
+                    break;
             }
+        }
+    }
+
+    private void DrawBitmapText(IRenderer renderer, TextCommand command)
+    {
+        var scale = Math.Max(1, command.Scale);
+        var cursorX = ComputedX + command.X;
+        foreach (var character in command.Text)
+        {
+            var rows = NanoBitmapFont.Rows(character);
+            if (rows is not null)
+            {
+                for (var row = 0; row < NanoBitmapFont.GlyphHeight; row++)
+                {
+                    for (var column = 0; column < NanoBitmapFont.GlyphWidth; column++)
+                    {
+                        if (rows[row][column] == '1')
+                            renderer.DrawRect(
+                                cursorX + column * scale,
+                                ComputedY + command.Y + row * scale,
+                                scale,
+                                scale,
+                                ToColor(command.Color));
+                    }
+                }
+            }
+            cursorX += NanoBitmapFont.Advance * scale;
         }
     }
 
