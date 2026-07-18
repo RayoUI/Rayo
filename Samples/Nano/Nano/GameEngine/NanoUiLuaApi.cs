@@ -62,18 +62,23 @@ internal sealed class NanoUiLuaApi(NanoUiService ui)
         ["next"] = Function(context =>
         {
             var bounds = ui.Next(Integer(context, 0), Number(context, 1));
-            context.Return(Bounds(bounds));
+            var result = context.ArgumentCount > 2
+                ? context.GetArgument<LuaTable>(2)
+                : new LuaTable();
+            SetBounds(result, bounds);
+            context.Return(result);
             return 1;
         }),
         ["measure"] = Function(context =>
         {
             var text = context.GetArgument<string>(0);
             var scale = context.ArgumentCount > 1 ? Integer(context, 1) : 2;
-            context.Return(new LuaTable
-            {
-                ["width"] = NanoBitmapFont.MeasureWidth(text, scale),
-                ["height"] = NanoBitmapFont.MeasureHeight(scale)
-            });
+            var result = context.ArgumentCount > 2
+                ? context.GetArgument<LuaTable>(2)
+                : new LuaTable();
+            result["width"] = NanoBitmapFont.MeasureWidth(text, scale);
+            result["height"] = NanoBitmapFont.MeasureHeight(scale);
+            context.Return(result);
             return 1;
         }),
         ["theme"] = Function(context =>
@@ -84,13 +89,13 @@ internal sealed class NanoUiLuaApi(NanoUiService ui)
         ["reset_theme"] = Function(_ => { ui.ResetTheme(); return 0; })
     };
 
-    private static LuaTable Bounds(UiHitRegion bounds) => new()
+    private static void SetBounds(LuaTable result, UiHitRegion bounds)
     {
-        ["x"] = bounds.X,
-        ["y"] = bounds.Y,
-        ["width"] = bounds.Width,
-        ["height"] = bounds.Height
-    };
+        result["x"] = bounds.X;
+        result["y"] = bounds.Y;
+        result["width"] = bounds.Width;
+        result["height"] = bounds.Height;
+    }
 
     private static float OptionalNumber(LuaFunctionExecutionContext context, int index, float fallback) =>
         context.ArgumentCount > index ? Number(context, index) : fallback;

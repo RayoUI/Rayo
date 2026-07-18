@@ -209,17 +209,94 @@ public sealed class ViewModelTests
                 store.GetChildren(string.Empty),
                 asset => asset.Path.Equals("sprites", StringComparison.OrdinalIgnoreCase));
 
-            using var engine = new NanoGameEngine(store, new NanoGameInputState { X = 1 });
+            var input = new NanoGameInputState { X = 1 };
+            using var engine = new NanoGameEngine(store, input);
             engine.RunFrame(1f / 60f, 390, 720);
 
             Assert.Null(engine.Error);
             Assert.Contains(engine.Commands, command => command is CircleCommand);
+
+            void AssertFps() => Assert.Contains(
+                engine.Commands,
+                command => command is TextCommand text && text.Text.StartsWith("FPS ", StringComparison.Ordinal));
+
+            AssertFps();
+
+            void Click(float x, float y)
+            {
+                input.PointerX = x;
+                input.PointerY = y;
+                input.PointerDown = true;
+                input.PointerPressed = true;
+                engine.RunFrame(1f / 60f, 390, 720);
+                input.PointerDown = false;
+                input.PointerReleased = true;
+                engine.RunFrame(1f / 60f, 390, 720);
+                engine.RunFrame(1f / 60f, 390, 720);
+                Assert.Null(engine.Error);
+            }
+
+            Click(120, 240);
+            Assert.Contains(engine.Commands, command => command is TextCommand { Text: "PLATFORMER  COINS 0/3" });
+            AssertFps();
+
+            Click(345, 91);
+            Assert.Equal(0, engine.ResourceCounts.PhysicsWorlds);
+            Assert.Equal(0, engine.ResourceCounts.PhysicsBodies);
+            Click(120, 325);
+            Assert.Contains(engine.Commands, command => command is TextCommand { Text: "PHYSICS LAB" });
+            AssertFps();
+
+            Click(345, 91);
+            Assert.Equal(0, engine.ResourceCounts.PhysicsWorlds);
+            Assert.Equal(0, engine.ResourceCounts.PhysicsBodies);
+            Click(120, 410);
+            Assert.Contains(engine.Commands, command => command is TextCommand { Text: "ENGINE SHOWCASE" });
+            AssertFps();
         }
         finally
         {
             if (Directory.Exists(directory))
                 Directory.Delete(directory, recursive: true);
         }
+    }
+
+    [Fact]
+    public void Engine_dispose_invokes_lua_shutdown_and_clears_physics_resources()
+    {
+        var store = new FakeProjectAssetStore();
+        store.WriteText(
+            "main.lua",
+            """
+            local world = nano.physics.new_world(0, 100)
+            nano.physics.new_circle(world, 10, 10, 4)
+            function shutdown()
+                nano.file.write("shutdown.txt", "called")
+                nano.physics.destroy_world(world)
+            end
+            """);
+        var engine = new NanoGameEngine(store);
+
+        Assert.Equal(1, engine.ResourceCounts.PhysicsWorlds);
+        Assert.Equal(1, engine.ResourceCounts.PhysicsBodies);
+
+        engine.Dispose();
+
+        Assert.Equal("called", store.ReadText("shutdown.txt"));
+        Assert.Equal(0, engine.ResourceCounts.PhysicsWorlds);
+        Assert.Equal(0, engine.ResourceCounts.PhysicsBodies);
+    }
+
+    [Fact]
+    public void Network_release_removes_request_state_immediately()
+    {
+        using var network = new NanoNetworkService();
+        var handle = network.Get("invalid://request");
+
+        Assert.Equal(1, network.RequestCount);
+        network.Release(handle);
+
+        Assert.Equal(0, network.RequestCount);
     }
 
     [Fact]

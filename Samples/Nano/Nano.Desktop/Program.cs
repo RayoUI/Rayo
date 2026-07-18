@@ -4,6 +4,9 @@ using Rayo.Hosting.Desktop;
 const int MobileLogicalWidth = 390;
 const int MobileLogicalHeight = 780;
 
+// Nano submits its 2D game commands directly to the GPU. Avoid Desktop's
+// compatibility Skia CPU surface and select the native OpenGL backend.
+Environment.SetEnvironmentVariable("RAYO_DESKTOP_RENDERER", "opengl");
 var host = new DesktopPlatformHost();
 
 host.Run(

@@ -1,10 +1,14 @@
--- Nano Debug game entry point. Game code lives in scripts/ inside game.nn.
-local game = require("game")
+-- Nano game entry point. The launcher loads examples from scripts/examples/.
+local launcher = require("launcher")
 
 function update(dt)
-    game.update(dt)
+    launcher.update(dt)
 end
 
 function draw()
-    game.draw()
+    launcher.draw()
+end
+
+function shutdown()
+    launcher.stop()
 end

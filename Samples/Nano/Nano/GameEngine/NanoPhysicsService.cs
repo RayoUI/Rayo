@@ -11,6 +11,9 @@ internal sealed class NanoPhysicsService
     private int _nextWorld;
     private int _nextBody;
 
+    public int WorldCount => _worlds.Count;
+    public int BodyCount => _bodies.Count;
+
     public int CreateWorld(float gravityX, float gravityY)
     {
         var handle = ++_nextWorld;
@@ -41,6 +44,23 @@ internal sealed class NanoPhysicsService
         foreach (var body in world.Bodies)
             _bodies.Remove(body.Handle);
         _worlds.Remove(handle);
+        world.Bodies.Clear();
+        world.Contacts.Clear();
+        world.Candidates.Clear();
+        world.ContactPairs.Clear();
+    }
+
+    public void Clear()
+    {
+        foreach (var world in _worlds.Values)
+        {
+            world.Bodies.Clear();
+            world.Contacts.Clear();
+            world.Candidates.Clear();
+            world.ContactPairs.Clear();
+        }
+        _worlds.Clear();
+        _bodies.Clear();
     }
 
     public void DestroyBody(int handle)
@@ -93,6 +113,21 @@ internal sealed class NanoPhysicsService
 
     public IReadOnlyList<PhysicsContact> Contacts(int worldHandle) => World(worldHandle).Contacts;
 
+    public int ContactCount(int worldHandle) => World(worldHandle).Contacts.Count;
+
+    public bool IsGrounded(int bodyHandle, float minimumNormalY)
+    {
+        var body = Body(bodyHandle);
+        foreach (var contact in World(body.WorldHandle).Contacts)
+        {
+            if (contact.BodyA == bodyHandle && contact.NormalY >= minimumNormalY)
+                return true;
+            if (contact.BodyB == bodyHandle && -contact.NormalY >= minimumNormalY)
+                return true;
+        }
+        return false;
+    }
+
     public bool IsTouching(int first, int second)
     {
         var body = Body(first);
@@ -123,31 +158,54 @@ internal sealed class NanoPhysicsService
             body.Force = default;
         }
 
-        var recorded = new HashSet<(int, int)>();
+        world.ContactPairs.Clear();
+        world.Candidates.Clear();
+        BuildCandidates(world);
         for (var iteration = 0; iteration < Math.Clamp(iterations, 1, 12); iteration++)
         {
-            for (var first = 0; first < world.Bodies.Count; first++)
+            foreach (var pair in world.Candidates)
             {
-                for (var second = first + 1; second < world.Bodies.Count; second++)
-                {
-                    var a = world.Bodies[first];
-                    var b = world.Bodies[second];
-                    if (a.InverseMass + b.InverseMass <= 0 || !TryCollide(a, b, out var collision))
-                        continue;
+                var a = pair.A;
+                var b = pair.B;
+                if (!TryCollide(a, b, out var collision))
+                    continue;
 
-                    if (recorded.Add((a.Handle, b.Handle)))
-                    {
-                        world.Contacts.Add(new PhysicsContact(
-                            a.Handle,
-                            b.Handle,
-                            collision.Normal.X,
-                            collision.Normal.Y,
-                            collision.Penetration));
-                    }
-                    Resolve(a, b, collision);
+                if (world.ContactPairs.Add((a.Handle, b.Handle)))
+                {
+                    world.Contacts.Add(new PhysicsContact(
+                        a.Handle,
+                        b.Handle,
+                        collision.Normal.X,
+                        collision.Normal.Y,
+                        collision.Penetration));
                 }
+                Resolve(a, b, collision);
             }
         }
+    }
+
+    private static void BuildCandidates(PhysicsWorld world)
+    {
+        for (var first = 0; first < world.Bodies.Count; first++)
+        {
+            for (var second = first + 1; second < world.Bodies.Count; second++)
+            {
+                var a = world.Bodies[first];
+                var b = world.Bodies[second];
+                if (a.InverseMass + b.InverseMass > 0 && BoundsOverlap(a, b))
+                    world.Candidates.Add((a, b));
+            }
+        }
+    }
+
+    private static bool BoundsOverlap(PhysicsBody a, PhysicsBody b)
+    {
+        var aWidth = a.Shape == ShapeKind.Circle ? a.Radius : a.HalfWidth;
+        var aHeight = a.Shape == ShapeKind.Circle ? a.Radius : a.HalfHeight;
+        var bWidth = b.Shape == ShapeKind.Circle ? b.Radius : b.HalfWidth;
+        var bHeight = b.Shape == ShapeKind.Circle ? b.Radius : b.HalfHeight;
+        return MathF.Abs(a.Position.X - b.Position.X) <= aWidth + bWidth &&
+               MathF.Abs(a.Position.Y - b.Position.Y) <= aHeight + bHeight;
     }
 
     private PhysicsBody CreateBody(int worldHandle, float x, float y, float mass, BodyKind kind)
@@ -301,6 +359,8 @@ internal sealed class NanoPhysicsService
         public Vector2 Gravity { get; } = gravity;
         public List<PhysicsBody> Bodies { get; } = [];
         public List<PhysicsContact> Contacts { get; } = [];
+        public List<(PhysicsBody A, PhysicsBody B)> Candidates { get; } = [];
+        public HashSet<(int A, int B)> ContactPairs { get; } = [];
     }
 
     private sealed class PhysicsBody

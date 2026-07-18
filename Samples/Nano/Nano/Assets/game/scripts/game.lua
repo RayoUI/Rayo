@@ -37,6 +37,19 @@ local function initialize()
     initialized = true
 end
 
+function game.start()
+    hud.reset()
+    initialized = false
+end
+
+function game.stop()
+    if physics_world then
+        nano.physics.destroy_world(physics_world)
+        physics_world = nil
+    end
+    initialized = false
+end
+
 function game.update(dt)
     if not initialized then initialize() end
     if hud.is_paused() then return end

@@ -6,7 +6,7 @@ namespace Nano.GameEngine;
 internal sealed class NanoUiService(NanoGameInputState input, List<NanoGameCommand> commands)
 {
     private readonly List<UiHitRegion> _hitRegions = [];
-    private readonly Dictionary<int, UiLayout> _layouts = [];
+    private readonly List<UiLayout> _layouts = [];
     private readonly Dictionary<string, GameColor> _theme = CreateDefaultTheme();
     private string? _activeWidget;
     private int _nextLayout;
@@ -20,7 +20,7 @@ internal sealed class NanoUiService(NanoGameInputState input, List<NanoGameComma
 
     public void EndFrame()
     {
-        input.SetUiHitRegions(_hitRegions.ToArray());
+        input.SetUiHitRegions(_hitRegions);
         if (input.PointerReleased)
             _activeWidget = null;
         input.FinishUiFrame();
@@ -38,11 +38,27 @@ internal sealed class NanoUiService(NanoGameInputState input, List<NanoGameComma
 
     public void Label(string text, float x, float y, int scale, GameColor? color = null)
     {
-        var lineY = y;
-        foreach (var line in text.Replace("\r", string.Empty, StringComparison.Ordinal).Split('\n'))
+        scale = Math.Clamp(scale, 1, 6);
+        var resolvedColor = color ?? Color("text");
+        if (!text.Contains('\r') && !text.Contains('\n'))
         {
-            commands.Add(new TextCommand(line, x, lineY, Math.Clamp(scale, 1, 6), color ?? Color("text")));
+            commands.Add(new TextCommand(text, x, y, scale, resolvedColor));
+            return;
+        }
+
+        var lineY = y;
+        var lineStart = 0;
+        for (var index = 0; index <= text.Length; index++)
+        {
+            if (index < text.Length && text[index] != '\n')
+                continue;
+
+            var length = index - lineStart;
+            if (length > 0 && text[lineStart + length - 1] == '\r')
+                length--;
+            commands.Add(new TextCommand(text.Substring(lineStart, length), x, lineY, scale, resolvedColor));
             lineY += NanoBitmapFont.MeasureHeight(scale) + scale * 2;
+            lineStart = index + 1;
         }
     }
 
@@ -116,17 +132,19 @@ internal sealed class NanoUiService(NanoGameInputState input, List<NanoGameComma
 
     public int VerticalLayout(float x, float y, float width, float gap)
     {
-        var handle = ++_nextLayout;
-        _layouts[handle] = new UiLayout(x, y, width, Math.Max(0, gap));
-        return handle;
+        _layouts.Add(new UiLayout(x, y, width, Math.Max(0, gap)));
+        return ++_nextLayout;
     }
 
     public UiHitRegion Next(int layoutHandle, float height)
     {
-        if (!_layouts.TryGetValue(layoutHandle, out var layout))
+        var index = layoutHandle - 1;
+        if ((uint)index >= (uint)_layouts.Count)
             throw new InvalidOperationException($"UI layout {layoutHandle} does not exist in this frame.");
+        var layout = _layouts[index];
         var result = new UiHitRegion(layout.X, layout.NextY, layout.Width, Math.Max(0, height));
         layout.NextY += Math.Max(0, height) + layout.Gap;
+        _layouts[index] = layout;
         return result;
     }
 
@@ -173,7 +191,7 @@ internal sealed class NanoUiService(NanoGameInputState input, List<NanoGameComma
         ["accent"] = new(75, 200, 140, 255)
     };
 
-    private sealed class UiLayout(float x, float y, float width, float gap)
+    private struct UiLayout(float x, float y, float width, float gap)
     {
         public float X { get; } = x;
         public float NextY { get; set; } = y;

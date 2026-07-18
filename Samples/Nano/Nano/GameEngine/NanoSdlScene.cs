@@ -169,6 +169,7 @@ internal sealed unsafe class NanoSdlScene : IDisposable
 
         _sdl.Quit();
         _sdl.Dispose();
+        _pixels = [];
     }
 
     private void EnsureTarget(int width, int height)
@@ -320,14 +321,24 @@ internal sealed unsafe class NanoSdlScene : IDisposable
             {
                 for (var row = 0; row < NanoBitmapFont.GlyphHeight; row++)
                 {
-                    for (var column = 0; column < NanoBitmapFont.GlyphWidth; column++)
+                    var column = 0;
+                    while (column < NanoBitmapFont.GlyphWidth)
                     {
-                        if (rows[row][column] != '1')
+                        while (column < NanoBitmapFont.GlyphWidth && rows[row][column] != '1')
+                            column++;
+                        if (column >= NanoBitmapFont.GlyphWidth)
+                            break;
+
+                        var runStart = column;
+                        while (column < NanoBitmapFont.GlyphWidth && rows[row][column] == '1')
+                            column++;
+                        var runLength = column - runStart;
+                        if (runLength == 0)
                             continue;
                         var pixel = new Rectangle<int>(
-                            cursorX + column * scale,
+                            cursorX + runStart * scale,
                             (int)command.Y + row * scale,
-                            scale,
+                            runLength * scale,
                             scale);
                         _sdl.RenderFillRect(_renderer, &pixel);
                     }

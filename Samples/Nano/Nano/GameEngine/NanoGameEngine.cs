@@ -26,6 +26,7 @@ internal sealed class NanoGameEngine : IDisposable
     private double _smoothedFps = 60;
     private bool _previousA;
     private bool _previousB;
+    private bool _disposed;
 
     public NanoGameEngine(
         IProjectAssetStore projectStore,
@@ -67,9 +68,16 @@ internal sealed class NanoGameEngine : IDisposable
 
     public string? Error { get; private set; }
 
+    internal EngineResourceCounts ResourceCounts => new(
+        _physics.WorldCount,
+        _physics.BodyCount,
+        _audio.ActivePlaybackCount,
+        _network.RequestCount);
+
     public void RunFrame(float deltaTime, int width, int height)
     {
         _commands.Clear();
+        _audio.Update();
         _nano["width"] = width;
         _nano["height"] = height;
         _nano["delta_time"] = deltaTime;
@@ -108,8 +116,24 @@ internal sealed class NanoGameEngine : IDisposable
 
     public void Dispose()
     {
+        if (_disposed)
+            return;
+        _disposed = true;
+
+        try
+        {
+            CallIfDefined("shutdown");
+        }
+        catch
+        {
+            // Continue releasing native and managed resources even if user shutdown code fails.
+        }
+
+        _physics.Clear();
         _audio.Dispose();
         _network.Dispose();
+        _commands.Clear();
+        _input.Reset();
         if (_state is IDisposable disposable)
             disposable.Dispose();
     }
@@ -243,7 +267,8 @@ internal sealed class NanoGameEngine : IDisposable
             ["body"] = Function(context => { context.Return(_network.Body(Integer(context, 0))); return 1; }),
             ["error"] = Function(context => { context.Return(_network.Error(Integer(context, 0))); return 1; }),
             ["code"] = Function(context => { context.Return(_network.Code(Integer(context, 0))); return 1; }),
-            ["cancel"] = Function(context => { _network.Cancel(Integer(context, 0)); return 0; })
+            ["cancel"] = Function(context => { _network.Cancel(Integer(context, 0)); return 0; }),
+            ["release"] = Function(context => { _network.Release(Integer(context, 0)); return 0; })
         };
 
         var mathApi = new LuaTable
@@ -324,6 +349,15 @@ internal sealed class NanoGameEngine : IDisposable
             })
         };
 
+        var stats = new LuaTable
+        {
+            ["physics_worlds"] = Function(context => { context.Return(_physics.WorldCount); return 1; }),
+            ["physics_bodies"] = Function(context => { context.Return(_physics.BodyCount); return 1; }),
+            ["audio_players"] = Function(context => { context.Return(_audio.ActivePlaybackCount); return 1; }),
+            ["network_requests"] = Function(context => { context.Return(_network.RequestCount); return 1; }),
+            ["draw_commands"] = Function(context => { context.Return(_commands.Count); return 1; })
+        };
+
         _nano["draw"] = draw;
         _nano["file"] = files;
         _nano["audio"] = audio;
@@ -332,6 +366,7 @@ internal sealed class NanoGameEngine : IDisposable
         _nano["geom"] = geometry;
         _nano["physics"] = new NanoPhysicsLuaApi(_physics).CreateTable();
         _nano["ui"] = new NanoUiLuaApi(_ui).CreateTable();
+        _nano["stats"] = stats;
         _nano["time"] = _timeApi;
         _nano["input"] = _inputApi;
         _nano["width"] = 0;
@@ -479,3 +514,9 @@ internal sealed class NanoGameEngine : IDisposable
         nano.require = require
         """;
 }
+
+internal readonly record struct EngineResourceCounts(
+    int PhysicsWorlds,
+    int PhysicsBodies,
+    int AudioPlayers,
+    int NetworkRequests);

@@ -15,7 +15,7 @@ namespace Rayo.Rendering.SkiaSharp;
 /// Automatically applies DPI scaling for consistent cross-platform rendering.
 /// Also implements INativeGradientRenderer for high-quality gradient rendering.
 /// </summary>
-public class SkiaSharpRenderer : IRenderer, INativeGradientRenderer
+public class SkiaSharpRenderer : IRenderer, INativeGradientRenderer, IGpuRendererStatus
 {
     private SKSurface? _surface;
     private SKCanvas? _canvas;
@@ -83,6 +83,8 @@ public class SkiaSharpRenderer : IRenderer, INativeGradientRenderer
     }
 
     public bool IsGpuBacked => _grContext != null && _gpuRenderTarget != null;
+
+    public bool IsGpuAccelerated => IsGpuBacked;
 
     /// <summary>
     /// Initializes Skia against the OpenGL framebuffer that is current on the
@@ -677,16 +679,8 @@ public class SkiaSharpRenderer : IRenderer, INativeGradientRenderer
         if (_canvas == null || string.IsNullOrEmpty(text)) return;
 
         var font = _defaultFont;
-        if (font != null && Math.Abs(font.Size - fontSize) > 0.1f)
-        {
-            // Create temporary font with correct size
-            using var tempFont = new SkiaSharpFont(font.Name, fontSize);
-            DrawTextWithFont(text, x, y, color, tempFont, fontSize);
-        }
-        else if (font != null)
-        {
+        if (font != null)
             DrawTextWithFont(text, x, y, color, font, fontSize);
-        }
     }
 
     public void DrawTextStyled(string text, float x, float y, Rendering.Brushes.Brush color, float fontSize, bool isBold, bool isItalic)

@@ -13,9 +13,14 @@ namespace Nano.GameEngine;
 internal sealed class NanoAudioService(Func<string, byte[]> readAsset) : IDisposable
 {
     private readonly Dictionary<int, Playback> _playbacks = [];
+    private readonly List<int> _finishedHandles = [];
     private AudioEngine? _engine;
     private AudioPlaybackDevice? _device;
     private int _nextHandle;
+
+    public int ActivePlaybackCount => _playbacks.Count;
+
+    public void Update() => CleanupFinished();
 
     public int Play(string path, float volume, bool loop)
     {
@@ -102,10 +107,13 @@ internal sealed class NanoAudioService(Func<string, byte[]> readAsset) : IDispos
 
     private void CleanupFinished()
     {
-        foreach (var handle in _playbacks
-                     .Where(pair => pair.Value.Player.State == PlaybackState.Stopped)
-                     .Select(pair => pair.Key)
-                     .ToArray())
+        _finishedHandles.Clear();
+        foreach (var pair in _playbacks)
+        {
+            if (pair.Value.Player.State == PlaybackState.Stopped)
+                _finishedHandles.Add(pair.Key);
+        }
+        foreach (var handle in _finishedHandles)
             Stop(handle);
     }
 

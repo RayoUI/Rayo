@@ -3,7 +3,7 @@ namespace Nano.GameEngine;
 /// <summary>Shared state written by the virtual controls and read by the Lua game loop.</summary>
 internal sealed class NanoGameInputState
 {
-    private IReadOnlyList<UiHitRegion> _uiHitRegions = [];
+    private readonly List<UiHitRegion> _uiHitRegions = [];
     public float X { get; internal set; }
 
     public float Y { get; internal set; }
@@ -29,7 +29,12 @@ internal sealed class NanoGameInputState
     internal bool IsOverUi(float x, float y) =>
         _uiHitRegions.Any(region => region.Contains(x, y));
 
-    internal void SetUiHitRegions(IReadOnlyList<UiHitRegion> regions) => _uiHitRegions = regions;
+    internal void SetUiHitRegions(IReadOnlyList<UiHitRegion> regions)
+    {
+        _uiHitRegions.Clear();
+        for (var index = 0; index < regions.Count; index++)
+            _uiHitRegions.Add(regions[index]);
+    }
 
     internal void FinishUiFrame()
     {
@@ -46,7 +51,7 @@ internal sealed class NanoGameInputState
         PointerDown = false;
         PointerPressed = false;
         PointerReleased = false;
-        _uiHitRegions = [];
+        _uiHitRegions.Clear();
     }
 }
 

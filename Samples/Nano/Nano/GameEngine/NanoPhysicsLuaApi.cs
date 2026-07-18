@@ -64,18 +64,30 @@ internal sealed class NanoPhysicsLuaApi(NanoPhysicsService physics)
         ["body"] = Function(context =>
         {
             var body = physics.GetBody(Integer(context, 0));
-            context.Return(new LuaTable
-            {
-                ["x"] = body.X,
-                ["y"] = body.Y,
-                ["vx"] = body.VelocityX,
-                ["vy"] = body.VelocityY,
-                ["type"] = body.Kind.ToString().ToLowerInvariant(),
-                ["shape"] = body.Shape.ToString().ToLowerInvariant(),
-                ["radius"] = body.Radius,
-                ["width"] = body.Width,
-                ["height"] = body.Height
-            });
+            var result = context.ArgumentCount > 1
+                ? context.GetArgument<LuaTable>(1)
+                : new LuaTable();
+            result["x"] = body.X;
+            result["y"] = body.Y;
+            result["vx"] = body.VelocityX;
+            result["vy"] = body.VelocityY;
+            result["type"] = body.Kind.ToString().ToLowerInvariant();
+            result["shape"] = body.Shape.ToString().ToLowerInvariant();
+            result["radius"] = body.Radius;
+            result["width"] = body.Width;
+            result["height"] = body.Height;
+            context.Return(result);
+            return 1;
+        }),
+        ["contact_count"] = Function(context =>
+        {
+            context.Return(physics.ContactCount(Integer(context, 0)));
+            return 1;
+        }),
+        ["is_grounded"] = Function(context =>
+        {
+            context.Return(physics.IsGrounded(
+                Integer(context, 0), OptionalNumber(context, 1, 0.45f)));
             return 1;
         }),
         ["is_touching"] = Function(context =>

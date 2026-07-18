@@ -12,14 +12,14 @@ function hud.is_paused()
     return hud.paused
 end
 
+function hud.reset()
+    hud.paused = false
+end
+
 function hud.draw(score, best_score, dash_ratio)
     local width = nano.width - 16
     nano.ui.panel(8, 8, width, 64)
     nano.ui.label("SCORE " .. score .. "  BEST " .. best_score, 18, 17, 2)
-
-    local fps_text = "FPS " .. math.floor(nano.time.fps + 0.5)
-    local fps_size = nano.ui.measure(fps_text, 2)
-    nano.ui.label(fps_text, nano.width - fps_size.width - 18, 17, 2, 125, 225, 170)
 
     nano.ui.progress(18, 54, math.min(150, width - 100), 7, dash_ratio)
 

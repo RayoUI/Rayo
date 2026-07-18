@@ -11,8 +11,11 @@ internal sealed class NanoNetworkService : IDisposable
     private readonly ConcurrentDictionary<int, Request> _requests = new();
     private int _nextHandle;
 
+    public int RequestCount => _requests.Count;
+
     public int Get(string url)
     {
+        ReapCompleted();
         var handle = Interlocked.Increment(ref _nextHandle);
         var cancellation = new CancellationTokenSource();
         var request = new Request(cancellation);
@@ -40,13 +43,33 @@ internal sealed class NanoNetworkService : IDisposable
             request.Cancellation.Cancel();
     }
 
+    public void Release(int handle)
+    {
+        if (!_requests.TryRemove(handle, out var request))
+            return;
+
+        if (request.Status == "pending")
+            request.Cancellation.Cancel();
+
+        if (request.Task is { IsCompleted: false } task)
+        {
+            _ = task.ContinueWith(
+                _ => request.Cancellation.Dispose(),
+                CancellationToken.None,
+                TaskContinuationOptions.ExecuteSynchronously,
+                TaskScheduler.Default);
+        }
+        else
+        {
+            request.Cancellation.Dispose();
+        }
+    }
+
     public void Dispose()
     {
-        foreach (var request in _requests.Values)
-            request.Cancellation.Cancel();
+        foreach (var handle in _requests.Keys.ToArray())
+            Release(handle);
         _client.Dispose();
-        foreach (var request in _requests.Values)
-            request.Cancellation.Dispose();
     }
 
     private async Task DownloadAsync(string url, Request request, CancellationToken cancellationToken)
@@ -95,6 +118,33 @@ internal sealed class NanoNetworkService : IDisposable
             request.Error = exception.Message;
             request.Status = "error";
         }
+        finally
+        {
+            request.CompletedAt = Environment.TickCount64;
+        }
+    }
+
+    private void ReapCompleted()
+    {
+        var now = Environment.TickCount64;
+        foreach (var pair in _requests)
+        {
+            if (pair.Value.Status != "pending" &&
+                pair.Value.CompletedAt > 0 &&
+                now - pair.Value.CompletedAt >= 30_000)
+                Release(pair.Key);
+        }
+
+        if (_requests.Count <= 32)
+            return;
+
+        foreach (var handle in _requests
+                     .Where(pair => pair.Value.Status != "pending")
+                     .OrderBy(pair => pair.Value.CompletedAt)
+                     .Take(_requests.Count - 32)
+                     .Select(pair => pair.Key)
+                     .ToArray())
+            Release(handle);
     }
 
     private sealed class Request(CancellationTokenSource cancellation)
@@ -105,5 +155,6 @@ internal sealed class NanoNetworkService : IDisposable
         public string Body { get; set; } = string.Empty;
         public string Error { get; set; } = string.Empty;
         public int Code { get; set; }
+        public long CompletedAt { get; set; }
     }
 }
