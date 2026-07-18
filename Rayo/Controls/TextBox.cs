@@ -2020,24 +2020,24 @@ public abstract class TextBox<T> : BorderView<T>, IInputHandler, IFocusable, Ray
         if (content == null)
             return;
 
-        var startHandle = GetSelectionHandlePosition(_selectionStart);
-        var endHandle = GetSelectionHandlePosition(_selectionEnd);
-        float selectionCenter = (startHandle.X + endHandle.X) / 2f;
-        float lineHeight = Math.Max(16f, FontSize * 1.2f);
-        const float selectionMenuHeight = 41f;
         const float selectionMenuGap = 12f;
-        float desiredTop = Math.Min(startHandle.Y, endHandle.Y) - lineHeight -
-            selectionMenuGap - selectionMenuHeight;
 
         var popup = new AnchoredPopup(this, content)
         {
-            Placement = AnchoredPopupPlacement.Below,
-            AnchorAlignment = AnchoredPopupAlignment.Center,
             RestoreAnchorFocusOnInteraction = true,
-            Gap = 0,
-            EdgeInset = 8,
-            OffsetX = selectionCenter - (ComputedX + ComputedWidth / 2f),
-            OffsetY = desiredTop - (ComputedY + ComputedHeight)
+            EdgeInset = 8
+        };
+        popup.WindowPositionProvider = (popupWidth, popupHeight) =>
+        {
+            // Resolve the handles during Arrange, after focus and the Android
+            // keyboard have had a chance to update the editor's viewport.
+            var startHandle = GetSelectionHandlePosition(_selectionStart);
+            var endHandle = GetSelectionHandlePosition(_selectionEnd);
+            float selectionCenter = (startHandle.X + endHandle.X) / 2f;
+            float lineHeight = Math.Max(16f, FontSize * 1.2f);
+            float desiredTop = Math.Min(startHandle.Y, endHandle.Y) -
+                lineHeight - selectionMenuGap - popupHeight;
+            return new Vector2(selectionCenter - popupWidth / 2f, desiredTop);
         };
 
         popup.Closed += () =>

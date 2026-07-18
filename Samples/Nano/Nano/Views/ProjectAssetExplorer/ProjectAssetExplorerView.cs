@@ -135,18 +135,24 @@ public sealed class ProjectAssetExplorerView : ViewBase<ProjectAssetExplorerView
 
         if (result.Kind == AssetOpenKind.Sprite)
         {
-            _spriteHost.OpenSpriteAsset(
+            UIUpdateQueue.EnqueueUIUpdate(() =>
+            {
+                _spriteHost.OpenSpriteAsset(
+                    result.Path!,
+                    result.Text!,
+                    result.Save!);
+                _closeDrawer();
+            });
+            return;
+        }
+
+        UIUpdateQueue.EnqueueUIUpdate(() =>
+        {
+            _documentHost.OpenTextAsset(
                 result.Path!,
                 result.Text!,
                 result.Save!);
             _closeDrawer();
-            return;
-        }
-
-        _documentHost.OpenTextAsset(
-            result.Path!,
-            result.Text!,
-            result.Save!);
-        _closeDrawer();
+        });
     }
 }

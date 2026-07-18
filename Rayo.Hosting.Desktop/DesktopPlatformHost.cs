@@ -5,6 +5,7 @@ using Rayo.DevTools;
 using Rayo.Hosting.Abstractions;
 using Rayo.Rendering.OpenGL;
 using Rayo.Rendering.SkiaSharp;
+using Silk.NET.OpenGL;
 
 namespace Rayo.Hosting.Desktop;
 
@@ -55,15 +56,30 @@ public class DesktopPlatformHost : PlatformHostBase
         // Now initialize the window with all configuration applied.
         app.Initialize();
 
-        // Wire the SkiaSharp presenter only when the application uses the
-        // SkiaSharp backend. OpenGL rendering presents directly through the window.
+        // Bind SkiaSharp directly to the active OpenGL framebuffer. Keep the
+        // CPU upload presenter only as a compatibility fallback when the host
+        // cannot create a hardware-backed Skia surface.
         app.OnGLInitialized += () =>
         {
             if (app.GraphicsContext is SkiaSharpGraphicsContext skiaCtx && skiaCtx.Renderer is { } renderer)
             {
-                var presenter = new SkiaSharpGLPresenter(app.GL!, renderer);
-                app.WindowPresenter = (w, h) => presenter.Present(w, h);
-                app.DisposeWindowPresenter = presenter.Dispose;
+                var gl = app.GL!;
+                var gpuInitialized = renderer.TryInitializeGpu(
+                    Math.Max(1, (int)app.WindowWidth),
+                    Math.Max(1, (int)app.WindowHeight),
+                    unchecked((uint)gl.GetInteger((GetPName)GLEnum.FramebufferBinding)),
+                    Math.Max(0, gl.GetInteger(GetPName.Samples)),
+                    Math.Max(0, gl.GetInteger((GetPName)0x0D57))); // GL_STENCIL_BITS
+
+                if (!gpuInitialized)
+                {
+                    Console.Error.WriteLine(
+                        $"[SkiaSharpRenderer] GPU initialization failed: " +
+                        $"{renderer.LastGpuInitializationError ?? "Unknown error."}");
+                    var presenter = new SkiaSharpGLPresenter(gl, renderer);
+                    app.WindowPresenter = (w, h) => presenter.Present(w, h);
+                    app.DisposeWindowPresenter = presenter.Dispose;
+                }
             }
         };
 

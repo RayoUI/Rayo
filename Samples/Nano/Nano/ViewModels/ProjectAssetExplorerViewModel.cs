@@ -9,11 +9,17 @@ public sealed class ProjectAssetExplorerViewModel : ViewModelBase
 {
     private readonly IProjectAssetStore _store;
     private readonly ProjectAssetNavigator _navigator;
+    private readonly Action<string>? _currentDirectoryChanged;
 
-    public ProjectAssetExplorerViewModel(IProjectAssetStore store)
+    public ProjectAssetExplorerViewModel(
+        IProjectAssetStore store,
+        string initialDirectory = "",
+        Action<string>? currentDirectoryChanged = null)
     {
         _store = store;
         _navigator = new ProjectAssetNavigator(store);
+        _navigator.NavigateTo(initialDirectory);
+        _currentDirectoryChanged = currentDirectoryChanged;
         CurrentDirectory = UseSignal(_navigator.CurrentDirectory);
         ViewMode = UseSignal(_navigator.ViewMode);
         Revision = UseSignal(0);
@@ -39,15 +45,13 @@ public sealed class ProjectAssetExplorerViewModel : ViewModelBase
     public void NavigateTo(string directory)
     {
         _navigator.NavigateTo(directory);
-        CurrentDirectory.Value = _navigator.CurrentDirectory;
-        NotifyChanged();
+        PublishCurrentDirectory();
     }
 
     public void NavigateUp()
     {
         _navigator.NavigateUp();
-        CurrentDirectory.Value = _navigator.CurrentDirectory;
-        NotifyChanged();
+        PublishCurrentDirectory();
     }
 
     public AssetOpenResult OpenAsset(VirtualAsset asset)
@@ -55,8 +59,7 @@ public sealed class ProjectAssetExplorerViewModel : ViewModelBase
         if (asset.IsDirectory)
         {
             _navigator.OpenDirectory(asset);
-            CurrentDirectory.Value = _navigator.CurrentDirectory;
-            NotifyChanged();
+            PublishCurrentDirectory();
             return AssetOpenResult.Directory;
         }
 
@@ -112,6 +115,13 @@ public sealed class ProjectAssetExplorerViewModel : ViewModelBase
     }
 
     private void NotifyChanged() => Revision.Value++;
+
+    private void PublishCurrentDirectory()
+    {
+        CurrentDirectory.Value = _navigator.CurrentDirectory;
+        _currentDirectoryChanged?.Invoke(_navigator.CurrentDirectory);
+        NotifyChanged();
+    }
 }
 
 public enum AssetOpenKind

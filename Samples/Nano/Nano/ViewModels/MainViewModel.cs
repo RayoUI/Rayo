@@ -18,6 +18,8 @@ public sealed class MainViewModel : ViewModelBase
 
     public IProjectAssetStore ProjectStore { get; }
 
+    public string AssetExplorerDirectory { get; set; } = string.Empty;
+
     public Signal<string> Title { get; } = new("Nano");
 
     public Signal<bool> CanGoBack { get; } = new(false);

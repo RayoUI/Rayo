@@ -604,6 +604,28 @@ public sealed class ViewModelTests
     }
 
     [Fact]
+    public void Project_explorer_restores_the_last_navigation_directory()
+    {
+        var store = new FakeProjectAssetStore();
+        var rememberedDirectory = string.Empty;
+        var first = new ProjectAssetExplorerViewModel(
+            store,
+            rememberedDirectory,
+            directory => rememberedDirectory = directory);
+
+        first.NavigateTo("scripts");
+
+        var reopened = new ProjectAssetExplorerViewModel(
+            store,
+            rememberedDirectory,
+            directory => rememberedDirectory = directory);
+
+        Assert.Equal("scripts", rememberedDirectory);
+        Assert.Equal("scripts", reopened.CurrentDirectory.Value);
+        Assert.Equal("main.lua", Assert.Single(reopened.Assets).Name);
+    }
+
+    [Fact]
     public void Asset_tile_inside_scroll_view_opens_on_touch_and_recovers_after_cancel()
     {
         var openCount = 0;

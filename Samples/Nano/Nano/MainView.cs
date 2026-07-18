@@ -17,7 +17,7 @@ public sealed class MainView : ViewBase<MainViewModel>
     private readonly HomePage _homePage;
     private readonly NanoNavigationStack _navigation = new();
     private Drawer? _drawer;
-    private Frame? _navigationHost;
+    private Grid? _navigationHost;
 
     public MainView()
         : this(new NanoProjectStore(), new HomePage())
@@ -40,10 +40,12 @@ public sealed class MainView : ViewBase<MainViewModel>
 
         var rootPage = BuildRootPage();
         _navigation.SetRoot(rootPage);
-        _navigationHost = new Frame()
+        _navigationHost = new Grid()
+            .Rows(GridLength.Star)
+            .Columns(GridLength.Star)
             .HorizontalAlignment(HorizontalAlignment.Stretch)
             .VerticalAlignment(VerticalAlignment.Stretch)
-            .Content(rootPage);
+            .AddChild(rootPage, 0, 0);
         return _navigationHost;
     }
 
@@ -76,8 +78,9 @@ public sealed class MainView : ViewBase<MainViewModel>
         VirtualKeyboardManager.Hide();
         _homePage.SaveAllTextAssets();
         var page = new GamePage(ViewModel.ProjectStore, PopPage);
+        _navigation.Current.IsVisible = false;
         _navigation.Push(page);
-        _navigationHost.Content = page;
+        _navigationHost.AddChild(page, 0, 0);
     }
 
     private void PopPage()
@@ -85,9 +88,15 @@ public sealed class MainView : ViewBase<MainViewModel>
         if (_navigationHost is null)
             return;
 
+        var currentPage = _navigation.Current;
         var previousPage = _navigation.Pop();
-        if (previousPage is not null)
-            _navigationHost.Content = previousPage;
+        if (previousPage is null)
+            return;
+
+        OverlayManager.EventManager?.SetFocus(null);
+        VirtualKeyboardManager.Hide();
+        _navigationHost.RemoveChild(currentPage);
+        previousPage.IsVisible = true;
     }
 
     private VisualElement CreateAssetExplorer()
@@ -97,7 +106,10 @@ public sealed class MainView : ViewBase<MainViewModel>
             _homePage,
             () => Drawer.CloseCurrentDrawer());
         assetExplorer.SetViewModel(
-            new ProjectAssetExplorerViewModel(ViewModel.ProjectStore));
+            new ProjectAssetExplorerViewModel(
+                ViewModel.ProjectStore,
+                ViewModel.AssetExplorerDirectory,
+                directory => ViewModel.AssetExplorerDirectory = directory));
         return assetExplorer;
     }
 }

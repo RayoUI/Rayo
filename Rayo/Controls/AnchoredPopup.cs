@@ -95,6 +95,12 @@ public sealed class AnchoredPopup : Frame, IGlobalPointerHandler
     }
 
     /// <summary>
+    /// Optional dynamic window-space position used by overlays whose anchor point
+    /// can move while they are open, such as text selection handles.
+    /// </summary>
+    internal Func<float, float, Vector2>? WindowPositionProvider { get; set; }
+
+    /// <summary>
     /// Closes the popup when the pointer is pressed outside it.
     /// </summary>
     public bool DismissOnOutsideClick { get; set; } = true;
@@ -199,24 +205,35 @@ public sealed class AnchoredPopup : Frame, IGlobalPointerHandler
         float windowWidth = app?.Window.Width ?? OverlayManager.WindowWidth;
         float windowHeight = app?.Window.Height ?? OverlayManager.WindowHeight;
 
-        float popupX = AnchorAlignment switch
+        float popupX;
+        float popupY;
+        if (WindowPositionProvider is { } positionProvider)
         {
-            AnchoredPopupAlignment.Center => bounds.Left + (bounds.Right - bounds.Left - width) / 2f,
-            AnchoredPopupAlignment.End => bounds.Right - width,
-            _ => bounds.Left
-        };
+            var position = positionProvider(width, height);
+            popupX = position.X;
+            popupY = position.Y;
+        }
+        else
+        {
+            popupX = AnchorAlignment switch
+            {
+                AnchoredPopupAlignment.Center => bounds.Left + (bounds.Right - bounds.Left - width) / 2f,
+                AnchoredPopupAlignment.End => bounds.Right - width,
+                _ => bounds.Left
+            };
 
-        bool placeAbove = Placement == AnchoredPopupPlacement.Above ||
-            (Placement == AnchoredPopupPlacement.Auto &&
-             windowHeight > 0 &&
-             bounds.Bottom + Gap + height > windowHeight - EdgeInset);
+            bool placeAbove = Placement == AnchoredPopupPlacement.Above ||
+                (Placement == AnchoredPopupPlacement.Auto &&
+                 windowHeight > 0 &&
+                 bounds.Bottom + Gap + height > windowHeight - EdgeInset);
 
-        float popupY = placeAbove
-            ? bounds.Top - height - Gap
-            : bounds.Bottom + Gap;
+            popupY = placeAbove
+                ? bounds.Top - height - Gap
+                : bounds.Bottom + Gap;
 
-        popupX += OffsetX;
-        popupY += OffsetY;
+            popupX += OffsetX;
+            popupY += OffsetY;
+        }
 
         if (windowWidth > 0)
         {

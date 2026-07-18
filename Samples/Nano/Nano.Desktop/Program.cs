@@ -4,9 +4,9 @@ using Rayo.Hosting.Desktop;
 const int MobileLogicalWidth = 390;
 const int MobileLogicalHeight = 780;
 
-// Nano submits its 2D game commands directly to the GPU. Avoid Desktop's
-// compatibility Skia CPU surface and select the native OpenGL backend.
-Environment.SetEnvironmentVariable("RAYO_DESKTOP_RENDERER", "opengl");
+// Keep Nano on Desktop's stable SkiaSharp backend. Set this explicitly so an
+// inherited RAYO_DESKTOP_RENDERER value cannot switch Nano back to OpenGL.
+Environment.SetEnvironmentVariable("RAYO_DESKTOP_RENDERER", "skia");
 var host = new DesktopPlatformHost();
 
 host.Run(
@@ -27,7 +27,10 @@ host.Run(
         config.Height = MobileLogicalHeight;
         config.CanResize = false;
         config.VSync = defaults.VSync;
-        config.Samples = defaults.Samples;
+        // Skia performs analytic antialiasing itself. The multisampled default
+        // framebuffer created by Silk on Desktop cannot be wrapped by Ganesh,
+        // so request a single-sample backbuffer to keep rendering GPU-backed.
+        config.Samples = 0;
         config.SetIconFromFile(Path.Combine(AppContext.BaseDirectory, "Assets/AppIcon", "AppIcon.png"));
 
         if (host.GetNativeWindowConfiguration(config) is { } nativeConfig)

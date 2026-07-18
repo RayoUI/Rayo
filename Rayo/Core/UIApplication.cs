@@ -13,6 +13,7 @@ using Rayo.Rendering;
 using Rayo.Styling;
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using System.Runtime.ExceptionServices;
 
 namespace Rayo.Core;
 
@@ -27,6 +28,7 @@ public class UIApplication : IDisposable
     private EventManager _eventManager;
     private HotReloadManager? _hotReload;
     private readonly ConcurrentQueue<Action> _mainThreadActions = new();
+    private ExceptionDispatchInfo? _pendingRenderException;
     private readonly List<ThemeHotReloadWatcher> _themeWatchers = new();
     private WindowConfiguration _windowConfig;
     // Tracks the last polled window size so we detect maximise/restore on Windows,
@@ -603,7 +605,7 @@ public class UIApplication : IDisposable
 
         _window = Silk.NET.Windowing.Window.Create(options);
         _window.Load += OnLoad;
-        _window.Render += OnRender;
+        _window.Render += HandleRenderCallback;
         _window.Resize += OnResize;
         _window.Closing += OnClosing;
         _window.Update += OnUpdate;
@@ -1103,6 +1105,22 @@ public class UIApplication : IDisposable
         }
     }
 
+    private void HandleRenderCallback(double deltaTime)
+    {
+        try
+        {
+            OnRender(deltaTime);
+        }
+        catch (Exception exception)
+        {
+            // Silk keeps the window marked as being inside DoRender until its
+            // callback returns. Preserve the original exception and rethrow it
+            // from the manual loop instead of letting Dispose mask it with
+            // "You cannot call Reset inside of the render loop".
+            _pendingRenderException = ExceptionDispatchInfo.Capture(exception);
+        }
+    }
+
     private void OnClosing()
     {
         _isExiting = true;
@@ -1256,6 +1274,9 @@ public class UIApplication : IDisposable
                 if ((_tree.NeedsRender || _continuousRendering || _idleFrameCount < MaxIdleFrames) && !_isExiting && !_window.IsClosing)
                 {
                     _window.DoRender();
+                    var renderException = _pendingRenderException;
+                    _pendingRenderException = null;
+                    renderException?.Throw();
                     _tree.ClearRenderFlag();
                 }
 

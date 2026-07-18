@@ -86,6 +86,8 @@ public class SkiaSharpRenderer : IRenderer, INativeGradientRenderer, IGpuRendere
 
     public bool IsGpuAccelerated => IsGpuBacked;
 
+    public string? LastGpuInitializationError { get; private set; }
+
     /// <summary>
     /// Initializes Skia against the OpenGL framebuffer that is current on the
     /// calling thread. Rendering then stays entirely on the GPU.
@@ -97,27 +99,79 @@ public class SkiaSharpRenderer : IRenderer, INativeGradientRenderer, IGpuRendere
         int sampleCount,
         int stencilBits)
     {
+        GRContext? gpuContext = null;
+        GRBackendRenderTarget? gpuRenderTarget = null;
+        SKSurface? gpuSurface = null;
+        LastGpuInitializationError = null;
+
         try
         {
-            DisposeSurface();
-
-            _grContext = GRContext.CreateGl();
-            if (_grContext == null)
+            gpuContext = GRContext.CreateGl();
+            if (gpuContext == null)
             {
+                LastGpuInitializationError = "GRContext.CreateGl returned null.";
                 return false;
             }
 
-            _gpuFramebuffer = framebuffer;
-            _gpuSampleCount = Math.Max(0, sampleCount);
-            _gpuStencilBits = Math.Max(0, stencilBits);
-            CreateGpuSurface(width, height);
+            var normalizedSampleCount = Math.Max(0, sampleCount);
+            var normalizedStencilBits = Math.Max(0, stencilBits);
+            var framebufferInfo = new GRGlFramebufferInfo(framebuffer, 0x8058u); // GL_RGBA8
+            gpuRenderTarget = new GRBackendRenderTarget(
+                width,
+                height,
+                normalizedSampleCount,
+                normalizedStencilBits,
+                framebufferInfo);
+            gpuSurface = SKSurface.Create(
+                gpuContext,
+                gpuRenderTarget,
+                GRSurfaceOrigin.BottomLeft,
+                SKColorType.Rgba8888);
+            if (gpuSurface == null)
+            {
+                LastGpuInitializationError =
+                    $"SKSurface.Create returned null (framebuffer={framebuffer}, " +
+                    $"size={width}x{height}, samples={normalizedSampleCount}, stencil={normalizedStencilBits}).";
+                return false;
+            }
+
+            var gpuCanvas = gpuSurface.Canvas;
+            if (_dpiScaleFactor > 1.0f)
+            {
+                gpuCanvas.Scale(_dpiScaleFactor, _dpiScaleFactor);
+            }
+
             LoadDefaultFontIfNeeded();
+
+            // Commit only after every GPU resource has been created. If any step
+            // fails, the existing CPU surface remains usable by the fallback
+            // presenter instead of leaving BeginFrame without a canvas.
+            DisposeSurface();
+            _width = width;
+            _height = height;
+            _gpuFramebuffer = framebuffer;
+            _gpuSampleCount = normalizedSampleCount;
+            _gpuStencilBits = normalizedStencilBits;
+            _grContext = gpuContext;
+            _gpuRenderTarget = gpuRenderTarget;
+            _surface = gpuSurface;
+            _canvas = gpuCanvas;
+
+            gpuContext = null;
+            gpuRenderTarget = null;
+            gpuSurface = null;
             return true;
         }
-        catch
+        catch (Exception exception)
         {
-            DisposeSurface();
+            LastGpuInitializationError = exception.ToString();
             return false;
+        }
+        finally
+        {
+            gpuSurface?.Dispose();
+            gpuRenderTarget?.Dispose();
+            gpuContext?.Dispose();
         }
     }
 
