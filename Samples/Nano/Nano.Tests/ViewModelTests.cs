@@ -300,6 +300,23 @@ public sealed class ViewModelTests
     }
 
     [Fact]
+    public void Audio_preload_reads_an_asset_only_once()
+    {
+        var reads = 0;
+        using var audio = new NanoAudioService(_ =>
+        {
+            reads++;
+            return [0, 1, 2, 3];
+        });
+
+        audio.Preload("sound.wav");
+        audio.Preload("sound.wav");
+
+        Assert.Equal(1, reads);
+    }
+
+
+    [Fact]
     public void Physics_service_integrates_gravity_and_resolves_a_circle_against_a_floor()
     {
         var physics = new NanoPhysicsService();

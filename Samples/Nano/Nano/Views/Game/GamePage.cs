@@ -15,9 +15,15 @@ public sealed class GamePage(IProjectAssetStore projectStore, Action goBack) : C
     private readonly Signal<bool> _canGoBack = new(true);
     private readonly Signal<bool> _canPlay = new(false);
     private readonly NanoGameInputState _input = new();
+    private VirtualGameControls? _controls;
 
     public override VisualElement Build()
     {
+        _controls = new VirtualGameControls(_input)
+            .HorizontalAlignment(HorizontalAlignment.Stretch)
+            .VerticalAlignment(VerticalAlignment.Stretch)
+            .IsVisible(false);
+
         return new Grid()
             .Rows(GridLength.Pixels(60), GridLength.Star)
             .Columns(GridLength.Star)
@@ -40,18 +46,22 @@ public sealed class GamePage(IProjectAssetStore projectStore, Action goBack) : C
                     .Rows(GridLength.Star)
                     .Columns(GridLength.Star)
                     .AddChild(
-                        new NanoGameView(projectStore, _input)
+                        new NanoGameView(projectStore, _input, ShowControls)
                             .HorizontalAlignment(HorizontalAlignment.Stretch)
                             .VerticalAlignment(VerticalAlignment.Stretch),
                         0,
                         0)
                     .AddChild(
-                        new VirtualGameControls(_input)
-                            .HorizontalAlignment(HorizontalAlignment.Stretch)
-                            .VerticalAlignment(VerticalAlignment.Stretch),
+                        _controls,
                         0,
                         0),
                 1,
                 0);
+    }
+
+    private void ShowControls()
+    {
+        if (_controls is not null)
+            _controls.IsVisible = true;
     }
 }

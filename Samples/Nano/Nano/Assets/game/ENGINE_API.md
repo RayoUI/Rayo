@@ -24,9 +24,15 @@ not create a software SDL framebuffer, read pixels back to the CPU, or upload a
 full-screen RGBA texture each frame. SDL remains the compatibility backend for
 standalone/off-screen engine rendering.
 
+When Play is selected, the game page is pushed immediately and keeps rendering a
+GPU loading screen while the archive, Lua modules, and audio device are prepared
+on background threads. Input controls and the game loop start only after every
+preload stage has completed.
+
 ## Audio and HTTP
 
 - `nano.audio.play(path, volume?, loop?)` returns a handle (`0` if unavailable)
+- `preload(path)` caches the asset and initializes the audio device asynchronously
 - `stop(handle)`, `stop_all()`, `is_playing(handle)`, `set_volume(handle, volume)`
 - `nano.net.get(url)` returns a non-blocking request handle
 - Poll with `status(handle)`: `pending`, `done`, `error`, or `cancelled`

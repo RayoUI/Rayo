@@ -36,6 +36,11 @@ local fps_size = {}
 local button_bounds = { {}, {}, {}, {} }
 local description_bounds = { {}, {}, {}, {} }
 
+-- Cache the common effects and initialize the audio device while the player is
+-- choosing an example, rather than during the first collision.
+nano.audio.preload("sounds/sillypop.wav")
+nano.audio.preload("sounds/explode.wav")
+
 local function open(entry)
     current = entry
     if entry.module.start then entry.module.start() end

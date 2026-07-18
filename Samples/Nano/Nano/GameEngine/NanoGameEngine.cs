@@ -74,6 +74,8 @@ internal sealed class NanoGameEngine : IDisposable
         _audio.ActivePlaybackCount,
         _network.RequestCount);
 
+    internal bool IsPreloading => _audio.IsWarmUpPending;
+
     public void RunFrame(float deltaTime, int width, int height)
     {
         _commands.Clear();
@@ -227,6 +229,19 @@ internal sealed class NanoGameEngine : IDisposable
 
         var audio = new LuaTable
         {
+            ["preload"] = Function(context =>
+            {
+                try
+                {
+                    _audio.Preload(SafePath(context.GetArgument<string>(0), false));
+                    context.Return(true);
+                }
+                catch
+                {
+                    context.Return(false);
+                }
+                return 1;
+            }),
             ["play"] = Function(context =>
             {
                 var volume = context.ArgumentCount > 1 ? Number(context, 1) : 1;
