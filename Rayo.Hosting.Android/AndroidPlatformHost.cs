@@ -8,6 +8,7 @@ using Android.OS;
 using Android.Content.PM;
 using Android.Content.Res;
 using Android.Provider;
+using Android.Widget;
 using Rayo.Styling;
 
 namespace Rayo.Hosting.Android;
@@ -20,6 +21,8 @@ public abstract class AndroidPlatformHost : Activity, IPlatformHost
 {
     private const int StoragePermissionRequestCode = 4221;
     private RayoGLSurfaceView? _glSurfaceView;
+    private FrameLayout? _contentHost;
+    private global::Android.Views.View? _startupOverlay;
     private readonly AndroidPlatformCapabilities _capabilities;
     private AndroidApplicationContext? _appContext;
     private AndroidWindowConfiguration? _windowConfig;
@@ -89,9 +92,26 @@ public abstract class AndroidPlatformHost : Activity, IPlatformHost
 
         // Create and configure the OpenGL surface view
         _glSurfaceView = new RayoGLSurfaceView(this, _appContext, windowConfig);
+        _glSurfaceView.FirstFramePresented += OnFirstFramePresented;
 
-        // Set as content view
-        SetContentView(_glSurfaceView);
+        // SurfaceView is backed by a separate compositor layer whose default
+        // color is black until its first buffer is presented. Keep the themed
+        // Android window background above it during renderer/UI initialization.
+        _contentHost = new FrameLayout(this);
+        _contentHost.AddView(
+            _glSurfaceView,
+            new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MatchParent,
+                ViewGroup.LayoutParams.MatchParent));
+
+        _startupOverlay = CreateStartupOverlay();
+        _contentHost.AddView(
+            _startupOverlay,
+            new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MatchParent,
+                ViewGroup.LayoutParams.MatchParent));
+
+        SetContentView(_contentHost);
 
         // Apply options that require DecorView (after SetContentView)
         ApplyDecorViewOptions();
@@ -161,6 +181,18 @@ public abstract class AndroidPlatformHost : Activity, IPlatformHost
         base.OnStop();
     }
 
+    protected override void OnDestroy()
+    {
+        if (_glSurfaceView != null)
+        {
+            _glSurfaceView.FirstFramePresented -= OnFirstFramePresented;
+        }
+
+        RemoveStartupOverlay();
+        _contentHost = null;
+        base.OnDestroy();
+    }
+
     public void Run(
         Action<IPlatformApplicationContext> configureApp,
         Action<IPlatformWindowConfiguration>? configureWindow = null)
@@ -184,6 +216,56 @@ public abstract class AndroidPlatformHost : Activity, IPlatformHost
             _capabilities.DpiScale = scaleFactor;
             Rayo.Rendering.SkiaSharp.SkiaSharpRenderer.SetDpiScaleFactor(scaleFactor);
         }
+    }
+
+    private global::Android.Views.View CreateStartupOverlay()
+    {
+        var overlay = new global::Android.Views.View(this);
+
+        // Match the renderer's clear color if the Activity theme does not expose
+        // a window background. Applications normally override this through
+        // android:windowBackground in their launch theme.
+        overlay.SetBackgroundColor(new global::Android.Graphics.Color(30, 30, 30));
+
+        var windowBackground = new global::Android.Util.TypedValue();
+        if (Theme?.ResolveAttribute(
+                global::Android.Resource.Attribute.WindowBackground,
+                windowBackground,
+                true) == true)
+        {
+            if (windowBackground.ResourceId != 0)
+            {
+                overlay.SetBackgroundResource(windowBackground.ResourceId);
+            }
+            else
+            {
+                overlay.SetBackgroundColor(
+                    new global::Android.Graphics.Color(windowBackground.Data));
+            }
+        }
+
+        return overlay;
+    }
+
+    private void OnFirstFramePresented()
+    {
+        // OnDrawFrame completes immediately before GLSurfaceView swaps buffers.
+        // Keep the cover for a few more display frames so SurfaceFlinger has
+        // latched the rendered buffer before exposing the SurfaceView layer.
+        _startupOverlay?.PostDelayed(RemoveStartupOverlay, 50);
+    }
+
+    private void RemoveStartupOverlay()
+    {
+        var overlay = _startupOverlay;
+        if (overlay == null)
+        {
+            return;
+        }
+
+        _contentHost?.RemoveView(overlay);
+        overlay.Dispose();
+        _startupOverlay = null;
     }
 
     private void ApplyHostThemePreferences()

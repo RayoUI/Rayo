@@ -29,6 +29,9 @@ public class RayoGLSurfaceView : GLSurfaceView
 {
     private readonly RayoRenderer _renderer;
     private readonly AndroidVirtualKeyboardService _virtualKeyboardService;
+    private int _firstFrameNotificationSent;
+
+    internal event Action? FirstFramePresented;
 
     public RayoGLSurfaceView(
         Context context,
@@ -54,6 +57,19 @@ public class RayoGLSurfaceView : GLSurfaceView
     private void AttachOverlayTree(UITree tree)
     {
         _virtualKeyboardService.AttachOverlayTree(tree);
+    }
+
+    private void NotifyFirstFramePresented()
+    {
+        if (Interlocked.Exchange(ref _firstFrameNotificationSent, 1) != 0)
+        {
+            return;
+        }
+
+        // GLSurfaceView swaps the EGL buffer after OnDrawFrame returns. Post the
+        // notification to the Android UI thread so the host can keep its startup
+        // cover visible until that first buffer is ready for composition.
+        Post(() => FirstFramePresented?.Invoke());
     }
 
     protected override void Dispose(bool disposing)
@@ -976,6 +992,7 @@ public class RayoGLSurfaceView : GLSurfaceView
                 // In continuous rendering mode, this runs every frame targeting 60 fps
                 _tree.ClearRenderFlag();
                 _hasPresentedFrame = true;
+                _view.NotifyFirstFramePresented();
             }
             catch (Exception ex)
             {
