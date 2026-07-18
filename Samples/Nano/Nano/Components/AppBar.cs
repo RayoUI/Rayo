@@ -17,6 +17,8 @@ public class AppBar : Component
     private readonly IReadableSignal<bool> _canGoBack;
     private readonly Action _onBack;
     private readonly Action _onOpenMenu;
+    private readonly IReadableSignal<bool> _canPlay;
+    private readonly Action _onPlay;
     private readonly IReadOnlyList<AppBarOverflowItem> _overflowItems;
 
     public AppBar(
@@ -24,12 +26,16 @@ public class AppBar : Component
         IReadableSignal<bool> canGoBack,
         Action onBack,
         Action onOpenMenu,
+        IReadableSignal<bool> canPlay,
+        Action onPlay,
         IReadOnlyList<AppBarOverflowItem> overflowItems)
     {
         _title = title;
         _canGoBack = canGoBack;
         _onBack = onBack;
         _onOpenMenu = onOpenMenu;
+        _canPlay = canPlay;
+        _onPlay = onPlay;
         _overflowItems = overflowItems;
     }
 
@@ -58,7 +64,17 @@ public class AppBar : Component
                             .VerticalAlignment(VerticalAlignment.Center),
                         0,
                         1)
-                    .AddChild(BuildOverflowButton(), 0, 2));
+                    .AddChild(BuildActionButton(), 0, 2));
+    }
+
+    private VisualElement BuildActionButton()
+    {
+        if (_canPlay.Value)
+        {
+            return CreateAppBarButton(Icons.Play, _onPlay).WithTooltip("Play game");
+        }
+
+        return BuildOverflowButton();
     }
 
     private VisualElement BuildNavigationButton()

@@ -4,7 +4,7 @@ namespace Nano.ViewModels;
 
 public sealed class HomeViewModel : ViewModelBase
 {
-    private const int FixedTabCount = 2;
+    private const int FixedTabCount = 3;
     public List<TextAssetDocument> Documents { get; } = [];
 
     public DocumentOpenResult OpenTextAsset(

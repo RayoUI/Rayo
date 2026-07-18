@@ -21,4 +21,6 @@ public sealed class MainViewModel : ViewModelBase
     public Signal<string> Title { get; } = new("Nano");
 
     public Signal<bool> CanGoBack { get; } = new(false);
+
+    public Signal<bool> CanPlay { get; } = new(true);
 }

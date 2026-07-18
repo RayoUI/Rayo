@@ -27,4 +27,21 @@
     <ProjectReference Include="..\..\..\Rayo\Rayo.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="LuaCSharp" Version="0.5.5" />
+    <PackageReference Include="Silk.NET.SDL" Version="2.23.0" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(Configuration)' == 'Debug'">
+    <EmbeddedResource Include="Assets\game.nn" LogicalName="Nano.Assets.game.nn" />
+  </ItemGroup>
+
+  <Target Name="BuildDebugGameArchive"
+          BeforeTargets="BeforeBuild"
+          Condition="'$(Configuration)' == 'Debug'">
+    <ZipDirectory SourceDirectory="$(MSBuildProjectDirectory)\Assets\game"
+                  DestinationFile="$(MSBuildProjectDirectory)\Assets\game.nn"
+                  Overwrite="true" />
+  </Target>
+
 </Project>

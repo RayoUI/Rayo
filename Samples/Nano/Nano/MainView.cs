@@ -1,5 +1,7 @@
 using Nano.Components;
+using Nano.Navigation;
 using Nano.Views;
+using Nano.Views.Game;
 using Nano.Views.ProjectAssetStore;
 using Nano.ViewModels;
 using Rayo.Controls;
@@ -12,7 +14,9 @@ namespace Nano;
 public sealed class MainView : ViewBase<MainViewModel>
 {
     private readonly HomePage _homePage;
+    private readonly NanoNavigationStack _navigation = new();
     private Drawer? _drawer;
+    private Frame? _navigationHost;
 
     public MainView()
         : this(new NanoProjectStore(), new HomePage())
@@ -33,6 +37,17 @@ public sealed class MainView : ViewBase<MainViewModel>
             .Background(new Color(20, 27, 40))
             .ContentFactory(CreateAssetExplorer);
 
+        var rootPage = BuildRootPage();
+        _navigation.SetRoot(rootPage);
+        _navigationHost = new Frame()
+            .HorizontalAlignment(HorizontalAlignment.Stretch)
+            .VerticalAlignment(VerticalAlignment.Stretch)
+            .Content(rootPage);
+        return _navigationHost;
+    }
+
+    private VisualElement BuildRootPage()
+    {
         return new Grid()
             .Rows(GridLength.Pixels(60), GridLength.Star)
             .Columns(GridLength.Star)
@@ -41,12 +56,34 @@ public sealed class MainView : ViewBase<MainViewModel>
                 new AppBar(
                     ViewModel.Title,
                     ViewModel.CanGoBack,
-                    () => { },
+                    PopPage,
                     () => _drawer?.Open(),
+                    ViewModel.CanPlay,
+                    PushGamePage,
                     []),
                 0,
                 0)
             .AddChild(_homePage, 1, 0);
+    }
+
+    private void PushGamePage()
+    {
+        if (_navigationHost is null)
+            return;
+
+        var page = new GamePage(ViewModel.ProjectStore, PopPage);
+        _navigation.Push(page);
+        _navigationHost.Content = page;
+    }
+
+    private void PopPage()
+    {
+        if (_navigationHost is null)
+            return;
+
+        var previousPage = _navigation.Pop();
+        if (previousPage is not null)
+            _navigationHost.Content = previousPage;
     }
 
     private VisualElement CreateAssetExplorer()

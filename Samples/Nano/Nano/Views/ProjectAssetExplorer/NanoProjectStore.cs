@@ -9,6 +9,69 @@ namespace Nano.Views.ProjectAssetStore;
 /// </summary>
 public sealed class NanoProjectStore : IProjectAssetStore
 {
+    private const string DebugGameResourceName = "Nano.Assets.game.nn";
+
+    private const string StarterScript = """
+        local circle_x = 120
+        local circle_y = 100
+        local circle_radius = 28
+
+        function update(dt)
+            circle_x = math.max(circle_radius, math.min(
+                nano.width - circle_radius,
+                circle_x + nano.input.x * 160 * dt))
+            circle_y = math.max(circle_radius, math.min(
+                nano.height - circle_radius,
+                circle_y + nano.input.y * 160 * dt))
+        end
+
+        function draw()
+            nano.draw.clear(12, 16, 24)
+            if nano.input.a then
+                nano.draw.circle(circle_x, circle_y, circle_radius, 75, 225, 145)
+            else
+                nano.draw.circle(circle_x, circle_y, circle_radius, 65, 180, 255)
+            end
+        end
+        """;
+
+    private static readonly string[] s_previousStarterScripts =
+    [
+        """
+        local x = 24
+
+        function update(dt)
+            x = (x + 90 * dt) % nano.width
+        end
+
+        function draw()
+            nano.draw.clear(12, 16, 24)
+            nano.draw.rect(x, 80, 48, 48, 65, 180, 255)
+            nano.draw.circle(nano.width / 2, nano.height / 2, 32, 255, 195, 70)
+            nano.draw.line(16, nano.height - 32, nano.width - 16, nano.height - 32, 90, 110, 145)
+        end
+        """,
+        """
+        local x = 60
+        local y = 80
+
+        function update(dt)
+            x = math.max(0, math.min(nano.width - 48, x + nano.input.x * 140 * dt))
+            y = math.max(0, math.min(nano.height - 48, y + nano.input.y * 140 * dt))
+        end
+
+        function draw()
+            nano.draw.clear(12, 16, 24)
+            if nano.input.a then
+                nano.draw.rect(x, y, 48, 48, 75, 225, 145)
+            else
+                nano.draw.rect(x, y, 48, 48, 65, 180, 255)
+            end
+            nano.draw.line(16, nano.height - 32, nano.width - 16, nano.height - 32, 90, 110, 145)
+        end
+        """
+    ];
+
     private static readonly HashSet<string> s_textExtensions = new(StringComparer.OrdinalIgnoreCase)
     {
         ".txt", ".md", ".json", ".xml", ".yaml", ".yml", ".lua", ".cs", ".js", ".ts", ".css", ".html", ".shader"
@@ -16,10 +79,28 @@ public sealed class NanoProjectStore : IProjectAssetStore
 
     public NanoProjectStore(string? archivePath = null)
     {
-        ArchivePath = archivePath ?? Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "Nano",
-            "Nano.nn");
+        if (archivePath is null)
+        {
+#if DEBUG
+            ArchivePath = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "Nano",
+                "Debug",
+                "game.nn");
+            InstallDebugGame();
+            return;
+#else
+            ArchivePath = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "Nano",
+                "Nano.nn");
+#endif
+        }
+        else
+        {
+            ArchivePath = archivePath;
+        }
+
         EnsureProject();
     }
 
@@ -107,18 +188,87 @@ public sealed class NanoProjectStore : IProjectAssetStore
     public bool IsSpriteFile(string path) =>
         Path.GetExtension(path).Equals(SpriteAssetDocument.Extension, StringComparison.OrdinalIgnoreCase);
 
+#if DEBUG
+    private void InstallDebugGame()
+    {
+        Directory.CreateDirectory(Path.GetDirectoryName(ArchivePath)!);
+        using var source = typeof(NanoProjectStore).Assembly.GetManifestResourceStream(DebugGameResourceName)
+            ?? throw new InvalidOperationException(
+                $"The embedded Debug project '{DebugGameResourceName}' was not found.");
+        using var destination = new FileStream(ArchivePath, FileMode.Create, FileAccess.Write, FileShare.None);
+        source.CopyTo(destination);
+    }
+#endif
+
     private void EnsureProject()
     {
         Directory.CreateDirectory(Path.GetDirectoryName(ArchivePath)!);
-        if (File.Exists(ArchivePath))
+        if (!File.Exists(ArchivePath))
+        {
+            using var newArchive = ZipFile.Open(ArchivePath, ZipArchiveMode.Create);
+            newArchive.CreateEntry("scripts/");
+            var readme = newArchive.CreateEntry("README.md");
+            using (var readmeWriter = new StreamWriter(readme.Open(), Encoding.UTF8))
+                readmeWriter.Write("# Nano project\n\nAssets in this project are stored in this .nn archive.");
+
+            var main = newArchive.CreateEntry("main.lua", CompressionLevel.Optimal);
+            using var mainWriter = new StreamWriter(
+                main.Open(),
+                new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+            mainWriter.Write(StarterScript);
+            return;
+        }
+
+        using var archive = ZipFile.Open(ArchivePath, ZipArchiveMode.Update);
+
+        if (archive.GetEntry("scripts/") is null)
+            archive.CreateEntry("scripts/");
+
+        if (archive.GetEntry("README.md") is null)
+        {
+            var readme = archive.CreateEntry("README.md");
+            using var readmeWriter = new StreamWriter(readme.Open(), Encoding.UTF8);
+            readmeWriter.Write("# Nano project\n\nAssets in this project are stored in this .nn archive.");
+        }
+
+        if (archive.GetEntry("main.lua") is null)
+        {
+            WriteStarterScript(archive);
+            return;
+        }
+
+        UpgradeStarterScript(archive);
+    }
+
+    private static void UpgradeStarterScript(ZipArchive archive)
+    {
+        var entry = archive.GetEntry("main.lua")!;
+        string currentScript;
+        using (var reader = new StreamReader(entry.Open(), Encoding.UTF8))
+            currentScript = reader.ReadToEnd();
+
+        var isPreviousStarter = s_previousStarterScripts.Any(previous =>
+            NormalizeScript(previous).Equals(
+                NormalizeScript(currentScript),
+                StringComparison.Ordinal));
+        if (!isPreviousStarter)
             return;
 
-        using var archive = ZipFile.Open(ArchivePath, ZipArchiveMode.Create);
-        archive.CreateEntry("scripts/");
-        var readme = archive.CreateEntry("README.md");
-        using var writer = new StreamWriter(readme.Open(), Encoding.UTF8);
-        writer.Write("# Nano project\n\nAssets in this project are stored in this .nn archive.");
+        entry.Delete();
+        WriteStarterScript(archive);
     }
+
+    private static void WriteStarterScript(ZipArchive archive)
+    {
+        var main = archive.CreateEntry("main.lua", CompressionLevel.Optimal);
+        using var writer = new StreamWriter(
+            main.Open(),
+            new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+        writer.Write(StarterScript);
+    }
+
+    private static string NormalizeScript(string script) =>
+        script.Replace("\r\n", "\n", StringComparison.Ordinal).Trim();
 
     private static string ValidateName(string name)
     {

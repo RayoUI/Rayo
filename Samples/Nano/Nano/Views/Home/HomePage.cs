@@ -1,6 +1,7 @@
 using Nano.Views.CodeEditor;
 using Nano.Views.ProjectAssetStore;
 using Nano.Views.SpriteEditor;
+using Nano.Views.LevelEditor;
 using Nano.ViewModels;
 using Rayo;
 using Rayo.Controls;
@@ -15,8 +16,10 @@ public class HomePage : ViewBase<HomeViewModel>, ITextAssetHost, ISpriteAssetHos
 {
     private readonly SpriteEditorView _spriteEditorPage = new();
     private readonly CodeEditorView _codeEditorPage = new();
+    private readonly LevelEditorView _levelEditorPage = new();
     private VisualElement? _spriteEditorContent;
     private VisualElement? _codeEditorContent;
+    private VisualElement? _levelEditorContent;
     private TabControl? _tabs;
 
     public HomePage()
@@ -31,6 +34,7 @@ public class HomePage : ViewBase<HomeViewModel>, ITextAssetHost, ISpriteAssetHos
             .VerticalAlignment(VerticalAlignment.Stretch)
             .ShowTabCloseButtons(true)
             .AddTab("Inicio", _spriteEditorContent ??= _spriteEditorPage.Build())
+            .AddTab("Nivel", _levelEditorContent ??= _levelEditorPage.Build())
             .AddTab("Código", _codeEditorContent ??= _codeEditorPage.Build());
 
         foreach (var document in ViewModel.Documents)
