@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-  <style name="Theme.Nano" parent="@android:style/Theme.Material.NoActionBar">
-    <item name="android:colorPrimary">#0E1421</item>
-    <item name="android:colorPrimaryDark">#0E1421</item>
-    <item name="android:windowBackground">#0E1421</item>
-  </style>
-</resources>

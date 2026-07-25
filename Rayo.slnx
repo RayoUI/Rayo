@@ -44,11 +44,6 @@
     <Project Path="Samples/MobileApp.Desktop/MobileApp.Desktop.csproj" />
     <Project Path="Samples/MobileApp/MobileApp.csproj" />
   </Folder>
-  <Folder Name="/Samples/Nano/">
-    <Project Path="Samples/Nano/Nano.Android/Nano.Android.csproj" />
-    <Project Path="Samples/Nano/Nano.Desktop/Nano.Desktop.csproj" />
-    <Project Path="Samples/Nano/Nano/Nano.csproj" />
-  </Folder>
   <Folder Name="/Samples/WeatherApp/">
     <Project Path="Samples/WeatherApp.Android/WeatherApp.Android.csproj">
       <Deploy />
