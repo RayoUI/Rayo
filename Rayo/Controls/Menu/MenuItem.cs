@@ -11,7 +11,7 @@ using Rayo.Styling;
 public readonly record struct MenuItemIconOptions(IconData Icon, Brush Color, float? Size = null, float? Spacing = null);
 
 /// <summary>
-/// An action, checked option, or nested submenu entry within a <see cref="Menu"/>.
+/// An action, checked option, separator, or nested submenu entry within a <see cref="Menu"/>.
 /// </summary>
 public class MenuItem : Component
 {
@@ -19,6 +19,7 @@ public class MenuItem : Component
     private readonly Action? _onClick;
     private readonly List<MenuItem> _items = [];
     private Func<bool>? _isChecked;
+    private readonly bool _isSeparator;
 
     [LayoutProperty]
     public HorizontalAlignment TextAlignment
@@ -76,8 +77,9 @@ public class MenuItem : Component
 
     internal string Text => _text;
     internal IReadOnlyList<MenuItem> Items => _items;
-    internal bool HasSubmenu => _items.Count > 0;
+    internal bool HasSubmenu => !_isSeparator && _items.Count > 0;
     internal bool IsChecked => _isChecked?.Invoke() == true;
+    internal bool IsSeparator => _isSeparator;
 
     public MenuItem(string text, Action? onClick = null)
     {
@@ -86,17 +88,36 @@ public class MenuItem : Component
         _onClick = onClick;
     }
 
+    private MenuItem(bool isSeparator)
+    {
+        _isSeparator = isSeparator;
+        _text = string.Empty;
+    }
+
+    /// <summary>Creates a non-interactive horizontal rule between menu items.</summary>
+    public static MenuItem Separator() => new(isSeparator: true);
+
     /// <summary>Adds a child entry and turns this item into a submenu.</summary>
     public MenuItem AddItem(MenuItem item)
     {
         ArgumentNullException.ThrowIfNull(item);
+        ThrowIfSeparator();
         _items.Add(item);
+        return this;
+    }
+
+    /// <summary>Adds a horizontal separator between submenu items.</summary>
+    public MenuItem AddSeparator()
+    {
+        ThrowIfSeparator();
+        _items.Add(Separator());
         return this;
     }
 
     /// <summary>Displays a check icon while the supplied state evaluates to true.</summary>
     public MenuItem CheckedWhen(Func<bool> isChecked)
     {
+        ThrowIfSeparator();
         _isChecked = isChecked ?? throw new ArgumentNullException(nameof(isChecked));
         return this;
     }
@@ -108,7 +129,7 @@ public class MenuItem : Component
             onHovered: null,
             onActivated: (item, _) =>
             {
-                if (!item.HasSubmenu)
+                if (!item.HasSubmenu && !item.IsSeparator)
                     item.Invoke();
             });
 
@@ -116,7 +137,36 @@ public class MenuItem : Component
         Action<MenuItem, VisualElement>? onHovered,
         Action<MenuItem, VisualElement>? onActivated)
     {
+        if (_isSeparator)
+            return new MenuSeparatorView();
+
         return new MenuEntryView(this, onHovered, onActivated);
+    }
+
+    private void ThrowIfSeparator()
+    {
+        if (_isSeparator)
+            throw new InvalidOperationException("Separators cannot contain items or checked state.");
+    }
+}
+
+/// <summary>
+/// Non-interactive horizontal rule used to group menu items.
+/// </summary>
+internal sealed class MenuSeparatorView : Frame
+{
+    public MenuSeparatorView()
+    {
+        Height = 1;
+        Margin = new Thickness(7, 4);
+        HorizontalAlignment = HorizontalAlignment.Stretch;
+        VerticalAlignment = VerticalAlignment.Top;
+        InitializeTheme();
+    }
+
+    protected override void OnThemeApplied(ThemeData theme)
+    {
+        SetThemeValue(nameof(Background), (Brush)theme.Colors.Border, value => Background = value);
     }
 }
 

@@ -47,6 +47,13 @@ public class Menu : Component, IGlobalPointerHandler
         return this;
     }
 
+    /// <summary>Adds a horizontal separator between menu items.</summary>
+    public Menu AddSeparator()
+    {
+        _items.Add(MenuItem.Separator());
+        return this;
+    }
+
     public override VisualElement Build()
     {
         var titleButton = new MenuButton()
@@ -111,7 +118,7 @@ public class Menu : Component, IGlobalPointerHandler
     private void OnItemHovered(MenuItem item, VisualElement anchor, int depth)
     {
         int submenuDepth = depth + 1;
-        if (!item.HasSubmenu)
+        if (item.IsSeparator || !item.HasSubmenu)
         {
             ClosePopupsFrom(submenuDepth);
             return;
@@ -137,6 +144,9 @@ public class Menu : Component, IGlobalPointerHandler
 
     private void OnItemActivated(MenuItem item, VisualElement anchor, int depth)
     {
+        if (item.IsSeparator)
+            return;
+
         if (item.HasSubmenu)
         {
             OnItemHovered(item, anchor, depth);

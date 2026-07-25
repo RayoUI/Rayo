@@ -41,6 +41,7 @@ public class MenuPage : Component
                                                     .IconOptions(new MenuItemIconOptions(Icons.Folder, new Color(59, 130, 246))))
                                                 .AddItem(new MenuItem("Save", () => UpdateAction("File saved"))
                                                     .IconOptions(new MenuItemIconOptions(Icons.Save, new Color(234, 179, 8))))
+                                                .AddSeparator()
                                                 .AddItem(new MenuItem("Exit", () => UpdateAction("Exit clicked"))
                                                     .IconOptions(new MenuItemIconOptions(Icons.Error, new Color(239, 68, 68))))
                                         )
@@ -68,13 +69,16 @@ public class MenuPage : Component
                                     new Menu("File")
                                         .AddItem(new MenuItem("New", () => UpdateAction("File > New")))
                                         .AddItem(new MenuItem("Open", () => UpdateAction("File > Open")))
+                                        .AddSeparator()
                                         .AddItem(new MenuItem("Save", () => UpdateAction("File > Save")))
                                         .AddItem(new MenuItem("Save As", () => UpdateAction("File > Save As")))
+                                        .AddSeparator()
                                         .AddItem(new MenuItem("Exit", () => UpdateAction("File > Exit"))),
 
                                     new Menu("Edit")
                                         .AddItem(new MenuItem("Undo", () => UpdateAction("Edit > Undo")))
                                         .AddItem(new MenuItem("Redo", () => UpdateAction("Edit > Redo")))
+                                        .AddSeparator()
                                         .AddItem(new MenuItem("Cut", () => UpdateAction("Edit > Cut")))
                                         .AddItem(new MenuItem("Copy", () => UpdateAction("Edit > Copy")))
                                         .AddItem(new MenuItem("Paste", () => UpdateAction("Edit > Paste"))),
@@ -82,10 +86,12 @@ public class MenuPage : Component
                                     new Menu("View")
                                         .AddItem(new MenuItem("Zoom In", () => UpdateAction("View > Zoom In")))
                                         .AddItem(new MenuItem("Zoom Out", () => UpdateAction("View > Zoom Out")))
+                                        .AddSeparator()
                                         .AddItem(new MenuItem("Full Screen", () => UpdateAction("View > Full Screen"))),
 
                                     new Menu("Help")
                                         .AddItem(new MenuItem("Documentation", () => UpdateAction("Help > Documentation")))
+                                        .AddSeparator()
                                         .AddItem(new MenuItem("About", () => UpdateAction("Help > About")))
                                 )
                         )
@@ -116,11 +122,58 @@ public class MenuPage : Component
                                                     .IconOptions(new MenuItemIconOptions(Icons.Play, new Color(34, 197, 94))))
                                                 .AddItem(new MenuItem("Pause", () => UpdateAction("Run > Pause"))
                                                     .IconOptions(new MenuItemIconOptions(Icons.Pause, new Color(234, 179, 8))))
+                                                .AddSeparator()
                                                 .AddItem(new MenuItem("Stop", () => UpdateAction("Run > Stop"))
                                                     .IconOptions(new MenuItemIconOptions(Icons.Error, new Color(239, 68, 68)))))
                                 ),
 
                             new Label("Menu items can include icons with custom colors and sizes")
+                                .FontSize(12)
+                                .Foreground(GalleryPalette.Muted)
+                        )
+                ),
+
+                Helper.CreateExampleSection("Separators",
+                    new VStack()
+                        .Spacing(12)
+                        .Children(
+                            new PaletteFrame(colors => colors.SurfacePressed)
+                                .Height(40)
+                                .BorderRadius(4)
+                                .Content(
+                                    new HStack()
+                                        .Spacing(0)
+                                        .Alignment(Alignment.Center)
+                                        .Children(
+                                            new Menu("File")
+                                                .AddItem(new MenuItem("New", () => UpdateAction("Separator > New"))
+                                                    .IconOptions(new MenuItemIconOptions(Icons.Add, new Color(34, 197, 94))))
+                                                .AddItem(new MenuItem("Open", () => UpdateAction("Separator > Open"))
+                                                    .IconOptions(new MenuItemIconOptions(Icons.Folder, new Color(59, 130, 246))))
+                                                .AddSeparator()
+                                                .AddItem(new MenuItem("Save", () => UpdateAction("Separator > Save"))
+                                                    .IconOptions(new MenuItemIconOptions(Icons.Save, new Color(234, 179, 8))))
+                                                .AddItem(new MenuItem("Save As", () => UpdateAction("Separator > Save As"))
+                                                    .IconOptions(new MenuItemIconOptions(Icons.Save, new Color(234, 179, 8))))
+                                                .AddSeparator()
+                                                .AddItem(new MenuItem("Exit", () => UpdateAction("Separator > Exit"))
+                                                    .IconOptions(new MenuItemIconOptions(Icons.Error, new Color(239, 68, 68)))),
+
+                                            new Menu("Edit")
+                                                .AddItem(new MenuItem("Undo", () => UpdateAction("Separator > Undo")))
+                                                .AddItem(new MenuItem("Redo", () => UpdateAction("Separator > Redo")))
+                                                .AddSeparator()
+                                                .AddItem(
+                                                    new MenuItem("Clipboard")
+                                                        .AddItem(new MenuItem("Cut", () => UpdateAction("Separator > Cut")))
+                                                        .AddItem(new MenuItem("Copy", () => UpdateAction("Separator > Copy")))
+                                                        .AddItem(new MenuItem("Paste", () => UpdateAction("Separator > Paste")))
+                                                        .AddSeparator()
+                                                        .AddItem(new MenuItem("Select All", () => UpdateAction("Separator > Select All"))))
+                                        )
+                                ),
+
+                            new Label("Use AddSeparator() to group related actions in menus and submenus")
                                 .FontSize(12)
                                 .Foreground(GalleryPalette.Muted)
                         )
@@ -211,6 +264,7 @@ public class MenuPage : Component
                                                     UpdateAction("Dialog shown");
                                                 })
                                                     .IconOptions(new MenuItemIconOptions(Icons.Info, new Color(234, 179, 8))))
+                                                .AddSeparator()
                                                 .AddItem(new MenuItem("Log to Console", () => {
                                                     Console.WriteLine("Menu item clicked!");
                                                     UpdateAction("Logged to console");
@@ -232,6 +286,8 @@ public class MenuPage : Component
                             CreateFeatureItem("Clicking outside closes the menu"),
                             CreateFeatureItem("Only one menu open at a time"),
                             CreateFeatureItem("Menu items support click handlers"),
+                            CreateFeatureItem("AddSeparator() groups related menu items"),
+                            CreateFeatureItem("Separators work in menus and submenus"),
                             CreateFeatureItem("Hover highlighting on menu items"),
                             CreateFeatureItem("Menu closes after item selection")
                         )
@@ -245,7 +301,7 @@ public class MenuPage : Component
                             new VStack()
                                 .Spacing(4)
                                 .Children(
-                                    new Label("// Create a menu with items")
+                                    new Label("// Create a menu with items and separators")
                                         .FontSize(12)
                                         .Foreground(new Color(106, 153, 85)),
                                     new Label("var menu = new Menu(\"File\")")
@@ -257,7 +313,16 @@ public class MenuPage : Component
                                     new Label("    .AddItem(new MenuItem(\"Open\", OnOpen))")
                                         .FontSize(12)
                                         .Foreground(new Color(156, 220, 254)),
-                                    new Label("    .AddItem(new MenuItem(\"Save\", OnSave));")
+                                    new Label("    .AddSeparator()")
+                                        .FontSize(12)
+                                        .Foreground(new Color(156, 220, 254)),
+                                    new Label("    .AddItem(new MenuItem(\"Save\", OnSave))")
+                                        .FontSize(12)
+                                        .Foreground(new Color(156, 220, 254)),
+                                    new Label("    .AddSeparator()")
+                                        .FontSize(12)
+                                        .Foreground(new Color(156, 220, 254)),
+                                    new Label("    .AddItem(new MenuItem(\"Exit\", OnExit));")
                                         .FontSize(12)
                                         .Foreground(new Color(156, 220, 254)),
                                     new Label("")
@@ -303,28 +368,35 @@ public class MenuPage : Component
                                 new Menu("File")
                                     .AddItem(new MenuItem("New File", () => UpdateAction("New File")))
                                     .AddItem(new MenuItem("New Window", () => UpdateAction("New Window")))
+                                    .AddSeparator()
                                     .AddItem(new MenuItem("Open File", () => UpdateAction("Open File")))
                                     .AddItem(new MenuItem("Open Folder", () => UpdateAction("Open Folder")))
+                                    .AddSeparator()
                                     .AddItem(new MenuItem("Save", () => UpdateAction("Save")))
                                     .AddItem(new MenuItem("Save All", () => UpdateAction("Save All")))
+                                    .AddSeparator()
                                     .AddItem(new MenuItem("Close", () => UpdateAction("Close"))),
 
                                 new Menu("Edit")
                                     .AddItem(new MenuItem("Undo", () => UpdateAction("Undo")))
                                     .AddItem(new MenuItem("Redo", () => UpdateAction("Redo")))
+                                    .AddSeparator()
                                     .AddItem(new MenuItem("Cut", () => UpdateAction("Cut")))
                                     .AddItem(new MenuItem("Copy", () => UpdateAction("Copy")))
                                     .AddItem(new MenuItem("Paste", () => UpdateAction("Paste")))
+                                    .AddSeparator()
                                     .AddItem(new MenuItem("Find", () => UpdateAction("Find")))
                                     .AddItem(new MenuItem("Replace", () => UpdateAction("Replace"))),
 
                                 new Menu("Selection")
                                     .AddItem(new MenuItem("Select All", () => UpdateAction("Select All")))
+                                    .AddSeparator()
                                     .AddItem(new MenuItem("Expand Selection", () => UpdateAction("Expand Selection")))
                                     .AddItem(new MenuItem("Shrink Selection", () => UpdateAction("Shrink Selection"))),
 
                                 new Menu("View")
                                     .AddItem(new MenuItem("Command Palette", () => UpdateAction("Command Palette")))
+                                    .AddSeparator()
                                     .AddItem(new MenuItem("Explorer", () => UpdateAction("Explorer")))
                                     .AddItem(new MenuItem("Search", () => UpdateAction("Search")))
                                     .AddItem(new MenuItem("Terminal", () => UpdateAction("Terminal")))
@@ -334,6 +406,7 @@ public class MenuPage : Component
                                     .AddItem(new MenuItem("Welcome", () => UpdateAction("Welcome")))
                                     .AddItem(new MenuItem("Documentation", () => UpdateAction("Documentation")))
                                     .AddItem(new MenuItem("Release Notes", () => UpdateAction("Release Notes")))
+                                    .AddSeparator()
                                     .AddItem(new MenuItem("About", () => UpdateAction("About")))
                             )
                     ),
