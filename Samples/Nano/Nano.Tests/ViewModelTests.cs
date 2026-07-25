@@ -7,11 +7,13 @@ using Nano.Views.Game;
 using Nano.Views.CodeEditor.Components;
 using Nano.GameEngine;
 using Nano.Views.SpriteEditor;
+using Rayo;
 using Rayo.Rendering;
 using Rayo.Animation;
 using Rayo.Controls;
 using Rayo.Core;
 using Rayo.Core.Input;
+using Rayo.Layout;
 using Xunit;
 
 namespace Nano.Tests;
@@ -169,6 +171,54 @@ public sealed class ViewModelTests
             if (Directory.Exists(directory))
                 Directory.Delete(directory, recursive: true);
         }
+    }
+
+    [Fact]
+    public void Root_asset_list_keeps_the_last_file_inside_the_browser()
+    {
+        var assets = new[]
+        {
+            new VirtualAsset("fonts", "fonts", true),
+            new VirtualAsset("images", "images", true),
+            new VirtualAsset("save", "save", true),
+            new VirtualAsset("scripts", "scripts", true),
+            new VirtualAsset("sounds", "sounds", true),
+            new VirtualAsset("sprites", "sprites", true),
+            new VirtualAsset("tiles", "tiles", true),
+            new VirtualAsset("ENGINE_API.md", "ENGINE_API.md", false),
+            new VirtualAsset("main.lua", "main.lua", false),
+        };
+        var collection = new AssetCollectionView(
+            AssetViewMode.List,
+            string.Empty,
+            assets,
+            () => { },
+            _ => { });
+        var browser = new ScrollView()
+            .Height(660)
+            .Padding(new Thickness(12, 16))
+            .Content(collection)
+            .HorizontalAlignment(HorizontalAlignment.Stretch)
+            .VerticalAlignment(VerticalAlignment.Stretch);
+        var root = new VStack()
+            .HorizontalAlignment(HorizontalAlignment.Stretch)
+            .VerticalAlignment(VerticalAlignment.Stretch)
+            .Children(
+                new Frame().Height(112),
+                new Frame().Height(48),
+                browser);
+        var tree = new UITree();
+        tree.SetRoot(root);
+
+        tree.Update(320, 820);
+
+        var list = Assert.IsType<VStack>(collection.Content);
+        Assert.Equal(assets.Length, list.Children.Count);
+        var mainTile = Assert.IsType<AssetTile>(list.Children[^1]);
+        Assert.Equal(408, list.Height);
+        Assert.True(mainTile.ComputedHeight > 0);
+        Assert.True(mainTile.ComputedY + mainTile.ComputedHeight <=
+                    browser.ComputedY + browser.ComputedHeight);
     }
 
     [Fact]

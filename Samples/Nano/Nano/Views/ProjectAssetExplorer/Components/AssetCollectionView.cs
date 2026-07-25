@@ -34,19 +34,21 @@ internal sealed class AssetCollectionView : Component
 
     private VisualElement BuildList()
     {
-        var items = CreateEntries()
-            .Select(entry => CreateListItem(entry.Name, entry.IsDirectory, entry.Action))
-            .ToList();
-
-        if (items.Count == 0)
+        const float itemHeight = 40;
+        const float itemSpacing = 6;
+        var entries = CreateEntries();
+        if (entries.Count == 0)
         {
-            items.Add(CreateEmptyLabel());
+            return CreateEmptyLabel();
         }
 
         return new VStack()
-            .Spacing(6)
+            .Height(entries.Count * itemHeight + (entries.Count - 1) * itemSpacing)
+            .Spacing(itemSpacing)
             .HorizontalAlignment(HorizontalAlignment.Stretch)
-            .Children(items.ToArray());
+            .Children(entries
+                .Select(entry => CreateListItem(entry.Name, entry.IsDirectory, entry.Action))
+                .ToArray());
     }
 
     private VisualElement BuildGrid()

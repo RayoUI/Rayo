@@ -778,20 +778,33 @@ public class ScrollView : CompositeView<ScrollView>, IInputHandler, IScrollable,
             return;
         }
 
-        float childClipX = Math.Max(clipX, element.ComputedX);
-        float childClipY = Math.Max(clipY, element.ComputedY);
-        float childClipRight = Math.Min(clipX + clipWidth, element.ComputedX + element.ComputedWidth);
-        float childClipBottom = Math.Min(clipY + clipHeight, element.ComputedY + element.ComputedHeight);
-        float childClipWidth = Math.Max(0, childClipRight - childClipX);
-        float childClipHeight = Math.Max(0, childClipBottom - childClipY);
+        float childClipX = clipX;
+        float childClipY = clipY;
+        float childClipWidth = clipWidth;
+        float childClipHeight = clipHeight;
+        bool needsChildScissor = false;
 
-        if (childClipWidth <= 0 || childClipHeight <= 0)
+        // Match UITree rendering semantics: an ancestor only clips its descendants
+        // when ClipToBounds is enabled. Intersecting every intermediate element here
+        // hides valid overflowing children, such as the last row of a component in a
+        // ScrollView whose wrapper has a smaller measured height than its content.
+        if (element.ClipToBounds)
         {
-            return;
-        }
+            childClipX = Math.Max(clipX, element.ComputedX);
+            childClipY = Math.Max(clipY, element.ComputedY);
+            float childClipRight = Math.Min(clipX + clipWidth, element.ComputedX + element.ComputedWidth);
+            float childClipBottom = Math.Min(clipY + clipHeight, element.ComputedY + element.ComputedHeight);
+            childClipWidth = Math.Max(0, childClipRight - childClipX);
+            childClipHeight = Math.Max(0, childClipBottom - childClipY);
 
-        bool needsChildScissor = childClipX > clipX || childClipY > clipY ||
-                                 childClipWidth < element.ComputedWidth || childClipHeight < element.ComputedHeight;
+            if (childClipWidth <= 0 || childClipHeight <= 0)
+            {
+                return;
+            }
+
+            needsChildScissor = childClipX > clipX || childClipY > clipY ||
+                                childClipWidth < clipWidth || childClipHeight < clipHeight;
+        }
 
         if (needsChildScissor)
         {

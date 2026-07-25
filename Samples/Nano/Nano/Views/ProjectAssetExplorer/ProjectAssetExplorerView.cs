@@ -102,6 +102,7 @@ public sealed class ProjectAssetExplorerView : ViewBase<ProjectAssetExplorerView
 
     private VisualElement BuildBrowser() =>
         new ScrollView()
+            .Height(Math.Max(160, (UIApplication.Current?.WindowHeight ?? 768) - 160))
             .Padding(new Thickness(12, 16))
             .Content(
                 new AssetCollectionView(
