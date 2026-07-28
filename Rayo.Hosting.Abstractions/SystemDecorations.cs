@@ -1,4 +1,4 @@
-﻿namespace Rayo.Core.Platform;
+namespace Rayo.Core.Platform;
 
 /// <summary>
 /// Specifies the system decorations (chrome) to use for the window.

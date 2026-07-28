@@ -2,6 +2,7 @@
 using Android.Content;
 using Android.Opengl;
 using Rayo.Hosting.Abstractions;
+using Rayo.Core;
 using Rayo.Core.Platform;
 using Android.Views;
 using Android.OS;
@@ -26,6 +27,8 @@ public abstract class AndroidPlatformHost : Activity, IPlatformHost
     private readonly AndroidPlatformCapabilities _capabilities;
     private AndroidApplicationContext? _appContext;
     private AndroidWindowConfiguration? _windowConfig;
+    private AndroidWindowController? _windowController;
+    private UIApplication? _application;
 
     protected AndroidPlatformHost()
     {
@@ -55,7 +58,6 @@ public abstract class AndroidPlatformHost : Activity, IPlatformHost
 
         // Detect and set screen density for proper scaling
         DetectScreenDensity();
-        ApplyHostThemePreferences();
 
         // Create configuration
         var windowConfig = CreateDefaultConfiguration();
@@ -64,9 +66,21 @@ public abstract class AndroidPlatformHost : Activity, IPlatformHost
         // Allow user customization first
         ConfigureWindow(_windowConfig);
 
+        // Create a headless UIApplication so UIApplication.Current.Window works
+        // on Android (no Silk.NET window — chrome is applied via the controller).
+        _application = new UIApplication(windowConfig);
+
+        // Bridge runtime Window.Android.* mutations from components.
+        _windowController = new AndroidWindowController(this);
+        PlatformWindowControllers.SetAndroid(_windowController);
+        SafeArea.SetProvider(_windowController);
+
         // Apply options that don't require DecorView
         ApplyWindowFlags();
         RequestStorageReadPermissions();
+
+        // Theme preferences can now target UIApplication.Current.
+        ApplyHostThemePreferences();
 
         // Create application context
         _appContext = new AndroidApplicationContext();
@@ -143,6 +157,7 @@ public abstract class AndroidPlatformHost : Activity, IPlatformHost
         base.OnConfigurationChanged(newConfig);
         DetectScreenDensity();
         ApplyHostThemePreferences();
+        SafeArea.NotifyChanged();
         _glSurfaceView?.ScheduleResumeRender();
     }
 
@@ -159,6 +174,8 @@ public abstract class AndroidPlatformHost : Activity, IPlatformHost
 
         if (hasFocus)
         {
+            // Immersive / system-bar flags are often cleared when focus is lost.
+            ApplyDecorViewOptions();
             _glSurfaceView?.ScheduleResumeRender();
             _glSurfaceView?.RestoreVirtualKeyboard();
         }
@@ -183,6 +200,16 @@ public abstract class AndroidPlatformHost : Activity, IPlatformHost
 
     protected override void OnDestroy()
     {
+        if (_windowController != null)
+        {
+            SafeArea.ClearProvider(_windowController);
+            PlatformWindowControllers.ClearAndroid(_windowController);
+            _windowController = null;
+        }
+
+        _application?.Dispose();
+        _application = null;
+
         if (_glSurfaceView != null)
         {
             _glSurfaceView.FirstFramePresented -= OnFirstFramePresented;
@@ -307,57 +334,11 @@ public abstract class AndroidPlatformHost : Activity, IPlatformHost
     {
         if (_windowConfig == null) return;
 
-        var nativeConfig = _windowConfig.NativeConfiguration;
-        var options = nativeConfig.Android;
-
         // Keep the Rayo viewport above the IME. This also gives keyboard
         // accessory bars a stable bottom edge across Android keyboards.
         Window?.SetSoftInputMode(SoftInput.AdjustResize | SoftInput.StateAlwaysHidden);
 
-        // Apply orientation
-        RequestedOrientation = options.Orientation switch
-        {
-            Core.Platform.ScreenOrientation.Portrait => global::Android.Content.PM.ScreenOrientation.Portrait,
-            Core.Platform.ScreenOrientation.Landscape => global::Android.Content.PM.ScreenOrientation.Landscape,
-            Core.Platform.ScreenOrientation.PortraitReverse => global::Android.Content.PM.ScreenOrientation.ReversePortrait,
-            Core.Platform.ScreenOrientation.LandscapeReverse => global::Android.Content.PM.ScreenOrientation.ReverseLandscape,
-            Core.Platform.ScreenOrientation.Sensor => global::Android.Content.PM.ScreenOrientation.Sensor,
-            Core.Platform.ScreenOrientation.SensorPortrait => global::Android.Content.PM.ScreenOrientation.SensorPortrait,
-            Core.Platform.ScreenOrientation.SensorLandscape => global::Android.Content.PM.ScreenOrientation.SensorLandscape,
-            _ => global::Android.Content.PM.ScreenOrientation.Unspecified
-        };
-
-        // Apply keep screen on
-        if (options.KeepScreenOn)
-        {
-            Window?.AddFlags(WindowManagerFlags.KeepScreenOn);
-        }
-
-        // Apply hide status bar (fullscreen flag)
-        if (options.HideStatusBar || options.ImmersiveMode)
-        {
-            Window?.SetFlags(WindowManagerFlags.Fullscreen, WindowManagerFlags.Fullscreen);
-        }
-
-        // Apply status bar color
-        if (options.StatusBarColor.HasValue && Build.VERSION.SdkInt >= BuildVersionCodes.Lollipop)
-        {
-#pragma warning disable CA1416
-#pragma warning disable CA1422
-            Window?.SetStatusBarColor(new global::Android.Graphics.Color((int)options.StatusBarColor.Value));
-#pragma warning restore CA1422
-#pragma warning restore CA1416
-        }
-
-        // Apply navigation bar color
-        if (options.NavigationBarColor.HasValue && Build.VERSION.SdkInt >= BuildVersionCodes.Lollipop)
-        {
-#pragma warning disable CA1416
-#pragma warning disable CA1422
-            Window?.SetNavigationBarColor(new global::Android.Graphics.Color((int)options.NavigationBarColor.Value));
-#pragma warning restore CA1422
-#pragma warning restore CA1416
-        }
+        _windowController?.Apply(_windowConfig.NativeConfiguration.Android);
     }
 
     /// <summary>
@@ -367,60 +348,7 @@ public abstract class AndroidPlatformHost : Activity, IPlatformHost
     {
         if (_windowConfig == null) return;
 
-        var nativeConfig = _windowConfig.NativeConfiguration;
-        var options = nativeConfig.Android;
-
-        // Apply immersive mode if configured
-        if (options.ImmersiveMode)
-        {
-            if (Build.VERSION.SdkInt >= BuildVersionCodes.R)
-            {
-#pragma warning disable CA1416
-                Window?.InsetsController?.Hide(WindowInsets.Type.SystemBars());
-                Window?.InsetsController?.SystemBarsBehavior = (int)WindowInsetsControllerBehavior.ShowTransientBarsBySwipe;
-#pragma warning restore CA1416
-            }
-            else
-            {
-#pragma warning disable CS0618
-                var decorView = Window?.DecorView;
-                if (decorView != null)
-                {
-                    decorView.SystemUiVisibility = (StatusBarVisibility)(
-                        SystemUiFlags.ImmersiveSticky |
-                        SystemUiFlags.LayoutStable |
-                        SystemUiFlags.LayoutHideNavigation |
-                        SystemUiFlags.LayoutFullscreen |
-                        SystemUiFlags.HideNavigation |
-                        SystemUiFlags.Fullscreen);
-                }
-#pragma warning restore CS0618
-            }
-        }
-        // Apply hide navigation bar (without immersive mode)
-        else if (options.HideNavigationBar)
-        {
-            if (Build.VERSION.SdkInt >= BuildVersionCodes.R)
-            {
-#pragma warning disable CA1416
-                Window?.InsetsController?.Hide(WindowInsets.Type.NavigationBars());
-#pragma warning restore CA1416
-            }
-            else
-            {
-#pragma warning disable CS0618
-                var decorView = Window?.DecorView;
-                if (decorView != null)
-                {
-                    var currentFlags = (SystemUiFlags)decorView.SystemUiVisibility;
-                    decorView.SystemUiVisibility = (StatusBarVisibility)(
-                        currentFlags |
-                        SystemUiFlags.HideNavigation |
-                        SystemUiFlags.LayoutHideNavigation);
-                }
-#pragma warning restore CS0618
-            }
-        }
+        _windowController?.Apply(_windowConfig.NativeConfiguration.Android);
     }
 
     private void RequestStorageReadPermissions()

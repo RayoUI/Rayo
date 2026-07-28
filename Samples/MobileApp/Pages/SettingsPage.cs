@@ -1,6 +1,7 @@
 using Rayo;
 using Rayo.Controls;
 using Rayo.Core;
+using Rayo.Core.Platform;
 using Rayo.Layout;
 using Rayo.Rendering;
 
@@ -10,6 +11,8 @@ public class SettingsPage : Component
 {
     public override VisualElement Build()
     {
+        bool keepScreenOn = UIApplication.Current?.Window.Android.KeepScreenOn ?? false;
+
         return new ScrollView()
             .Content(
                 new VStack()
@@ -50,7 +53,18 @@ public class SettingsPage : Component
                                         new Checkbox()
                                             .Label("Sync over Wi-Fi only")
                                             .LabelColor(new Color(45, 55, 72))
-                                            .IsChecked(true)
+                                            .IsChecked(true),
+                                        new Checkbox()
+                                            .Label("Keep screen on")
+                                            .LabelColor(new Color(45, 55, 72))
+                                            .IsChecked(keepScreenOn)
+                                            .OnChanged(isChecked =>
+                                            {
+                                                if (UIApplication.Current?.Window.Android is { } android)
+                                                {
+                                                    android.KeepScreenOn = isChecked;
+                                                }
+                                            })
                                     ))
                     ));
     }

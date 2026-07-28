@@ -30,6 +30,7 @@ public sealed class MenuBar(NotepadWorkspace workspace) : Component
             .AddItem(new MenuItem("Zoom Out", workspace.ZoomOut))
             .AddItem(new MenuItem("Reset Zoom", workspace.ResetZoom))
             .AddItem(new MenuItem("Toggle Word Wrap", workspace.ToggleWordWrap))
+            .AddItem(new MenuItem("Toggle Maximize", workspace.ToggleMaximize))
             .AddItem(
                 new MenuItem("Theme")
                     .AddItem(new MenuItem("Light", workspace.UseLightTheme)

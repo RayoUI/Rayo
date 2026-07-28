@@ -619,6 +619,9 @@ public class RayoGLSurfaceView : GLSurfaceView
             float logicalWidth = width / SkiaSharpRenderer.GetDpiScaleFactor();
             float logicalHeight = height / SkiaSharpRenderer.GetDpiScaleFactor();
             Rayo.Core.OverlayManager.SetWindowSize(logicalWidth, logicalHeight);
+            UIApplication.Current?.NotifyWindowSize(
+                Math.Max(1, (int)MathF.Round(logicalWidth)),
+                Math.Max(1, (int)MathF.Round(logicalHeight)));
         }
 
         private void RecreateOrResizeSkiaSurface(int width, int height, bool forceGpuRebind = false)

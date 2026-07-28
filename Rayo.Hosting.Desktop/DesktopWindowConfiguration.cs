@@ -6,7 +6,7 @@ namespace Rayo.Hosting.Desktop;
 /// <summary>
 /// Adapter that wraps Rayo's WindowConfiguration to implement the platform-agnostic interface.
 /// </summary>
-internal class DesktopWindowConfiguration : IPlatformWindowConfiguration
+public class DesktopWindowConfiguration : IPlatformWindowConfiguration
 {
     private readonly WindowConfiguration _config;
 
@@ -49,6 +49,24 @@ internal class DesktopWindowConfiguration : IPlatformWindowConfiguration
     {
         get => _config.Samples;
         set => _config.Samples = value;
+    }
+
+    public bool Topmost
+    {
+        get => _config.Topmost;
+        set => _config.Topmost = value;
+    }
+
+    public WindowState WindowState
+    {
+        get => _config.WindowState;
+        set => _config.WindowState = value;
+    }
+
+    public SystemDecorations SystemDecorations
+    {
+        get => _config.SystemDecorations;
+        set => _config.SystemDecorations = value;
     }
 
     /// <summary>

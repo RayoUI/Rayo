@@ -31,6 +31,7 @@ public class UIApplication : IDisposable
     private ExceptionDispatchInfo? _pendingRenderException;
     private readonly List<ThemeHotReloadWatcher> _themeWatchers = new();
     private WindowConfiguration _windowConfig;
+    private readonly ApplicationWindow _applicationWindow;
     // Tracks the last polled window size so we detect maximise/restore on Windows,
     // where the Silk.NET Resize event may not fire for state-based size changes.
     private Vector2D<int> _lastPolledSize;
@@ -120,18 +121,10 @@ public class UIApplication : IDisposable
     /// </summary>
     public IWindow? NativeWindow => _window;
 
-    // Window dimensions for component access
-    public struct WindowDimensions
-    {
-        public float Width { get; set; }
-        public float Height { get; set; }
-    }
-
-    public WindowDimensions Window => new WindowDimensions
-    {
-        Width = _window?.Size.X ?? 800,
-        Height = _window?.Size.Y ?? 600
-    };
+    /// <summary>
+    /// Runtime window API for components (title, state, size, decorations, etc.).
+    /// </summary>
+    public IApplicationWindow Window => _applicationWindow;
 
     public readonly record struct RuntimeLoopStats(
         float UpdatesPerSecond,
@@ -440,6 +433,7 @@ public class UIApplication : IDisposable
     {
         Current = this;
         _windowConfig = config;
+        _applicationWindow = new ApplicationWindow(this);
         _lastPolledSize = new Vector2D<int>(config.Width, config.Height);
         _tree = new UITree();
         _tree.OnNeedsRenderChanged = OnTreeNeedsRender;
@@ -578,12 +572,7 @@ public class UIApplication : IDisposable
         };
 
         // Apply decorations
-        options.WindowBorder = config.SystemDecorations switch
-        {
-            SystemDecorations.None => WindowBorder.Hidden,
-            SystemDecorations.BorderOnly => WindowBorder.Fixed,
-            _ => config.CanResize ? WindowBorder.Resizable : WindowBorder.Fixed
-        };
+        options.WindowBorder = WindowBorderMapper.ToSilkBorder(config.SystemDecorations, config.CanResize);
 
         // Apply transparent background
         options.TransparentFramebuffer = config.TransparentBackground;
@@ -635,7 +624,7 @@ public class UIApplication : IDisposable
     {
         if (_window == null) return;
 
-        WindowStateValue = _windowConfig.WindowState;
+        Window.State = _windowConfig.WindowState;
     }
 
     private void CenterWindowOnScreen()
@@ -671,20 +660,19 @@ public class UIApplication : IDisposable
     /// </summary>
     public WindowConfiguration Configuration => _windowConfig;
 
+    internal WindowConfiguration WindowConfigurationInternal => _windowConfig;
+
+    internal void CenterWindowInternal() => CenterWindowOnScreen();
+
+    internal void ApplyWindowIconInternal() => ApplyWindowIcon();
+
     /// <summary>
     /// Gets or sets whether the window is topmost (always on top).
     /// </summary>
     public bool Topmost
     {
-        get => _window?.TopMost ?? false;
-        set
-        {
-            if (_window != null)
-            {
-                _window.TopMost = value;
-            }
-            _windowConfig.Topmost = value;
-        }
+        get => Window.Topmost;
+        set => Window.Topmost = value;
     }
 
     /// <summary>
@@ -692,31 +680,8 @@ public class UIApplication : IDisposable
     /// </summary>
     public Platform.WindowState WindowStateValue
     {
-        get
-        {
-            if (_window == null) return Platform.WindowState.Normal;
-            return _window.WindowState switch
-            {
-                Silk.NET.Windowing.WindowState.Maximized => Platform.WindowState.Maximized,
-                Silk.NET.Windowing.WindowState.Minimized => Platform.WindowState.Minimized,
-                Silk.NET.Windowing.WindowState.Fullscreen => Platform.WindowState.FullScreen,
-                _ => Platform.WindowState.Normal
-            };
-        }
-        set
-        {
-            if (_window != null)
-            {
-                _window.WindowState = value switch
-                {
-                    Platform.WindowState.Maximized => Silk.NET.Windowing.WindowState.Maximized,
-                    Platform.WindowState.Minimized => Silk.NET.Windowing.WindowState.Minimized,
-                    Platform.WindowState.FullScreen => Silk.NET.Windowing.WindowState.Fullscreen,
-                    _ => Silk.NET.Windowing.WindowState.Normal
-                };
-            }
-            _windowConfig.WindowState = value;
-        }
+        get => Window.State;
+        set => Window.State = value;
     }
 
     /// <summary>
@@ -724,15 +689,8 @@ public class UIApplication : IDisposable
     /// </summary>
     public string Title
     {
-        get => _window?.Title ?? _windowConfig.Title;
-        set
-        {
-            if (_window != null)
-            {
-                _window.Title = value;
-            }
-            _windowConfig.Title = value;
-        }
+        get => Window.Title;
+        set => Window.Title = value;
     }
 
     /// <summary>
@@ -740,7 +698,7 @@ public class UIApplication : IDisposable
     /// </summary>
     public void CenterOnScreen()
     {
-        CenterWindowOnScreen();
+        Window.Center();
     }
 
     /// <summary>
@@ -748,12 +706,7 @@ public class UIApplication : IDisposable
     /// </summary>
     public void SetPosition(int x, int y)
     {
-        if (_window != null)
-        {
-            _window.Position = new Vector2D<int>(x, y);
-        }
-        _windowConfig.X = x;
-        _windowConfig.Y = y;
+        Window.SetPosition(x, y);
     }
 
     /// <summary>
@@ -761,12 +714,7 @@ public class UIApplication : IDisposable
     /// </summary>
     public void SetSize(int width, int height)
     {
-        if (_window != null)
-        {
-            _window.Size = new Vector2D<int>(width, height);
-        }
-        _windowConfig.Width = width;
-        _windowConfig.Height = height;
+        Window.SetSize(width, height);
     }
 
     public void AddOverlay(VisualElement overlay, VisualElement? owner = null)
@@ -1371,5 +1319,24 @@ public class UIApplication : IDisposable
     {
         _isExiting = true;
         _window?.Close();
+    }
+
+    /// <summary>
+    /// Updates the tracked window size for hosts that do not use Silk.NET
+    /// (e.g. Android). Keeps <see cref="WindowWidth"/>/<see cref="WindowHeight"/>
+    /// and <see cref="Window"/> size properties in sync with the native surface.
+    /// </summary>
+    public void NotifyWindowSize(int width, int height)
+    {
+        if (width <= 0 || height <= 0)
+        {
+            return;
+        }
+
+        _lastPolledSize = new Vector2D<int>(width, height);
+        _windowConfig.Width = width;
+        _windowConfig.Height = height;
+        Rayo.Styling.BreakpointHelper.NotifyIfChanged();
+        Rayo.Styling.OrientationHelper.NotifyIfChanged();
     }
 }

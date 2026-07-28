@@ -1,6 +1,5 @@
 ﻿using Rayo.Example;
 using Rayo.Hosting.Desktop;
-using Rayo.Hosting.Abstractions;
 using Rayo.Core.Platform;
 using System.IO;
 
@@ -27,15 +26,14 @@ public class Program
                 config.Height = 768;
                 config.CanResize = true;
                 config.VSync = true;
+                config.WindowState = WindowState.Maximized;
                 config.SetIconFromFile(Path.Combine("Assets", "AppIcon.png"));
-                
+
                 if (host.GetNativeWindowConfiguration(config) is { } nativeConfig)
                 {
                     nativeConfig.StartupLocation = WindowStartupLocation.CenterScreen;
-                    nativeConfig.WindowState = WindowState.Maximized;
                 }
             }
         );
     }
 }
-

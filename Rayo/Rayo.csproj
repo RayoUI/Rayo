@@ -23,6 +23,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Rayo.Hosting.Abstractions\Rayo.Hosting.Abstractions.csproj" />
     <ProjectReference Include="..\Rayo.Rendering\Rayo.Rendering.csproj" />
     <ProjectReference Include="..\Rayo.DevTool.Shared\Rayo.DevTool.Shared.csproj" />
   </ItemGroup>

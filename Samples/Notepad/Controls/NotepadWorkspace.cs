@@ -1,6 +1,7 @@
 using Notepad;
 using Rayo.Controls;
 using Rayo.Core;
+using Rayo.Core.Platform;
 using Rayo.Reactivity;
 using Rayo.Styling;
 
@@ -162,6 +163,24 @@ public sealed class NotepadWorkspace
     public void ToggleWordWrap() =>
         ChangeView(editor => editor.ToggleWordWrap(), editor => $"Word wrap: {(editor.WordWrap ? "on" : "off")}");
 
+    public void ToggleMaximize()
+    {
+        var window = UIApplication.Current?.Window;
+        if (window == null)
+            return;
+
+        if (window.State == WindowState.Maximized)
+        {
+            window.State = WindowState.Normal;
+            StatusText.Value = "Window restored";
+        }
+        else
+        {
+            window.State = WindowState.Maximized;
+            StatusText.Value = "Window maximized";
+        }
+    }
+
     public void UseLightTheme()
     {
         UIApplication.Current?.UseTheme(RayoThemes.Light);
@@ -292,6 +311,11 @@ public sealed class NotepadWorkspace
         var (line, column) = editor.GetCaretPosition();
         CaretText.Value = $"Ln {line}, Col {column}";
         StatusText.Value = editor.IsDirty ? "Modified" : editor.Title;
+
+        if (UIApplication.Current?.Window is { } window)
+        {
+            window.Title = $"{editor.DisplayTitle} - Rayo Notepad";
+        }
     }
 
     private void WithEditor(Action<EditorTab> action, string status)

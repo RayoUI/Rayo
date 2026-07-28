@@ -1,15 +1,12 @@
 ﻿using Android.App;
 using Android.Content.PM;
-using Android.OS;
 using Rayo.Hosting.Android;
 using Rayo.Hosting.Abstractions;
 
 namespace CrossPlatformApp.Android;
 
 /// <summary>
-/// Main activity - minimal boilerplate!
-/// Just inherit from AndroidPlatformHost and configure the app.
-/// All rendering, hot reload, and touch handling is in the hosting layer.
+/// Android entry point — startup chrome options + shared UI that mutates Window.Android at runtime.
 /// </summary>
 [Activity(
     Label = "@string/app_name",
@@ -21,13 +18,7 @@ public class MainActivity : AndroidPlatformHost
 {
     protected override void ConfigureApp(IPlatformApplicationContext context)
     {
-        // Configure services from shared library
-        context.ConfigureServices(services =>
-        {
-            CrossPlatformApp.App.ConfigureServices(services);
-        });
-
-        // Set the UI root - that's it!
+        context.ConfigureServices(CrossPlatformApp.App.ConfigureServices);
         context.SetUI<CrossPlatformApp.MainView>();
     }
 
@@ -35,11 +26,20 @@ public class MainActivity : AndroidPlatformHost
     {
         base.ConfigureWindow(config);
 
-        // Optional: Android-specific customization
-        config.Title = "Rayo Cross-Platform Demo";
-        config.VSync = true;
-        config.Samples = 4;
+        var defaults = CrossPlatformApp.App.CreateDefaultConfiguration();
+        config.Title = defaults.Title;
+        config.VSync = defaults.VSync;
+        config.Samples = defaults.Samples;
+
+        if (config is AndroidWindowConfiguration android)
+        {
+            android.KeepScreenOn = defaults.Android.KeepScreenOn;
+            android.Orientation = defaults.Android.Orientation;
+            android.ImmersiveMode = defaults.Android.ImmersiveMode;
+            android.HideStatusBar = defaults.Android.HideStatusBar;
+            android.HideNavigationBar = defaults.Android.HideNavigationBar;
+            android.StatusBarColor = defaults.Android.StatusBarColor;
+            android.NavigationBarColor = defaults.Android.NavigationBarColor;
+        }
     }
 }
-
-

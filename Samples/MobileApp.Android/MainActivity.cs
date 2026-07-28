@@ -26,5 +26,16 @@ public class MainActivity : AndroidPlatformHost
         config.Title = defaults.Title;
         config.VSync = defaults.VSync;
         config.Samples = defaults.Samples;
+
+        if (config is AndroidWindowConfiguration android)
+        {
+            android.KeepScreenOn = defaults.Android.KeepScreenOn;
+            android.Orientation = defaults.Android.Orientation;
+            android.ImmersiveMode = defaults.Android.ImmersiveMode;
+            android.HideStatusBar = defaults.Android.HideStatusBar;
+            android.HideNavigationBar = defaults.Android.HideNavigationBar;
+            android.StatusBarColor = defaults.Android.StatusBarColor;
+            android.NavigationBarColor = defaults.Android.NavigationBarColor;
+        }
     }
 }

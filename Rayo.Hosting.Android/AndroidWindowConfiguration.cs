@@ -4,8 +4,8 @@ using Rayo.Core.Platform;
 namespace Rayo.Hosting.Android;
 
 /// <summary>
-/// Android window configuration adapter.
-/// On Android, "window" refers to the full-screen surface.
+/// Adapter that wraps Rayo's WindowConfiguration to implement the platform-agnostic interface,
+/// and exposes Android chrome options for <c>ConfigureWindow</c>.
 /// </summary>
 public class AndroidWindowConfiguration : IPlatformWindowConfiguration
 {
@@ -50,6 +50,66 @@ public class AndroidWindowConfiguration : IPlatformWindowConfiguration
     {
         get => _config.Samples;
         set => _config.Samples = value;
+    }
+
+    public bool Topmost
+    {
+        get => _config.Topmost;
+        set => _config.Topmost = value;
+    }
+
+    public WindowState WindowState
+    {
+        get => _config.WindowState;
+        set => _config.WindowState = value;
+    }
+
+    public SystemDecorations SystemDecorations
+    {
+        get => _config.SystemDecorations;
+        set => _config.SystemDecorations = value;
+    }
+
+    public bool ImmersiveMode
+    {
+        get => _config.Android.ImmersiveMode;
+        set => _config.Android.ImmersiveMode = value;
+    }
+
+    public bool KeepScreenOn
+    {
+        get => _config.Android.KeepScreenOn;
+        set => _config.Android.KeepScreenOn = value;
+    }
+
+    public ScreenOrientation Orientation
+    {
+        get => _config.Android.Orientation;
+        set => _config.Android.Orientation = value;
+    }
+
+    public bool HideNavigationBar
+    {
+        get => _config.Android.HideNavigationBar;
+        set => _config.Android.HideNavigationBar = value;
+    }
+
+    public bool HideStatusBar
+    {
+        get => _config.Android.HideStatusBar;
+        set => _config.Android.HideStatusBar = value;
+    }
+
+    public uint? StatusBarColor
+    {
+        get => _config.Android.StatusBarColor;
+        set => _config.Android.StatusBarColor = value;
+    }
+
+    public uint? NavigationBarColor
+    {
+        get => _config.Android.NavigationBarColor;
+        set => _config.Android.NavigationBarColor = value;
     }
 
     /// <summary>
