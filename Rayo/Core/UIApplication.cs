@@ -597,8 +597,15 @@ public class UIApplication : IDisposable
             options.Position = new Vector2D<int>(config.X.Value, config.Y.Value);
         }
 
+        // Centering only applies to Normal windows. Setting Position on a Maximized/
+        // Fullscreen window restores it to Normal on GLFW/Win32, which previously
+        // cancelled WindowState.Maximized when StartupLocation was CenterScreen.
+        var shouldCenterOnLoad =
+            config.StartupLocation == WindowStartupLocation.CenterScreen
+            && config.WindowState == Platform.WindowState.Normal;
+
         // Hide window initially if we need to center it (to avoid visible repositioning)
-        if (config.StartupLocation == WindowStartupLocation.CenterScreen)
+        if (shouldCenterOnLoad)
         {
             options.IsVisible = false;
         }
@@ -612,10 +619,23 @@ public class UIApplication : IDisposable
         _window.FocusChanged += OnFocusChanged;
 
         // Apply startup location after window creation
-        if (config.StartupLocation == WindowStartupLocation.CenterScreen)
+        if (shouldCenterOnLoad)
         {
             _window.Load += CenterWindowOnScreen;
         }
+        else if (config.WindowState != Platform.WindowState.Normal)
+        {
+            // Some backends ignore maximize/fullscreen hints until after Load.
+            // Re-apply the configured state once the native window is ready.
+            _window.Load += ApplyConfiguredWindowState;
+        }
+    }
+
+    private void ApplyConfiguredWindowState()
+    {
+        if (_window == null) return;
+
+        WindowStateValue = _windowConfig.WindowState;
     }
 
     private void CenterWindowOnScreen()
@@ -625,15 +645,18 @@ public class UIApplication : IDisposable
         // Remember if window was initially hidden for centering
         bool wasHidden = !_window.IsVisible;
 
-        // Get the monitor info
-        var monitor = _window.Monitor;
-        if (monitor != null)
+        // Setting Position restores Maximized/Fullscreen windows to Normal on GLFW/Win32.
+        if (_window.WindowState == Silk.NET.Windowing.WindowState.Normal)
         {
-            var bounds = monitor.Bounds;
-            var windowSize = _window.Size;
-            var x = bounds.Origin.X + (bounds.Size.X - windowSize.X) / 2;
-            var y = bounds.Origin.Y + (bounds.Size.Y - windowSize.Y) / 2;
-            _window.Position = new Vector2D<int>(x, y);
+            var monitor = _window.Monitor;
+            if (monitor != null)
+            {
+                var bounds = monitor.Bounds;
+                var windowSize = _window.Size;
+                var x = bounds.Origin.X + (bounds.Size.X - windowSize.X) / 2;
+                var y = bounds.Origin.Y + (bounds.Size.Y - windowSize.Y) / 2;
+                _window.Position = new Vector2D<int>(x, y);
+            }
         }
 
         // Show window after positioning (only if it was hidden for initial centering)
