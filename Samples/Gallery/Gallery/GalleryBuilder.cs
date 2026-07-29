@@ -502,6 +502,7 @@ public class GalleryBuilder : Component
 
             // Feedback
             ("Dialog", "Feedback"),
+            ("Window", "Feedback"),
             ("Toast", "Feedback"),
 
             // Graphics
@@ -614,6 +615,7 @@ public class GalleryBuilder : Component
             "Menu" => new MenuPage(),
             "ProgressBar" => new ProgressBarPage(),
             "Dialog" => new DialogPage(),
+            "Window" => new WindowPage(),
             "Tooltip" => new TooltipPage(),
             "ComboBox" => new ComboBoxPage(),
             "Toast" => new ToastPage(),

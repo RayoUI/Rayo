@@ -149,6 +149,29 @@ public class UITree
         }
     }
 
+    /// <summary>
+    /// Moves an overlay to the end of the overlay layer so it renders and receives input above its siblings.
+    /// </summary>
+    public void BringOverlayToFront(VisualElement overlay)
+    {
+        int index = _overlays.IndexOf(overlay);
+        if (index < 0 || index == _overlays.Count - 1)
+        {
+            return;
+        }
+
+        _overlays.RemoveAt(index);
+        _overlays.Add(overlay);
+
+        foreach (var currentOverlay in _overlays)
+        {
+            MarkOverlayLayerDirty(currentOverlay);
+        }
+
+        MarkNeedsRender();
+        OverlaysChanged?.Invoke();
+    }
+
     private void AddNativeOverlayPolicy(VisualElement overlay)
     {
         if (overlay is not INativeOverlayPolicy { BlocksNativeOverlays: true })
@@ -359,10 +382,20 @@ public class UITree
             overlay.MeasureUpdate(width, height);
         }
 
-        float x = overlay.X;
-        float y = overlay.Y;
         float w = overlay.HorizontalAlignment == HorizontalAlignment.Stretch ? width : overlay.DesiredWidth;
         float h = overlay.VerticalAlignment == VerticalAlignment.Stretch ? height : overlay.DesiredHeight;
+        float x = overlay.HorizontalAlignment switch
+        {
+            HorizontalAlignment.Center => (width - w) / 2f,
+            HorizontalAlignment.Right => width - w - overlay.X,
+            _ => overlay.X
+        };
+        float y = overlay.VerticalAlignment switch
+        {
+            VerticalAlignment.Center => (height - h) / 2f,
+            VerticalAlignment.Bottom => height - h - overlay.Y,
+            _ => overlay.Y
+        };
 
         Rayo.DevTools.PerformanceTracker.RecordArranged();
         overlay.ArrangeUpdate(x, y, w, h);

@@ -717,6 +717,26 @@ public class UIApplication : IDisposable
         Window.SetSize(width, height);
     }
 
+    private static float ResolveOverlayX(VisualElement overlay, float availableWidth, float width)
+    {
+        return overlay.HorizontalAlignment switch
+        {
+            HorizontalAlignment.Center => (availableWidth - width) / 2f,
+            HorizontalAlignment.Right => availableWidth - width - overlay.X,
+            _ => overlay.X
+        };
+    }
+
+    private static float ResolveOverlayY(VisualElement overlay, float availableHeight, float height)
+    {
+        return overlay.VerticalAlignment switch
+        {
+            VerticalAlignment.Center => (availableHeight - height) / 2f,
+            VerticalAlignment.Bottom => availableHeight - height - overlay.Y,
+            _ => overlay.Y
+        };
+    }
+
     public void AddOverlay(VisualElement overlay, VisualElement? owner = null)
     {
         if (!_overlays.Contains(overlay))
@@ -733,6 +753,19 @@ public class UIApplication : IDisposable
         {
             _tree.RemoveOverlay(overlay);
         }
+    }
+
+    /// <summary>Moves an overlay above every other overlay in the application.</summary>
+    public void BringOverlayToFront(VisualElement overlay)
+    {
+        int index = _overlays.IndexOf(overlay);
+        if (index >= 0 && index < _overlays.Count - 1)
+        {
+            _overlays.RemoveAt(index);
+            _overlays.Add(overlay);
+        }
+
+        _tree.BringOverlayToFront(overlay);
     }
 
     private void OnLoad()
@@ -913,12 +946,10 @@ public class UIApplication : IDisposable
             // Overlays always get the full window size to position themselves
             overlay.MeasureUpdate(_window!.Size.X, _window.Size.Y);
 
-            // For overlays with Stretch alignment, use full window size
-            // Otherwise use desired size and explicit position
-            float x = overlay.X;
-            float y = overlay.Y;
             float w = overlay.HorizontalAlignment == HorizontalAlignment.Stretch ? _window.Size.X : overlay.DesiredWidth;
             float h = overlay.VerticalAlignment == VerticalAlignment.Stretch ? _window.Size.Y : overlay.DesiredHeight;
+            float x = ResolveOverlayX(overlay, _window.Size.X, w);
+            float y = ResolveOverlayY(overlay, _window.Size.Y, h);
 
             overlay.ArrangeUpdate(x, y, w, h);
         }
@@ -940,10 +971,10 @@ public class UIApplication : IDisposable
             {
                 overlay.MeasureUpdate(_window!.Size.X, _window.Size.Y);
 
-                float x = overlay.X;
-                float y = overlay.Y;
                 float w = overlay.HorizontalAlignment == HorizontalAlignment.Stretch ? _window.Size.X : overlay.DesiredWidth;
                 float h = overlay.VerticalAlignment == VerticalAlignment.Stretch ? _window.Size.Y : overlay.DesiredHeight;
+                float x = ResolveOverlayX(overlay, _window.Size.X, w);
+                float y = ResolveOverlayY(overlay, _window.Size.Y, h);
 
                 overlay.ArrangeUpdate(x, y, w, h);
             }
@@ -1182,10 +1213,10 @@ public class UIApplication : IDisposable
                 {
                     overlay.MeasureUpdate(_window.Size.X, _window.Size.Y);
 
-                    float x = overlay.X;
-                    float y = overlay.Y;
                     float w = overlay.HorizontalAlignment == HorizontalAlignment.Stretch ? _window.Size.X : overlay.DesiredWidth;
                     float h = overlay.VerticalAlignment == VerticalAlignment.Stretch ? _window.Size.Y : overlay.DesiredHeight;
+                    float x = ResolveOverlayX(overlay, _window.Size.X, w);
+                    float y = ResolveOverlayY(overlay, _window.Size.Y, h);
 
                     overlay.ArrangeUpdate(x, y, w, h);
                 }
@@ -1207,10 +1238,10 @@ public class UIApplication : IDisposable
                     {
                         overlay.MeasureUpdate(_window.Size.X, _window.Size.Y);
 
-                        float x = overlay.X;
-                        float y = overlay.Y;
                         float w = overlay.HorizontalAlignment == HorizontalAlignment.Stretch ? _window.Size.X : overlay.DesiredWidth;
                         float h = overlay.VerticalAlignment == VerticalAlignment.Stretch ? _window.Size.Y : overlay.DesiredHeight;
+                        float x = ResolveOverlayX(overlay, _window.Size.X, w);
+                        float y = ResolveOverlayY(overlay, _window.Size.Y, h);
 
                         overlay.ArrangeUpdate(x, y, w, h);
                     }

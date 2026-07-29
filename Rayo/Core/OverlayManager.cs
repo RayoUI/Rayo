@@ -44,5 +44,18 @@ public static class OverlayManager
         _currentTree?.RemoveOverlay(overlay);
     }
 
+    /// <summary>Moves an overlay above every other overlay in the current UI tree.</summary>
+    public static void BringOverlayToFront(VisualElement overlay)
+    {
+        var app = UIApplication.Current;
+        if (app != null)
+        {
+            app.BringOverlayToFront(overlay);
+            return;
+        }
+
+        _currentTree?.BringOverlayToFront(overlay);
+    }
+
     public static EventManager? EventManager => UIApplication.Current?.EventManager ?? _currentTree?.EventManager;
 }
