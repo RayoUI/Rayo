@@ -25,6 +25,7 @@ public class CardPage : Component
                                 .Content(
                                     new Label("This is a basic card with just content. Cards provide a visual container for related information.")
                                         .Foreground(GalleryPalette.OnSurface)
+                                        .LineBreakMode(LineBreakMode.WordWrap)
                                 )
                                 .Width(400)
                         ),
@@ -40,6 +41,7 @@ public class CardPage : Component
                                 .Content(
                                     new Label("Cards can have a header section with a different background color to visually separate the title from the content.")
                                         .Foreground(GalleryPalette.OnSurface)
+                                        .LineBreakMode(LineBreakMode.WordWrap)
                                 )
                                 .Width(400)
                         ),

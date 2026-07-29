@@ -151,7 +151,8 @@ public class AnimationPage : Component
                     .Height(TrackHeight)
                     .Width(TrackContainerWidth)
                     .Background(GalleryPalette.SurfacePressed)
-                    .BorderRadius(4)
+                    .BorderRadius(14)
+                    .Padding(new Thickness(top: 2))
                     .Content(
                         new Absolute()
                             .Size(new Size(TrackContainerWidth, TrackHeight))

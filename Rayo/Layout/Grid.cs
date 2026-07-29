@@ -145,7 +145,12 @@ public class Grid : Layout<Grid>
                         childAvailableHeight
                     );
 
-                    if (pos.col < ColumnDefinitions.Count && ColumnDefinitions[pos.col].Type == GridLength.GridUnitType.Auto)
+                    // A spanning child belongs to the combined cell, not exclusively to
+                    // its first track. Using its full desired width for that Auto column
+                    // leaves no room for the remaining spanned/star tracks.
+                    if (pos.colSpan == 1 &&
+                        pos.col < ColumnDefinitions.Count &&
+                        ColumnDefinitions[pos.col].Type == GridLength.GridUnitType.Auto)
                     {
                         float childWidth = child.DesiredWidth > 0 ? child.DesiredWidth : child.Width;
                         autoColWidths[pos.col] = Math.Max(autoColWidths[pos.col], childWidth + child.Margin.Horizontal);
@@ -331,7 +336,11 @@ public class Grid : Layout<Grid>
                     autoRowHeights[pos.row] = Math.Max(autoRowHeights[pos.row], childHeight + child.Margin.Vertical);
                 }
 
-                if (pos.col < ColumnDefinitions.Count && ColumnDefinitions[pos.col].Type == GridLength.GridUnitType.Auto)
+                // Do not assign the width of a multi-column cell to its first Auto
+                // track during arrange; it was measured against the whole span.
+                if (pos.colSpan == 1 &&
+                    pos.col < ColumnDefinitions.Count &&
+                    ColumnDefinitions[pos.col].Type == GridLength.GridUnitType.Auto)
                 {
                     float childWidth = child.DesiredWidth > 0 ? child.DesiredWidth : child.Width;
                     autoColWidths[pos.col] = Math.Max(autoColWidths[pos.col], childWidth + child.Margin.Horizontal);

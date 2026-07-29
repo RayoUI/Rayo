@@ -1,4 +1,5 @@
 using Rayo.Core;
+using Rayo.Controls;
 using Rayo.Layout;
 using Rayo.Rendering;
 
@@ -88,6 +89,28 @@ public sealed class GridLayoutTests
         grid.ArrangeUpdate(0, 0, 316, 40);
 
         Assert.Equal(208, child.ComputedWidth);
+    }
+
+    [Fact]
+    public void Auto_column_does_not_consume_a_spanning_header_width()
+    {
+        var header = new Frame();
+        var sidebar = new Label("Sidebar") { Width = 110 };
+        var content = new Frame();
+        var grid = new Grid()
+            .Rows(GridLength.Pixels(50), GridLength.Star)
+            .Columns(GridLength.Auto, GridLength.Star)
+            .ColumnSpacing(10)
+            .AddChild(header, 0, 0, rowSpan: 1, columnSpan: 2)
+            .AddChild(sidebar, 1, 0)
+            .AddChild(content, 1, 1);
+
+        grid.MeasureUpdate(300, 200);
+        grid.ArrangeUpdate(0, 0, 300, 200);
+
+        Assert.Equal(110, sidebar.ComputedWidth);
+        Assert.True(content.ComputedWidth > 0);
+        Assert.True(content.ComputedX + content.ComputedWidth <= 300);
     }
 
     private sealed class WidthSensitiveElement : VisualElement

@@ -12,6 +12,9 @@ namespace Gallery.Pages;
 
 public class ShadowPage : Component
 {
+    private const float DemoTileWidth = 132;
+    private const float DemoTileHeight = 104;
+
     public override VisualElement Build()
     {
         var palette = (UIApplication.Current?.ActiveTheme ?? RayoThemes.Light).Colors;
@@ -28,10 +31,7 @@ public class ShadowPage : Component
                         "This page shows a reduced set of shadows on mobile to keep scrolling responsive."
                     ),
                     Helper.CreateExampleSection("Presets",
-                        new HStack()
-                            .Spacing(16)
-                            .Alignment(Alignment.Center)
-                            .Children(
+                        CreateExampleFlex(
                                 CreateShadowDemo("None", Shadow.None),
                                 CreateShadowDemo("Subtle", Shadow.Subtle),
                                 CreateShadowDemo("Default", Shadow.Default),
@@ -40,19 +40,13 @@ public class ShadowPage : Component
                             )
                     ),
                     Helper.CreateExampleSection("Glow",
-                        new HStack()
-                            .Spacing(16)
-                            .Alignment(Alignment.Center)
-                            .Children(
+                        CreateExampleFlex(
                                 CreateColoredShadowDemo("Blue", new Color(59, 130, 246), Shadow.Colored(new Color(59, 130, 246, 255))),
                                 CreateColoredShadowDemo("Green", new Color(34, 197, 94), Shadow.Colored(new Color(34, 197, 94, 255)))
                             )
                     ),
                     Helper.CreateExampleSection("Parameters",
-                        new HStack()
-                            .Spacing(16)
-                            .Alignment(Alignment.Center)
-                            .Children(
+                        CreateExampleFlex(
                                 CreateShadowDemo("Alpha 25%", new Shadow(new Color(0, 0, 0, 64), 0, 4, 12)),
                                 CreateShadowDemo("Offset X", new Shadow(new Color(0, 0, 0, 160), 8, 0, 10)),
                                 CreateShadowDemo("Soft", new Shadow(new Color(0, 0, 0, 120), 0, 8, 24))
@@ -75,10 +69,7 @@ public class ShadowPage : Component
 
                 // ── Presets ──────────────────────────────────────────────────────
                 Helper.CreateExampleSection("Presets",
-                    new HStack()
-                        .Spacing(16)
-                        .Alignment(Alignment.Center)
-                        .Children(
+                    CreateExampleFlex(
                             CreateShadowDemo("None",    Shadow.None),
                             CreateShadowDemo("Subtle",  Shadow.Subtle),
                             CreateShadowDemo("Default", Shadow.Default),
@@ -89,10 +80,7 @@ public class ShadowPage : Component
 
                 // ── Blur Radius ───────────────────────────────────────────────────
                 Helper.CreateExampleSection("Blur Radius",
-                    new HStack()
-                        .Spacing(16)
-                        .Alignment(Alignment.Center)
-                        .Children(
+                    CreateExampleFlex(
                             CreateShadowDemo("Blur 0",  new Shadow(new Color(0, 0, 0, 220), 3, 3, 0)),
                             CreateShadowDemo("Blur 4",  new Shadow(new Color(0, 0, 0, 220), 3, 3, 4)),
                             CreateShadowDemo("Blur 8",  new Shadow(new Color(0, 0, 0, 220), 3, 3, 8)),
@@ -103,10 +91,7 @@ public class ShadowPage : Component
 
                 // ── Directional Offset ────────────────────────────────────────────
                 Helper.CreateExampleSection("Directional Offset",
-                    new HStack()
-                        .Spacing(16)
-                        .Alignment(Alignment.Center)
-                        .Children(
+                    CreateExampleFlex(
                             CreateShadowDemo("Bottom",       new Shadow(new Color(0, 0, 0, 220), 0, 6, 8)),
                             CreateShadowDemo("Right",        new Shadow(new Color(0, 0, 0, 220), 6, 0, 8)),
                             CreateShadowDemo("Bottom-Right", new Shadow(new Color(0, 0, 0, 220), 5, 5, 8)),
@@ -116,10 +101,7 @@ public class ShadowPage : Component
                 ),
 
                 Helper.CreateExampleSection("Opacity",
-                    new HStack()
-                        .Spacing(16)
-                        .Alignment(Alignment.Center)
-                        .Children(
+                    CreateExampleFlex(
                             CreateShadowDemo("Alpha 20%", new Shadow(new Color(0, 0, 0, 51), 0, 4, 14)),
                             CreateShadowDemo("Alpha 35%", new Shadow(new Color(0, 0, 0, 89), 0, 4, 14)),
                             CreateShadowDemo("Alpha 55%", new Shadow(new Color(0, 0, 0, 140), 0, 4, 14)),
@@ -128,10 +110,7 @@ public class ShadowPage : Component
                 ),
 
                 Helper.CreateExampleSection("Elevation Profiles",
-                    new HStack()
-                        .Spacing(16)
-                        .Alignment(Alignment.Center)
-                        .Children(
+                    CreateExampleFlex(
                             CreateShadowDemo("Flat Lift", new Shadow(new Color(0, 0, 0, 80), 0, 1, 3)),
                             CreateShadowDemo("Card", new Shadow(new Color(0, 0, 0, 110), 0, 4, 12)),
                             CreateShadowDemo("Popover", new Shadow(new Color(0, 0, 0, 145), 0, 8, 20)),
@@ -140,10 +119,7 @@ public class ShadowPage : Component
                 ),
 
                 Helper.CreateExampleSection("Axis Combinations",
-                    new HStack()
-                        .Spacing(16)
-                        .Alignment(Alignment.Center)
-                        .Children(
+                    CreateExampleFlex(
                             CreateShadowDemo("X 10 / Y 2", new Shadow(new Color(0, 0, 0, 150), 10, 2, 12)),
                             CreateShadowDemo("X -10 / Y 2", new Shadow(new Color(0, 0, 0, 150), -10, 2, 12)),
                             CreateShadowDemo("X 0 / Y -8", new Shadow(new Color(0, 0, 0, 150), 0, -8, 14)),
@@ -153,10 +129,7 @@ public class ShadowPage : Component
 
                 // ── Colored Shadows ───────────────────────────────────────────────
                 Helper.CreateExampleSection("Colored Shadows (Glow Effects)",
-                    new HStack()
-                        .Spacing(16)
-                        .Alignment(Alignment.Center)
-                        .Children(
+                    CreateExampleFlex(
                             CreateColoredShadowDemo("Blue",   new Color(59, 130, 246),  Shadow.Colored(new Color(59, 130, 246, 255))),
                             CreateColoredShadowDemo("Green",  new Color(34, 197, 94),   Shadow.Colored(new Color(34, 197, 94, 255))),
                             CreateColoredShadowDemo("Red",    new Color(239, 68, 68),   Shadow.Colored(new Color(239, 68, 68, 255))),
@@ -167,10 +140,7 @@ public class ShadowPage : Component
 
                 // ── Real-world Patterns ───────────────────────────────────────────
                 Helper.CreateExampleSection("Real-world Patterns",
-                    new HStack()
-                        .Spacing(24)
-                        .Alignment(Alignment.Center)
-                        .Children(
+                    CreateExampleFlex(
                             // Floating action button with glow
                             WrapInTile(
                                 new Border()
@@ -218,8 +188,10 @@ public class ShadowPage : Component
                                     .Shadow(new Shadow(new Color(239, 68, 68, 255), 0, 0, 16))
                                     .Padding(new Thickness(14, 10))
                                     .Content(
-                                        new HStack()
-                                            .Spacing(8).Alignment(Alignment.Center)
+                                        new Flex()
+                                            .Direction(FlexDirection.Row)
+                                            .Gap(8)
+                                            .AlignItems(Alignment.Center)
                                             .Children(
                                                 new Label("\uEA1C")
                                                     .FontFamily("Lineicons").FontSize(14)
@@ -241,6 +213,7 @@ public class ShadowPage : Component
     private static VisualElement WrapInTile(VisualElement content)
     {
         return new Border()
+            .Size(new Size(160, 112))
             .CornerRadius(new CornerRadius(10))
             .Background(GetTileBackground())
             .Padding(new Thickness(24, 20))
@@ -250,16 +223,19 @@ public class ShadowPage : Component
     private static VisualElement CreateShadowDemo(string label, Shadow shadow)
     {
         return new VStack()
+            .Width(DemoTileWidth)
             .Spacing(8)
             .Alignment(Alignment.Center)
             .Children(
                 // Lighter tile so dark shadow has contrast
                 new Border()
+                    .Size(new Size(DemoTileWidth, DemoTileHeight))
                     .CornerRadius(new CornerRadius(10))
                     .Background(GetTileBackground())
-                    .Padding(new Thickness(24, 20))
+                    .Padding(new Thickness(16))
                     .Content(
                         new Border()
+                            .Size(new Size(76, 48))
                             .CornerRadius(new CornerRadius(8))
                             .Background((UIApplication.Current?.ActiveTheme ?? RayoThemes.Light).Colors.Surface)
                             .BorderBrush((UIApplication.Current?.ActiveTheme ?? RayoThemes.Light).Colors.Border)
@@ -275,6 +251,7 @@ public class ShadowPage : Component
                             )
                     ),
                 new Label(label)
+                    .Width(DemoTileWidth)
                     .FontSize(11)
                     .Foreground((UIApplication.Current?.ActiveTheme ?? RayoThemes.Light).Colors.OnDisabled)
                     .TextHorizontalAlignment(HorizontalAlignment.Center)
@@ -284,15 +261,18 @@ public class ShadowPage : Component
     private static VisualElement CreateColoredShadowDemo(string label, Color accent, Shadow shadow)
     {
         return new VStack()
+            .Width(DemoTileWidth)
             .Spacing(8)
             .Alignment(Alignment.Center)
             .Children(
                 new Border()
+                    .Size(new Size(DemoTileWidth, DemoTileHeight))
                     .CornerRadius(new CornerRadius(10))
                     .Background(GetTileBackground())
-                    .Padding(new Thickness(24, 20))
+                    .Padding(new Thickness(16))
                     .Content(
                         new Border()
+                            .Size(new Size(76, 48))
                             .CornerRadius(new CornerRadius(8))
                             .Background((UIApplication.Current?.ActiveTheme ?? RayoThemes.Light).Colors.Surface)
                             .BorderBrush(accent.WithAlpha(0.3f))
@@ -308,6 +288,7 @@ public class ShadowPage : Component
                             )
                     ),
                 new Label(label)
+                    .Width(DemoTileWidth)
                     .FontSize(11)
                     .Foreground((UIApplication.Current?.ActiveTheme ?? RayoThemes.Light).Colors.OnDisabled)
                     .TextHorizontalAlignment(HorizontalAlignment.Center)
@@ -315,4 +296,13 @@ public class ShadowPage : Component
     }
 
     private static Color GetTileBackground() => (UIApplication.Current?.ActiveTheme ?? RayoThemes.Light).Colors.SurfaceHover;
+
+    private static Flex CreateExampleFlex(params VisualElement[] children) =>
+        new Flex()
+            .Direction(FlexDirection.Row)
+            .Wrap(FlexWrap.Wrap)
+            .Gap(16)
+            .RowGap(16)
+            .AlignItems(Alignment.Center)
+            .Children(children);
 }

@@ -41,6 +41,31 @@ public class LabelPage : Component
                         )
                 ),
 
+                // ── Text Transform & Character Spacing ─────────────────────────
+                Helper.CreateExampleSection("Text Transform & Character Spacing",
+                    new VStack()
+                        .Spacing(12)
+                        .Children(
+                            new Label("This text is transformed to uppercase")
+                                .TextTransform(TextTransform.Uppercase)
+                                .Foreground(GalleryPalette.OnSurface),
+
+                            new Label("THIS TEXT IS TRANSFORMED TO LOWERCASE")
+                                .TextTransform(TextTransform.Lowercase)
+                                .Foreground(GalleryPalette.OnSurface),
+
+                            new Label("TRACKED TEXT")
+                                .CharacterSpacing(3)
+                                .FontWeight(FontWeight.SemiBold)
+                                .Foreground(ColorDefault.Primary),
+
+                            new Label("Tight tracking")
+                                .CharacterSpacing(-0.5f)
+                                .FontSize(18)
+                                .Foreground(GalleryPalette.OnSurface)
+                        )
+                ),
+
                 // ── Font Weight ─────────────────────────────────────────────────
                 Helper.CreateExampleSection("Font Weight",
                     new VStack()
@@ -192,6 +217,50 @@ public class LabelPage : Component
                         )
                 ),
 
+                // ── Line Breaking & Maximum Lines ───────────────────────────────
+                Helper.CreateExampleSection("Line Break Mode & Max Lines",
+                    new VStack()
+                        .Spacing(12)
+                        .Children(
+                            CreateTextLayoutDemo(
+                                "WordWrap",
+                                "Word wrapping uses the available width and creates as many lines as needed.",
+                                LineBreakMode.WordWrap),
+                            CreateTextLayoutDemo(
+                                "CharacterWrap",
+                                "Character wrapping also splits verylongwordsthatdonothavespaces.",
+                                LineBreakMode.CharacterWrap),
+                            CreateTextLayoutDemo(
+                                "TailTruncation",
+                                "A single line is truncated with an ellipsis when the text does not fit.",
+                                LineBreakMode.TailTruncation),
+                            new Frame()
+                                .Width(320)
+                                .Background(GalleryPalette.Surface)
+                                .BorderBrush(GalleryPalette.Border)
+                                .BorderThickness(1)
+                                .BorderRadius(6)
+                                .Padding(new Thickness(12))
+                                .Content(
+                                    new Label("MaxLines limits this paragraph to two lines and adds an ellipsis when the remaining content is clipped.")
+                                        .MaxLines(2)
+                                        .LineBreakMode(LineBreakMode.WordWrap)
+                                        .Foreground(GalleryPalette.OnSurface)
+                                )
+                        )
+                ),
+
+                // ── Alignment, Padding & Border ─────────────────────────────────
+                Helper.CreateExampleSection("Alignment, Padding & Border",
+                    new HStack()
+                        .Spacing(12)
+                        .Children(
+                            CreateAlignedLabel("Left", HorizontalAlignment.Left),
+                            CreateAlignedLabel("Center", HorizontalAlignment.Center),
+                            CreateAlignedLabel("Right", HorizontalAlignment.Right)
+                        )
+                ),
+
                 // ── FontFamily — Icon Fonts ─────────────────────────────────────
                 Helper.CreateExampleSection("FontFamily — Icon Fonts",
                     new VStack()
@@ -339,6 +408,38 @@ public class LabelPage : Component
                     .TextHorizontalAlignment(HorizontalAlignment.Center)
             );
     }
+
+    private static VisualElement CreateTextLayoutDemo(string title, string text, LineBreakMode mode) =>
+        new VStack()
+            .Spacing(4)
+            .Children(
+                new Label(title)
+                    .FontSize(11)
+                    .FontWeight(FontWeight.SemiBold)
+                    .Foreground(GalleryPalette.Muted),
+                new Frame()
+                    .Width(320)
+                    .Background(GalleryPalette.Surface)
+                    .BorderBrush(GalleryPalette.Border)
+                    .BorderThickness(1)
+                    .BorderRadius(6)
+                    .Padding(new Thickness(12))
+                    .Content(new Label(text)
+                        .LineBreakMode(mode)
+                        .Foreground(GalleryPalette.OnSurface))
+            );
+
+    private static VisualElement CreateAlignedLabel(string text, HorizontalAlignment alignment) =>
+        new Label(text)
+            .Size(new Size(110, 48))
+            .TextHorizontalAlignment(alignment)
+            .TextVerticalAlignment(VerticalAlignment.Center)
+            .Background(GalleryPalette.Surface)
+            .BorderBrush(GalleryPalette.Border)
+            .BorderThickness(1)
+            .BorderRadius(6)
+            .Padding(new Thickness(10, 6))
+            .Foreground(GalleryPalette.OnSurface);
 
     private static VisualElement CreateFontFamilyIcon(string unicode, string label, Color color)
     {

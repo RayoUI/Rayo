@@ -30,12 +30,28 @@ public enum FontStyle
 }
 
 /// <summary>
-/// Controls how text that exceeds its available horizontal space is rendered.
+/// Controls how a label lays out text that exceeds its available horizontal space.
+/// Values and defaults match .NET MAUI's <c>LineBreakMode</c>.
 /// </summary>
-public enum TextTrimming
+public enum LineBreakMode
 {
+    NoWrap,
+    WordWrap,
+    CharacterWrap,
+    HeadTruncation,
+    TailTruncation,
+    MiddleTruncation,
+}
+
+/// <summary>
+/// Controls the casing applied when a label displays its text.
+/// </summary>
+public enum TextTransform
+{
+    Default,
     None,
-    CharacterEllipsis,
+    Lowercase,
+    Uppercase,
 }
 
 /// <summary>

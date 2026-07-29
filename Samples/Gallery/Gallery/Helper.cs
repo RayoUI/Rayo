@@ -93,6 +93,7 @@ public static class Helper
 
                         new PaletteLabel(description, colors => colors.OnDisabled)
                             .FontSize(14)
+                            .LineBreakMode(LineBreakMode.WordWrap)
                     )
             );
     }

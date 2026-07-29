@@ -1404,7 +1404,7 @@ public class SkiaSharpRenderer : IRenderer, INativeGradientRenderer, IGpuRendere
 
         while (position < text.Length)
         {
-            int codePoint = char.ConvertToUtf32(text, position);
+            int codePoint = GetCodePoint(text, position);
             builder.Append(char.ConvertFromUtf32(codePoint));
 
             int currentLength = char.IsSurrogatePair(text, position) ? 2 : 1;
@@ -1413,7 +1413,7 @@ public class SkiaSharpRenderer : IRenderer, INativeGradientRenderer, IGpuRendere
             if (position >= text.Length)
                 break;
 
-            int nextCodePoint = char.ConvertToUtf32(text, position);
+            int nextCodePoint = GetCodePoint(text, position);
             if (IsJoiner(codePoint) || IsEmojiModifierCodePoint(nextCodePoint))
             {
                 continue;
@@ -1438,7 +1438,7 @@ public class SkiaSharpRenderer : IRenderer, INativeGradientRenderer, IGpuRendere
 
         for (int i = 0; i < textElement.Length;)
         {
-            int codePoint = char.ConvertToUtf32(textElement, i);
+            int codePoint = GetCodePoint(textElement, i);
             int charLength = char.IsSurrogatePair(textElement, i) ? 2 : 1;
 
             // Strip variation selectors AND invisible Format-category characters
@@ -1485,6 +1485,16 @@ public class SkiaSharpRenderer : IRenderer, INativeGradientRenderer, IGpuRendere
             requiresEmojiPresentation = true;
 
         return normalizedText;
+    }
+
+    private static int GetCodePoint(string text, int index)
+    {
+        char value = text[index];
+        if (char.IsHighSurrogate(value))
+            return index + 1 < text.Length && char.IsLowSurrogate(text[index + 1])
+                ? char.ConvertToUtf32(value, text[index + 1])
+                : 0xFFFD;
+        return char.IsLowSurrogate(value) ? 0xFFFD : value;
     }
 
     private SKTypeface ResolveTypefaceForTextElement(SKTypeface baseTypeface, string renderText, bool requiresEmojiPresentation, float fontSize)
@@ -1540,7 +1550,7 @@ public class SkiaSharpRenderer : IRenderer, INativeGradientRenderer, IGpuRendere
     {
         for (int idx = 0; idx < text.Length; )
         {
-            int codePoint = char.ConvertToUtf32(text, idx);
+            int codePoint = GetCodePoint(text, idx);
             yield return codePoint;
             idx += char.IsSurrogatePair(text, idx) ? 2 : 1;
         }

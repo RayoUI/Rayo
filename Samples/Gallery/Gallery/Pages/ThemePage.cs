@@ -49,8 +49,10 @@ public sealed class ThemePage : Component
 
                 Helper.CreateExampleSection(
                     "Semantic palette",
-                    new HStack()
-                        .Spacing(10)
+                    new Flex()
+                        .Gap(10)
+                        .RowGap(10)
+                        .Wrap(FlexWrap.Wrap)
                         .Children(
                             CreateSwatch("Primary", colors => colors.Primary, colors => colors.OnPrimary),
                             CreateSwatch("Secondary", colors => colors.Secondary, colors => colors.OnSecondary),

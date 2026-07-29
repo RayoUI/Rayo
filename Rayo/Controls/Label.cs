@@ -7,6 +7,7 @@ using Rayo.Rendering;
 using Rayo.Rendering.Brushes;
 using Rayo.Rendering.Graphics.VectorGraphics;
 using Rayo.Styling;
+using System.Text;
 using IRenderer = Rayo.Rendering.IRenderer;
 
 /// <summary>
@@ -66,13 +67,6 @@ public class Label : BorderView<Label>
     private IFont? _cachedBoldItalicFont;
     private IRenderer? _lastRenderer;
     private float _cachedFontSize;
-    private string? _measureCacheText;
-    private float _measureCacheFontSize;
-    private float _measureCacheLineHeight;
-    private Thickness _measureCachePadding;
-    private string[] _cachedMeasureLines = Array.Empty<string>();
-    private float _cachedIntrinsicTextWidth;
-    private float _cachedIntrinsicTextHeight;
 
     /// <summary>
     /// Font family name (alias registered in AssetManager).
@@ -161,16 +155,53 @@ public class Label : BorderView<Label>
     } = TextDecorations.None;
     #endregion
 
-    #region TextTrimming
+    #region LineBreakMode
     /// <summary>
-    /// Controls whether text that exceeds the arranged width is truncated.
+    /// Controls whether text wraps or is truncated when it exceeds the available width.
+    /// The values match .NET MAUI's <see cref="Rayo.Core.LineBreakMode"/>.
     /// </summary>
-    [PaintProperty]
-    public TextTrimming TextTrimming
+    [LayoutProperty]
+    public LineBreakMode LineBreakMode
     {
         get => field;
         set => this.SetProperty(ref field, value);
-    } = TextTrimming.None;
+    } = LineBreakMode.NoWrap;
+    #endregion
+
+    #region CharacterSpacing
+    /// <summary>
+    /// Additional spacing, in device-independent units, inserted between displayed characters.
+    /// </summary>
+    [LayoutProperty]
+    public float CharacterSpacing
+    {
+        get => field;
+        set => this.SetProperty(ref field, value);
+    }
+    #endregion
+
+    #region MaxLines
+    /// <summary>
+    /// Maximum number of displayed lines. A value of -1 shows all lines; 0 hides the text.
+    /// </summary>
+    [LayoutProperty]
+    public int MaxLines
+    {
+        get => field;
+        set => this.SetProperty(ref field, value);
+    } = -1;
+    #endregion
+
+    #region TextTransform
+    /// <summary>
+    /// Casing transformation applied when displaying <see cref="Text"/>.
+    /// </summary>
+    [LayoutProperty]
+    public TextTransform TextTransform
+    {
+        get => field;
+        set => this.SetProperty(ref field, value);
+    } = TextTransform.Default;
     #endregion
 
     #region LineHeight
@@ -232,11 +263,13 @@ public class Label : BorderView<Label>
             return;
         }
 
-        EnsureMeasureCache();
+        float contentWidth = GetAvailableContentWidth(availableWidth);
+        var lines = CreateLines(GetDisplayText(), contentWidth, EstimateLineWidth);
+        float maxLineWidth = lines.Length == 0 ? 0 : lines.Max(EstimateLineWidth);
 
-        // If user set explicit size, use it. Otherwise use estimated.
-        DesiredWidth = Width > 0 ? Width : _cachedIntrinsicTextWidth + Padding.Horizontal;
-        DesiredHeight = Height > 0 ? Height : _cachedIntrinsicTextHeight + Padding.Vertical;
+        // Wrapping and truncation obey the width constraint; NoWrap retains intrinsic sizing.
+        DesiredWidth = Width > 0 ? Width : maxLineWidth + Padding.Horizontal;
+        DesiredHeight = Height > 0 ? Height : GetTextHeight(lines.Length) + Padding.Vertical;
     }
 
     protected override void Arrange(float x, float y, float width, float height)
@@ -299,8 +332,12 @@ public class Label : BorderView<Label>
             // Resolve font variant: prefer registered variant, fall back to regular + simulation
             IFont? activeFont = ResolveFont(renderer, isBold, isItalic);
 
-            EnsureMeasureCache();
-            var lines = _cachedMeasureLines;
+            float contentHeight = Math.Max(0, ComputedHeight - Padding.Vertical);
+            float contentWidth  = Math.Max(0, ComputedWidth  - Padding.Horizontal);
+            var lines = CreateLines(
+                GetDisplayText(),
+                contentWidth,
+                line => MeasureLineWidth(renderer, line, activeFont));
             var lineSpacing = FontSize * LineHeight;
 
             // Must match the lineHeight used in Measure() so vertical alignment is consistent.
@@ -311,9 +348,6 @@ public class Label : BorderView<Label>
                 1 => lineHeight,
                 _ => lineHeight + (lines.Length - 1) * lineSpacing
             };
-
-            float contentHeight = Math.Max(0, ComputedHeight - Padding.Vertical);
-            float contentWidth  = Math.Max(0, ComputedWidth  - Padding.Horizontal);
 
             // Calculate starting Y position based on vertical alignment
             float startY = ComputedY + Padding.Top;
@@ -336,16 +370,12 @@ public class Label : BorderView<Label>
             // Render each line
             for (int i = 0; i < lines.Length; i++)
             {
-                var processedLine = lines[i].Replace("\t", "    ");
-                if (TextTrimming == TextTrimming.CharacterEllipsis)
-                    processedLine = TruncateLine(renderer, processedLine, activeFont, contentWidth);
+                var processedLine = lines[i];
                 if (string.IsNullOrEmpty(processedLine))
                     continue;
 
                 // Measure line width for alignment and decorations
-                var lineSize = activeFont != null
-                    ? renderer.MeasureTextWithFont(processedLine, activeFont, FontSize)
-                    : renderer.MeasureText(processedLine, FontSize);
+                var lineSize = MeasureLine(renderer, processedLine, activeFont);
 
                 // Calculate X position based on horizontal alignment
                 float textX = ComputedX + Padding.Left;
@@ -364,15 +394,12 @@ public class Label : BorderView<Label>
                 // Draw text (with optional font)
                 if (activeFont != null)
                 {
-                    renderer.DrawTextWithFont(processedLine, textX, textY, Foreground, activeFont, FontSize);
-                    // Fake bold for renderers that don't handle IsBold natively (e.g. OpenGL)
-                    if (needsFakeBold && !activeFont.IsBold)
-                        renderer.DrawTextWithFont(processedLine, textX + 1, textY, Foreground, activeFont, FontSize);
+                    DrawText(renderer, processedLine, textX, textY, activeFont, isBold, isItalic, needsFakeBold);
                 }
                 else
                 {
                     // No custom font — use styled draw so renderers can apply bold/italic natively
-                    renderer.DrawTextStyled(processedLine, textX, textY, Foreground, FontSize, isBold, isItalic);
+                    DrawText(renderer, processedLine, textX, textY, null, isBold, isItalic, needsFakeBold);
                 }
 
                 // Text decorations (drawn as thin rectangles using Foreground colour)
@@ -403,34 +430,249 @@ public class Label : BorderView<Label>
         }
     }
 
-    private string TruncateLine(IRenderer renderer, string text, IFont? font, float maxWidth)
+    private float GetAvailableContentWidth(float availableWidth)
+    {
+        if (Width > 0)
+            return Math.Max(0, Width - Padding.Horizontal);
+
+        return float.IsPositiveInfinity(availableWidth)
+            ? float.PositiveInfinity
+            : Math.Max(0, availableWidth - Padding.Horizontal);
+    }
+
+    private float GetTextHeight(int lineCount)
+    {
+        if (lineCount == 0)
+            return 0;
+
+        float lineHeight = FontSize * 1.35f;
+        return lineCount == 1
+            ? lineHeight
+            : lineHeight + (lineCount - 1) * FontSize * LineHeight;
+    }
+
+    private string GetDisplayText() => TextTransform switch
+    {
+        TextTransform.Lowercase => Text.ToLower(),
+        TextTransform.Uppercase => Text.ToUpper(),
+        _ => Text,
+    };
+
+    private string[] CreateLines(string text, float maxWidth, Func<string, float> measure)
+    {
+        var mode = GetEffectiveLineBreakMode();
+        var lines = new List<string>();
+
+        foreach (var hardLine in text.Replace("\r\n", "\n").Replace('\r', '\n').Split('\n'))
+        {
+            var line = hardLine.Replace("\t", "    ");
+            if (float.IsPositiveInfinity(maxWidth) || mode == LineBreakMode.NoWrap)
+            {
+                lines.Add(line);
+                continue;
+            }
+
+            switch (mode)
+            {
+                case LineBreakMode.WordWrap:
+                    AddWrappedLines(lines, line, maxWidth, measure, breakAtWord: true);
+                    break;
+                case LineBreakMode.CharacterWrap:
+                    AddWrappedLines(lines, line, maxWidth, measure, breakAtWord: false);
+                    break;
+                case LineBreakMode.HeadTruncation:
+                    lines.Add(TruncateLine(line, maxWidth, measure, TruncationPosition.Head));
+                    break;
+                case LineBreakMode.MiddleTruncation:
+                    lines.Add(TruncateLine(line, maxWidth, measure, TruncationPosition.Middle));
+                    break;
+                case LineBreakMode.TailTruncation:
+                    lines.Add(TruncateLine(line, maxWidth, measure, TruncationPosition.Tail));
+                    break;
+                default:
+                    lines.Add(line);
+                    break;
+            }
+        }
+
+        return ApplyMaxLines(lines, maxWidth, measure, mode);
+    }
+
+    private string[] ApplyMaxLines(List<string> lines, float maxWidth, Func<string, float> measure, LineBreakMode mode)
+    {
+        if (MaxLines < 0 || lines.Count <= MaxLines)
+            return lines.ToArray();
+        if (MaxLines == 0)
+            return Array.Empty<string>();
+
+        var visible = lines.Take(MaxLines).ToList();
+        if (!float.IsPositiveInfinity(maxWidth) && mode is LineBreakMode.WordWrap or LineBreakMode.CharacterWrap)
+        {
+            var remainder = string.Join(" ", lines.Skip(MaxLines - 1));
+            visible[^1] = TruncateLine(remainder, maxWidth, measure, TruncationPosition.Tail);
+        }
+
+        return visible.ToArray();
+    }
+
+    private LineBreakMode GetEffectiveLineBreakMode() => LineBreakMode;
+
+    private static void AddWrappedLines(List<string> lines, string text, float maxWidth, Func<string, float> measure, bool breakAtWord)
+    {
+        if (text.Length == 0 || maxWidth <= 0)
+        {
+            lines.Add(text);
+            return;
+        }
+
+        int start = 0;
+        while (start < text.Length)
+        {
+            int end = start;
+            int lastWordBreak = -1;
+            while (end < text.Length && measure(text[start..(end + 1)]) <= maxWidth)
+            {
+                if (char.IsWhiteSpace(text[end]))
+                    lastWordBreak = end;
+                end++;
+            }
+
+            if (end == text.Length)
+            {
+                lines.Add(text[start..end].TrimEnd());
+                break;
+            }
+
+            if (end == start)
+            {
+                // A single glyph is wider than the constraint; still make progress.
+                lines.Add(text[start..++end]);
+                start = end;
+                continue;
+            }
+
+            if (breakAtWord && lastWordBreak > start)
+            {
+                lines.Add(text[start..lastWordBreak].TrimEnd());
+                start = lastWordBreak + 1;
+                while (start < text.Length && char.IsWhiteSpace(text[start]))
+                    start++;
+            }
+            else
+            {
+                lines.Add(text[start..end]);
+                start = end;
+            }
+        }
+    }
+
+    private string TruncateLine(string text, float maxWidth, Func<string, float> measure, TruncationPosition position)
     {
         if (string.IsNullOrEmpty(text) || maxWidth <= 0)
             return string.Empty;
 
-        if (MeasureLineWidth(renderer, text, font) <= maxWidth)
+        if (measure(text) <= maxWidth)
             return text;
 
         const string ellipsis = "…";
-        float ellipsisWidth = MeasureLineWidth(renderer, ellipsis, font);
+        float ellipsisWidth = measure(ellipsis);
         if (ellipsisWidth > maxWidth)
             return string.Empty;
 
         float availableWidth = maxWidth - ellipsisWidth;
-        for (int length = text.Length - 1; length > 0; length--)
+        return position switch
         {
-            var prefix = text[..length];
-            if (MeasureLineWidth(renderer, prefix, font) <= availableWidth)
-                return prefix + ellipsis;
+            TruncationPosition.Head => TruncateHead(text, availableWidth, measure, ellipsis),
+            TruncationPosition.Middle => TruncateMiddle(text, availableWidth, measure, ellipsis),
+            _ => TruncateTail(text, availableWidth, measure, ellipsis),
+        };
+    }
+
+    private static string TruncateTail(string text, float availableWidth, Func<string, float> measure, string ellipsis)
+    {
+        for (int length = text.Length - 1; length > 0; length--)
+            if (measure(text[..length]) <= availableWidth)
+                return text[..length] + ellipsis;
+        return ellipsis;
+    }
+
+    private static string TruncateHead(string text, float availableWidth, Func<string, float> measure, string ellipsis)
+    {
+        for (int start = 1; start < text.Length; start++)
+            if (measure(text[start..]) <= availableWidth)
+                return ellipsis + text[start..];
+        return ellipsis;
+    }
+
+    private static string TruncateMiddle(string text, float availableWidth, Func<string, float> measure, string ellipsis)
+    {
+        for (int retained = text.Length - 1; retained > 0; retained--)
+        {
+            int prefixLength = (retained + 1) / 2;
+            int suffixLength = retained - prefixLength;
+            var candidate = text[..prefixLength] + ellipsis + text[^suffixLength..];
+            if (measure(candidate) <= availableWidth + measure(ellipsis))
+                return candidate;
         }
 
         return ellipsis;
     }
 
-    private float MeasureLineWidth(IRenderer renderer, string text, IFont? font) =>
-        font != null
+    private enum TruncationPosition { Head, Tail, Middle }
+
+    private float MeasureLineWidth(IRenderer renderer, string text, IFont? font)
+    {
+        var size = font != null
             ? renderer.MeasureTextWithFont(text, font, FontSize).X
             : renderer.MeasureText(text, FontSize).X;
+        return size + Math.Max(0, text.EnumerateRunes().Count() - 1) * CharacterSpacing;
+    }
+
+    private System.Numerics.Vector2 MeasureLine(IRenderer renderer, string text, IFont? font)
+    {
+        var size = font != null
+            ? renderer.MeasureTextWithFont(text, font, FontSize)
+            : renderer.MeasureText(text, FontSize);
+        return new System.Numerics.Vector2(
+            size.X + Math.Max(0, text.EnumerateRunes().Count() - 1) * CharacterSpacing,
+            size.Y);
+    }
+
+    private void DrawText(IRenderer renderer, string text, float x, float y, IFont? font, bool isBold, bool isItalic, bool needsFakeBold)
+    {
+        if (CharacterSpacing == 0)
+        {
+            if (font != null)
+            {
+                renderer.DrawTextWithFont(text, x, y, Foreground, font, FontSize);
+                if (needsFakeBold && !font.IsBold)
+                    renderer.DrawTextWithFont(text, x + 1, y, Foreground, font, FontSize);
+            }
+            else
+            {
+                renderer.DrawTextStyled(text, x, y, Foreground, FontSize, isBold, isItalic);
+            }
+            return;
+        }
+
+        float currentX = x;
+        foreach (var rune in text.EnumerateRunes())
+        {
+            var glyph = rune.ToString();
+            if (font != null)
+            {
+                renderer.DrawTextWithFont(glyph, currentX, y, Foreground, font, FontSize);
+                if (needsFakeBold && !font.IsBold)
+                    renderer.DrawTextWithFont(glyph, currentX + 1, y, Foreground, font, FontSize);
+            }
+            else
+            {
+                renderer.DrawTextStyled(glyph, currentX, y, Foreground, FontSize, isBold, isItalic);
+            }
+
+            currentX += MeasureLineWidth(renderer, glyph, font) + CharacterSpacing;
+        }
+    }
 
     private static bool HasAnyRadius(CornerRadius radius) =>
         radius.TopLeft > 0 || radius.TopRight > 0 ||
@@ -467,7 +709,7 @@ public class Label : BorderView<Label>
             }
         }
 
-        return width;
+        return width + Math.Max(0, line.EnumerateRunes().Count() - 1) * CharacterSpacing;
     }
 
     private static bool IsPrivateUseAreaChar(char ch) => ch >= '\uE000' && ch <= '\uF8FF';
@@ -536,53 +778,6 @@ public class Label : BorderView<Label>
     private bool HasItalicFont(IRenderer renderer) =>
         !string.IsNullOrEmpty(FontFamily) &&
         AssetManager.Instance.GetFont($"{FontFamily}-Italic") != null;
-
-    private void EnsureMeasureCache()
-    {
-        if (_measureCacheText == Text &&
-            _measureCacheFontSize == FontSize &&
-            _measureCacheLineHeight == LineHeight &&
-            _measureCachePadding.Equals(Padding))
-        {
-            return;
-        }
-
-        _measureCacheText = Text;
-        _measureCacheFontSize = FontSize;
-        _measureCacheLineHeight = LineHeight;
-        _measureCachePadding = Padding;
-
-        if (string.IsNullOrEmpty(Text))
-        {
-            _cachedMeasureLines = Array.Empty<string>();
-            _cachedIntrinsicTextWidth = 0;
-            _cachedIntrinsicTextHeight = 0;
-            return;
-        }
-
-        _cachedMeasureLines = Text.Split('\n');
-        float maxLineWidth = 0;
-
-        foreach (var line in _cachedMeasureLines)
-        {
-            var processedLine = line.Replace("\t", "    ");
-            float lineWidth = EstimateLineWidth(processedLine);
-            if (lineWidth > maxLineWidth)
-                maxLineWidth = lineWidth;
-        }
-
-        float lineSpacing = FontSize * LineHeight;
-        float lineHeight = FontSize * 1.35f;
-        float textHeight = _cachedMeasureLines.Length switch
-        {
-            0 => 0,
-            1 => lineHeight,
-            _ => lineHeight + (_cachedMeasureLines.Length - 1) * lineSpacing
-        };
-
-        _cachedIntrinsicTextWidth = maxLineWidth;
-        _cachedIntrinsicTextHeight = textHeight;
-    }
 
     private IFont? TryLoadFont(IRenderer renderer, string name)
     {

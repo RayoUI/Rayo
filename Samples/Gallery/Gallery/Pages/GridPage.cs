@@ -74,8 +74,14 @@ public class GridPage : Component
                                 .ColumnSpacing(10)
                                 .Padding(new Thickness(10))
                                 .AddChild(CreateCell("Header (50px high)", new Color(75, 85, 99)), 0, 0, 1, 2)
-                                .AddChild(new Label("Sidebar (Auto Width)").Foreground(GalleryPalette.OnSurface).Padding(new Thickness(10)), 1, 0)
-                                .AddChild(CreateCell("Content (Remaining Space)", new Color(31, 41, 55)), 1, 1)
+                                .AddChild(
+                                    new Label("Sidebar\n(Auto Width)")
+                                        .Width(110)
+                                        .Foreground(GalleryPalette.OnSurface)
+                                        .Padding(new Thickness(10)),
+                                    1,
+                                    0)
+                                .AddChild(CreateCell("Content", new Color(31, 41, 55)), 1, 1)
                         )
                 )
             );

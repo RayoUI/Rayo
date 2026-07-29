@@ -354,6 +354,9 @@ internal class TreeNodeView : CompositeView<TreeNodeView>
         private bool _isHovered;
         private bool _isPressed;
         private readonly TapRecognizer _tapRecognizer;
+        private readonly Icon _chevronIcon = new();
+        private readonly Icon _nodeIcon = new();
+        private readonly Icon _checkIcon = new(Icons.Check);
 
         public List<IGestureRecognizer> GestureRecognizers { get; } = new();
         public event Action<TapGestureEventArgs>? Tapped;
@@ -373,6 +376,7 @@ internal class TreeNodeView : CompositeView<TreeNodeView>
             );
             _tapRecognizer.TapDetected += OnTapDetected;
             GestureRecognizers.Add(_tapRecognizer);
+            RefreshContent();
         }
 
         private void OnTapDetected(TapGestureEventArgs e)
@@ -424,6 +428,13 @@ internal class TreeNodeView : CompositeView<TreeNodeView>
 
         public void RefreshContent()
         {
+            var node = _owner._node;
+            var color = _owner.GetTextColor();
+            _chevronIcon.IconData = node.IsExpanded ? Icons.ChevronDown : Icons.ChevronRight;
+            _chevronIcon.Color = color;
+            _nodeIcon.IconData = node.Icon ?? Icons.File;
+            _nodeIcon.Color = color;
+            _checkIcon.Color = _owner._treeView.SelectedTextColor;
             MarkNeedsPaint();
         }
 
@@ -531,46 +542,20 @@ internal class TreeNodeView : CompositeView<TreeNodeView>
                 renderer.DrawRoundedRect(highlightX, highlightY, highlightWidth, highlightHeight, 4, highlightColor);
             }
 
-            Brush iconColor = _owner.GetTextColor();
             Brush textColor = _owner.GetTextColor();
 
             // Draw chevron or node icon
             if (node.HasChildren)
             {
-                // Draw chevron using Icon
-                IconData chevron = node.IsExpanded ? Icons.ChevronDown : Icons.ChevronRight;
                 float chevronY = centerY - chevronSize / 2f;
-                
-                // Render icon
-                var chevronView = new Icon(chevron)
-                {
-                    Width = chevronSize,
-                    Height = chevronSize,
-                    Color = iconColor.PrimaryColor
-                };
-                
-                chevronView.MeasureUpdate(chevronSize, chevronSize);
-                chevronView.ArrangeUpdate(currentX, chevronY, chevronSize, chevronSize);
-                chevronView.Render(renderer);
+                RenderIcon(renderer, _chevronIcon, currentX, chevronY, chevronSize);
 
                 currentX += chevronSize + spacing;
             }
             else
             {
-                // Draw node icon (custom or default file icon)
-                IconData nodeIcon = node.Icon ?? Icons.File;
                 float iconY = centerY - nodeIconSize / 2f;
-
-                var iconView = new Icon(nodeIcon)
-                {
-                    Width = nodeIconSize,
-                    Height = nodeIconSize,
-                    Color = iconColor.PrimaryColor
-                };
-
-                iconView.MeasureUpdate(nodeIconSize, nodeIconSize);
-                iconView.ArrangeUpdate(currentX, iconY, nodeIconSize, nodeIconSize);
-                iconView.Render(renderer);
+                RenderIcon(renderer, _nodeIcon, currentX, iconY, nodeIconSize);
 
                 currentX += nodeIconSize + spacing;
             }
@@ -593,17 +578,18 @@ internal class TreeNodeView : CompositeView<TreeNodeView>
                 {
                     // Draw checkmark
                     float checkIconSize = checkboxSize - 4;
-                    var checkIcon = new Icon(Icons.Check)
-                    {
-                        Width = checkIconSize,
-                        Height = checkIconSize,
-                        Color = treeView.SelectedTextColor
-                    };
-                    checkIcon.MeasureUpdate(checkIconSize, checkIconSize);
-                    checkIcon.ArrangeUpdate(checkboxX + 2, checkboxY + 2, checkIconSize, checkIconSize);
-                    checkIcon.Render(renderer);
+                    RenderIcon(renderer, _checkIcon, checkboxX + 2, checkboxY + 2, checkIconSize);
                 }
             }
+        }
+
+        private static void RenderIcon(IRenderer renderer, Icon icon, float x, float y, float size)
+        {
+            icon.Width = size;
+            icon.Height = size;
+            icon.MeasureUpdate(size, size);
+            icon.ArrangeUpdate(x, y, size, size);
+            icon.Image.Render(renderer);
         }
     }
 }

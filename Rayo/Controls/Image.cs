@@ -243,17 +243,20 @@ public class Image : BorderView<Image>
                 break;
         }
 
-        bool hasRoundedCorners = BorderRadius.TopLeft > 0 || BorderRadius.TopRight > 0 ||
-                                 BorderRadius.BottomLeft > 0 || BorderRadius.BottomRight > 0;
+        bool exceedsBounds = renderX < ComputedX || renderY < ComputedY ||
+                             renderX + renderWidth > ComputedX + ComputedWidth ||
+                             renderY + renderHeight > ComputedY + ComputedHeight;
 
-        if (hasRoundedCorners)
+        // StretchMode.None and UniformToFill can draw beyond the arranged bounds.
+        // Clip whenever that happens so an Image never paints outside its container.
+        if (exceedsBounds)
         {
             renderer.PushScissor(ComputedX, ComputedY, ComputedWidth, ComputedHeight);
         }
 
         renderer.DrawTexture(_texture, renderX, renderY, renderWidth, renderHeight, Tint);
 
-        if (hasRoundedCorners)
+        if (exceedsBounds)
         {
             renderer.PopScissor();
         }
